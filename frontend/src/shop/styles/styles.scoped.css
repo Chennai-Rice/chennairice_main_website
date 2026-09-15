@@ -1,0 +1,2494 @@
+/* ============================================================
+   Product-page styles from the chennai-rice-react repo.
+   Every selector is scoped under .shop-scope so this file cannot
+   restyle the landing page — the original defines global :root,
+   body, main, h1-h3 and * rules with a different token set.
+   Regenerate rather than hand-editing if the upstream file changes.
+   ============================================================ */
+
+/* ============================================================
+   Chennai Rice Industries — product page
+   Design tokens first; components styled only through tokens.
+   ============================================================ */
+
+.shop-scope {
+  /* Color — brand */
+  --maroon-900: #4A1014;
+  --maroon-700: #5E1418;        /* emblem ring */
+  --maroon-600: #6E1B22;        /* primary */
+  --maroon-500: #8A2A31;
+  --gold-700:   #8A6218;        /* 5.08:1 on cream — AA for small labels; used on the Founder page */
+  --gold-600:   #A87A22;        /* secondary, AA on cream for large text */
+  --gold-500:   #C08A2D;
+  --gold-300:   #E8C766;
+
+  /* Color — neutrals (warm, rice-paper biased) */
+  --cream-50:  #FDFBF5;
+  --cream-100: #FBF6EC;         /* page ground */
+  --cream-200: #F3EBDB;
+  --cream-300: #E6DAC2;
+  --ink-900:   #2B1B16;         /* headings */
+  --ink-700:   #4E3A32;         /* body */
+  --ink-500:   #7A6459;         /* muted */
+
+  /* Color — per-pack accents (media well tints) */
+  --pack-dark:   #241C13;
+  --pack-red:    #B3181C;
+  --pack-gold:   #C79A33;
+  --pack-orange: #C4501A;
+
+  /* Type */
+  --font-display: "Marcellus", Georgia, "Times New Roman", serif;
+  --font-body: "Karla", "Segoe UI", Arial, sans-serif;
+  --fs-h1: clamp(2rem, 4.5vw, 3rem);        /* 32–48 */
+  --fs-h2: clamp(1.5rem, 3vw, 2rem);        /* 24–32 */
+  --fs-h3: 1.25rem;                         /* 20 */
+  --fs-body: 1rem;                          /* 16 */
+  --fs-small: 0.875rem;                     /* 14 */
+  --fs-tag: 0.75rem;                        /* 12, uppercase */
+
+  /* Spacing scale (4px base) */
+  --s-1: 0.25rem;   /*  4 */
+  --s-2: 0.5rem;    /*  8 */
+  --s-3: 0.75rem;   /* 12 */
+  --s-4: 1rem;      /* 16 */
+  --s-6: 1.5rem;    /* 24 */
+  --s-8: 2rem;      /* 32 */
+  --s-12: 3rem;     /* 48 */
+  --s-16: 4rem;     /* 64 */
+
+  /* Shape & elevation */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-pill: 999px;
+  --shadow-rest: 0 1px 3px rgba(43, 27, 22, 0.08), 0 4px 14px rgba(43, 27, 22, 0.06);
+  --shadow-lift: 0 6px 16px rgba(43, 27, 22, 0.12), 0 16px 40px rgba(43, 27, 22, 0.12);
+
+  --focus-ring: 3px solid var(--gold-500);
+  --transition-fast: 160ms ease;
+  --transition-lift: 260ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+/* ---------- Reset & base ---------- */
+
+.shop-scope *,
+.shop-scope *::before,
+.shop-scope *::after { box-sizing: border-box; }
+
+.shop-scope {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: 1.6;
+  color: var(--ink-700);
+  background: var(--cream-100);
+}
+
+.shop-scope img { display: block; max-width: 100%; height: auto; }
+
+.shop-scope h1,
+.shop-scope h2,
+.shop-scope h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--ink-900);
+  line-height: 1.15;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.shop-scope ul { list-style: none; margin: 0; padding: 0; }
+.shop-scope figure { margin: 0; }
+.shop-scope address { font-style: normal; }
+
+.shop-scope .visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.shop-scope .skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--s-4);
+  z-index: 10;
+  padding: var(--s-2) var(--s-4);
+  background: var(--maroon-600);
+  color: var(--cream-50);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  text-decoration: none;
+}
+.shop-scope .skip-link:focus { top: 0; }
+
+.shop-scope :focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- Header ---------- */
+
+.shop-scope .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--cream-50);
+  border-bottom: 1px solid var(--cream-300);
+}
+
+.shop-scope .header-inner {
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: var(--s-3) var(--s-4);
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+}
+
+.shop-scope .brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  text-decoration: none;
+  color: var(--ink-900);
+  flex-shrink: 0;
+}
+
+.shop-scope .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+.shop-scope .brand-text strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  letter-spacing: 0.03em;
+  color: var(--maroon-600);
+}
+.shop-scope .brand-text small {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+}
+
+.shop-scope .search {
+  position: relative;
+  flex: 1;
+  max-width: 30rem;
+  margin-inline: auto;
+  color: var(--ink-500);
+}
+
+.shop-scope .search-icon {
+  position: absolute;
+  left: var(--s-3);
+  top: 50%;
+  translate: 0 -50%;
+  pointer-events: none;
+}
+
+.shop-scope .search input {
+  width: 100%;
+  padding: var(--s-2) var(--s-4) var(--s-2) 2.5rem;
+  font: inherit;
+  color: var(--ink-900);
+  background: var(--cream-100);
+  border: 1.5px solid var(--cream-300);
+  border-radius: var(--radius-pill);
+  transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+}
+.shop-scope .search input::placeholder { color: var(--ink-500); }
+.shop-scope .search input:hover { border-color: var(--gold-500); }
+.shop-scope .search input:focus {
+  outline: none;
+  background: var(--cream-50);
+  border-color: var(--gold-500);
+  box-shadow: 0 0 0 3px rgba(192, 138, 45, 0.25);
+}
+
+.shop-scope .cart-btn {
+  position: relative;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1.5px solid var(--cream-300);
+  border-radius: var(--radius-pill);
+  background: var(--cream-50);
+  color: var(--maroon-600);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+.shop-scope .cart-btn:hover { border-color: var(--maroon-600); background: var(--cream-200); }
+
+.shop-scope .cart-count {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.3rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding-inline: 0.3rem;
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--cream-50);
+  background: var(--maroon-600);
+  border-radius: var(--radius-pill);
+}
+.shop-scope .cart-count.bump { animation: bump 360ms ease; }
+@keyframes bump {
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+/* ---------- Hero ---------- */
+
+/* Symmetrical mandalas anchor the two top corners of the page — lotus rings
+   and kolam dots echoing the medallion on the packs. Sat on <main>, which is
+   full-width and starts just under the header, so they land in the true page
+   corners; offsets scale with the size so the same portion shows at every
+   viewport. Backgrounds clip to their own box, so they can never spill. */
+.shop-scope main {
+  --mandala: min(27rem, 48vw);
+  background:
+    url("/assets/shop/mandala.svg") no-repeat
+      left calc(var(--mandala) * -0.34) top calc(var(--mandala) * -0.30) / var(--mandala) auto,
+    url("/assets/shop/mandala.svg") no-repeat
+      right calc(var(--mandala) * -0.34) top calc(var(--mandala) * -0.30) / var(--mandala) auto;
+}
+
+.shop-scope .hero {
+  position: relative;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: var(--s-16) var(--s-4) var(--s-12);
+  text-align: center;
+}
+
+.shop-scope .eyebrow {
+  margin: 0 0 var(--s-3);
+  font-size: var(--fs-tag);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-600);
+}
+
+/* ---------- Premium banner with glitter ---------- */
+
+.shop-scope .premium-mark {
+  position: relative;
+  display: inline-block;
+  margin: 0 0 var(--s-4);
+}
+
+.shop-scope .pp-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  overflow: hidden;
+  padding: var(--s-2) var(--s-6);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--maroon-900);
+  background: linear-gradient(105deg, #A87A22, #C9962E 25%, #F2DA8C 50%, #C9962E 75%, #A87A22);
+  background-size: 220% 100%;
+  animation: gold-pan 5s linear infinite;
+  box-shadow: 0 2px 10px rgba(168, 122, 34, 0.35);
+}
+
+/* sweeping light sheen across the pill */
+.shop-scope .pp-pill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, 0.55) 50%, transparent 68%);
+  transform: translateX(-110%);
+  animation: sheen 2.8s ease-in-out infinite;
+}
+
+@keyframes gold-pan {
+  from { background-position: 0% 0; }
+  to   { background-position: 220% 0; }
+}
+@keyframes sheen {
+  0%       { transform: translateX(-110%); }
+  55%, 100% { transform: translateX(110%); }
+}
+
+/* twinkling glitter stars around the pill */
+.shop-scope .glint {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  background: var(--gold-300);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  opacity: 0;
+  animation: twinkle 2.1s ease-in-out infinite;
+  pointer-events: none;
+}
+.shop-scope .glint.g1 { top: -14px; left: -18px; }
+.shop-scope .glint.g2 { top: -12px; right: 14%; width: 8px; height: 8px; animation-delay: 0.4s; }
+.shop-scope .glint.g3 { bottom: -12px; left: 20%; width: 9px; height: 9px; animation-delay: 0.9s; }
+.shop-scope .glint.g4 { top: 34%; right: -20px; animation-delay: 1.3s; }
+.shop-scope .glint.g5 { bottom: -15px; right: 32%; width: 13px; height: 13px; animation-delay: 1.7s; background: #FFFFFF; }
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+  50%      { opacity: 1; transform: scale(1) rotate(24deg); }
+}
+
+.shop-scope .hero h1 { font-size: var(--fs-h1); }
+
+.shop-scope .hero-sub {
+  max-width: 38rem;
+  margin: var(--s-4) auto 0;
+  color: var(--ink-500);
+}
+
+/* ---------- Feature strip ---------- */
+
+.shop-scope .features {
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: 0 var(--s-4) var(--s-12);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--s-4);
+}
+
+.shop-scope .feature {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  background: var(--cream-50);
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-md);
+}
+.shop-scope .feature svg { flex-shrink: 0; color: var(--gold-600); }
+.shop-scope .feature span { display: flex; flex-direction: column; font-size: var(--fs-small); color: var(--ink-500); }
+.shop-scope .feature strong {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.05rem;
+  color: var(--ink-900);
+}
+
+/* ---------- Product grid ---------- */
+
+/* Scattered rice-grain silhouettes drift behind the listing; the opaque
+   cards float above, so the pattern reads as a soft watermark in the gaps. */
+.shop-scope .products {
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: var(--s-6) var(--s-4) var(--s-16);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cg fill='%23C08A2D'%3E%3Cellipse cx='30' cy='40' rx='17' ry='5.5' fill-opacity='0.07' transform='rotate(-25 30 40)'/%3E%3Cellipse cx='220' cy='70' rx='17' ry='5.5' fill-opacity='0.07' transform='rotate(-40 220 70)'/%3E%3Cellipse cx='180' cy='150' rx='17' ry='5.5' fill-opacity='0.07' transform='rotate(-15 180 150)'/%3E%3Cellipse cx='150' cy='230' rx='17' ry='5.5' fill-opacity='0.07' transform='rotate(-35 150 230)'/%3E%3Cellipse cx='240' cy='200' rx='15' ry='5' fill-opacity='0.05' transform='rotate(25 240 200)'/%3E%3Cellipse cx='105' cy='75' rx='15' ry='5' fill-opacity='0.05' transform='rotate(-5 105 75)'/%3E%3C/g%3E%3Cg fill='none' stroke='%23C08A2D' stroke-width='1.5'%3E%3Cellipse cx='140' cy='30' rx='17' ry='5.5' stroke-opacity='0.12' transform='rotate(15 140 30)'/%3E%3Cellipse cx='70' cy='120' rx='17' ry='5.5' stroke-opacity='0.12' transform='rotate(30 70 120)'/%3E%3Cellipse cx='40' cy='210' rx='17' ry='5.5' stroke-opacity='0.12' transform='rotate(10 40 210)'/%3E%3Cellipse cx='215' cy='135' rx='15' ry='5' stroke-opacity='0.09' transform='rotate(45 215 135)'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 260px 260px;
+}
+
+.shop-scope .products-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  margin-bottom: var(--s-6);
+}
+
+.shop-scope .products-head-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+
+.shop-scope .products-head h2 { font-size: var(--fs-h2); }
+.shop-scope .results-note { margin: 0; font-size: var(--fs-small); color: var(--ink-500); }
+
+/* ---------- Filter chips ---------- */
+
+.shop-scope .filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.shop-scope .chip {
+  padding: var(--s-2) var(--s-4);
+  font: inherit;
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-700);
+  background: var(--cream-50);
+  border: 1.5px solid var(--cream-300);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+              color var(--transition-fast), transform var(--transition-fast);
+}
+.shop-scope .chip:hover {
+  border-color: var(--maroon-600);
+  color: var(--maroon-600);
+}
+.shop-scope .chip:active { transform: scale(0.96); }
+.shop-scope .chip[aria-pressed="true"] {
+  color: var(--cream-50);
+  background: var(--maroon-600);
+  border-color: var(--maroon-600);
+}
+
+/* Flex rather than fixed columns: with four packs this reflows 4 → 3+1 → 2+2
+   → 1 and centres any short final row, so no card is ever left orphaned. */
+.shop-scope .product-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s-6);
+}
+
+.shop-scope .product-grid > li {
+  flex: 1 1 280px;
+  min-width: 280px;
+  max-width: 340px;
+}
+.shop-scope .product-grid > li[hidden] { display: none; }
+
+/* ---------- Card ---------- */
+
+.shop-scope .card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--cream-50);
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-rest);
+  transition: transform var(--transition-lift), box-shadow var(--transition-lift), border-color var(--transition-fast);
+}
+
+.shop-scope .card:hover,
+.shop-scope .card:focus-within {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lift);
+  border-color: var(--gold-300);
+}
+
+.shop-scope .card-media {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: var(--s-6) var(--s-6) var(--s-4);
+  overflow: hidden;
+}
+
+.shop-scope .card--premium .card-media { background: linear-gradient(180deg, rgba(168, 122, 34, 0.15), rgba(168, 122, 34, 0.03)); }
+.shop-scope .card--red  .card-media { background: linear-gradient(180deg, rgba(179, 24, 28, 0.10),  rgba(179, 24, 28, 0.02)); }
+.shop-scope .card--gold .card-media { background: linear-gradient(180deg, rgba(199, 154, 51, 0.16), rgba(199, 154, 51, 0.03)); }
+.shop-scope .card--orange .card-media { background: linear-gradient(180deg, rgba(226, 98, 27, 0.12), rgba(226, 98, 27, 0.02)); }
+
+/* shimmering PREMIUM flag pinned to the premium card */
+.shop-scope .premium-flag {
+  position: absolute;
+  top: var(--s-3);
+  left: var(--s-3);
+  z-index: 2;
+  overflow: hidden;
+  padding: var(--s-1) var(--s-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-tag);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--maroon-900);
+  background: linear-gradient(105deg, #C9962E, #F2DA8C 50%, #C9962E);
+  background-size: 220% 100%;
+  animation: gold-pan 4s linear infinite;
+}
+
+/* Saved-items heart, pinned opposite the premium flag so the two never
+   collide on the premium pack. Styled to match .pdp-wishlist, because it is
+   the same control and should not read as a different one between the card
+   and the product page. */
+.shop-scope .card-wishlist {
+  position: absolute;
+  top: var(--s-3);
+  right: var(--s-3);
+  z-index: 2;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--cream-300);
+  background: var(--cream-50);
+  color: var(--maroon-600);
+  cursor: pointer;
+  box-shadow: var(--shadow-rest);
+  transition:
+    transform var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.shop-scope .card-wishlist:hover {
+  border-color: var(--maroon-600);
+  transform: scale(1.08);
+}
+
+.shop-scope .card-wishlist:focus-visible {
+  outline: 2px solid var(--maroon-600);
+  outline-offset: 2px;
+}
+
+/* Filled rather than only recoloured: on a tinted card ground a colour
+   change alone is easy to miss, and the state has to be readable at a
+   glance across a row of three. */
+.shop-scope .card-wishlist.is-active {
+  border-color: var(--maroon-600);
+  background: var(--cream-100);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-scope .card-wishlist { transition: none; }
+  .shop-scope .card-wishlist:hover { transform: none; }
+}
+
+/* Packs are cut-outs on transparency: fix the height so all three sit on a
+   common baseline despite slightly different pack widths, and ground them
+   with a contact shadow. */
+.shop-scope .card-media img {
+  position: relative;
+  z-index: 1;
+  width: auto;
+  max-width: 100%;
+  height: clamp(13rem, 20vw, 16.5rem);
+  object-fit: contain;
+  filter: drop-shadow(0 10px 16px rgba(43, 27, 22, 0.22));
+  transition: transform var(--transition-lift), filter var(--transition-lift);
+}
+.shop-scope .card:hover .card-media img,
+.shop-scope .card:focus-within .card-media img {
+  transform: scale(1.05);
+  filter: drop-shadow(0 18px 26px rgba(43, 27, 22, 0.28));
+}
+
+.shop-scope .card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-4) var(--s-6) var(--s-6);
+}
+
+.shop-scope .card-tag {
+  margin: 0;
+  font-size: var(--fs-tag);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.shop-scope .card--premium .card-tag { color: var(--gold-600); }
+.shop-scope .card--red  .card-tag { color: var(--pack-red); }
+.shop-scope .card--gold .card-tag { color: var(--gold-600); }
+.shop-scope .card--orange .card-tag { color: var(--pack-orange); }
+
+.shop-scope .card-title { font-size: var(--fs-h3); }
+
+.shop-scope .card-desc {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
+.shop-scope .pack-size-group {
+  display: flex;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+}
+.shop-scope .pack-size-pill {
+  flex: 1;
+  padding: var(--s-2) var(--s-1);
+  font: inherit;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--ink-700);
+  background: var(--cream-200);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.shop-scope .pack-size-pill:hover {
+  border-color: rgba(110, 27, 34, 0.35);
+}
+.shop-scope .pack-size-pill.is-selected {
+  background: var(--maroon-600);
+  color: var(--cream-50);
+}
+
+.shop-scope .card-foot {
+  margin-top: auto;
+  padding-top: var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.shop-scope .card-actions {
+  display: flex;
+  gap: var(--s-2);
+}
+.shop-scope .card-actions > * { flex: 1; }
+
+.shop-scope .price { margin: 0; line-height: 1.2; }
+.shop-scope .price-amount {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-900);
+}
+.shop-scope .price-unit { font-size: var(--fs-small); color: var(--ink-500); }
+
+/* ---------- View more button (details page comes later) ---------- */
+
+.shop-scope .view-btn {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+  padding: var(--s-2) var(--s-4);
+  font: inherit;
+  font-weight: 700;
+  font-size: var(--fs-small);
+  letter-spacing: 0.02em;
+  text-align: center;
+  color: var(--maroon-600);
+  text-decoration: none;
+  background: transparent;
+  border: 1.5px solid rgba(110, 27, 34, 0.35);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+.shop-scope .view-btn:hover {
+  background: rgba(110, 27, 34, 0.07);
+  border-color: var(--maroon-600);
+}
+.shop-scope .view-btn:active { transform: scale(0.96); }
+.shop-scope .view-btn .ripple { background: rgba(110, 27, 34, 0.18); }
+
+/* ---------- Add to cart button ---------- */
+
+.shop-scope .add-btn {
+  position: relative;
+  overflow: hidden;
+  padding: var(--s-2) var(--s-4);
+  font: inherit;
+  font-weight: 700;
+  font-size: var(--fs-small);
+  letter-spacing: 0.02em;
+  color: var(--cream-50);
+  background: var(--maroon-600);
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.shop-scope .add-btn:hover { background: var(--maroon-700); }
+.shop-scope .add-btn:active { transform: scale(0.96); }
+
+.shop-scope .add-btn.is-added { background: var(--gold-600); }
+
+.shop-scope .add-btn .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(0);
+  animation: ripple 480ms ease-out forwards;
+  pointer-events: none;
+}
+@keyframes ripple {
+  to { transform: scale(2.6); opacity: 0; }
+}
+
+/* ---------- Closing lineup: the four packs on a 3D stage ---------- */
+
+/* Millet sprigs stand in the lower corners as faint silhouettes — the seed
+   head is an ellipse filled with a dot pattern, on a stem with one leaf.
+   Backgrounds always paint behind content, so no stacking work is needed. */
+.shop-scope .lineup {
+  position: relative;
+  overflow: hidden;
+  padding: var(--s-16) var(--s-4) var(--s-12);
+  text-align: center;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='400'%3E%3Cdefs%3E%3Cpattern id='m' width='15' height='15' patternUnits='userSpaceOnUse'%3E%3Ccircle cx='7.5' cy='7.5' r='5' fill='%23A87A22' fill-opacity='0.30'/%3E%3C/pattern%3E%3C/defs%3E%3Cpath d='M95 236 C91 306 89 356 95 398' fill='none' stroke='%23A87A22' stroke-opacity='0.20' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M95 288 C126 276 147 288 162 308' fill='none' stroke='%23A87A22' stroke-opacity='0.15' stroke-width='4' stroke-linecap='round'/%3E%3Cellipse cx='95' cy='122' rx='44' ry='114' fill='url(%23m)'/%3E%3C/svg%3E")
+      left -38px bottom -34px / 190px auto no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='360'%3E%3Cdefs%3E%3Cpattern id='m2' width='14' height='14' patternUnits='userSpaceOnUse'%3E%3Ccircle cx='7' cy='7' r='4.6' fill='%23A87A22' fill-opacity='0.26'/%3E%3C/pattern%3E%3C/defs%3E%3Cpath d='M85 212 C89 276 91 322 85 358' fill='none' stroke='%23A87A22' stroke-opacity='0.18' stroke-width='5.5' stroke-linecap='round'/%3E%3Cpath d='M85 258 C56 247 36 258 22 277' fill='none' stroke='%23A87A22' stroke-opacity='0.13' stroke-width='4' stroke-linecap='round'/%3E%3Cellipse cx='85' cy='110' rx='40' ry='102' fill='url(%23m2)'/%3E%3C/svg%3E")
+      right -30px bottom -26px / 170px auto no-repeat,
+    radial-gradient(120% 80% at 50% 100%, rgba(201, 150, 46, 0.16), transparent 60%),
+    linear-gradient(180deg, var(--cream-100), var(--cream-200));
+  border-top: 1px solid var(--cream-300);
+}
+
+.shop-scope .lineup-eyebrow {
+  margin: 0 0 var(--s-3);
+  font-size: var(--fs-tag);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-600);
+}
+
+/* Heavy grotesque for the statement — deliberately not the page's serif */
+.shop-scope .lineup-title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: clamp(2.1rem, 5.5vw, 3.75rem);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+  color: var(--maroon-600);
+}
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .shop-scope .lineup-title {
+    background: linear-gradient(100deg, var(--maroon-700) 10%, var(--gold-600) 52%, var(--maroon-600) 88%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+.shop-scope .lineup-sub {
+  max-width: 40rem;
+  margin: var(--s-4) auto 0;
+  color: var(--ink-500);
+}
+
+/* The stage: one shared vanishing point for all four packs */
+.shop-scope .stage {
+  perspective: 1500px;
+  perspective-origin: 50% 38%;
+  margin-top: var(--s-12);
+}
+
+.shop-scope .lineup-row {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: clamp(0.25rem, 2.5vw, 2.5rem);
+  padding: 0 0 clamp(3rem, 8vw, 6.5rem);
+  transform-style: preserve-3d;
+}
+
+/* Packs are visible by default. The hidden start state is opt-in via
+   .will-animate, which JS adds only once it knows it can reveal them again —
+   so a failed observer, a JS error, or a blocked script can never leave a
+   pack stranded at opacity 0. */
+.shop-scope .lineup-item {
+  position: relative;
+  transform-style: preserve-3d;
+  /* The resting arc. Nothing transitions this — the packs do not react to
+     the pointer; only the entrance (on `translate`) animates. */
+  transform: rotateY(var(--ry, 0deg)) translateZ(var(--tz, 0));
+}
+
+.shop-scope .stage.will-animate .lineup-item { opacity: 0; }
+
+/* Outer packs angle inward and sit further back — a gathered arc */
+.shop-scope .lineup-item:nth-child(1) { --ry:  15deg; --tz: -55px; }
+.shop-scope .lineup-item:nth-child(2) { --ry:   5deg; --tz:   0px; }
+.shop-scope .lineup-item:nth-child(3) { --ry:  -5deg; --tz:   0px; }
+.shop-scope .lineup-item:nth-child(4) { --ry: -15deg; --tz: -55px; }
+
+/* Entrance then idle float, both on the `translate` property so they never
+   fight the `transform` that holds the arc and the hover pose. The float is
+   listed second, so it takes over once its delay elapses. */
+.shop-scope .stage.will-animate.is-visible .lineup-item {
+  animation-name: pack-in, pack-float;
+  animation-duration: 0.85s, 6.5s;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1), ease-in-out;
+  animation-delay: calc(var(--i, 0) * 130ms), calc(var(--i, 0) * 130ms + 1.1s);
+  animation-iteration-count: 1, infinite;
+  animation-fill-mode: forwards, none;
+}
+
+@keyframes pack-in {
+  from { opacity: 0; translate: 0 48px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+@keyframes pack-float {
+  0%, 100% { translate: 0 0; }
+  50%      { translate: 0 -9px; }
+}
+
+.shop-scope .lineup-item > img:not(.reflect) {
+  width: auto;
+  height: clamp(8rem, 15vw, 13.5rem);
+  filter: drop-shadow(0 18px 22px rgba(43, 27, 22, 0.28));
+}
+
+/* Mirror below each pack. The mask is authored in element space, so with the
+   scaleY(-1) it fades away from the pack, not toward it. */
+.shop-scope .reflect {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: auto;
+  transform: scaleY(-1);
+  opacity: 0.3;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 58%, rgba(0, 0, 0, 0.6));
+  mask-image: linear-gradient(to bottom, transparent 58%, rgba(0, 0, 0, 0.6));
+}
+
+/* No hover state here by design: the lineup is a display shelf, not a
+   control. The packs hold their arc and stay put under the pointer. */
+
+/* Hairline floor the packs stand on */
+.shop-scope .stage::after {
+  content: "";
+  display: block;
+  width: min(90%, 54rem);
+  height: 1px;
+  margin: calc(clamp(3rem, 8vw, 6.5rem) * -1) auto 0;
+  background: linear-gradient(90deg, transparent, rgba(168, 122, 34, 0.45), transparent);
+}
+
+.shop-scope .lineup-note {
+  margin: var(--s-12) 0 0;
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--maroon-600);
+}
+
+@media (max-width: 560px) {
+  /* Four packs shoulder-to-shoulder get too small on a phone: drop the
+     depth offsets and let them sit closer to flat. */
+  .shop-scope .lineup-item:nth-child(1) { --ry:  9deg; --tz: -25px; }
+  .shop-scope .lineup-item:nth-child(2) { --ry:  3deg; --tz:   0px; }
+  .shop-scope .lineup-item:nth-child(3) { --ry: -3deg; --tz:   0px; }
+  .shop-scope .lineup-item:nth-child(4) { --ry: -9deg; --tz: -25px; }
+}
+
+/* ---------- Header nav ---------- */
+
+.shop-scope .main-nav {
+  display: flex;
+  gap: var(--s-4);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.shop-scope .main-nav a {
+  font-size: var(--fs-small);
+  font-weight: 700;
+  color: var(--ink-700);
+  text-decoration: none;
+  padding: var(--s-1) 0;
+  border-bottom: 2px solid transparent;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  white-space: nowrap;
+}
+.shop-scope .main-nav a:hover { color: var(--maroon-600); border-bottom-color: var(--gold-500); }
+.shop-scope .main-nav a[aria-current="page"] { color: var(--maroon-600); border-bottom-color: var(--maroon-600); }
+
+/* ---------- About page ---------- */
+
+.shop-scope .factory {
+  max-width: 72rem;
+  margin: 0 auto var(--s-12);
+  padding-inline: var(--s-4);
+}
+.shop-scope .factory img {
+  width: 100%;
+  height: clamp(14rem, 34vw, 26rem);
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--cream-300);
+  box-shadow: var(--shadow-rest);
+  background: var(--cream-200);
+}
+.shop-scope .factory figcaption {
+  margin-top: var(--s-3);
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+  text-align: center;
+}
+
+.shop-scope .about-story {
+  max-width: 44rem;          /* ~65 characters for comfortable reading */
+  margin-inline: auto;
+  padding: 0 var(--s-4) var(--s-12);
+}
+.shop-scope .about-story h2 {
+  font-size: var(--fs-h2);
+  margin-bottom: var(--s-6);
+}
+.shop-scope .about-story p { margin: 0 0 var(--s-4); }
+.shop-scope .about-story p:last-child { margin-bottom: 0; }
+.shop-scope .about-story .lede {
+  font-size: 1.125rem;
+  color: var(--ink-700);
+  padding-left: var(--s-4);
+  border-left: 3px solid var(--gold-500);
+}
+
+/* Stats band */
+
+.shop-scope .stats {
+  max-width: 72rem;
+  margin: 0 auto var(--s-16);
+  padding-inline: var(--s-4);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--s-4);
+}
+.shop-scope .stat {
+  padding: var(--s-6) var(--s-4);
+  text-align: center;
+  background: var(--cream-50);
+  border: 1px solid var(--cream-300);
+  border-top: 3px solid var(--gold-500);
+  border-radius: var(--radius-md);
+}
+.shop-scope .stat-value {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--maroon-600);
+  line-height: 1.1;
+}
+.shop-scope .stat-value span { font-size: 1rem; color: var(--gold-600); }
+.shop-scope .stat-label {
+  margin: var(--s-2) 0 0;
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
+/* ---------- Journey: a winding road of milestones ---------- */
+
+.shop-scope .journey {
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: var(--s-12) var(--s-4) var(--s-16);
+  text-align: center;
+  border-top: 1px solid var(--cream-300);
+}
+.shop-scope .journey h2 {
+  font-size: var(--fs-h2);
+  color: var(--maroon-600);
+}
+
+.shop-scope .journey-rule {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  margin: var(--s-3) 0 0;
+  color: var(--gold-600);
+}
+.shop-scope .journey-rule::before,
+.shop-scope .journey-rule::after {
+  content: "";
+  width: 3rem;
+  height: 1px;
+  background: var(--gold-500);
+}
+
+.shop-scope .journey-hint {
+  margin: var(--s-4) 0 0;
+  font-size: var(--fs-tag);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+}
+
+/* Geometry shared with tools/make-journey-art.ps1 — the road SVG is drawn
+   from these same numbers, so every pin lands exactly on the tarmac.
+   Change one, regenerate the other. */
+.shop-scope .journey-map {
+  --row: 150px;      /* vertical gap between stops */
+  --amp: 72px;       /* how far the road swings either side of centre */
+  --lead: 90px;      /* space above the first stop */
+  --stops: 10;
+  --pin: 82px;
+
+  position: relative;
+  width: 320px;
+  height: calc(var(--lead) * 2 + (var(--stops) - 1) * var(--row));
+  margin: var(--s-12) auto 0;
+  background: url("/assets/shop/road.svg") center top / 320px auto no-repeat;
+}
+
+.shop-scope .stops { list-style: none; margin: 0; padding: 0; }
+
+/* --i is the stop index, --side is +1 (right bend) or -1 (left bend) */
+.shop-scope .stop {
+  position: absolute;
+  top: calc(var(--lead) + var(--i) * var(--row));
+  left: calc(50% + var(--side) * var(--amp));
+  translate: -50% -50%;
+  width: var(--pin);
+  height: var(--pin);
+}
+
+/* ---- the pin itself ---- */
+
+.shop-scope .pin {
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  width: var(--pin);
+  height: var(--pin);
+  padding: 0;
+  border: 3px solid var(--gold-300);
+  border-radius: 50%;
+  color: var(--cream-50);
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(43, 27, 22, 0.32);
+  transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1), box-shadow 0.25s ease;
+}
+.shop-scope .pin--maroon { background: radial-gradient(circle at 34% 28%, #8A2A31, #5E1418); }
+.shop-scope .pin--gold { background: radial-gradient(circle at 34% 28%, #C9962E, #A87A22); }
+
+/* the teardrop tail, so each pin reads as a map marker on the road */
+.shop-scope .pin::after {
+  content: "";
+  position: absolute;
+  bottom: -13px;
+  left: 50%;
+  translate: -50% 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 15px solid var(--gold-300);
+}
+
+.shop-scope .pin-year {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.shop-scope .pin-icon { width: 17px; height: 17px; opacity: 0.9; }
+
+.shop-scope .pin:hover,
+.shop-scope .pin:focus-visible {
+  transform: scale(1.12);
+  box-shadow: 0 10px 22px rgba(43, 27, 22, 0.4);
+}
+
+/* ---- the text card, on the same side as its pin ---- */
+
+.shop-scope .stop-card {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  width: 15.5rem;
+  margin: 0;
+  padding: var(--s-3) var(--s-4);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  color: var(--ink-700);
+  background: var(--cream-50);
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-rest);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+/* A hairline leader runs from the card back to the pin */
+.shop-scope .stop-card::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 3.25rem;
+  height: 1px;
+  background: var(--gold-500);
+  opacity: 0.6;
+}
+
+.shop-scope .stop:has(> .pin) .stop-card { text-align: left; }
+
+/* right-hand stops: card to the right of the pin */
+.shop-scope .stop[style*="--side: 1"] .stop-card { left: calc(100% + 3.25rem); }
+.shop-scope .stop[style*="--side: 1"] .stop-card::before { left: -3.25rem; }
+
+/* left-hand stops: card to the left */
+.shop-scope .stop[style*="--side: -1"] .stop-card { right: calc(100% + 3.25rem); text-align: right; }
+.shop-scope .stop[style*="--side: -1"] .stop-card::before { right: -3.25rem; }
+
+.shop-scope .stop:hover .stop-card,
+.shop-scope .stop:focus-within .stop-card {
+  border-color: var(--gold-300);
+  box-shadow: var(--shadow-lift);
+}
+
+/* ---- the photo that peeks out on hover ---- */
+
+.shop-scope .stop-photo {
+  position: absolute;
+  bottom: calc(100% + 0.9rem);
+  left: 50%;
+  z-index: 3;
+  width: 11.5rem;
+  padding: 5px;
+  background: var(--cream-50);
+  border: 1px solid var(--gold-300);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 28px rgba(43, 27, 22, 0.28);
+  opacity: 0;
+  visibility: hidden;
+  translate: -50% 8px;
+  scale: 0.94;
+  transform-origin: 50% 100%;
+  transition: opacity 0.22s ease, translate 0.22s ease, scale 0.22s ease, visibility 0.22s;
+  pointer-events: none;
+}
+.shop-scope .stop-photo img {
+  display: block;
+  width: 100%;
+  height: 7rem;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--cream-200);
+}
+/* little pointer down to the pin */
+.shop-scope .stop-photo::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  translate: -50% 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 8px solid var(--gold-300);
+}
+
+.shop-scope .stop:hover .stop-photo,
+.shop-scope .stop:focus-within .stop-photo,
+.shop-scope .stop.is-open .stop-photo {
+  opacity: 1;
+  visibility: visible;
+  translate: -50% 0;
+  scale: 1;
+}
+
+/* Founder sign-off closing the timeline */
+.shop-scope .founder {
+  margin: var(--s-12) 0 0;
+  text-align: center;
+}
+.shop-scope .founder figcaption { display: flex; flex-direction: column; gap: var(--s-1); }
+.shop-scope .founder-sign {
+  font-family: "Great Vibes", "Segoe Script", cursive;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  line-height: 1.2;
+  color: var(--ink-900);
+}
+.shop-scope .founder-role {
+  font-size: var(--fs-tag);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-600);
+}
+
+/* Narrow screens: the winding road needs ~1000px to hold cards either side.
+   Below that it straightens into a single rail with every stop on one line. */
+@media (max-width: 1023px) {
+  .journey-map {
+    width: 100%;
+    max-width: 34rem;
+    height: auto;
+    background: none;
+    display: flex;
+    flex-direction: column;
+  }
+  .stops {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-6);
+  }
+  /* straight road down the left */
+  .stops::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--pin) / 2);
+    translate: -50% 0;
+    width: 10px;
+    border-radius: 5px;
+    background: repeating-linear-gradient(180deg, #4A403C 0 22px, #6A5C56 22px 34px);
+    opacity: 0.85;
+  }
+  .stop {
+    position: relative;
+    top: auto;
+    left: auto;
+    translate: none;
+    width: 100%;
+    height: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+  }
+  .pin { flex-shrink: 0; }
+  .pin::after { display: none; }
+
+  .stop[style*="--side: 1"] .stop-card,
+  .stop[style*="--side: -1"] .stop-card {
+    position: relative;
+    inset: auto;
+    translate: none;
+    width: auto;
+    flex: 1;
+    text-align: left;
+  }
+  .stop[style*="--side: 1"] .stop-card::before,
+  .stop[style*="--side: -1"] .stop-card::before { display: none; }
+
+  .stop-photo { left: var(--pin); }
+}
+
+/* ---------- Cart page ---------- */
+
+.shop-scope .cart-btn--current {
+  cursor: default;
+  border-color: var(--maroon-600);
+  background: var(--cream-200);
+}
+
+.shop-scope .cart-page {
+  max-width: 72rem;
+  margin-inline: auto;
+  padding: var(--s-12) var(--s-4) var(--s-16);
+}
+.shop-scope .cart-page h1 {
+  font-size: var(--fs-h1);
+  margin-bottom: var(--s-8);
+}
+
+.shop-scope .cart-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s-8);
+  align-items: start;
+}
+/* An explicit `display` beats the UA rule for [hidden], so the empty-cart
+   toggle needs this guard or the order summary stays on screen. */
+.shop-scope .cart-layout[hidden] { display: none; }
+@media (min-width: 900px) {
+  .shop-scope .cart-layout { grid-template-columns: minmax(0, 1fr) 21rem; }
+}
+
+.shop-scope .cart-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.shop-scope .cart-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+  padding: var(--s-4);
+  background: var(--cream-50);
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-md);
+}
+
+.shop-scope .cart-item-media {
+  display: grid;
+  place-items: center;
+  width: 5rem;
+  height: 6rem;
+  flex-shrink: 0;
+  padding: var(--s-2);
+  background: var(--cream-200);
+  border-radius: var(--radius-sm);
+}
+.shop-scope .cart-item-media img { width: auto; height: 100%; object-fit: contain; }
+
+.shop-scope .cart-item-body { flex: 1 1 10rem; }
+.shop-scope .cart-item-tag {
+  margin: 0;
+  font-size: var(--fs-tag);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-600);
+}
+.shop-scope .cart-item-name { margin: var(--s-1) 0; font-size: var(--fs-h3); }
+.shop-scope .cart-item-unit { margin: 0; font-size: var(--fs-small); color: var(--ink-500); }
+
+.shop-scope .cart-item-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  margin-left: auto;
+}
+
+.shop-scope .qty {
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: var(--s-1);
+  border: 1.5px solid var(--cream-300);
+  border-radius: var(--radius-pill);
+}
+.shop-scope .qty--card {
+  justify-content: center;
+}
+.shop-scope .qty-btn {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--maroon-600);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.shop-scope .qty-btn:hover { background: var(--cream-200); }
+.shop-scope .qty-value {
+  min-width: 2rem;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-scope .cart-item-total {
+  margin: 0;
+  min-width: 5rem;
+  text-align: right;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-900);
+}
+
+.shop-scope .remove-btn {
+  font: inherit;
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+  background: none;
+  border: none;
+  padding: var(--s-2);
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color var(--transition-fast);
+}
+.shop-scope .remove-btn:hover { color: var(--pack-red); }
+
+/* Summary */
+
+.shop-scope .cart-summary {
+  padding: var(--s-6);
+  background: var(--cream-50);
+  border: 1px solid var(--cream-300);
+  border-top: 3px solid var(--gold-500);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-rest);
+}
+.shop-scope .cart-summary h2 { font-size: var(--fs-h3); margin-bottom: var(--s-4); }
+
+.shop-scope .summary-rows { margin: 0 0 var(--s-6); display: flex; flex-direction: column; gap: var(--s-3); }
+.shop-scope .summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-4);
+  font-size: var(--fs-small);
+}
+.shop-scope .summary-row dt { color: var(--ink-500); }
+.shop-scope .summary-row dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.shop-scope .summary-row--muted dd { font-weight: 400; color: var(--ink-500); }
+.shop-scope .summary-row--total {
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--cream-300);
+  font-size: var(--fs-body);
+}
+.shop-scope .summary-row--total dd {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--ink-900);
+}
+
+.shop-scope .checkout-btn {
+  display: block;
+  width: 100%;
+  padding: var(--s-3) var(--s-4);
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+  color: var(--cream-50);
+  background: var(--maroon-600);
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.shop-scope .checkout-btn:hover { background: var(--maroon-700); }
+.shop-scope .checkout-btn:active { transform: scale(0.98); }
+.shop-scope .checkout-btn--link { text-decoration: none; width: auto; display: inline-block; margin-top: var(--s-4); }
+
+.shop-scope .summary-note {
+  margin: var(--s-3) 0 0;
+  font-size: var(--fs-tag);
+  color: var(--ink-500);
+  text-align: center;
+}
+
+.shop-scope .cart-empty {
+  padding: var(--s-16) var(--s-4);
+  text-align: center;
+  color: var(--ink-500);
+}
+.shop-scope .cart-empty-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  color: var(--ink-900);
+  margin: 0 0 var(--s-2);
+}
+
+@media (max-width: 560px) {
+  .shop-scope .cart-item-actions { margin-left: 0; width: 100%; justify-content: space-between; }
+}
+
+/* ---------- Empty state & footer ---------- */
+
+.shop-scope .no-results {
+  margin: var(--s-8) 0 0;
+  text-align: center;
+  color: var(--ink-500);
+}
+
+.shop-scope .site-footer {
+  background: var(--maroon-900);
+  color: var(--cream-200);
+  text-align: center;
+  padding: var(--s-8) var(--s-4);
+  font-size: var(--fs-small);
+}
+.shop-scope .site-footer strong {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  color: var(--gold-300);
+}
+.shop-scope .site-footer address { margin-top: var(--s-2); color: var(--cream-300); }
+
+/* ---------- Small screens: header stacks ---------- */
+
+@media (max-width: 639px) {
+  .header-inner { flex-wrap: wrap; }
+  .search { order: 3; flex-basis: 100%; max-width: none; }
+  .cart-btn { margin-left: auto; }
+  .brand-text small { display: none; }
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .card:hover,
+  .card:focus-within { transform: none; }
+  .card:hover .card-media img,
+  .card:focus-within .card-media img { transform: none; }
+
+  /* Lineup: keep the arc, drop the movement. opacity is forced back on
+     because the entrance animation is what normally restores it. */
+  .stage.will-animate .lineup-item { opacity: 1; }
+  .stage.will-animate.is-visible .lineup-item { animation: none; }
+}
+
+/* ---------- floating "proceed to checkout" bar ---------- */
+.shop-scope .checkout-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  z-index: 900;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 100px));
+  animation: checkout-bar-in 0.3s ease;
+}
+@keyframes checkout-bar-in {
+  from { opacity: 0; transform: translate(-50%, 16px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.shop-scope .checkout-bar-link {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--maroon-600);
+  color: var(--cream-50);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 14px 32px rgba(74, 16, 26, 0.35);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.shop-scope .checkout-bar-link:hover {
+  background: var(--maroon-700);
+  transform: translateY(-2px);
+}
+
+.shop-scope .checkout-bar-icon {
+  flex: 0 0 auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+}
+
+.shop-scope .checkout-bar-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.shop-scope .checkout-bar-text strong {
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+.shop-scope .checkout-bar-count {
+  font-size: 0.75rem;
+  color: var(--cream-200);
+}
+
+.shop-scope .checkout-bar-chevron {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+}
+
+@media (max-width: 640px) {
+  .shop-scope .checkout-bar {
+    width: calc(100vw - 32px);
+    bottom: 16px;
+  }
+}
+
+/* ---------- Founder page ---------- */
+
+.shop-scope .founder-page { background: var(--cream-100); }
+
+.shop-scope .founder-page .reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 700ms ease, transform 700ms ease;
+}
+.shop-scope .founder-page .reveal.in { opacity: 1; transform: none; }
+.shop-scope .founder-page .reveal--left { transform: translateX(-40px); }
+.shop-scope .founder-page .reveal--left.in { transform: none; }
+.shop-scope .founder-page .reveal--right { transform: translateX(40px); }
+.shop-scope .founder-page .reveal--right.in { transform: none; }
+
+.shop-scope .fp-shell { max-width: 72rem; margin-inline: auto; padding-inline: var(--s-4); }
+
+.shop-scope .fp-crumb {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding-top: var(--s-6);
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+.shop-scope .fp-crumb a { color: var(--maroon-600); font-weight: 700; text-decoration: none; }
+.shop-scope .fp-crumb a:hover { text-decoration: underline; }
+.shop-scope .fp-crumb [aria-current="page"] { color: var(--ink-700); }
+
+/* ============================================================
+   Founder hero — copy left, portrait right, no frame or disc. The
+   portrait sits directly on the page ground with a loose line-art
+   flourish behind it, rather than overlapping the copy.
+   ============================================================ */
+
+/* no bottom padding at any width: the portrait meets the stats strip.
+   overflow clips the decorative curls at the section edge so they
+   can't bleed over the strip below. */
+.shop-scope .fp-hero { padding-block: var(--s-8) 0; overflow: hidden; }
+
+.shop-scope .fp-hero-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s-8);
+  align-items: center;
+}
+
+.shop-scope .fp-hero-copy { max-width: 32rem; }
+
+/* a short gold rule used both under the eyebrow and beneath the
+   signature — the same small mark bookends the copy column */
+.shop-scope .fp-hero-rule {
+  display: block;
+  width: 3rem;
+  height: 2px;
+  margin: var(--s-3) 0 var(--s-6);
+  background: var(--gold-500);
+}
+
+.shop-scope .fp-vision-eyebrow {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: var(--fs-small);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-700);
+}
+
+.shop-scope .fp-hero-title { margin: 0 0 var(--s-6); line-height: 0.98; text-wrap: balance; }
+.shop-scope .fp-hero-title-lead {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.25rem, 6vw, 3.5rem);
+  color: var(--ink-900);
+}
+.shop-scope .fp-hero-title-strong {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.75rem, 8vw, 4.25rem);
+  letter-spacing: -0.01em;
+  color: var(--maroon-700);
+}
+.shop-scope .fp-hero-title-strong::after { content: "."; color: var(--gold-500); }
+
+/* a vertical rule instead of a pull-quote card — reads as an aside,
+   with the mark doing the "quoted" work rather than a cursive face */
+.shop-scope .fp-intro-block {
+  margin: 0 0 var(--s-6);
+  padding-left: var(--s-4);
+  border-left: 2px solid var(--gold-500);
+}
+.shop-scope .fp-intro-mark {
+  display: block;
+  margin-bottom: -0.15em;
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  line-height: 1;
+  color: var(--gold-500);
+}
+.shop-scope .fp-intro {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(1.1rem, 2vw, 1.3rem);
+  line-height: 1.55;
+  color: var(--ink-700);
+}
+
+.shop-scope .fp-hero-sign { margin-bottom: var(--s-2); }
+/* a signature-style script, deliberately not the quote's Great Vibes —
+   the two cursive moments need to read as different hands */
+.shop-scope .fp-signature {
+  margin: 0;
+  font-family: "Mrs Saint Delafield", cursive;
+  font-size: 2.6rem;
+  line-height: 1;
+  color: var(--maroon-600);
+}
+.shop-scope .fp-name {
+  margin: var(--s-2) 0 0;
+  font-weight: 800;
+  font-size: var(--fs-small);
+  letter-spacing: 0.02em;
+  color: var(--ink-900);
+}
+.shop-scope .fp-title { margin: 0.15rem 0 0; font-size: var(--fs-tag); line-height: 1.6; color: var(--ink-500); }
+
+.shop-scope .fp-hero-stage { position: relative; width: 100%; max-width: 19rem; margin-inline: auto; }
+.shop-scope .fp-hero-photo { position: relative; z-index: 1; aspect-ratio: 4 / 5; width: 100%; }
+.shop-scope .fp-hero-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: saturate(0.85) contrast(1.05);
+}
+
+/* fallback panel when the portrait is missing */
+.shop-scope .fp-hero-photo--empty {
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: linear-gradient(150deg, var(--maroon-600), var(--maroon-700));
+  box-shadow: var(--shadow-lift);
+}
+.shop-scope .fp-hero-initial { font-family: var(--font-display); font-size: 6rem; color: var(--gold-300); }
+
+/* ---- desktop: copy and portrait side by side. The stage aligns to the
+   bottom of the grid and the section carries no bottom padding, so the
+   portrait's feet land exactly on the stats strip below — no gap. ---- */
+@media (min-width: 900px) {
+  .shop-scope .fp-hero { padding-block: var(--s-12) 0; }
+
+  .shop-scope .fp-hero-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: var(--s-12);
+    row-gap: var(--s-6);
+  }
+
+  /* eyebrow pinned to the top of the portrait column, right-aligned */
+  .shop-scope .fp-hero-vision { grid-column: 2; grid-row: 1; align-self: start; text-align: right; }
+  .shop-scope .fp-hero-vision .fp-hero-rule { margin-inline: auto 0; }
+
+  .shop-scope .fp-hero-copy {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    align-self: center;
+    max-width: none;
+    padding-bottom: var(--s-12);
+  }
+
+  .shop-scope .fp-hero-stage {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: end;
+    max-width: 26rem;
+    height: 27rem;
+    margin-inline: auto 0;
+  }
+  .shop-scope .fp-hero-photo { height: 100%; aspect-ratio: auto; }
+}
+
+.shop-scope .fp-vision { padding-block: var(--s-16) var(--s-16); }
+.shop-scope .fp-vision-grid { display: grid; grid-template-columns: 1fr; gap: var(--s-8); align-items: start; }
+@media (min-width: 900px) {
+  .shop-scope .fp-vision-grid { grid-template-columns: minmax(0, 1fr) 21rem; }
+}
+.shop-scope .fp-bio h2 {
+  position: relative;
+  font-size: var(--fs-h2);
+  margin: var(--s-2) 0 var(--s-4);
+  padding-bottom: var(--s-3);
+}
+.shop-scope .fp-bio h2::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 3rem;
+  height: 2px;
+  background: var(--gold-500);
+}
+.shop-scope .fp-bio p { margin: 0 0 var(--s-4); color: var(--ink-700); line-height: 1.75; }
+.shop-scope .fp-bio p:last-child { margin-bottom: 0; }
+
+/* a short couplet ahead of the prose — carries the "then vs now" framing
+   in two lines, so it earns more weight than the paragraphs below it */
+.shop-scope .fp-bio p.fp-bio-lead {
+  margin: 0 0 var(--s-2);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 400;
+  color: var(--ink-900);
+  line-height: 1.4;
+}
+.shop-scope .fp-bio p.fp-bio-lead:last-of-type { margin-bottom: var(--s-4); }
+
+/* the closing line mirrors the lead — same weight, bookending the bio */
+.shop-scope .fp-bio p.fp-bio-closing {
+  margin: var(--s-2) 0 0;
+  font-weight: 800;
+  color: var(--maroon-600);
+}
+
+.shop-scope .fp-glance {
+  padding: var(--s-6);
+  background: var(--cream-50);
+  border: 1px solid var(--cream-300);
+  border-top: 3px solid var(--gold-500);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-rest);
+}
+.shop-scope .fp-glance dl { margin: 0; }
+.shop-scope .fp-glance-row { padding: var(--s-3) 0; border-bottom: 1px solid var(--cream-300); }
+.shop-scope .fp-glance-row:last-child { border-bottom: none; padding-bottom: 0; }
+.shop-scope .fp-glance-row dt {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--fs-tag);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold-700);
+}
+.shop-scope .fp-glance-row dt svg { flex-shrink: 0; color: var(--maroon-600); }
+.shop-scope .fp-glance-row dd { margin: 0.3rem 0 0 1.65rem; font-size: var(--fs-body); color: var(--ink-700); }
+
+/* a plain divider strip rather than a bordered card — thin rules
+   between the figures do the separating instead of a box */
+/* butts directly against the hero — the portrait stands on this strip */
+.shop-scope .fp-stats-strip { background: var(--maroon-600); }
+.shop-scope .fp-stats-strip-inner {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--s-6) 0;
+  padding-block: var(--s-8);
+  text-align: center;
+}
+@media (min-width: 700px) {
+  .shop-scope .fp-stats-strip-inner { grid-template-columns: repeat(4, 1fr); }
+}
+.shop-scope .fp-stats-strip-inner .fp-stat { position: relative; padding-inline: var(--s-4); }
+.shop-scope .fp-stats-strip-inner .fp-stat:not(:first-child)::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8%;
+  bottom: 8%;
+  width: 1px;
+  background: rgba(251, 246, 236, 0.28);
+}
+.shop-scope .fp-stat-value {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 4vw, 2.4rem);
+  color: var(--cream-50);
+  font-variant-numeric: tabular-nums;
+}
+/* gold reads as an accent against the maroon ground and clears AA at
+   this size */
+.shop-scope .fp-stat-value span { font-size: 0.6em; color: var(--gold-300); }
+.shop-scope .fp-stat-unit { margin: 0.2rem 0 0; font-size: var(--fs-small); font-weight: 700; color: var(--cream-100); }
+
+/* the closing quote as a full-width photo banner — hands passing grain
+   at sunset, the same image already used for the value-chain story */
+.shop-scope .fp-quote-banner {
+  position: relative;
+  margin: var(--s-16) auto;
+  min-height: 20rem;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-lift);
+}
+.shop-scope .fp-quote-banner-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 70% 55%;
+}
+.shop-scope .fp-quote-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, rgba(43, 16, 18, 0.92) 0%, rgba(43, 16, 18, 0.72) 38%, rgba(43, 16, 18, 0.25) 75%);
+}
+.shop-scope .fp-quote-banner-content {
+  position: relative;
+  z-index: 1;
+  max-width: 32rem;
+  padding: var(--s-12) var(--s-8);
+}
+.shop-scope .fp-quote-mark {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--gold-500);
+}
+.shop-scope .fp-quote-text {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 3vw, 1.9rem);
+  line-height: 1.4;
+  color: var(--cream-50);
+}
+.shop-scope .fp-quote-attr { margin-top: var(--s-4); font-size: var(--fs-small); font-weight: 700; letter-spacing: 0.03em; color: var(--gold-300); }
+
+@media (max-width: 640px) {
+  .shop-scope .fp-quote-banner-content { padding: var(--s-8) var(--s-6); }
+}
+
+/* ---------------------------------------------------------------------------
+   Guest checkout (/checkout)
+
+   Reuses the cart page's shell — .cart-page, .cart-layout, .cart-summary and
+   .checkout-btn all carry over, so the two pages read as one flow. What is new
+   here is the delivery form: the marketing pages' .field styles live outside
+   .shop-scope, so the form controls need their own rules in this scope rather
+   than inheriting from there.
+   --------------------------------------------------------------------------- */
+.shop-scope .checkout-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: var(--s-6);
+  background: var(--cream-50);
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-md);
+}
+
+.shop-scope .checkout-form-title {
+  margin: 0 0 var(--s-2);
+  font-size: var(--fs-h3);
+}
+
+/* Side-by-side on desktop, stacked on phones — each child keeps a sensible
+   floor so three fields never squeeze into unusable slivers. */
+.shop-scope .checkout-field-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s-4);
+}
+@media (min-width: 640px) {
+  .shop-scope .checkout-field-row {
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  }
+}
+
+.shop-scope .field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.shop-scope .field-label {
+  font-size: var(--fs-small);
+  font-weight: 700;
+  color: var(--ink-700);
+}
+
+.shop-scope .field-optional {
+  font-weight: 400;
+  color: var(--ink-500);
+}
+
+.shop-scope .field input {
+  width: 100%;
+  padding: var(--s-3);
+  font: inherit;
+  color: var(--ink-900);
+  background: var(--cream-50);
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.shop-scope .field input:focus-visible {
+  outline: none;
+  border-color: var(--maroon-600);
+  box-shadow: 0 0 0 3px rgba(110, 27, 34, 0.15);
+}
+
+.shop-scope .field input[aria-invalid='true'] {
+  border-color: var(--pack-red);
+}
+
+.shop-scope .field input:disabled {
+  background: var(--cream-200);
+  color: var(--ink-500);
+  cursor: not-allowed;
+}
+
+.shop-scope .field-error {
+  font-size: var(--fs-small);
+  color: var(--pack-red);
+}
+
+.shop-scope .checkout-failure {
+  margin: 0;
+  padding: var(--s-3);
+  background: rgba(179, 24, 28, 0.08);
+  border-radius: var(--radius-sm);
+}
+
+/* Line items above the totals, so the buyer can see what they are paying for
+   without going back to the cart. */
+.shop-scope .checkout-lines {
+  list-style: none;
+  margin: 0 0 var(--s-4);
+  padding: 0 0 var(--s-4);
+  border-bottom: 1px solid var(--cream-300);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.shop-scope .checkout-line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  font-size: var(--fs-small);
+}
+
+.shop-scope .checkout-line-name { color: var(--ink-700); }
+.shop-scope .checkout-line-qty { color: var(--ink-500); }
+.shop-scope .checkout-line-price {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.shop-scope .checkout-btn:disabled {
+  background: var(--ink-500);
+  cursor: progress;
+}
+
+.shop-scope .checkout-note {
+  margin: var(--s-3) 0 0;
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+  text-align: center;
+}
+
+.shop-scope .checkout-back {
+  display: block;
+  width: 100%;
+  margin-top: var(--s-3);
+  padding: var(--s-2);
+  font: inherit;
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.shop-scope .checkout-back:hover:not(:disabled) { color: var(--maroon-600); }
+.shop-scope .checkout-back:disabled { cursor: not-allowed; opacity: 0.6; }
+
+/* Confirmation view after a successful payment. */
+.shop-scope .checkout-done {
+  max-width: 34rem;
+  padding: var(--s-8);
+  background: var(--cream-50);
+  border: 1px solid var(--cream-300);
+  border-radius: var(--radius-md);
+}
+
+.shop-scope .checkout-done-lead {
+  margin: 0 0 var(--s-3);
+  font-size: var(--fs-h3);
+  font-family: var(--font-display);
+  color: var(--maroon-600);
+}
+
+
+/* ---------------------------------------------------------------------------
+   Paid-order receipt (/checkout, after payment)
+
+   A slip easing out of a printer, confetti behind it. The stage is a positioned
+   context: the printer sits at the top with the slip sliding out from under it,
+   and the confetti layer spans the whole thing behind both.
+
+   The slide is a transform on the slip plus a clip on the stage, so the paper
+   genuinely appears to emerge from the slot rather than simply fading in.
+   --------------------------------------------------------------------------- */
+.shop-scope .receipt-stage {
+  position: relative;
+  max-width: 26rem;
+  margin: var(--s-4) auto var(--s-8);
+  padding-top: 2.75rem;
+  isolation: isolate;
+}
+
+/* Printer body — a brushed metal bar with a dark slot along its underside. */
+.shop-scope .receipt-printer {
+  position: absolute;
+  inset-inline: -0.75rem;
+  top: 0;
+  height: 3.25rem;
+  border-radius: 0.9rem;
+  background: linear-gradient(177deg, #f4f6f8 0%, #d7dde3 42%, #aeb7c0 72%, #8d959e 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 10px 22px -12px rgba(43, 27, 22, 0.55);
+  z-index: 3;
+}
+
+.shop-scope .receipt-printer-slot {
+  position: absolute;
+  inset-inline: 6%;
+  bottom: 0.32rem;
+  height: 0.42rem;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, #2f353b, #171b1f);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* The slip, printed rather than slid.
+
+   A whole-block translate reads as a card sliding in, not as paper coming out
+   of a machine. What a printer actually does is expose the sheet a line at a
+   time, so the slip stays exactly where it lands and is instead REVEALED from
+   its top edge downward by an animated clip.
+
+   The curve is a long ease-out: the sheet leaves the slot briskly and then
+   decelerates over most of the duration, which is what reads as smooth. An
+   earlier pass used steps() for a mechanical stutter — accurate to a print
+   head, but the judder is exactly what a continuous reveal should not have.
+
+   The clip also hides the drop shadow of the unprinted part, so nothing floats
+   below the paper edge before that edge exists. */
+.shop-scope .receipt {
+  position: relative;
+  z-index: 2;
+  padding: 2.95rem var(--s-6) var(--s-6);
+  background: var(--cream-50);
+  border-radius: 0 0 0.85rem 0.85rem;
+  box-shadow:
+    0 1px 2px rgba(43, 27, 22, 0.08),
+    0 18px 40px -20px rgba(43, 27, 22, 0.45);
+  clip-path: inset(0 0 100% 0);
+  /* Promoted for the duration of the reveal so the compositor is not
+     re-rasterising the slip on every frame. */
+  will-change: clip-path;
+  transition: clip-path 2.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.shop-scope .receipt-stage.is-printing .receipt {
+  clip-path: inset(0 0 0% 0);
+}
+
+/* Once the last line is out, the shadow deepens as the sheet comes to rest.
+   The earlier version nudged the paper a few pixels, but any translate at the
+   end fights the long deceleration it is landing out of — a shadow settling is
+   the same beat without the jolt. */
+.shop-scope .receipt-stage.is-printed .receipt {
+  box-shadow:
+    0 1px 2px rgba(43, 27, 22, 0.08),
+    0 26px 52px -22px rgba(43, 27, 22, 0.5);
+  transition:
+    clip-path 2.2s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.9s ease-out;
+  /* The hint has done its job; holding it pins a layer for nothing. */
+  will-change: auto;
+}
+
+.shop-scope .receipt-stage.is-printing .receipt {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Logo badge at the printer mouth. A direct child of the stage, so it paints
+   above the printer instead of being trapped in the slip's stacking context. */
+.shop-scope .receipt-badge {
+  position: absolute;
+  top: 1.55rem;
+  left: 50%;
+  width: 3.4rem;
+  height: 3.4rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--cream-50);
+  box-shadow:
+    0 0 0 1px var(--cream-300),
+    0 6px 16px -6px rgba(43, 27, 22, 0.5);
+  z-index: 5;
+  overflow: hidden;
+  /* Eases in with the paper rather than hanging in mid-air beforehand. */
+  transform: translateX(-50%) scale(0.6);
+  opacity: 0;
+  /* Same curve as the paper, so the badge settles with it rather than
+     popping against it — the old 1.2 overshoot read as a separate motion. */
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.2s, opacity 0.45s ease-out 0.2s;
+}
+
+.shop-scope .receipt-stage.is-printing .receipt-badge {
+  transform: translateX(-50%) scale(1);
+  opacity: 1;
+}
+
+.shop-scope .receipt-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 0.18rem;
+}
+
+.shop-scope .receipt-head {
+  text-align: center;
+  margin-bottom: var(--s-6);
+}
+
+.shop-scope .receipt-store {
+  margin: 0 0 var(--s-2);
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  line-height: 1.05;
+  color: var(--ink-900);
+}
+
+.shop-scope .receipt-sub {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
+/* Tear line. The notches are half-circles in the page ground, punched into
+   both edges — which is what sells the perforation. */
+.shop-scope .receipt-perf {
+  position: relative;
+  height: 0;
+  margin: var(--s-6) calc(var(--s-6) * -1);
+  border-top: 2px dashed var(--cream-300);
+}
+
+.shop-scope .receipt-perf::before,
+.shop-scope .receipt-perf::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: var(--cream-100);
+  transform: translateY(-50%);
+}
+
+.shop-scope .receipt-perf::before { left: -0.7rem; }
+.shop-scope .receipt-perf::after { right: -0.7rem; }
+
+.shop-scope .receipt-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--s-5, 1.25rem) var(--s-4);
+  margin: 0 0 var(--s-6);
+}
+
+.shop-scope .receipt-cell--end { text-align: right; }
+
+.shop-scope .receipt-cell dt {
+  margin-bottom: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+}
+
+.shop-scope .receipt-cell dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.shop-scope .receipt-mono {
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.92rem !important;
+  letter-spacing: 0.01em;
+}
+
+.shop-scope .receipt-amount {
+  font-size: 1.5rem !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-scope .receipt-status {
+  display: inline-block;
+  padding: 0.28rem 0.7rem;
+  border-radius: var(--radius-pill);
+  background: #e4f4ea;
+  color: #2f6b47;
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+
+/* Who paid, and how. */
+.shop-scope .receipt-payer {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  margin-bottom: var(--s-6);
+  background: var(--cream-100);
+  border-radius: 0.7rem;
+}
+
+.shop-scope .receipt-payer-mark {
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--cream-50);
+  overflow: hidden;
+}
+
+.shop-scope .receipt-payer-mark img { width: 100%; height: 100%; object-fit: contain; }
+
+.shop-scope .receipt-payer-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.shop-scope .receipt-payer-text strong {
+  font-size: var(--fs-body);
+  color: var(--ink-900);
+}
+
+.shop-scope .receipt-payer-method {
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.8rem;
+  color: var(--ink-500);
+}
+
+.shop-scope .receipt-qr {
+  margin: 0;
+  text-align: center;
+}
+
+.shop-scope .receipt-qr-code {
+  margin: 0 auto var(--s-3);
+  display: block;
+}
+
+.shop-scope .receipt-qr-code svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  /* The library emits black modules; recolour to the brand ink so the slip
+     does not carry the one pure-black element on the page. */
+  fill: var(--ink-900);
+  shape-rendering: crispEdges;
+}
+
+.shop-scope .receipt-qr figcaption {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+}
+
+.shop-scope .receipt-actions {
+  margin-top: var(--s-6);
+  padding-top: var(--s-5, 1.25rem);
+  border-top: 1px solid var(--cream-200);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  text-align: center;
+}
+
+.shop-scope .receipt-actions p {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
+/* Confetti. One falling keyframe; each bit varies by inline custom properties
+   so a single animation covers all of them. */
+.shop-scope .receipt-confetti {
+  position: absolute;
+  inset: -1rem -2rem auto;
+  height: 130%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.shop-scope .confetti-bit {
+  position: absolute;
+  top: -6%;
+  border-radius: 2px;
+  opacity: 0;
+  animation-name: receipt-fall;
+  animation-timing-function: cubic-bezier(0.25, 0.5, 0.35, 1);
+  animation-fill-mode: forwards;
+}
+
+.shop-scope .confetti-bit--round { border-radius: 50%; }
+
+@keyframes receipt-fall {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  8% { opacity: 1; }
+  80% { opacity: 1; }
+  100% {
+    transform: translate3d(var(--drift), 115%, 0) rotate(var(--spin));
+    opacity: 0;
+  }
+}
+
+/* Motion is celebration, not information — with it suppressed the slip is
+   simply already printed, and nothing falls. */
+@media (prefers-reduced-motion: reduce) {
+  /* The slip is simply already printed: the clip is open from the start, and
+     neither the reveal nor the settle runs. */
+  .shop-scope .receipt,
+  .shop-scope .receipt-stage.is-printing .receipt,
+  .shop-scope .receipt-stage.is-printed .receipt {
+    clip-path: none;
+    transform: none;
+    opacity: 1;
+    transition: none;
+    animation: none;
+  }
+  /* The badge keeps its centring translate — only the scale-in and the delay
+     go, so it is simply present rather than popping into place. */
+  .shop-scope .receipt-badge,
+  .shop-scope .receipt-stage.is-printing .receipt-badge {
+    transform: translateX(-50%);
+    opacity: 1;
+    transition: none;
+  }
+  .shop-scope .receipt-confetti { display: none; }
+}
+
+@media (max-width: 400px) {
+  .shop-scope .receipt { padding-inline: var(--s-4); }
+  .shop-scope .receipt-perf { margin-inline: calc(var(--s-4) * -1); }
+  .shop-scope .receipt-store { font-size: 1.6rem; }
+  .shop-scope .receipt-amount { font-size: 1.3rem !important; }
+}
+
+/* The receipt page centres its heading over the printer, unlike the two-column
+   checkout form it replaces. */
+.shop-scope .cart-page--receipt { text-align: center; }
+
+.shop-scope .cart-page--receipt .eyebrow { margin-bottom: var(--s-2); }
+
+.shop-scope .receipt-page-title {
+  margin-bottom: var(--s-6);
+  font-size: var(--fs-h1);
+}

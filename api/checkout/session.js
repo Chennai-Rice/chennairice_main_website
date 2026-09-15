@@ -4,4 +4,4 @@
 // that location is not configurable. The handler itself lives with the rest of
 // the server code in backend/functions/; this file exists so the platform can
 // find it. Edit the real handler, not this.
-export { default } from '../backend/functions/consent.js'
+export { default } from '../../backend/functions/checkout/session.js'

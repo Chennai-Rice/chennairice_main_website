@@ -3,6 +3,6 @@
 # never need to leave the machine.
 .git
 node_modules
-server/node_modules
+backend/server/node_modules
 design
 dist

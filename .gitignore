@@ -1,19 +1,24 @@
 # Environment variables (contains API keys — never commit)
+#
+# Two of them, one per side of the split: frontend/.env.local holds the
+# publishable VITE_* values Vite bundles into browser code, and
+# backend/server/.env holds the secrets that must never leave the server.
 .env
 .env.local
 .env.*.local
-server/.env
+frontend/.env.local
+backend/server/.env
 # Broad safety net for any other real env file, but NOT *.example files —
-# those are meant to be committed (see server/.env.example,
-# .env.local.example) so contributors know which vars to set.
+# those are meant to be committed (see backend/server/.env.example and
+# frontend/.env.local.example) so contributors know which vars to set.
 .env*
 !.env*.example
 
 # Vercel CLI project link metadata
 .vercel
 
-# Local dev proxy dependencies (server/) — reinstall with `npm install`
-server/node_modules
+# Local dev proxy dependencies (backend/server/) — reinstall with `npm install`
+backend/server/node_modules
 
 # Root dependencies and build output — reinstall/rebuild instead of tracking
 node_modules
