@@ -25,6 +25,7 @@ import AboutPage from './shop/pages/AboutPage.jsx'
 import FounderPage from './shop/pages/FounderPage.jsx'
 import CartPage from './shop/pages/CartPage.jsx'
 import CheckoutPage from './shop/pages/CheckoutPage.jsx'
+import { isCheckoutEnabled } from './config.js'
 import WishlistPage from './shop/pages/WishlistPage.jsx'
 import InfrastructurePage from './pages/infrastructure/InfrastructurePage.jsx'
 
@@ -148,7 +149,22 @@ export default function App() {
           />
         ))}
         <Route path="/cart" element={<CartPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
+        {/* Checkout is built and working, but stays behind VITE_CHECKOUT_ENABLED
+            until payments go live. Gating the route (not just the cart button)
+            means typing /checkout directly lands on Coming Soon too. */}
+        <Route
+          path="/checkout"
+          element={
+            isCheckoutEnabled ? (
+              <CheckoutPage />
+            ) : (
+              <ComingSoonPage
+                title="Checkout"
+                blurb="Online ordering and payment are almost ready. In the meantime, call or write to us and we will take your order directly."
+              />
+            )
+          }
+        />
         <Route path="/wishlist" element={<WishlistPage />} />
         {/* legacy deep links from the product-page repo */}
         <Route path="/index.html" element={<Navigate to="/products" replace />} />

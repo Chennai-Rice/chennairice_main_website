@@ -5,8 +5,13 @@ import CartRow from "../components/CartRow.jsx";
 import { useCart } from "../hooks/useCart.jsx";
 import { formatRupees } from "../utils/format.js";
 import usePageMeta from "../hooks/usePageMeta.js";
+import { isCheckoutEnabled } from "../../config.js";
 
+// Which note appears under the button depends on whether payments are live —
+// promising "you'll pay securely on the next step" while /checkout shows Coming
+// Soon would read as a broken site rather than an unfinished one.
 const CHECKOUT_NOTE = "Delivery is free. You'll pay securely on the next step.";
+const COMING_SOON_NOTE = "Online payment is opening shortly — tap through to see where we are.";
 
 export default function CartPage() {
   const { items, count, subtotal } = useCart();
@@ -65,7 +70,7 @@ export default function CartPage() {
                 Proceed to checkout
               </Link>
               <p className="summary-note" role="status">
-                {CHECKOUT_NOTE}
+                {isCheckoutEnabled ? CHECKOUT_NOTE : COMING_SOON_NOTE}
               </p>
             </aside>
           </div>
