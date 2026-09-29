@@ -82,9 +82,12 @@
   display: grid;
   place-items: center;
 }
+/* Sized by height with a free width, as in the navbar: the full mark is taller
+   than it is wide because "Kitchidi Ponni Rice" curves below the roundel, and a
+   square box letterboxes it into a much smaller roundel than the slot allows. */
 .cookie-card-logo {
-  width: clamp(52px, 5vw, 72px);
-  height: clamp(52px, 5vw, 72px);
+  height: clamp(56px, 5.4vw, 78px);
+  width: auto;
   object-fit: contain;
 }
 

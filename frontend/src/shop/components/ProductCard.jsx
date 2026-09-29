@@ -4,6 +4,7 @@ import CardQuantityControl from "./CardQuantityControl.jsx";
 import { useRipple } from "../hooks/useRipple.js";
 import { useWishlist } from "../hooks/useWishlist.jsx";
 import { formatRupees } from "../utils/format.js";
+import { showCardPrices } from "../../config.js";
 
 export default function ProductCard({ product }) {
   const spawnRipple = useRipple();
@@ -93,16 +94,37 @@ export default function ProductCard({ product }) {
           ))}
         </div>
 
-        <div className="card-foot">
-          <p className="price">
-            <span className="price-amount">{formatRupees(selected.price)}</span>{" "}
-            <span className="price-unit">/ {selected.kg} kg</span>
-          </p>
+        {/* With prices off the card becomes a catalogue entry: the pack sizes
+            above still say what exists, and the price and the cart give way to
+            a route to the sales team. */}
+        <div className={`card-foot${showCardPrices ? "" : " card-foot--enquiry"}`}>
+          {showCardPrices ? (
+            <p className="price">
+              <span className="price-amount">{formatRupees(selected.price)}</span>{" "}
+              <span className="price-unit">/ {selected.kg} kg</span>
+            </p>
+          ) : (
+            <p className="price-enquiry">
+              <span className="price-enquiry-label">Price on request</span>
+              <span className="price-unit">{selected.kg} kg pack</span>
+            </p>
+          )}
           <div className="card-actions">
             <Link className="view-btn" to={`/products/${product.id}`} onClick={spawnRipple}>
               View more
             </Link>
-            <CardQuantityControl product={cartProduct} />
+            {showCardPrices ? (
+              <CardQuantityControl product={cartProduct} />
+            ) : (
+              <Link
+                className="add-btn contact-sales-btn"
+                to="/contact"
+                onClick={spawnRipple}
+                aria-label={`Contact sales about ${product.name}`}
+              >
+                Contact sales
+              </Link>
+            )}
           </div>
         </div>
       </div>

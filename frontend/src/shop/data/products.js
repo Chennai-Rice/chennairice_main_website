@@ -24,39 +24,89 @@ export const FILTERS = [
   { id: "all", label: "All packs" },
   { id: "premium", label: "Premium" },
   { id: "ponni", label: "Ponni" },
-  { id: "kolam", label: "Kolam" },
+  { id: "bulk", label: "Bulk packs" },
 ];
 
 // slug -> presentation metadata not carried by the `products` table.
 const PRESENTATION = {
-  "rajabhogam-premium": {
+  "special-rajabhogam": {
+    variant: "red",
+    width: 592,
+    height: 839,
+    tags: ["ponni"],
+    search: "special rajabhogam classic red kitchidi ponni 10kg ponni",
+  },
+  "nayara-super-aged": {
+    variant: "gold",
+    width: 429,
+    height: 638,
+    tags: [],
+    search: "nayara super aged super aged gel cook rice 10kg",
+  },
+  "vijaya-nagaram": {
+    variant: "gold",
+    width: 433,
+    height: 627,
+    tags: ["ponni"],
+    search: "vijaya nagaram amman ponni hmt ponni 5kg ponni",
+  },
+  "vintage": {
     variant: "premium",
-    width: 456,
-    height: 748,
-    tags: ["premium", "ponni"],
-    search: "special rajabhogam premium kitchidi ponni rice black gold aged",
+    width: 429,
+    height: 650,
+    tags: ["premium"],
+    search: "vintage black & gold ponni 10kg premium",
     flag: "★ Premium",
   },
-  "raja-bogam-ponni": {
-    variant: "red",
-    width: 515,
-    height: 820,
+  "viruchagam": {
+    variant: "premium",
+    width: 432,
+    height: 646,
     tags: ["ponni"],
-    search: "raja bogam rajabhogam ponni rice classic red everyday family pack",
+    search: "viruchagam poompuhar ponni snr rnr poompuhar ponni 10kg ponni",
   },
-  "vada-kolam": {
+  "united-5kg": {
     variant: "gold",
-    width: 490,
-    height: 820,
-    tags: ["kolam"],
-    search: "vada kolam kitchidi ponni rice golden fine slender grains",
-  },
-  "akshaya-ponni": {
-    variant: "orange",
-    width: 492,
-    height: 820,
+    width: 428,
+    height: 650,
     tags: ["ponni"],
-    search: "akshaya ponni akashaya kitchidi ponni rice orange everyday",
+    search: "united green pack ponni 5kg ponni",
+  },
+  "alibaba": {
+    variant: "premium",
+    width: 456,
+    height: 701,
+    tags: ["premium"],
+    search: "alibaba premium sappadu sappadu rice 10kg premium",
+    flag: "★ Premium",
+  },
+  "chennai-bullets": {
+    variant: "premium",
+    width: 488,
+    height: 624,
+    tags: ["ponni","bulk"],
+    search: "chennai bullets rajabhogam ponni rajabhogam ponni 26kg ponni bulk",
+  },
+  "a1-special-ponni": {
+    variant: "orange",
+    width: 592,
+    height: 843,
+    tags: ["ponni"],
+    search: "a1 special ponni no.1 ponni ponni 5kg ponni",
+  },
+  "rudra": {
+    variant: "premium",
+    width: 587,
+    height: 838,
+    tags: ["ponni","bulk"],
+    search: "rudra rajabhogam ponni rajabhogam ponni 25kg ponni bulk",
+  },
+  "thaaram": {
+    variant: "gold",
+    width: 572,
+    height: 808,
+    tags: ["ponni","bulk"],
+    search: "thaaram nei kitchadi akshaya ponni akshaya ponni 25kg ponni bulk",
   },
 };
 
@@ -66,64 +116,122 @@ const FALLBACK_PRESENTATION = { variant: "red", width: 500, height: 800, tags: [
 // ---------------------------------------------------------------------------
 // Offline catalog.
 //
-// Supabase is not guaranteed to answer: a checkout (or a deploy) may carry no
-// VITE_SUPABASE_* keys at all, the project may be paused, or the `products`
-// table may simply be empty on a fresh database. In any of those cases the
-// storefront used to render an error and zero cards, which is worse than
-// showing the four packs we actually sell — they change rarely, and their
-// photos ship in this repo either way (public/assets/shop/pack-*.png).
+// Supabase is not guaranteed to answer: a deploy may carry no VITE_SUPABASE_*
+// keys at all, the project may be paused, or the `products` table may be empty
+// on a fresh database. In any of those cases the storefront would otherwise
+// render an error and zero cards, which is worse than showing the range we
+// actually sell — the pack photos ship in this repo either way.
 //
-// So these four rows are a floor, never the source of truth: whenever Supabase
-// does return products, its rows win and nothing below is used. The 10 kg
-// prices are the figures the catalog was seeded from; 5 kg and 25 kg scale
-// per-kg, exactly as the pre-Supabase catalog did.
+// These rows are a floor, never the source of truth: whenever Supabase returns
+// products, its rows win and nothing below is used.
+//
+// There are no prices here, and price 0 is deliberate rather than missing. The
+// supplied artwork carries no pricing, and inventing a figure on a live
+// storefront would be worse than showing none — the cards say "Price on
+// request" instead (see showCardPrices in src/config.js). Fill these in, and
+// the matching product_variants rows, once real prices are confirmed.
 // ---------------------------------------------------------------------------
-const scalePrice = (price10kg, kg) => Math.round((price10kg / 10) * kg);
-
-const withPackSizes = (price10kg) => [
-  { kg: 5, price: scalePrice(price10kg, 5) },
-  { kg: 10, price: price10kg },
-  { kg: 25, price: scalePrice(price10kg, 25) },
-];
-
 const FALLBACK_PRODUCTS = [
   {
-    slug: "rajabhogam-premium",
-    tag: "Black & Gold",
-    name: "Rajabhogam Premium",
-    description: "Our finest pack — aged, hand-graded premium grains.",
-    price: 995,
-    image: "/assets/shop/pack-premium.png",
-    alt: "Special Rajabhogam Kitchidi Ponni Rice in the premium black and gold 10 kg pack",
-  },
-  {
-    slug: "raja-bogam-ponni",
+    slug: "special-rajabhogam",
     tag: "Classic Red",
-    name: "Raja Bogam Ponni",
-    description: "The everyday family pack — soft bite, clean aroma.",
-    price: 795,
-    image: "/assets/shop/pack-red.png",
-    alt: "Raja Bogam Ponni rice in the classic red 10 kg pack",
+    name: "Special Rajabhogam",
+    description: "Kitchidi Ponni rice in our signature red pack, milled and sealed at Erode.",
+    packKg: 10,
+    image: "/assets/shop/packs/special-rajabhogam.png",
+    alt: "Special Rajabhogam — Kitchidi Ponni, 10 kg pack",
   },
   {
-    slug: "vada-kolam",
-    tag: "Golden",
-    name: "Vada Kolam",
-    description: "Fine slender grains that cook light and fluffy.",
-    price: 895,
-    image: "/assets/shop/pack-gold.png",
-    alt: "Vada Kolam rice in the golden 10 kg pack",
+    slug: "nayara-super-aged",
+    tag: "Super Aged",
+    name: "Nayara Super Aged",
+    description: "Super-aged gel cook rice that stays separate and firm on the plate.",
+    packKg: 10,
+    image: "/assets/shop/packs/nayara-super-aged.png",
+    alt: "Nayara Super Aged — Gel cook rice, 10 kg pack",
   },
   {
-    slug: "akshaya-ponni",
-    tag: "Orange",
-    name: "Akshaya Ponni",
-    description: "Full-bodied Ponni grains for generous everyday meals.",
-    price: 845,
-    image: "/assets/shop/pack-akshaya.png",
-    alt: "Akshaya Ponni rice in the orange 10 kg pack",
+    slug: "vijaya-nagaram",
+    tag: "Amman Ponni",
+    name: "Vijaya Nagaram",
+    description: "Amman Ponni — HMT Ponni grain, milled for everyday South Indian meals.",
+    packKg: 5,
+    image: "/assets/shop/packs/vijaya-nagaram.png",
+    alt: "Vijaya Nagaram — HMT Ponni, 5 kg pack",
   },
-].map(({ slug, tag, name, description, price, image, alt }) => {
+  {
+    slug: "vintage",
+    tag: "Black & Gold",
+    name: "Vintage",
+    description: "Our black-and-gold selection, milled and sealed at the Erode facility.",
+    packKg: 10,
+    image: "/assets/shop/packs/vintage.png",
+    alt: "Vintage — Ponni, 10 kg pack",
+  },
+  {
+    slug: "viruchagam",
+    tag: "Poompuhar Ponni",
+    name: "Viruchagam",
+    description: "Poompuhar Ponni in the blue and gold pack, from SNR RNR paddy.",
+    packKg: 10,
+    image: "/assets/shop/packs/viruchagam.png",
+    alt: "Viruchagam — SNR RNR Poompuhar Ponni, 10 kg pack",
+  },
+  {
+    slug: "united-5kg",
+    tag: "Green Pack",
+    name: "United",
+    description: "The everyday United pack, in a 5 kg family size.",
+    packKg: 5,
+    image: "/assets/shop/packs/united-5kg.png",
+    alt: "United — Ponni, 5 kg pack",
+  },
+  {
+    slug: "alibaba",
+    tag: "Premium Sappadu",
+    name: "Alibaba",
+    description: "Premium Sappadu rice — 100% pure original quality, for full-flavoured meals.",
+    packKg: 10,
+    image: "/assets/shop/packs/alibaba.png",
+    alt: "Alibaba — Sappadu rice, 10 kg pack",
+  },
+  {
+    slug: "chennai-bullets",
+    tag: "Rajabhogam Ponni",
+    name: "Chennai Bullets",
+    description: "Rajabhogam Ponni with a rich aroma, in our largest 26 kg trade pack.",
+    packKg: 26,
+    image: "/assets/shop/packs/chennai-bullets.png",
+    alt: "Chennai Bullets — Rajabhogam Ponni, 26 kg pack",
+  },
+  {
+    slug: "a1-special-ponni",
+    tag: "No.1 Ponni",
+    name: "A1 Special Ponni",
+    description: "Special Ponni rice, quality graded and packed at our Erode facility.",
+    packKg: 5,
+    image: "/assets/shop/packs/a1-special-ponni.png",
+    alt: "A1 Special Ponni — Ponni, 5 kg pack",
+  },
+  {
+    slug: "rudra",
+    tag: "Rajabhogam Ponni",
+    name: "Rudra",
+    description: "Rajabhogam Ponni rice — original taste and rich aroma, in a 25 kg pack.",
+    packKg: 25,
+    image: "/assets/shop/packs/rudra.png",
+    alt: "Rudra — Rajabhogam Ponni, 25 kg pack",
+  },
+  {
+    slug: "thaaram",
+    tag: "Akshaya Ponni",
+    name: "Thaaram Nei Kitchadi",
+    description: "Akshaya Ponni for nei kitchadi — strong grain, superior taste, rich aroma.",
+    packKg: 25,
+    image: "/assets/shop/packs/thaaram.png",
+    alt: "Thaaram Nei Kitchadi — Akshaya Ponni, 25 kg pack",
+  },
+].map(({ slug, tag, name, description, packKg, image, alt }) => {
   const presentation = PRESENTATION[slug] || { ...FALLBACK_PRESENTATION };
   return {
     id: slug,
@@ -132,8 +240,8 @@ const FALLBACK_PRODUCTS = [
     flag: presentation.flag,
     name,
     description,
-    price,
-    packSizes: withPackSizes(price),
+    price: 0,
+    packSizes: [{ kg: packKg, price: 0 }],
     image,
     alt,
     width: presentation.width,

@@ -40,41 +40,97 @@ export const NUTRITION_OPTIONS = [
   { id: 'rajabhogam', label: 'Rajabhogam', prompt: 'Tell me about the nutrition of Rajabhogam.' },
 ]
 
-/* Real Chennai Rice product catalog (mirrors src/shop/data/products.js).
-   Kept as a small local copy so the chatbot can match by keyword without
-   importing the shop bundle; "View Product" always links to /products. */
+/* The live catalogue, generated from src/shop/data/products.js so the two
+   cannot drift — the chatbot used to name four packs that had been retired.
+   Kept as a local copy so keyword matching needs no shop import. */
 export const CHAT_PRODUCTS = [
   {
-    id: 'rajabhogam-premium',
-    name: 'Rajabhogam Premium',
-    packSize: '10 KG',
-    blurb: 'Our finest pack — aged, hand-graded premium Ponni grains.',
-    image: '/assets/shop/pack-premium.png',
-    keywords: ['rajabhogam', 'raja bogam premium', 'special rajabhogam', 'premium', 'festive', 'special meal', 'special meals'],
+    id: "special-rajabhogam",
+    name: "Special Rajabhogam",
+    packSize: "10 KG",
+    blurb: "Kitchidi Ponni rice in our signature red pack, milled and sealed at Erode.",
+    image: "/assets/shop/packs/special-rajabhogam.png",
+    keywords: ["special rajabhogam","special","rajabhogam","classic","kitchidi","signature","milled","sealed","erode"],
   },
   {
-    id: 'raja-bogam-ponni',
-    name: 'Raja Bogam Ponni',
-    packSize: '10 KG',
-    blurb: 'The everyday family pack — soft bite, clean aroma.',
-    image: '/assets/shop/pack-red.png',
-    keywords: ['white ponni', 'ponni', 'daily', 'everyday', 'sadam', 'curd rice', 'pongal', 'daily meal', 'daily meals'],
+    id: "nayara-super-aged",
+    name: "Nayara Super Aged",
+    packSize: "10 KG",
+    blurb: "Super-aged gel cook rice that stays separate and firm on the plate.",
+    image: "/assets/shop/packs/nayara-super-aged.png",
+    keywords: ["nayara super aged","nayara","super","aged","cook","stays","separate","firm","plate"],
   },
   {
-    id: 'vada-kolam',
-    name: 'Vada Kolam',
-    packSize: '10 KG',
-    blurb: 'Fine slender grains that cook light and fluffy — also a good idli/dosa base.',
-    image: '/assets/shop/pack-gold.png',
-    keywords: ['kolam', 'vada kolam', 'idli', 'idly', 'dosa', 'pulao', 'fried rice', 'lemon rice'],
+    id: "vijaya-nagaram",
+    name: "Vijaya Nagaram",
+    packSize: "5 KG",
+    blurb: "Amman Ponni — HMT Ponni grain, milled for everyday South Indian meals.",
+    image: "/assets/shop/packs/vijaya-nagaram.png",
+    keywords: ["vijaya nagaram","vijaya","nagaram","amman","grain","milled","everyday","south","indian"],
   },
   {
-    id: 'akshaya-ponni',
-    name: 'Akshaya Ponni',
-    packSize: '10 KG',
-    blurb: 'Full-bodied Ponni grains for generous everyday meals.',
-    image: '/assets/shop/pack-akshaya.png',
-    keywords: ['akshaya', 'akashaya', 'generous', 'family pack'],
+    id: "vintage",
+    name: "Vintage",
+    packSize: "10 KG",
+    blurb: "Our black-and-gold selection, milled and sealed at the Erode facility.",
+    image: "/assets/shop/packs/vintage.png",
+    keywords: ["vintage","vintage","black","gold","selection","milled","sealed","erode","facility"],
+  },
+  {
+    id: "viruchagam",
+    name: "Viruchagam",
+    packSize: "10 KG",
+    blurb: "Poompuhar Ponni in the blue and gold pack, from SNR RNR paddy.",
+    image: "/assets/shop/packs/viruchagam.png",
+    keywords: ["viruchagam","viruchagam","poompuhar","blue","gold","paddy"],
+  },
+  {
+    id: "united-5kg",
+    name: "United",
+    packSize: "5 KG",
+    blurb: "The everyday United pack, in a 5 kg family size.",
+    image: "/assets/shop/packs/united-5kg.png",
+    keywords: ["united","united","green","everyday","family","size"],
+  },
+  {
+    id: "alibaba",
+    name: "Alibaba",
+    packSize: "10 KG",
+    blurb: "Premium Sappadu rice — 100% pure original quality, for full-flavoured meals.",
+    image: "/assets/shop/packs/alibaba.png",
+    keywords: ["alibaba","alibaba","premium","sappadu","pure","original","quality","full","flavoured"],
+  },
+  {
+    id: "chennai-bullets",
+    name: "Chennai Bullets",
+    packSize: "26 KG",
+    blurb: "Rajabhogam Ponni with a rich aroma, in our largest 26 kg trade pack.",
+    image: "/assets/shop/packs/chennai-bullets.png",
+    keywords: ["chennai bullets","chennai","bullets","rajabhogam","rich","aroma","largest","trade"],
+  },
+  {
+    id: "a1-special-ponni",
+    name: "A1 Special Ponni",
+    packSize: "5 KG",
+    blurb: "Special Ponni rice, quality graded and packed at our Erode facility.",
+    image: "/assets/shop/packs/a1-special-ponni.png",
+    keywords: ["a1 special ponni","special","quality","graded","packed","erode","facility"],
+  },
+  {
+    id: "rudra",
+    name: "Rudra",
+    packSize: "25 KG",
+    blurb: "Rajabhogam Ponni rice — original taste and rich aroma, in a 25 kg pack.",
+    image: "/assets/shop/packs/rudra.png",
+    keywords: ["rudra","rudra","rajabhogam","original","taste","rich","aroma"],
+  },
+  {
+    id: "thaaram",
+    name: "Thaaram Nei Kitchadi",
+    packSize: "25 KG",
+    blurb: "Akshaya Ponni for nei kitchadi — strong grain, superior taste, rich aroma.",
+    image: "/assets/shop/packs/thaaram.png",
+    keywords: ["thaaram nei kitchadi","thaaram","kitchadi","akshaya","strong","grain","superior","taste","rich"],
   },
 ]
 
@@ -85,8 +141,15 @@ export function matchProduct(text) {
   return CHAT_PRODUCTS.find(p => p.keywords.some(k => lower.includes(k))) || null
 }
 
+/* Shown when the request to /api/chat fails outright — the assistant was never
+   reached, so nothing was understood or judged.
+
+   The old wording ("I'm not fully sure about that one") blamed the answer for
+   what is actually a connection failure: it reads as though Soru Kutty
+   considered the question and came up short, which misleads the visitor about
+   what went wrong and makes the bot look ignorant rather than offline. */
 export const FALLBACK_MESSAGE = {
-  text: "I'm not fully sure about that one. Let me connect you with our team — they'll have the exact answer.",
+  text: "I can't reach my brain right now — sorry about that. Our team can answer this for you in the meantime.",
   cta: { label: 'Contact Us →', to: '/contact' },
 }
 

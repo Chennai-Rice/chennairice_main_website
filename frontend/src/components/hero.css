@@ -3,6 +3,9 @@
   min-height: 100vh;
   overflow: hidden;
   isolation: isolate;
+  /* Shared by .hero-curve (its own height) and .hero-estd (the clearance it
+     keeps above it), so the two stay in step. */
+  --hero-curve-h: 150px;
 }
 @media (min-height: 0px) {
   .home-hero {
@@ -18,10 +21,37 @@
   height: 100%;
   object-fit: cover;
   z-index: 0;
+  /* A <video> with no poster paints opaque black until its first frame
+     decodes, and the film here is large enough that the gap is visible — a
+     black band across the top of the page, right under a navbar that is
+     deliberately transparent at this scroll position. Giving the element the
+     same warm gradient the fallback uses means the wait reads as part of the
+     design instead of a hole in it. */
+  background: radial-gradient(120% 90% at 60% 20%, #3a2c14 0%, #1c1409 55%, #0e0a05 100%);
 }
 
-.hero-fallback {
-  background: radial-gradient(120% 90% at 60% 20%, #3a2c14 0%, #1c1409 55%, #0e0a05 100%);
+/* hero.mp4 is letterboxed: the film is roughly 1920x924, set inside a
+   1920x1080 file with a solid black bar of about 78px (7.2%) along the top
+   and the bottom. Measured by rendering the file in Chrome.
+
+   `cover` scales by whichever axis runs out first. On a wide desktop that is
+   the width, the frame overflows vertically and the bars are cropped off. On
+   a tall phone it is the height, the whole frame shows, and the bars show
+   with it — the top one hidden behind the navbar, the bottom one as a black
+   band above the wave.
+
+   So the element is made taller than the hero by the bars' share of it: 118%
+   tall, lifted 9%. `cover` then fits the picture, not the file, to the hero
+   and both bars land outside it, where .home-hero's overflow clips them. On
+   screens wide enough to be width-limited it simply overflows a little more,
+   which costs nothing. The margin over the measured 7.2% absorbs any
+   difference between the top bar and the bottom one.
+
+   Re-encoding the video without the bars would remove the need for this. */
+.hero-video {
+  top: -9%;
+  bottom: auto;
+  height: 118%;
 }
 
 .hero-overlay {
@@ -114,15 +144,19 @@
   right: 7vw;
   bottom: 26vh;
   z-index: 2;
+  /* The float animates `transform`, so any `transform: scale()` set elsewhere
+     would simply be overwritten by the keyframes. Scale therefore travels as a
+     variable that the keyframes compose in. */
+  --estd-scale: 1;
   animation: hero-float 8s ease-in-out infinite;
 }
 @keyframes hero-float {
   0%,
   100% {
-    transform: translateY(-6px);
+    transform: translateY(-6px) scale(var(--estd-scale));
   }
   50% {
-    transform: translateY(6px);
+    transform: translateY(6px) scale(var(--estd-scale));
   }
 }
 
@@ -130,32 +164,76 @@
   width: 96px;
   height: 96px;
   border-radius: 50%;
-  border: 1.5px solid rgba(201, 162, 75, 0.9);
+  border: 1.5px solid rgba(214, 178, 100, 0.95);
   display: grid;
   place-content: center;
   justify-items: center;
   gap: 2px;
   position: relative;
+  /* A thin gold ring alone disappears against the film, which changes
+     behind it every frame. A dark, slightly blurred disc gives the badge its
+     own ground so it reads over a bright mill shot as well as a dark one. */
+  background: radial-gradient(circle at 50% 42%, rgba(38, 16, 10, 0.62) 0%, rgba(30, 12, 8, 0.38) 62%, rgba(30, 12, 8, 0.12) 100%);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  /* The glow itself: outward halo plus an inner rim light. */
+  box-shadow:
+    0 0 22px rgba(214, 178, 100, 0.45),
+    0 0 44px rgba(214, 178, 100, 0.18),
+    inset 0 0 18px rgba(214, 178, 100, 0.22);
+  animation: hero-estd-glow 4.5s ease-in-out infinite;
 }
+
+/* Breathes rather than blinks — a slow swell in the halo, nothing that
+   flashes or draws the eye away from the headline. */
+@keyframes hero-estd-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 22px rgba(214, 178, 100, 0.45),
+      0 0 44px rgba(214, 178, 100, 0.18),
+      inset 0 0 18px rgba(214, 178, 100, 0.22);
+  }
+  50% {
+    box-shadow:
+      0 0 30px rgba(214, 178, 100, 0.68),
+      0 0 62px rgba(214, 178, 100, 0.3),
+      inset 0 0 22px rgba(214, 178, 100, 0.34);
+  }
+}
+
 .hero-estd-ring::before {
   content: '';
   position: absolute;
   inset: 6px;
   border-radius: 50%;
-  border: 1px dashed rgba(201, 162, 75, 0.65);
+  border: 1px dashed rgba(214, 178, 100, 0.7);
 }
+
 .hero-estd-label {
   font-size: 10px;
   letter-spacing: 0.3em;
   text-indent: 0.3em;
   text-transform: uppercase;
-  color: var(--gold-soft);
+  color: #f0dcaa;
+  text-shadow: 0 0 10px rgba(214, 178, 100, 0.65), 0 1px 2px rgba(0, 0, 0, 0.5);
 }
+
 .hero-estd-year {
   font-family: var(--serif);
   font-size: 26px;
-  color: var(--gold-soft);
+  color: #f6e6bd;
   line-height: 1;
+  text-shadow: 0 0 14px rgba(214, 178, 100, 0.7), 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Killing the animation also drops the scale the keyframes were composing,
+     so it is restored statically here. */
+  .hero-estd {
+    animation: none;
+    transform: scale(var(--estd-scale));
+  }
+  .hero-estd-ring { animation: none; }
 }
 
 /* --- bottom cream wave with gold rim --- */
@@ -165,25 +243,32 @@
   right: 0;
   bottom: -1px;
   width: 100%;
-  height: 150px;
+  height: var(--hero-curve-h);
   z-index: 3;
   display: block;
 }
 
 @media (max-width: 900px) {
+  .home-hero {
+    --hero-curve-h: 90px;
+  }
   .hero-content {
     padding-top: 24vh;
   }
+  /* Centred in the column and dropped to sit just above the cream wave,
+     rather than floating in the middle of the film where it collided with
+     the headline block. The offset is written against the curve's own
+     height so the clearance survives a change to either. */
   .hero-estd {
     left: 0;
     right: 0;
     width: fit-content;
     margin-inline: auto;
-    bottom: 290px;
-    transform: scale(0.8);
+    bottom: calc(var(--hero-curve-h) + 30px);
+    --estd-scale: 0.8;
   }
   .hero-curve {
-    height: 90px;
+    height: var(--hero-curve-h);
   }
 }
 
@@ -200,7 +285,7 @@
   .home-hero-sub {
     margin-top: 14px;
   }
-  .hero-estd {
-    bottom: 234px;
-  }
+  /* The badge used to be lifted to 234px here to clear the headline. Now that
+     it sits down by the wave there is nothing above it to collide with, so it
+     keeps the same offset as every other phone. */
 }

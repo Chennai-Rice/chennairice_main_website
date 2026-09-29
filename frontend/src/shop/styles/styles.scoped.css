@@ -24,7 +24,12 @@
 
   /* Color — neutrals (warm, rice-paper biased) */
   --cream-50:  #FDFBF5;
-  --cream-100: #FBF6EC;         /* page ground */
+  /* Page ground. Must stay equal to --cream in global.css, which is what the
+     body — and therefore the footer — sits on. These were #FBF6EC and #f6efdc:
+     close enough to look like one colour in isolation, far enough apart to
+     draw a visible warm/cool line straight across the page wherever a shop
+     page ended and the footer began. */
+  --cream-100: #f6efdc;         /* page ground — matches global --cream */
   --cream-200: #F3EBDB;
   --cream-300: #E6DAC2;
   --ink-900:   #2B1B16;         /* headings */
@@ -792,6 +797,23 @@
   transform-style: preserve-3d;
 }
 
+/* The upper row sits closer to the lower one than its own bottom padding
+   would allow — that padding exists to clear the reflection, which is
+   translucent and can overlap the next row without reading as a collision. */
+.shop-scope .lineup-row + .lineup-row {
+  margin-top: clamp(-4rem, -6vw, -2rem);
+}
+
+/* Thirteen packs will not fit across a phone in two rows either, so below
+   this width they wrap into as many rows as they need. */
+@media (max-width: 760px) {
+  .shop-scope .lineup-row {
+    flex-wrap: wrap;
+    row-gap: clamp(2.5rem, 9vw, 4rem);
+  }
+  .shop-scope .lineup-row + .lineup-row { margin-top: 0; }
+}
+
 /* Packs are visible by default. The hidden start state is opt-in via
    .will-animate, which JS adds only once it knows it can reveal them again —
    so a failed observer, a JS error, or a blocked script can never leave a
@@ -806,11 +828,11 @@
 
 .shop-scope .stage.will-animate .lineup-item { opacity: 0; }
 
-/* Outer packs angle inward and sit further back — a gathered arc */
-.shop-scope .lineup-item:nth-child(1) { --ry:  15deg; --tz: -55px; }
-.shop-scope .lineup-item:nth-child(2) { --ry:   5deg; --tz:   0px; }
-.shop-scope .lineup-item:nth-child(3) { --ry:  -5deg; --tz:   0px; }
-.shop-scope .lineup-item:nth-child(4) { --ry: -15deg; --tz: -55px; }
+/* The gathered arc used to live here as four nth-child rules, which stopped
+   applying the moment the range grew past four packs. It is now computed per
+   row in Lineup.jsx and arrives as inline --ry / --tz, so any row length
+   curves correctly. The fallbacks in .lineup-item keep a pack upright if the
+   variables are ever missing. */
 
 /* Entrance then idle float, both on the `translate` property so they never
    fight the `transform` that holds the arc and the hover pose. The float is
@@ -878,12 +900,13 @@
 }
 
 @media (max-width: 560px) {
-  /* Four packs shoulder-to-shoulder get too small on a phone: drop the
-     depth offsets and let them sit closer to flat. */
-  .shop-scope .lineup-item:nth-child(1) { --ry:  9deg; --tz: -25px; }
-  .shop-scope .lineup-item:nth-child(2) { --ry:  3deg; --tz:   0px; }
-  .shop-scope .lineup-item:nth-child(3) { --ry: -3deg; --tz:   0px; }
-  .shop-scope .lineup-item:nth-child(4) { --ry: -9deg; --tz: -25px; }
+  /* Packs get small enough on a phone that the turned-away ones lose their
+     labels, so the stage lies flat. This overrides `transform` rather than the
+     --ry/--tz variables: those now arrive as inline styles from Lineup.jsx,
+     and an inline value beats any stylesheet rule that tries to change it. */
+  .shop-scope .lineup-item {
+    transform: none;
+  }
 }
 
 /* ---------- Header nav ---------- */
@@ -1725,14 +1748,19 @@
   line-height: 1;
   color: var(--maroon-600);
 }
-.shop-scope .fp-name {
+/* The title now follows the signature directly. It used to sit 0.15rem under
+   the printed name, which itself cleared the signature by --s-2; with that
+   element gone the same clearance moves here, otherwise the script's
+   descenders run into the title. */
+.shop-scope .fp-title {
   margin: var(--s-2) 0 0;
-  font-weight: 800;
-  font-size: var(--fs-small);
-  letter-spacing: 0.02em;
-  color: var(--ink-900);
+  font-size: var(--fs-tag);
+  font-weight: 700;
+  line-height: 1.6;
+  /* Stepped off the muted grey onto the body ink: bold at 12px in --ink-500
+     reads as smudged rather than emphasised. */
+  color: var(--ink-700);
 }
-.shop-scope .fp-title { margin: 0.15rem 0 0; font-size: var(--fs-tag); line-height: 1.6; color: var(--ink-500); }
 
 .shop-scope .fp-hero-stage { position: relative; width: 100%; max-width: 19rem; margin-inline: auto; }
 .shop-scope .fp-hero-photo { position: relative; z-index: 1; aspect-ratio: 4 / 5; width: 100%; }
@@ -2492,3 +2520,46 @@
   margin-bottom: var(--s-6);
   font-size: var(--fs-h1);
 }
+
+/* ---------------------------------------------------------------------------
+   Catalogue mode (VITE_SHOW_PRICES off)
+
+   The card keeps its shape — same footer height, same two-button row — so a
+   grid of cards does not reflow when prices are switched on or off. What
+   changes is that the price line becomes "Price on request" and the quantity
+   control becomes a link to the sales team.
+   --------------------------------------------------------------------------- */
+.shop-scope .price-enquiry {
+  margin: 0;
+  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+/* Sized to sit on the same baseline as .price-amount, in the body face rather
+   than the display face — it is a label, not a figure. */
+.shop-scope .price-enquiry-label {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.shop-scope .price-enquiry .price-unit {
+  font-size: var(--fs-small);
+  color: var(--ink-500);
+}
+
+/* .add-btn is a <button> elsewhere; as a link it needs the anchor resets that
+   the button got for free. */
+.shop-scope .contact-sales-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.shop-scope .contact-sales-btn:hover { background: var(--maroon-700); }
+.shop-scope .contact-sales-btn:active { transform: scale(0.98); }

@@ -47,7 +47,9 @@ export default function CookieBanner() {
         </button>
 
         <div className="cookie-card-brand">
-          <Img src={ASSETS.logo} alt="Chennai Rice Industries" className="cookie-card-logo" />
+          {/* The card sits on cream, so this takes the maroon-lettered cut —
+              the white one would lose its curved text against this ground. */}
+          <Img src={ASSETS.logoOnLight} alt="Chennai Rice Industries" className="cookie-card-logo" />
         </div>
 
         <div className="cookie-card-divider" aria-hidden="true" />

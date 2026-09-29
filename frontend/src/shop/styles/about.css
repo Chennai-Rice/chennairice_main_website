@@ -14,7 +14,8 @@
   --gold: #D6A22B;
   --gold-light: #F0CE72;
   --earth: #6B4A2C;
-  --cream: #F6EFDF;
+  /* Same value as --cream in global.css, which the body and footer sit on. */
+  --cream: #f6efdc;
   --cream-deep: #EADFC6;
   --ink: #23301F;
   --ink-soft: #55604F;
@@ -616,6 +617,10 @@
 /* a sideways slide would fight a centred card — fade it straight up instead */
 .about-page .ab-founder-card .reveal--left { transform: translateY(22px); }
 .about-page .ab-founder-card .reveal--left.in { transform: none; }
+/* A filled button rather than the underlined text this was. Sitting alone
+   under the card it read as a caption, not as something to press — the same
+   maroon the rest of the site uses for its calls to action makes it obvious,
+   and gives the cream label a 9.9:1 contrast. */
 .ab-founder-link {
   display: inline-flex;
   align-items: center;
@@ -623,18 +628,28 @@
   font-family: var(--sans);
   font-weight: 700;
   font-size: 0.85rem;
-  letter-spacing: 0.03em;
-  color: var(--forest);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f6efdc;
+  background: var(--maroon-600);
   text-decoration: none;
-  padding-bottom: 2px;
-  border-bottom: 1.5px solid var(--gold);
-  transition: gap 0.3s var(--ease), color 0.3s var(--ease);
+  padding: 0.85rem 1.6rem;
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(110, 27, 34, 0.22);
+  transition: gap 0.3s var(--ease), background 0.3s var(--ease), transform 0.3s var(--ease),
+    box-shadow 0.3s var(--ease);
 }
 .ab-founder-link span { display: inline-block; transition: transform 0.3s var(--ease); }
 .ab-founder-link:hover,
 .ab-founder-link:focus-visible {
   gap: 0.8rem;
-  color: var(--gold);
+  background: var(--maroon-700);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(110, 27, 34, 0.3);
+}
+.ab-founder-link:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
 }
 .ab-founder-link:hover span,
 .ab-founder-link:focus-visible span { transform: translateX(3px); }
@@ -667,11 +682,13 @@
 .sc-foot {
   display: block;
   margin-top: 0.9rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.2em;
+  font-size: 0.8rem;
+  /* 800 is the heaviest weight Karla is loaded at — see the font link in
+     index.html. Asking for 900 would get a synthesised smear, not a heavier
+     cut, so the extra presence comes from size and tracking instead. */
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  opacity: 0.7;
 }
 
 .sc--dark { background: var(--forest); }
@@ -688,7 +705,12 @@
   border-left: 4px solid var(--gold);
 }
 .about-page .sc--outline .sc-text { color: var(--forest); }
-.sc--outline .sc-kicker, .sc--outline .sc-foot { color: var(--gold); }
+.sc--outline .sc-kicker { color: var(--gold); }
+/* The attribution names a real person and has to be readable, so it steps off
+   the gold onto the earth brown. Gold at 70% opacity measured 1.75:1 against
+   this card — the minimum for text this size is 4.5:1, so it was not quiet,
+   it was illegible. Earth at full opacity measures 7.74:1. */
+.sc--outline .sc-foot { color: var(--earth); }
 
 /* slide in from whichever side the card hangs off */
 .about-page .reveal--right { transform: translateX(56px); }
@@ -777,9 +799,14 @@
 
 /* The picture sits clear of the words — never behind them — so no part of
    the copy is ever read through a silhouette. */
+/* The closing section, and the last thing above the footer. It fades from the
+   page's own near-white into the cream the body and footer sit on, so the page
+   hands over to the footer instead of stopping dead against it — the near-white
+   ground (#FDFCF7) and the footer cream are far enough apart to draw a visible
+   line right across the page. */
 .ab-cta {
   position: relative;
-  background: var(--rice);
+  background: linear-gradient(180deg, var(--rice) 0%, var(--rice) 55%, var(--cream) 100%);
   padding-block: clamp(2rem, 4vw, 2.75rem) 0;
   overflow: hidden;
 }

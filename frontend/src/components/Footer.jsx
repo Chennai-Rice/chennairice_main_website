@@ -4,6 +4,11 @@ import { FOOTER } from '../data/content.js'
 import { useCookieConsent } from '../hooks/useCookieConsent.jsx'
 import './footer.css'
 
+/* The badges painted into the footer artwork, in the order they are drawn.
+   Each needs a matching .foot-hotspot--<key> rule in footer.css giving its
+   position. Change the artwork and these two lists change together. */
+const PAINTED_BADGES = ['instagram', 'facebook']
+
 const Social = {
   facebook: (
     <path
@@ -24,6 +29,16 @@ const Social = {
       <path d="M10.4 9.6l4.4 2.4-4.4 2.4z" fill="currentColor" />
     </>
   ),
+  /* Used on phones, where the artwork is not shown and real icons are drawn. */
+  whatsapp: (
+    <path
+      d="M12 4.6a7.3 7.3 0 00-6.2 11.1L4.8 19.4l3.8-1a7.3 7.3 0 103.4-13.8zM9.4 9.1c.15-.35.3-.35.5-.36h.4c.15 0 .33 0 .5.4l.6 1.5c.05.15.1.3 0 .5l-.35.45c-.1.15-.23.3-.1.55a6 6 0 002.9 2.5c.25.1.4.1.55-.05l.6-.7c.15-.2.3-.15.5-.08l1.4.7c.2.1.35.15.4.25a1.8 1.8 0 01-.13.98c-.2.3-.9.85-1.65.85-1.2 0-3.2-1-4.65-2.5A9 9 0 019.1 11a2.5 2.5 0 01.3-1.9z"
+      stroke="currentColor"
+      strokeWidth="1.25"
+      strokeLinejoin="round"
+      fill="none"
+    />
+  ),
 }
 
 /** Gold wheat glyph above "Stay Connected". */
@@ -40,12 +55,10 @@ const WheatMark = () => (
 )
 
 /** Gold rule with a diamond, under each column heading. */
-const HeadRule = () => (
-  <svg width="56" height="9" viewBox="0 0 60 9" fill="none" aria-hidden="true" className="foot-head-rule">
-    <path d="M0 4.5h23M37 4.5h23" stroke="var(--gold)" strokeWidth="1" />
-    <path d="M30 1l3.5 3.5L30 8l-3.5-3.5z" fill="var(--gold)" />
-  </svg>
-)
+/* A plain hairline. It used to be an SVG carrying a small diamond, which read
+   as a speck at this width — and an SVG cannot be restyled into a 1px rule
+   with CSS alone, since it paints its own content over any background. */
+const HeadRule = () => <span className="foot-head-rule" aria-hidden="true" />
 
 /** Laurel wreath flanking the ESTD year. */
 const Laurel = ({ flip = false }) => (
@@ -115,20 +128,16 @@ export default function Footer() {
     <footer className="foot" id="contact">
       {/* The artwork is the backdrop; everything below is laid over it.
           WebP with a PNG fallback for older browsers. */}
-      <picture className="foot-art">
-        <source srcSet="/assets/footer.webp" type="image/webp" />
-        <img
-          src="/assets/footer.png"
-          alt=""
-          aria-hidden="true"
-        />
-      </picture>
-
       {/* --- upper block, sitting in the artwork's sky --- */}
       <div className="container foot-top">
         <div className="foot-connect">
-          <WheatMark />
-          <h3 className="foot-connect-title">{FOOTER.newsletter.title}</h3>
+          {/* Icon beside the heading rather than stacked above it, so the
+              block starts higher and the heading sits in the clear sky
+              instead of down among the palms. */}
+          <div className="foot-connect-head">
+            <WheatMark />
+            <h3 className="foot-connect-title">{FOOTER.newsletter.title}</h3>
+          </div>
           <p className="foot-connect-text">{FOOTER.newsletter.text}</p>
 
           <form className="foot-subscribe" onSubmit={subscribe} noValidate>
@@ -143,16 +152,13 @@ export default function Footer() {
                 setState(null)
               }}
             />
-            <button type="submit" aria-label="Subscribe">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path
-                  d="M21 3L3 10.5l7 2.5 2.5 7L21 3z"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinejoin="round"
-                  fill="none"
-                />
-                <path d="M10 13.5L21 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            {/* Labelled rather than icon-only: a lone paper-plane glyph beside
+                a text field reads as decoration, and left the control with no
+                accessible name beyond its aria-label. */}
+            <button type="submit">
+              Subscribe
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
           </form>
@@ -182,6 +188,41 @@ export default function Footer() {
         </div>
       </div>
 
+      {/* The painting, with its click targets inside the same box. On desktop
+          it is the backdrop the text above sits on; on tablets and phones it
+          becomes a band of its own below the text (see footer.css).
+
+          The hotspots lie exactly over the Instagram and Facebook badges
+          painted into the artwork. Living inside the artwork's own box means
+          they follow the picture in every layout, rather than being pinned
+          to the footer's edge and trusting the picture to be there too.
+          Phones crop the badges out of view and show real icons in
+          .foot-follow instead. */}
+      <div className="foot-art">
+        <picture>
+          <source srcSet="/assets/footer-v8.webp" type="image/webp" />
+          <img src="/assets/footer-v8.png" alt="" aria-hidden="true" />
+        </picture>
+        <div className="foot-hotspots">
+          {/* Only the networks the artwork actually draws a badge for.
+              Anything else in FOOTER.social has nowhere to sit, and a hotspot
+              without a matching --key rule would land in the top-left corner. */}
+          {FOOTER.social.filter(s => PAINTED_BADGES.indexOf(s.key) !== -1).map(({ key, href, label }) => (
+            <a
+              key={key}
+              className={`foot-hotspot foot-hotspot--${key}`}
+              href={href}
+              aria-label={label}
+              target="_blank"
+              /* noopener is the security half (the opened tab cannot reach
+                 back through window.opener); noreferrer keeps the referrer
+                 header off the request. */
+              rel="noopener noreferrer"
+            />
+          ))}
+        </div>
+      </div>
+
       {/* --- lower block, sitting in the artwork's maroon band --- */}
       <div className="foot-band">
         <div className="container foot-crest">
@@ -194,20 +235,25 @@ export default function Footer() {
             <Laurel flip />
           </div>
 
-          <p className="foot-copy">
-            {FOOTER.copyright}
-            <button type="button" className="foot-cookie-link" onClick={reopen}>
-              Cookie Preferences
-            </button>
-          </p>
-
           <div className="foot-follow">
             <span className="foot-follow-label">Follow Us</span>
             <div className="foot-social">
-              {['facebook', 'instagram', 'youtube'].map(k => (
-                <a key={k} href="#" className="foot-soc" aria-label={k}>
+              {/* Driven by FOOTER.social, so adding a network is a data change
+                  and no account is ever represented by a dead "#" link. */}
+              {FOOTER.social.map(({ key, href, label }) => (
+                <a
+                  key={key}
+                  href={href}
+                  className="foot-soc"
+                  aria-label={label}
+                  target="_blank"
+                  // noopener is the security half (the opened tab cannot reach
+                  // back through window.opener); noreferrer keeps the
+                  // referrer header off the request.
+                  rel="noopener noreferrer"
+                >
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    {Social[k]}
+                    {Social[key]}
                   </svg>
                 </a>
               ))}
@@ -220,6 +266,19 @@ export default function Footer() {
           <span>{FOOTER.motto}</span>
           <Sprig flip />
         </div>
+      </div>
+
+      {/* The artwork carries the badge, the icons and the motto, but nothing
+          for the company line or the cookie control. Rather than crowd them
+          into the painted band, they sit in a plain strip underneath it, in
+          the artwork's own bottom-edge colour so the two read as one block. */}
+      <div className="foot-legal">
+        <p className="container foot-legal-inner">
+          {FOOTER.copyright}
+          <button type="button" className="foot-cookie-link" onClick={reopen}>
+            Cookie Preferences
+          </button>
+        </p>
       </div>
     </footer>
   )

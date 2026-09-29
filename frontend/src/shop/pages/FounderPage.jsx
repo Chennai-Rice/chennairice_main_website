@@ -92,12 +92,12 @@ export default function FounderPage() {
               </blockquote>
 
               <div className="fp-hero-sign">
-                {/* the script is a flourish; the printed name carries it for
-                    anyone the script doesn't render legibly */}
-                <p className="fp-signature" aria-hidden="true">
-                  {FOUNDER.name}
-                </p>
-                <p className="fp-name">{FOUNDER.name}</p>
+                {/* The printed name used to sit under the signature as a
+                    fallback for anyone the script didn't render legibly. With
+                    the name now shown once, the signature is no longer
+                    decorative, so it drops aria-hidden and carries the name
+                    for screen readers too. */}
+                <p className="fp-signature">{FOUNDER.name}</p>
                 <p className="fp-title">{FOUNDER.title}</p>
               </div>
               <span className="fp-hero-rule" aria-hidden="true" />

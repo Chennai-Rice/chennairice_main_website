@@ -15,8 +15,8 @@ export default function ProductsPage() {
   const [activeFilter, setActiveFilter] = useState("all");
 
   usePageMeta(
-    "Chennai Rice Industries — Kitchidi Ponni Rice",
-    "Chennai Rice Industries — Special Rajabhogam Kitchidi Ponni Rice. Milled in Erode, trusted across Tamil Nadu."
+    "Our Rice Packs — Chennai Rice Industries",
+    "Ponni, Sappadu and Rajabhogam rice packs from 5 kg to 26 kg, milled and sealed at our own facility in Erode, Tamil Nadu."
   );
 
   return (

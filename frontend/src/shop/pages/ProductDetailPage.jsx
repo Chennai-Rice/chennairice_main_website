@@ -16,6 +16,7 @@ import { useCart } from "../hooks/useCart.jsx";
 import { useWishlist } from "../hooks/useWishlist.jsx";
 import { useRipple } from "../hooks/useRipple.js";
 import { formatRupees } from "../utils/format.js";
+import { showCardPrices } from "../../config.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import "./productdetail.css";
 
@@ -79,6 +80,10 @@ export default function ProductDetailPage() {
     id: `${product.id}-${selected.kg}kg`,
     name: `${product.name} (${selected.kg} kg)`,
     price: selected.price,
+    // Carried so the cart can price against the size actually bought. Without
+    // it CartRow fell back to a hardcoded "/ 10 kg" for every line, which
+    // misstated the basis on the 5 kg, 25 kg and 26 kg packs.
+    packKg: selected.kg,
   };
 
   const handleAddToCart = (event) => {
@@ -122,9 +127,23 @@ export default function ProductDetailPage() {
             <p className="pdp-subtitle">{category}</p>
             <p className="pdp-desc">{product.description}</p>
 
+            {/* While prices are unpublished this reads "Price on request" and
+                points at the sales team, rather than showing the ₹0 that every
+                variant currently carries. */}
             <div className="pdp-price-hero">
-              <span className="pdp-price">{formatRupees(selected.price * qty)}</span>
-              <span className="pdp-price-note">Inclusive of applicable taxes</span>
+              {showCardPrices ? (
+                <>
+                  <span className="pdp-price">{formatRupees(selected.price * qty)}</span>
+                  <span className="pdp-price-note">Inclusive of applicable taxes</span>
+                </>
+              ) : (
+                <>
+                  <span className="pdp-price">Price on request</span>
+                  <span className="pdp-price-note">
+                    Our sales team will confirm pricing for this pack.
+                  </span>
+                </>
+              )}
             </div>
 
             <div className="pdp-divider" />
@@ -138,21 +157,31 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="pdp-cta-row">
-              <button type="button" className="btn-maroon pdp-add-btn" onClick={handleAddToCart}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path
-                    d="M6 6h15l-1.5 9h-12z M6 6l-1-3H2 M9 21a1 1 0 100-2 1 1 0 000 2zM18 21a1 1 0 100-2 1 1 0 000 2z"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinejoin="round"
-                    fill="none"
-                  />
-                </svg>
-                {inCart ? "Add Another" : "Add to Cart"}
-              </button>
-              <button type="button" className="btn-outline" onClick={handleBuyNow}>
-                Buy Now
-              </button>
+              {/* Buying needs a price. While there isn't one, the only honest
+                  call to action is a route to the people who can quote it. */}
+              {showCardPrices ? (
+                <>
+                  <button type="button" className="btn-maroon pdp-add-btn" onClick={handleAddToCart}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        d="M6 6h15l-1.5 9h-12z M6 6l-1-3H2 M9 21a1 1 0 100-2 1 1 0 000 2zM18 21a1 1 0 100-2 1 1 0 000 2z"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinejoin="round"
+                        fill="none"
+                      />
+                    </svg>
+                    {inCart ? "Add Another" : "Add to Cart"}
+                  </button>
+                  <button type="button" className="btn-outline" onClick={handleBuyNow}>
+                    Buy Now
+                  </button>
+                </>
+              ) : (
+                <Link className="btn-maroon pdp-add-btn" to="/contact">
+                  Contact sales
+                </Link>
+              )}
               <button
                 type="button"
                 className={`pdp-wishlist${wishlisted ? " is-active" : ""}`}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ASSETS, HERO } from '../data/content.js'
+import { ASSETS, HERO, PRODUCTS } from '../data/content.js'
 import './hero.css'
 
 /* The hero film does not end on footage. It cuts to a white card carrying
@@ -87,9 +87,14 @@ export default function Hero() {
       </div>
 
       <svg className="hero-curve" viewBox="0 0 1440 150" preserveAspectRatio="none" aria-hidden="true">
+        {/* Filled with the first showcase product's tint, which is the colour
+            the section directly below opens on. A fixed cream here drew a
+            hard line across the page the moment slot 01 became a pack with a
+            cool tint; tying the two together keeps them continuous whichever
+            product leads. */}
         <path
           d="M0,88 C240,34 520,18 810,34 C1080,49 1290,84 1440,64 L1440,150 L0,150 Z"
-          fill="#f8f3e9"
+          fill={PRODUCTS[0]?.tint || '#f8f3e9'}
         />
         <path
           d="M0,88 C240,34 520,18 810,34 C1080,49 1290,84 1440,64"

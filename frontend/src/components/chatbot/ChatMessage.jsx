@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { RiceGrainIcon } from './icons.jsx'
 import ProductCard from './ProductCard.jsx'
 import { FALLBACK_MESSAGE } from '../../data/chatbot.js'
 
@@ -11,7 +10,7 @@ export default function ChatMessage({ message }) {
       <div className={`sk-msg-row ${isUser ? 'is-user' : 'is-assistant'}`}>
         {!isUser && (
           <div className="sk-msg-avatar" aria-hidden="true">
-            <RiceGrainIcon />
+            <img src="/assets/soru-kutty.png" alt="" width="28" height="28" />
           </div>
         )}
         <div className="sk-msg-bubble">

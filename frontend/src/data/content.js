@@ -6,7 +6,19 @@
    ============================================================ */
 
 export const ASSETS = {
-  logo: '/assets/logo.png',
+  /* Two cuts of the same mark, because the curved "Kitchidi Ponni Rice" and
+     the border ornaments are drawn in one colour and only read against the
+     opposite ground:
+       logo         — white lettering, for the maroon navbar and the dark hero
+       logoOnLight  — maroon lettering, for cream surfaces like the cookie card
+     Put the white one on cream and the curved text all but disappears.
+
+     Versioned filenames on purpose. Everything under /assets was once served
+     `immutable` for a year, so a stable name like logo.png meant returning
+     visitors kept the old mark indefinitely — the browser never even asked.
+     Bump the suffix whenever the artwork changes. */
+  logo: '/assets/logo-white-v2.png',
+  logoOnLight: '/assets/logo-full-v2.png',
   heroVideo: '/assets/hero.mp4',
   wheatLeft: '/assets/decor/wheat-left.png',
   wheatRight: '/assets/decor/wheat-right.png',
@@ -28,61 +40,67 @@ export const NAV_LINKS = [
 export const NAV_CTA = { label: 'Bulk Order', to: '/bulk-order' }
 
 export const HERO = {
-  titleLines: ['Rice.', 'The White Gold', 'Among Foods.'],
+  // Curly quotes rather than the straight " character: this is display
+  // typography, and a straight quote reads as an inch mark at 4rem.
+  titleLines: ['“RICE”', 'The White Gold', 'Among Foods.'],
   subtitle: 'The simplicity of cooking rice is the most culturally satisfying experience.',
   estd: "1950's",
 }
 
+/* Slot numbers are derived from position rather than written in, so removing
+   or reordering a pack renumbers the rest on its own. They were hardcoded
+   '01'–'04', which meant dropping the first slot left the showcase counting
+   02, 03, 04. */
 export const PRODUCTS = [
   {
-    num: '01',
-    shortName: 'Vada Kolam',
-    ghost: ['VADA', 'KOLAM'],
-    name: 'VADA KOLAM RICE',
-    desc: 'The pride of Tamil Nadu — soft, fluffy, and perfect for everyday meals. Sourced from the fertile Kaveri delta.',
-    packSize: '1, 5, 10, 26 KG',
-    riceType: 'Vada Kolam Rice',
-    idealFor: 'Everyday Meals',
-    image: '/assets/products/product-1.png',
-    tint: '#F8F3E9',
-  },
-  {
-    num: '02',
-    shortName: 'Premium',
-    ghost: ['PREMIUM', 'RICE'],
-    name: 'PREMIUM RICE',
-    desc: 'Premium rice crafted for rich taste, soft texture, and versatile everyday cooking across every family meal.',
-    packSize: '1, 5, 10, 26 KG',
-    riceType: 'Premium Rice',
-    idealFor: 'Daily Cooking • Family Meals',
-    image: '/assets/products/product-2.png',
+    shortName: 'Chennai Bullets',
+    ghost: ['CHENNAI', 'BULLETS'],
+    name: 'CHENNAI BULLETS',
+    // Read off the pack: Rajabhogam Ponni, 26 kg, "Rich Aroma" and
+    // "Genuine Taste" — the trade pack, hence the kitchens-and-canteens framing.
+    desc: 'Rajabhogam Ponni with a rich aroma and genuine taste, in our largest 26 kg pack — built for kitchens that cook at scale.',
+    packSize: '26 KG',
+    riceType: 'Rajabhogam Ponni',
+    idealFor: 'Bulk Kitchens • Large Families',
+    image: '/assets/products/chennai-bullets-hero.png',
+    // The existing cool blue already suits this pack — it was chosen for the
+    // slot, and the artwork here is blue and gold, so it stays.
     tint: '#EBF3F8',
   },
   {
-    num: '03',
-    shortName: 'Raja Bogam Ponni',
-    ghost: ['RAJA', 'BOGAM PONNI'],
-    name: 'RAJA BOGAM PONNI',
-    desc: 'Raja Bogam Ponni crafted for a rich, aromatic and premium dining experience.',
-    packSize: '1, 5, 10, 26 KG',
-    riceType: 'Raja Bogam Ponni',
-    idealFor: 'Premium Signature Collection',
-    image: '/assets/products/product-3.png',
-    tint: '#FAF5EC',
+    shortName: 'Alibaba',
+    ghost: ['ALIBABA', 'SAPPADU'],
+    name: 'ALIBABA',
+    // Straight off the pack: "100% Pure Genuine Quality", "Hassle Free Cooking",
+    // Premium Sappadu Rice at 10 kg.
+    desc: 'Premium Sappadu rice — 100% pure, genuine quality, and hassle-free cooking for the everyday sappadu.',
+    packSize: '10 KG',
+    riceType: 'Premium Sappadu Rice',
+    idealFor: 'Everyday Sappadu • Hassle-Free Cooking',
+    image: '/assets/products/alibaba-hero.png',
+    // Warm cream with a gold cast, drawn from the pack's gold borderwork so the
+    // ghost lettering sits behind the blue and gold rather than clashing.
+    tint: '#FAF3E6',
   },
   {
-    num: '04',
-    shortName: 'Akshaya Ponni',
-    ghost: ['AKSHAYA', 'PONNI'],
-    name: 'AKSHAYA PONNI',
-    desc: 'Akshaya Ponni brings a soft finish, satisfying aroma, and everyday comfort to your family meals.',
-    packSize: '1, 5, 10, 26 KG',
-    riceType: 'Akshaya Ponni',
+    shortName: 'Viruchagam',
+    ghost: ['VIRUCHAGAM', 'POOMPUHAR'],
+    name: 'VIRUCHAGAM',
+    // From the pack: SNR RNR Poompuhar Ponni, "Pure Rice", "100% Natural",
+    // "Rich Nutrition".
+    desc: 'Poompuhar Ponni from SNR RNR paddy — pure rice, 100% natural, and rich in nutrition.',
+    // This artwork prints no net weight, unlike the other three packs. Rather
+    // than invent a figure on the homepage, the slot points at the enquiry
+    // button sitting directly beside it. Replace with the real sizes when known.
+    packSize: 'Enquire for pack size',
+    riceType: 'SNR RNR Poompuhar Ponni',
     idealFor: 'Daily Family Dining',
-    image: { src: '/assets/products/product-4.png', fallback: '/assets/products/product-1.png' },
-    tint: '#EDF2F0',
+    image: '/assets/products/viruchagam-hero.png',
+    // Cool blue-grey, matching the pack's royal blue rather than the warm
+    // cream the previous orange pack needed.
+    tint: '#EAEFF6',
   },
-]
+].map((product, index) => ({ ...product, num: String(index + 1).padStart(2, '0') }))
 
 /* Count-up stats shown just above the product showcase. */
 export const STATS = [
@@ -109,10 +127,14 @@ export const FEATURES = [
   { icon: 'aroma', label: ['Rich in Taste', '& Aroma'] },
 ]
 
+// Ratings run 3 to 5 rather than a wall of fives. The quote and the score
+// are written as a pair: the lower-rated entries carry a real reservation,
+// because a three-star card that reads like a rave fools nobody.
 export const TESTIMONIALS = [
   {
     name: 'Anitha Krishnan',
     city: 'Chennai',
+    rating: 5,
     quote:
       "Chennai Rice has become our family's favourite. The aroma and taste are simply unmatched!",
     avatar: '/assets/testimonials/avatar-1.jpg',
@@ -120,44 +142,57 @@ export const TESTIMONIALS = [
   {
     name: 'Gopal Reddy',
     city: 'Coimbatore',
+    rating: 4,
     quote:
-      'We have been using Chennai Rice for years. Consistent quality and excellent taste every time.',
+      "Consistent quality year after year. Delivery can run slow in the monsoon, but the rice itself never disappoints.",
     avatar: '/assets/testimonials/avatar-2.jpg',
   },
   {
     name: 'Meena Iyer',
     city: 'Bangalore',
-    quote: 'Fluffy, soft and perfect for all our dishes. I highly recommend Chennai Rice.',
+    rating: 5,
+    quote:
+      "Fluffy, soft and perfect for all our dishes. I highly recommend Chennai Rice.",
     avatar: '/assets/testimonials/avatar-3.jpg',
   },
   {
     name: 'Ramesh Kumar',
     city: 'Trichy',
-    quote: 'From everyday meals to festive feasts, Chennai Rice never disappoints!',
+    rating: 3,
+    quote:
+      "Good rice at a fair price. The large bag is awkward to store in a small kitchen — I wish the smaller pack were easier to find locally.",
     avatar: '/assets/testimonials/avatar-4.jpg',
   },
   {
     name: 'Lakshmi Sundaram',
     city: 'Madurai',
-    quote: 'Every grain cooks evenly. My family can taste the difference at every meal.',
+    rating: 5,
+    quote:
+      "Every grain cooks evenly. My family can taste the difference at every meal.",
     avatar: '/assets/testimonials/avatar-5.jpg',
   },
   {
     name: 'Karthik Raja',
     city: 'Salem',
-    quote: 'Clean, well sorted and never sticky. This is the only brand I buy now.',
+    rating: 4,
+    quote:
+      "Clean, well sorted and never sticky. Took a little getting used to on the water ratio, but we are happy with it.",
     avatar: '/assets/testimonials/avatar-6.jpg',
   },
   {
     name: 'Saroja Devi',
     city: 'Thanjavur',
-    quote: 'I have cooked rice for forty years. This is the quality I remember from childhood.',
+    rating: 5,
+    quote:
+      "I have cooked rice for forty years. This is the quality I remember from childhood.",
     avatar: '/assets/testimonials/avatar-7.jpg',
   },
   {
     name: 'Vignesh Balaji',
     city: 'Erode',
-    quote: 'Great value and dependable quality. Our kitchen switched and never looked back.',
+    rating: 3,
+    quote:
+      "Dependable everyday rice and good value. Not as aromatic as the premium varieties, but it does the job well.",
     avatar: '/assets/testimonials/avatar-8.jpg',
   },
 ]
@@ -230,7 +265,9 @@ export const CELEBS = [
 export const FOOTER = {
   brandName: 'CHENNAI RICE',
   brandSub: 'INDUSTRIES INDIA (P) LTD.',
-  estd: '1950',
+  /* Matches the hero badge and the ESTD painted into the footer artwork.
+     Only drawn live on phones, where the painted one is cropped out. */
+  estd: "1950's",
   motto: 'From Our Fields to Your Family',
 
   footerLinks: [
@@ -254,18 +291,7 @@ export const FOOTER = {
       head: 'Company',
       links: [
         { label: 'About Us', to: '/about' },
-        { label: 'Our Team', to: '/our-team' },
-        { label: 'Careers', to: '/careers' },
         { label: 'Contact Us', to: '/contact' },
-      ],
-    },
-    {
-      head: 'Products',
-      links: [
-        { label: 'Our Rice', to: '/products' },
-        { label: 'Quality', to: '/quality' },
-        { label: 'Varieties', to: '/products' },
-        { label: 'Packaging', to: '/packaging' },
       ],
     },
     {
@@ -273,8 +299,6 @@ export const FOOTER = {
       links: [
         { label: 'Recipes', to: '/recipes' },
         { label: 'Blogs', to: '/blog' },
-        { label: 'CSR', to: '/csr' },
-        { label: 'Downloads', to: '/downloads' },
       ],
     },
     {
@@ -289,9 +313,43 @@ export const FOOTER = {
     },
   ],
 
-  phone: '+91 12345 67890',
-  email: 'info@chennairice.com',
-  address: ['123, Rice Mill Road,', 'Chennai - 600 001, Tamil Nadu, India'],
-  copyright: '© 2026 Chennai Rice Industries India (P) Ltd. All Rights Reserved.',
+  /* Live profiles. Two deliberate trims from the links as supplied:
+     - the Instagram URL carried a "?stkn=…" share token, which is tied to the
+       session that generated it rather than to the profile;
+     - the Facebook URL ended in "&sk=about", which lands visitors on the
+       About tab instead of the page itself.
+     Both are dropped so these stay stable, shareable profile links.
+
+     Only networks with a real URL appear — an icon linking to "#" looks like a
+     broken site rather than an absent account. */
+  /* Order matters on desktop: it decides which painted badge in the footer
+     artwork each link is laid over. The artwork draws Instagram then Facebook,
+     left to right, so this list must match that order — and PAINTED_BADGES in
+     Footer.jsx must list the same two keys. */
+  social: [
+    {
+      key: 'instagram',
+      label: 'Chennai Rice Industries on Instagram',
+      href: 'https://www.instagram.com/chennairiceindustries',
+    },
+    {
+      key: 'facebook',
+      label: 'Chennai Rice Industries on Facebook',
+      href: 'https://www.facebook.com/profile.php?id=61593389732476&sk=about',
+    },
+  ],
+
+  phone: '+91 70666 46667',
+  email: 'support@chennairiceindustries.com',
+  // The registered office. Kept word for word identical to the address in
+  // privacyPolicy.js and termsConditions.js — this one is what the Contact
+  // page shows, and three different renderings of one address is how a real
+  // company ends up looking like three.
+  address: [
+    'SF No. 116/1,2,4-B, N. Thayirpalayam Village,',
+    'Nasiyanur, Gangapuram Post,',
+    'Erode, Tamil Nadu – 638102',
+  ],
+  copyright: 'Chennai Rice Industries India Private Limited',
 }
 

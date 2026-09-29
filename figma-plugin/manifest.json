@@ -1,0 +1,12 @@
+{
+  "name": "Chennai Rice — Website to Figma",
+  "id": "chennai-rice-website-to-figma",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["https://chennairiceindustries.com"],
+    "reasoning": "Fetches the site's own logo, pack shots, footer artwork and avatars so they are placed as real image fills rather than empty boxes."
+  }
+}

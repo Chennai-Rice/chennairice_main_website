@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { RiceGrainIcon, CloseIcon, MinimizeIcon } from './icons.jsx'
-import ChatOrb from './ChatOrb.jsx'
+import { CloseIcon, MinimizeIcon } from './icons.jsx'
 import ChatMessage from './ChatMessage.jsx'
 import ChatInput from './ChatInput.jsx'
 import { QuickActionsGrid, OptionPills } from './QuickActions.jsx'
@@ -39,7 +38,7 @@ export default function ChatWindow({ chat, isClosing, onClose, onMinimize, title
     >
       <header className="sk-header">
         <div className="sk-header-avatar" aria-hidden="true">
-          <RiceGrainIcon />
+          <img src="/assets/soru-kutty.png" alt="" width="40" height="40" />
         </div>
         <div className="sk-header-text">
           <div className="sk-header-name" id={titleId}>{SORU_KUTTY.name}</div>
@@ -58,7 +57,9 @@ export default function ChatWindow({ chat, isClosing, onClose, onMinimize, title
       <div className="sk-body" ref={bodyRef}>
         {messages.length === 0 && (
           <div className="sk-welcome">
-            <ChatOrb />
+            {/* The robot itself rather than the abstract orb, so the face in
+                the launcher and the face in the window are the same character. */}
+            <img className="sk-welcome-avatar" src="/assets/soru-kutty.png" alt="" width="120" height="120" />
             <h2 className="sk-welcome-title">{SORU_KUTTY.greetingTitle}</h2>
             <p className="sk-welcome-sub">{SORU_KUTTY.greetingSubtitle}</p>
             <QuickActionsGrid onSelect={sendMessage} />
@@ -79,7 +80,7 @@ export default function ChatWindow({ chat, isClosing, onClose, onMinimize, title
         {isThinking && (
           <div className="sk-msg-row is-assistant sk-thinking" aria-live="polite" aria-label="Soru Kutty is thinking">
             <div className="sk-msg-avatar" aria-hidden="true">
-              <RiceGrainIcon />
+              <img src="/assets/soru-kutty.png" alt="" width="28" height="28" />
             </div>
             <div className="sk-thinking-bubble">
               <span className="sk-thinking-dot" />

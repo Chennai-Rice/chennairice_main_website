@@ -431,3 +431,124 @@
     font-size: 8.5px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Phone corrections to the showcase slide.
+   --------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  /* The category line carried a rule on its left only, so the pair sat
+     centred by the browser but read as left-heavy — and the letter-spacing
+     adds a trailing gap after the last letter, pushing it further off. A
+     matching rule on the right makes the symmetry real rather than nominal. */
+  .slide-cat::after {
+    content: "";
+    width: 46px;
+    height: 1px;
+    background: var(--gold);
+    flex: 0 0 auto;
+    /* Cancels the trailing letter-space so both rules sit equidistant. */
+    margin-left: -0.32em;
+  }
+
+  /* The ghost word was sized for a desktop stage: at 96px "KITCHIDI" runs off
+     both edges of a phone, so it read as stray strokes rather than a word.
+     Sized to the viewport instead, and lifted slightly out of the background
+     since there is far less of it visible to carry the effect. */
+  .huge-bg-text {
+    font-size: clamp(30px, 11vw, 62px);
+    letter-spacing: 0.05em;
+    text-indent: 0.05em;
+    opacity: 0.07;
+  }
+}
+
+@media (max-width: 520px) {
+  /* Three specs abreast leaves each about a hundred pixels, which breaks
+     "Kitchidi Ponni Rice" across two ragged lines. One per row reads cleanly
+     and keeps the label with its value. */
+  .slide-right {
+    flex-direction: column;
+    gap: clamp(8px, 1.4vh, 14px);
+  }
+
+  .spec-item {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .spec-value {
+    font-size: clamp(13px, 4vw, 16px);
+  }
+}
+
+@media (max-width: 768px) {
+  /* Specs before the buttons. The name and its three figures are what a
+     visitor is deciding on; the calls to action belong after that, not
+     between the pack shot and the detail it refers to. */
+  .slide-right {
+    order: 5;
+  }
+  .slide-buttons {
+    order: 6;
+    margin-top: clamp(10px, 2vh, 20px);
+  }
+}
+
+@media (max-width: 520px) {
+  /* Stacking the specs one per row made the card taller, and with the slide
+     bottom-anchored the overflow ran straight into the page dots. Buying the
+     height back from the pack shot and the gaps, and deepening the reserve
+     below, keeps the two apart without shrinking the type. */
+  .slide-grid {
+    gap: clamp(6px, 1.2vh, 14px);
+    padding-bottom: 124px;
+  }
+  .product-bag-img {
+    max-height: clamp(130px, 19vh, 200px);
+  }
+  .slide-name {
+    padding-bottom: clamp(5px, 0.9vh, 9px);
+  }
+}
+
+/* The ghost word is the slide's watermark; at 5% it is close to invisible on a
+   bright screen, which is why it reads as absent rather than subtle. Still a
+   watermark at 8%, but actually legible as a word. */
+.huge-bg-text {
+  opacity: 0.08;
+}
+
+@media (max-width: 768px) {
+  /* The pack shot is the point of the slide, so it gets the height back. The
+     room comes from the reserve below rather than from the type: the page dots
+     sit at 18px, so 124px of padding was far more than they need. */
+  .slide-grid {
+    padding-bottom: 86px;
+  }
+
+  /* .huge-bg-text centres on the slide box, and that box includes the bottom
+     reserve — so the content's true centre sits above the box's, and the
+     watermark drifted low, ending up behind the foot of the pack. Lifting it
+     by half the reserve puts it back behind the pack itself. */
+  .huge-bg-text {
+    align-content: center;
+    transform: translateY(-43px);
+  }
+}
+
+@media (max-width: 520px) {
+  .slide-grid {
+    padding-bottom: 86px;
+  }
+  .product-bag-img {
+    max-height: clamp(185px, 27vh, 280px);
+  }
+  /* Tightened so the larger pack shot has somewhere to come from. */
+  .slide-right {
+    gap: clamp(5px, 1vh, 10px);
+  }
+  .slide-desc {
+    margin-block: clamp(4px, 0.8vh, 10px);
+  }
+}

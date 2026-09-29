@@ -96,7 +96,9 @@ const Divider = () => (
   </svg>
 )
 
-const SLIDE_MS = 6000
+/* Mirrored by the `transform` duration on .ish-hero-media img in
+   infrastructure.css — change both together or the push-in desyncs. */
+const SLIDE_MS = 4000
 
 /**
  * Editorial showcase that opens the Infrastructure page: a rotating hero,
@@ -160,11 +162,6 @@ export default function InfraShowcase() {
             <Divider />
 
             <p className="ish-hero-text">{active.text}</p>
-
-            <a className="infra-btn ish-hero-cta" href="#infra-overview">
-              Explore Our Infrastructure
-              <ArrowRight />
-            </a>
           </div>
         </div>
 
@@ -233,7 +230,13 @@ export default function InfraShowcase() {
             {SHOWCASE_CARDS.map(card => (
               <article className="ish-card infra-reveal" key={card.title}>
                 <div className="ish-card-media">
-                  <Img src={INFRA_ASSETS[card.image]} fallback={INFRA_ASSETS.fallback} alt={card.alt} />
+                  {/* The zoom-on-hover needs a clipping box, but the badge
+                      below has to hang past the photo's bottom edge. One
+                      element cannot do both, so the clip lives on this frame
+                      and the media box itself stays unclipped. */}
+                  <div className="ish-card-frame">
+                    <Img src={INFRA_ASSETS[card.image]} fallback={INFRA_ASSETS.fallback} alt={card.alt} />
+                  </div>
                   <span className="ish-card-badge">
                     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       {CARD_ICONS[card.icon]}

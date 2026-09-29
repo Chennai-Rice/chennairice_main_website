@@ -6,10 +6,17 @@ export default function Footer() {
       <p>
         <strong>Chennai Rice Industries India (P) Ltd</strong>
       </p>
+      {/* Matches the wording in content.js, privacyPolicy.js and
+          termsConditions.js verbatim. This block used to be a fourth variant
+          of the same address — "SF No:" with a colon, "4B" for "4-B", a
+          "Chithode Via" line the others do not carry, and the PIN before the
+          state. */}
       <address>
-        SF No: 116/1, 2, 4B, N.&nbsp;Thayirpalayam Village, Gangapuram Post,
+        SF No. 116/1,2,4-B, N.&nbsp;Thayirpalayam Village,
         <br />
-        Chithode Via, Nasiyanur, Erode &ndash; 638102, Tamil Nadu, India
+        Nasiyanur, Gangapuram Post,
+        <br />
+        Erode, Tamil Nadu &ndash; 638102
       </address>
     </footer>
   );

@@ -145,7 +145,7 @@ export const TERMS_CONTACT = {
   heading: '18. Contact Us',
   intro: 'For any questions or concerns regarding these Terms and Conditions, please contact us at:',
   companyName: 'Chennai Rice Industries India Private Limited',
-  email: 'social@chennairiceindustries.com',
+  email: 'support@chennairiceindustries.com',
   address: [
     'SF No. 116/1,2,4-B, N. Thayirpalayam Village,',
     'Nasiyanur, Gangapuram Post,',

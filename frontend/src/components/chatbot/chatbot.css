@@ -24,41 +24,70 @@
   bottom: 24px;
   z-index: 1000;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
 }
 
-.sk-launcher-tooltip {
+/* The standing invitation above the orb. A rounded pill rather than a circle:
+   the line is too long to sit legibly in one, and a pill still reads as a
+   speech bubble thanks to the tail below. */
+.sk-launcher-hello {
+  position: relative;
   background: var(--sk-burgundy-deep);
   color: var(--sk-cream);
-  font-size: 13px;
-  font-weight: 500;
-  padding: 10px 16px;
-  border-radius: 12px;
+  /* Kept small on purpose. The launcher is fixed to the viewport corner, so
+     this bubble passes over whatever the page has there — in the footer that
+     is the "Follow Us" block. A smaller pill covers far less of it, and the
+     line is short enough to stay legible at this size. */
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  padding: 6px 10px;
+  border-radius: 999px;
   white-space: nowrap;
-  box-shadow: 0 10px 24px rgba(74, 16, 26, 0.25);
-  opacity: 0;
-  transform: translateY(6px) scale(0.96);
+  box-shadow: 0 6px 16px rgba(74, 16, 26, 0.26);
+  /* Sits over the orb, so it must not swallow the click. */
   pointer-events: none;
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  margin-right: 8px;
+  animation: sk-hello-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) 0.6s both;
 }
-.sk-launcher-tooltip-name {
+
+/* The tail, pointing down at the orb. */
+.sk-launcher-hello::after {
+  content: "";
+  position: absolute;
+  /* Scaled down with the pill — a 12px tail on a 6px-padded bubble reads as a
+     spike rather than a speech tail. */
+  right: 18px;
+  bottom: -3px;
+  width: 8px;
+  height: 8px;
+  background: var(--sk-burgundy-deep);
+  transform: rotate(45deg);
+  border-radius: 1px;
+}
+
+@keyframes sk-hello-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.92); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-launcher-hello { animation: none; }
+}
+
+/* The avatar fills the button, so the burgundy disc behind it is only a
+   backstop while the image loads. */
+.sk-launcher-avatar {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
   display: block;
-  font-family: var(--serif);
-  font-size: 14.5px;
-  color: var(--sk-cream);
-}
-.sk-launcher-tooltip-sub {
-  display: block;
-  margin-top: 2px;
-  font-size: 11.5px;
-  font-weight: 400;
-  color: rgba(247, 240, 226, 0.75);
-}
-.sk-launcher:hover .sk-launcher-tooltip,
-.sk-launcher-btn:focus-visible + .sk-launcher-tooltip {
-  opacity: 1;
-  transform: translateY(0) scale(1);
 }
 
 .sk-launcher-btn {
@@ -610,9 +639,6 @@
     right: 16px;
     bottom: 16px;
   }
-  .sk-launcher-tooltip {
-    display: none;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -626,5 +652,52 @@
   .sk-msg-row,
   .sk-quick-btn {
     animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Soru Kutty's face.
+
+   The same portrait at three sizes — the window header, the welcome screen and
+   each reply bubble — so the character in the launcher is recognisably the one
+   answering. The burgundy disc behind each stays as a backstop while the image
+   loads, and shows through the transparent rim of the cut-out.
+   --------------------------------------------------------------------------- */
+.sk-header-avatar img,
+.sk-msg-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+/* The welcome screen's portrait: large, centred, and breathing gently rather
+   than sitting inert. It replaces the abstract orb that used to sit here. */
+.sk-welcome-avatar {
+  width: clamp(96px, 30%, 124px);
+  height: auto;
+  margin: 0 auto 6px;
+  display: block;
+  filter: drop-shadow(0 12px 26px rgba(74, 16, 26, 0.28));
+  animation: sk-avatar-breathe 4.5s ease-in-out infinite;
+}
+
+@keyframes sk-avatar-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-4px) scale(1.02); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-welcome-avatar { animation: none; }
+}
+
+/* On a phone the launcher sits over the footer's own content — the copyright
+   line and the Follow Us block both run under it. The orb stays (the chat has
+   to remain reachable); the bubble beside it is the part that can go, since
+   the robot face already reads as a chat button. */
+@media (max-width: 620px) {
+  .sk-launcher-hello {
+    display: none;
   }
 }

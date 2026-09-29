@@ -37,7 +37,7 @@ const COPY_REST = { x: 0, y: 0, opacity: 1, scale: 1 }
  */
 const MOTIONS = [
   {
-    // 01 — Vada Kolam: sweeps across the frame, left to right.
+    // 01 — Kitchidi Ponni: sweeps across the frame, left to right.
     bagEnter: { xPercent: -130, opacity: 0, rotation: -12, scale: 0.8 },
     bagExit: { xPercent: 130, opacity: 0, rotation: 12, scale: 0.85 },
     hold: { yPercent: -5 },
@@ -49,7 +49,7 @@ const MOTIONS = [
     copyExit: { y: -20, opacity: 0 },
   },
   {
-    // 02 — Ponni: rises from below and lifts away upward.
+    // 02 — Chennai Bullets: rises from below and lifts away upward.
     bagEnter: { yPercent: 120, opacity: 0, rotation: 6, scale: 0.85 },
     bagExit: { yPercent: -120, opacity: 0, rotation: -6, scale: 0.7 },
     hold: { xPercent: 4 },
@@ -61,7 +61,7 @@ const MOTIONS = [
     copyExit: { y: -45, opacity: 0 },
   },
   {
-    // 03 — Basmati: mirrors slide 01, entering from the right.
+    // 03 — Alibaba: mirrors slide 01, entering from the right.
     bagEnter: { xPercent: 130, opacity: 0, rotation: 14, scale: 0.8 },
     bagExit: { xPercent: -130, opacity: 0, rotation: -14, scale: 0.85 },
     hold: { yPercent: -5 },
@@ -73,7 +73,7 @@ const MOTIONS = [
     copyExit: { x: -45, opacity: 0 },
   },
   {
-    // 04 — Raw Rice: zooms in from the distance and pushes past the viewer.
+    // 04 — Viruchagam: zooms in from the distance and pushes past the viewer.
     bagEnter: { scale: 0.35, opacity: 0, rotation: -18 },
     bagExit: { scale: 1.7, opacity: 0, rotation: 10 },
     hold: { yPercent: -4 },
@@ -297,7 +297,15 @@ export default function ProductsShowcase() {
   )
 
   return (
-    <section id="products" className="products-showcase-section" ref={sectionRef}>
+    <section
+      id="products"
+      className="products-showcase-section"
+      ref={sectionRef}
+      /* The same tint GSAP applies once it initialises, set here too so the
+         first paint already matches the hero wave above — otherwise the
+         section shows its CSS cream for a frame and the seam flickers in. */
+      style={{ backgroundColor: PRODUCTS[0]?.tint }}
+    >
       <div className="showcase-pin-container">
         <Img
           className="showcase-paddy showcase-paddy-a"

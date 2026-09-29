@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Ornament from './../components/Ornament.jsx'
 import { FOOTER } from '../data/content.js'
 import './page.css'
+import usePageMeta from '../shop/hooks/usePageMeta.js'
 
 const EMPTY = { name: '', email: '', phone: '', enquiry: '' }
 
@@ -36,6 +37,7 @@ const Icon = ({ kind }) => (
 )
 
 export default function ContactPage() {
+  usePageMeta('Contact — Chennai Rice Industries', 'Get in touch with Chennai Rice Industries in Erode, Tamil Nadu. Enquiries about our rice varieties, pack sizes and stockists.')
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
   const [sent, setSent] = useState(false)
@@ -176,13 +178,18 @@ export default function ContactPage() {
 
           <aside className="contact-aside">
             <h2 className="contact-aside-title">Chennai Rice Industries</h2>
+            {/* Actionable rather than plain text: on a phone these are the two
+                things a visitor wants to tap. The global `a` rule inherits
+                colour and drops the underline, so they look as before. The
+                tel: value has its spaces stripped — dialers do not accept a
+                formatted number. */}
             <div className="contact-row">
               <Icon kind="phone" />
-              <span>{FOOTER.phone}</span>
+              <a href={`tel:${FOOTER.phone.replace(/\s/g, '')}`}>{FOOTER.phone}</a>
             </div>
             <div className="contact-row">
               <Icon kind="mail" />
-              <span>{FOOTER.email}</span>
+              <a href={`mailto:${FOOTER.email}`}>{FOOTER.email}</a>
             </div>
             <div className="contact-row">
               <Icon kind="pin" />

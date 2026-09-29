@@ -15,12 +15,15 @@ export const GALLERY_EXTRAS = [
   { src: "/assets/shop/gallery/rice-bowl-cooked.jpg", alt: "A warm bowl of cooked rice", scene: true },
 ];
 
-export const CATEGORY_LABEL = {
-  premium: "Rajabhogam",
-  red: "Ponni Rice",
-  gold: "Kolam Rice",
-  orange: "Ponni Rice",
-};
+/* `variant` is a presentation token — it picks the card's colour treatment,
+   nothing more — so it cannot carry a claim about what is in the bag. Keying a
+   variety label off it printed "Kolam Rice" on five product pages (Nayara,
+   Vijaya Nagaram and both United packs among them), and none of the thirteen
+   packs is Kolam; it likewise called Alibaba's Premium Sappadu "Rajabhogam".
+   The variety now comes from the product's own tag, which is read off the pack
+   artwork, and anything that does not name a variety falls back to plain
+   "Rice" rather than guessing. */
+const VARIETY_WORDS = /\b(ponni|sappadu|rajabhogam|kitchadi|kitchidi)\b/i;
 
 // Mirrors SOURCING_STEPS in data/infrastructure.js — same facility, same
 // verified copy, reused rather than re-described for the product page.
@@ -91,5 +94,21 @@ export function getDetails(id) {
 }
 
 export function getCategoryLabel(product) {
-  return CATEGORY_LABEL[product.variant] || "Rice";
+  const tag = product?.tag?.trim();
+  if (tag && VARIETY_WORDS.test(tag)) return tag;
+
+  // Some packs carry the variety in the product name instead of the tag
+  // ("Special Rajabhogam", "Kitchidi Ponni Rice"). Take just the variety word
+  // from it — the full name would make the breadcrumb repeat itself.
+  // Ponni is checked first because it is the varietal name, while Kitchidi and
+  // Rajabhogam are grades of it — "Kitchidi Ponni Rice" should read as Ponni,
+  // and a plain left-to-right match would have returned Kitchidi.
+  const fromName =
+    product?.name?.match(/\bponni\b/i)?.[0] ?? product?.name?.match(VARIETY_WORDS)?.[0];
+  if (fromName) {
+    return `${fromName[0].toUpperCase()}${fromName.slice(1).toLowerCase()} Rice`;
+  }
+
+  // Nothing on the pack names a variety, so nothing is claimed.
+  return "Rice";
 }

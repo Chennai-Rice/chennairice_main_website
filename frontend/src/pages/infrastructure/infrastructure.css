@@ -183,7 +183,11 @@
   inset: 0;
   opacity: 0;
   transform: scale(1.06);
-  transition: opacity 1.1s ease, transform 8s linear;
+  /* The slow push-in runs for exactly one slide — mirrors SLIDE_MS in
+     InfraShowcase.jsx, so change both together. It was 8s against a 6s slide,
+     so the move was always cut off partway; at a 4s slide it would have
+     travelled barely half its distance before the next photograph replaced it. */
+  transition: opacity 1.1s ease, transform 4s linear;
 }
 .ish-hero-media img.is-active {
   opacity: 1;
@@ -231,10 +235,6 @@
   line-height: 1.95;
   color: var(--infra-muted);
   max-width: 400px;
-}
-
-.ish-hero-cta {
-  margin-top: 4px;
 }
 
 /* ---- carousel controls ---- */
@@ -384,8 +384,16 @@
 .ish-card-media {
   position: relative;
   height: 176px;
-  overflow: hidden;
   background: #e9dfc8;
+}
+
+/* Holds the clip so .ish-card-media does not have to. The badge is a sibling
+   of this, which is what lets it hang below the photo instead of being cut in
+   half by the same overflow that keeps the zoom inside its box. */
+.ish-card-frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
 }
 .ish-card-media img {
   transition: transform 0.7s cubic-bezier(0.16, 0.68, 0.24, 1);
@@ -398,6 +406,8 @@
   left: 50%;
   bottom: -21px;
   translate: -50% 0;
+  /* Above the frame, so the photo can never paint over it. */
+  z-index: 2;
   width: 42px;
   height: 42px;
   border-radius: 50%;
@@ -552,7 +562,6 @@
   .ish-stat { border-right: 1px solid rgba(196, 154, 58, 0.18); }
   .ish-stat:nth-child(2n) { border-right: none; }
   .ish-stat:nth-child(n + 3) { border-top: 1px solid rgba(196, 154, 58, 0.18); }
-  .ish-hero-cta { align-self: stretch; justify-content: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {

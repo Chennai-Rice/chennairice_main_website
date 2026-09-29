@@ -56,12 +56,20 @@
 
 .testi-slot {
   flex: 0 0 calc(100% / var(--visible));
+  /* A flex item will not shrink below its content by default, so a slot
+     could grow wider than its share — longer names, or phone text scaled up
+     in the accessibility settings. The track still slid by the nominal
+     share, so every move landed a little short and the cards showed cut in
+     half at both edges. min-width: 0 holds each slot to exactly its share. */
+  min-width: 0;
   padding-inline: 10px;
   display: flex;
 }
 
 .testi-card {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   display: flex;
   flex-direction: column;
   background: #fffdf6;
@@ -189,7 +197,57 @@
     font-size: 13px;
     margin-bottom: 32px;
   }
-  .testi-arrow {
-    display: none;
+
+  /* Phones and small tablets: the arrows move off the cards and into the
+     dots row underneath — ‹ • • • • › — small, and clear of every line of
+     text. Stacked on the card edges at full size they covered the quotes.
+
+     `.testi .testi-arrow` is deliberately more specific than the shared
+     `.circle-arrow`: the old `display: none` here lost to that rule, which
+     sits later in the built stylesheet, so the big arrows were showing on
+     phones all along. Bottom: 57px centres a 34px button on the dots, which
+     sit 70px (the section's bottom padding) plus half a dot above the edge. */
+  .testi .testi-arrow {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    top: auto;
+    bottom: 57px;
+    transform: none;
+    box-shadow: 0 4px 10px rgba(60, 12, 18, 0.25);
+  }
+  .testi .testi-arrow:hover {
+    transform: scale(1.06);
+  }
+  .testi .testi-arrow svg {
+    width: 13px;
+    height: 13px;
+  }
+  .testi .testi-arrow-prev {
+    left: 5vw;
+  }
+  .testi .testi-arrow-next {
+    right: 5vw;
+  }
+}
+
+/* Phones: "What Our Customers Say" on one line. The wide 0.35em tracking and
+   full-size flourishes pushed "SAY" onto a line of its own. Tighter tracking,
+   and flourishes that give way (shrink) before the words would wrap. */
+@media (max-width: 560px) {
+  .testi-label {
+    font-size: 11.5px;
+    letter-spacing: 0.2em;
+    text-indent: 0.2em;
+    gap: 10px;
+    padding-inline: 12px;
+  }
+  .testi-label span {
+    white-space: nowrap;
+  }
+  .testi-label svg {
+    flex: 0 1 34px;
+    min-width: 0;
+    width: 34px;
   }
 }

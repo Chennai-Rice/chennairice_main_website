@@ -1,6 +1,16 @@
 import Img from './Img.jsx'
-import { ASSETS, FEATURES } from '../data/content.js'
+import { ASSETS, FEATURES, PRODUCTS } from '../data/content.js'
+import { showAmbassadors } from '../config.js'
 import './featurestrip.css'
+
+/* Each cut is filled with the colour of the section it meets, so the band
+   reads as cut out of the page rather than laid on top of it. Both were
+   hardcoded, and both drifted: the showcase above now finishes on the last
+   pack's tint, and with Brand Ambassadors switched off the section below is
+   Testimonials, not the paler Brand Ambassadors ground. Derived here so they
+   follow the page as it actually renders. */
+const ABOVE = PRODUCTS[PRODUCTS.length - 1]?.tint || '#f8f3e9'
+const BELOW = showAmbassadors ? '#faf5e9' : '#f6efdc'
 
 /* Thin-line gold icons traced to match the reference strip. */
 const ICONS = {
@@ -60,7 +70,7 @@ export default function FeatureStrip() {
     <section className="feat">
       <div className="feat-band">
         <svg className="feat-cut feat-cut-top" viewBox="0 0 1440 46" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M0,0 L1440,0 L1440,10 C1080,52 420,52 0,10 Z" fill="#f8f3e9" />
+          <path d="M0,0 L1440,0 L1440,10 C1080,52 420,52 0,10 Z" fill={ABOVE} />
           <path
             d="M0,10 C420,52 1080,52 1440,10"
             fill="none"
@@ -106,10 +116,9 @@ export default function FeatureStrip() {
           ))}
         </div>
 
-        {/* bottom cut is filled with the colour of the section that follows
-            (Celebrities' --cream-soft, #faf5e9) — keep these in sync. */}
+        {/* Filled with the section that follows — see BELOW above. */}
         <svg className="feat-cut feat-cut-bottom" viewBox="0 0 1440 46" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M0,46 L0,36 C420,-6 1080,-6 1440,36 L1440,46 Z" fill="#faf5e9" />
+          <path d="M0,46 L0,36 C420,-6 1080,-6 1440,36 L1440,46 Z" fill={BELOW} />
           <path
             d="M0,36 C420,-6 1080,-6 1440,36"
             fill="none"

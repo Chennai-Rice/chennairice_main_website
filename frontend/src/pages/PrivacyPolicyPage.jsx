@@ -2,8 +2,10 @@ import Ornament from '../components/Ornament.jsx'
 import { POLICY_LAST_UPDATED, POLICY_INTRO, POLICY_SECTIONS, POLICY_CONTACT } from '../data/privacyPolicy.js'
 import './page.css'
 import './legal.css'
+import usePageMeta from '../shop/hooks/usePageMeta.js'
 
 export default function PrivacyPolicyPage() {
+  usePageMeta('Privacy Policy — Chennai Rice Industries', 'How Chennai Rice Industries India Private Limited collects, uses and protects your personal information.')
   return (
     <main className="page">
       <div className="container page-inner page-inner--wide">

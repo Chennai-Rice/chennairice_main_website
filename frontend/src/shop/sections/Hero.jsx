@@ -15,9 +15,14 @@ export default function Hero() {
           <span key={n} className={`glint g${n}`} aria-hidden="true" />
         ))}
       </p>
-      <h1 id="hero-heading">Kitchidi Ponni Rice</h1>
+      {/* The page lists the whole range, so the heading names the range. It
+          used to read "Kitchidi Ponni Rice" — one pack out of thirteen — which
+          both misdescribed the page and made it compete with the Kitchidi Ponni
+          product page for the same search. */}
+      <h1 id="hero-heading">Our Rice Packs</h1>
       <p className="hero-sub">
-        Ponni and Kolam varieties, milled and sealed at our own Erode facility and packed in 10&nbsp;kg family bags.
+        Ponni, Sappadu and Rajabhogam varieties, milled and sealed at our own Erode facility and packed from
+        5&nbsp;kg to 26&nbsp;kg.
       </p>
     </section>
   );

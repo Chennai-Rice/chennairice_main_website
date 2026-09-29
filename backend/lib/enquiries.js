@@ -42,6 +42,9 @@ export function buildBulkOrderRow(body) {
   const name = str(body?.name)
   const email = str(body?.email)
   const phone = str(body?.phone)
+  /* The form no longer asks for a quantity, but the column stays and is still
+     read off the body: rows written before the field was dropped keep their
+     value, and an older cached build of the page can still post one. */
   const quantity = str(body?.quantity)
   const message = str(body?.message)
   const gstin = str(body?.gstin).toUpperCase()
@@ -53,7 +56,6 @@ export function buildBulkOrderRow(body) {
   if (!name) return { error: "Please add the representative's name." }
   if (!email || !EMAIL_PATTERN.test(email)) return { error: 'A valid email address is required.' }
   if (!phone || !PHONE_PATTERN.test(phone)) return { error: 'A valid phone number is required.' }
-  if (buyerType === 'other' && !quantity) return { error: 'Please tell us how many KGs you need.' }
 
   return {
     row: {

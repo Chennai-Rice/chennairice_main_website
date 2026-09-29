@@ -12,8 +12,11 @@ export const FEATURES = [
     )
   },
   {
-    title: "10 kg family packs",
-    note: "Net weight printed on every bag",
+    /* The range has not been 10 kg only for some time: it runs 5 kg family
+       packs to the 26 kg Chennai Bullets trade pack. Kept in step with the
+       same claim in Lineup.jsx. */
+    title: "5 kg to 26 kg packs",
+    note: "Family sizes through to trade sizes",
     icon: (
       <>
         <path d="M5 8h14l-1.5 12h-11z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />

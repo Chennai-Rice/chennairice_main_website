@@ -23,3 +23,16 @@ backend/server/node_modules
 # Root dependencies and build output — reinstall/rebuild instead of tracking
 node_modules
 dist
+
+# Generated credential dump for deployment — never commit.
+vercel-env.DO-NOT-COMMIT.txt
+
+# Firebase
+.firebase
+functions/node_modules
+functions/lib
+functions/.env
+
+# Generated before every build by scripts/generate-sitemap.mjs
+frontend/public/sitemap.xml
+frontend/public/robots.txt

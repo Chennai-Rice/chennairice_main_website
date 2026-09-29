@@ -194,12 +194,15 @@ export const POLICY_SECTIONS = [
 export const POLICY_CONTACT = {
   heading: 'Get in touch',
   intro: 'Questions, requests, or concerns about this policy or how we handle your information? We’re glad to help.',
-  companyName: 'Chennai Gate Rice Industries Private Limited',
+  companyName: 'Chennai Rice Industries India Private Limited',
   website: 'chennairiceindustries.com',
   email: 'support@chennairiceindustries.com',
+  // Kept identical to the registered office in termsConditions.js — two legal
+  // pages giving different addresses for the same company is the kind of
+  // discrepancy that undermines both.
   address: [
-    '116/1,2,4-B, N. Thayirpalayam Village,',
-    'Chittode Via, Gangapuram Post,',
-    'Nasiyanur – 638102, India',
+    'SF No. 116/1,2,4-B, N. Thayirpalayam Village,',
+    'Nasiyanur, Gangapuram Post,',
+    'Erode, Tamil Nadu – 638102',
   ],
 }

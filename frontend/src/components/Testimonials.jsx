@@ -6,8 +6,20 @@ import './testimonials.css'
 
 const AUTOPLAY_MS = 4000
 
-const Star = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="#d9a833" aria-hidden="true">
+/* An unfilled star is drawn as an outline rather than simply omitted, so a
+   three-star review still shows five positions and reads as "3 out of 5"
+   instead of looking like a card with stars missing. */
+const Star = ({ filled = true }) => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill={filled ? '#d9a833' : 'none'}
+    stroke="#d9a833"
+    strokeWidth={filled ? 0 : 1.6}
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" />
   </svg>
 )
@@ -91,9 +103,15 @@ export default function Testimonials() {
                       <div className="testi-who">
                         <div className="testi-name">{t.name}</div>
                         <div className="testi-city">{t.city}</div>
-                        <div className="testi-stars">
+                        {/* Falls back to 5 so a testimonial added without a
+                            rating still renders sensibly. */}
+                        <div
+                          className="testi-stars"
+                          role="img"
+                          aria-label={(t.rating ?? 5) + ' out of 5 stars'}
+                        >
                           {Array.from({ length: 5 }, (_, s) => (
-                            <Star key={s} />
+                            <Star key={s} filled={s < (t.rating ?? 5)} />
                           ))}
                         </div>
                       </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Ornament from '../components/Ornament.jsx'
 import { FOOTER } from '../data/content.js'
+import usePageMeta from '../shop/hooks/usePageMeta.js'
 import './page.css'
 import './bulkorder.css'
 
@@ -18,7 +19,6 @@ const EMPTY = {
   name: '',
   email: '',
   phone: '',
-  quantity: '',
   message: '',
   gstin: '',
 }
@@ -54,6 +54,10 @@ const Icon = ({ kind }) => (
 )
 
 export default function BulkOrderPage() {
+  usePageMeta(
+    'Bulk Orders — Chennai Rice Industries',
+    'Bulk rice orders for distributors, wholesalers and retailers. Trade packs up to 26 kg, milled and graded at our Erode facility.'
+  )
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
   const [sent, setSent] = useState(false)
@@ -66,10 +70,8 @@ export default function BulkOrderPage() {
   }
 
   const chooseType = key => {
-    // Only "Others" has a Quantity field, so switching away from it clears
-    // any stale value rather than silently carrying it into a submission.
-    setForm(f => ({ ...f, type: key, quantity: key === 'other' ? f.quantity : '' }))
-    setErrors(x => ({ ...x, type: undefined, otherType: undefined, quantity: undefined }))
+    setForm(f => ({ ...f, type: key }))
+    setErrors(x => ({ ...x, type: undefined, otherType: undefined }))
   }
 
   const GSTIN_PATTERN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/
@@ -93,8 +95,6 @@ export default function BulkOrderPage() {
     if (!form.email.trim()) next.email = 'Please add an email address.'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
       next.email = 'That email address does not look right.'
-    if (form.type === 'other' && !form.quantity.trim())
-      next.quantity = 'Please tell us how many KGs you need.'
 
     return next
   }
@@ -232,21 +232,6 @@ export default function BulkOrderPage() {
               {errors.email && <span className="field-error">{errors.email}</span>}
             </label>
 
-            {form.type === 'other' && (
-              <label className="field">
-                <span className="field-label">Quantity Required (KGs)</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={form.quantity}
-                  onChange={set('quantity')}
-                  placeholder="e.g. 500"
-                  aria-invalid={!!errors.quantity}
-                />
-                {errors.quantity && <span className="field-error">{errors.quantity}</span>}
-              </label>
-            )}
-
             <label className="field">
               <span className="field-label">Message (optional)</span>
               <textarea
@@ -286,13 +271,14 @@ export default function BulkOrderPage() {
 
           <aside className="contact-aside">
             <h2 className="contact-aside-title">Chennai Rice Industries</h2>
+            {/* Tappable, as on the Contact page — see the note there. */}
             <div className="contact-row">
               <Icon kind="phone" />
-              <span>{FOOTER.phone}</span>
+              <a href={`tel:${FOOTER.phone.replace(/\s/g, '')}`}>{FOOTER.phone}</a>
             </div>
             <div className="contact-row">
               <Icon kind="mail" />
-              <span>{FOOTER.email}</span>
+              <a href={`mailto:${FOOTER.email}`}>{FOOTER.email}</a>
             </div>
             <div className="contact-row">
               <Icon kind="pin" />

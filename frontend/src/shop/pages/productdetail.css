@@ -665,10 +665,76 @@
    three related packs, 220px columns left most of the row empty. auto-fit
    collapses the unused tracks so the cards always stretch across, and drops
    to fewer columns as the viewport narrows. */
+/* The rail: a positioning context for the two overlaid arrow buttons. */
+.pdp-related-rail {
+  position: relative;
+}
+
+/* Native horizontal scrolling with snap points. Doing it this way rather
+   than with a transform means touch, trackpad, keyboard and assistive tech
+   all work without JavaScript; the arrows only add a click target. */
 .pdp-related-track {
+  /* How many cards fill the rail. Each column is a quarter of the width less
+     its share of the gaps, so four sit exactly edge to edge and a press of an
+     arrow moves precisely one set of four. */
+  --cards: 4;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - (var(--cards) - 1) * var(--s-6)) / var(--cards));
   gap: var(--s-6);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  /* Room for the cards' resting shadow, which a tight overflow box clips. */
+  padding: var(--s-2) 0 var(--s-4);
+  -webkit-overflow-scrolling: touch;
+  /* The rail has arrows and snap points; a scrollbar underneath it is just
+     noise. Scrolling by touch, wheel and keyboard all still work. */
+  scrollbar-width: none;
+}
+.pdp-related-track::-webkit-scrollbar { display: none; }
+
+/* Fewer cards as the rail narrows. The fractional count on the smallest
+   screens leaves the next card half in view, which is what tells a visitor
+   the rail scrolls at all. */
+@media (max-width: 1023px) { .pdp-related-track { --cards: 3; } }
+@media (max-width: 767px)  { .pdp-related-track { --cards: 2; } }
+@media (max-width: 539px)  { .pdp-related-track { --cards: 1.25; } }
+
+.pdp-related-track:focus-visible {
+  outline: 2px solid var(--maroon-600);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+.pdp-related-card { scroll-snap-align: start; }
+
+/* Arrows sit over the rail edges. They are removed entirely when the track has
+   nothing to scroll — see the "scrollable" check in RelatedProducts.jsx. */
+.pdp-related-nav {
+  position: absolute;
+  top: 38%;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--cream-50);
+  color: var(--maroon-600);
+  border: 1px solid var(--cream-300);
+  box-shadow: 0 6px 18px -6px rgba(43, 27, 22, 0.35);
+  cursor: pointer;
+  transition: background var(--transition-fast), opacity var(--transition-fast);
+  z-index: 2;
+}
+.pdp-related-nav:hover:not(:disabled) { background: var(--cream-100); }
+.pdp-related-nav:disabled { opacity: 0.35; cursor: default; }
+.pdp-related-nav--prev { left: -8px; }
+.pdp-related-nav--next { right: -8px; }
+
+@media (max-width: 719px) {
+  /* No room to overhang on a phone; tuck them inside the rail edges. */
+  .pdp-related-nav--prev { left: 2px; }
+  .pdp-related-nav--next { right: 2px; }
 }
 .pdp-related-card {
   background: var(--cream-50);

@@ -14,7 +14,11 @@ export default function CartRow({ item }) {
       <div className="cart-item-body">
         <p className="cart-item-tag">{item.tag}</p>
         <h2 className="cart-item-name">{item.name}</h2>
-        <p className="cart-item-unit">{formatRupees(item.price)} / 10 kg</p>
+        {/* The basis follows the pack. Detail-page lines carry packKg; lines
+            added straight off a card fall back to the product's only size. */}
+        <p className="cart-item-unit">
+          {formatRupees(item.price)} / {item.packKg ?? item.packSizes?.[0]?.kg ?? "—"} kg
+        </p>
       </div>
 
       <div className="cart-item-actions">

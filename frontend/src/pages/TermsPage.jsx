@@ -2,8 +2,10 @@ import Ornament from '../components/Ornament.jsx'
 import { TERMS_LAST_UPDATED, TERMS_INTRO, TERMS_SECTIONS, TERMS_CONTACT } from '../data/termsConditions.js'
 import './page.css'
 import './legal.css'
+import usePageMeta from '../shop/hooks/usePageMeta.js'
 
 export default function TermsPage() {
+  usePageMeta('Terms and Conditions — Chennai Rice Industries', 'The terms governing use of the Chennai Rice Industries website and any orders placed through it.')
   return (
     <main className="page">
       <div className="container page-inner page-inner--wide">
