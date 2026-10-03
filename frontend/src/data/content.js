@@ -19,7 +19,12 @@ export const ASSETS = {
      Bump the suffix whenever the artwork changes. */
   logo: '/assets/logo-white-v2.png',
   logoOnLight: '/assets/logo-full-v2.png',
-  heroVideo: '/assets/hero.mp4',
+  /* Re-encoded from the original 94.8 MB master (kept in git history as
+     assets/hero.mp4): letterbox bars cropped off (1920x918 picture from
+     y=80), scaled to 1280 wide, H.264 CRF 27, no audio track — the hero
+     always plays muted — and faststart so it begins playing before it has
+     fully downloaded. 6.7 MB, same 44.9 s length. */
+  heroVideo: '/assets/hero-v2.mp4',
   wheatLeft: '/assets/decor/wheat-left.png',
   wheatRight: '/assets/decor/wheat-right.png',
   riceBowl: '/assets/decor/rice-bowl.png',
@@ -58,7 +63,7 @@ export const PRODUCTS = [
     name: 'CHENNAI BULLETS',
     // Read off the pack: Rajabhogam Ponni, 26 kg, "Rich Aroma" and
     // "Genuine Taste" — the trade pack, hence the kitchens-and-canteens framing.
-    desc: 'Rajabhogam Ponni with a rich aroma and genuine taste, in our largest 26 kg pack — built for kitchens that cook at scale.',
+    desc: 'Rajabhogam Ponni with a rich aroma and genuine taste, in our largest 26 kg pack, built for kitchens that cook at scale.',
     packSize: '26 KG',
     riceType: 'Rajabhogam Ponni',
     idealFor: 'Bulk Kitchens • Large Families',
@@ -73,7 +78,7 @@ export const PRODUCTS = [
     name: 'ALIBABA',
     // Straight off the pack: "100% Pure Genuine Quality", "Hassle Free Cooking",
     // Premium Sappadu Rice at 10 kg.
-    desc: 'Premium Sappadu rice — 100% pure, genuine quality, and hassle-free cooking for the everyday sappadu.',
+    desc: 'Premium Sappadu rice with 100% pure, genuine quality and hassle-free cooking for the everyday sappadu.',
     packSize: '10 KG',
     riceType: 'Premium Sappadu Rice',
     idealFor: 'Everyday Sappadu • Hassle-Free Cooking',
@@ -88,7 +93,7 @@ export const PRODUCTS = [
     name: 'VIRUCHAGAM',
     // From the pack: SNR RNR Poompuhar Ponni, "Pure Rice", "100% Natural",
     // "Rich Nutrition".
-    desc: 'Poompuhar Ponni from SNR RNR paddy — pure rice, 100% natural, and rich in nutrition.',
+    desc: 'Poompuhar Ponni from SNR RNR paddy. Pure rice, 100% natural and rich in nutrition.',
     // This artwork prints no net weight, unlike the other three packs. Rather
     // than invent a figure on the homepage, the slot points at the enquiry
     // button sitting directly beside it. Replace with the real sizes when known.
@@ -265,10 +270,6 @@ export const CELEBS = [
 export const FOOTER = {
   brandName: 'CHENNAI RICE',
   brandSub: 'INDUSTRIES INDIA (P) LTD.',
-  /* Matches the hero badge and the ESTD painted into the footer artwork.
-     Only drawn live on phones, where the painted one is cropped out. */
-  estd: "1950's",
-  motto: 'From Our Fields to Your Family',
 
   footerLinks: [
     { label: 'Home', to: '/' },
@@ -308,7 +309,6 @@ export const FOOTER = {
         { label: 'Track Order', to: '/track-order' },
         { label: 'Shipping & Delivery', to: '/shipping' },
         { label: 'Terms & Conditions', to: '/terms' },
-        { label: 'Privacy Policy', to: '/privacy' },
       ],
     },
   ],
@@ -322,10 +322,6 @@ export const FOOTER = {
 
      Only networks with a real URL appear — an icon linking to "#" looks like a
      broken site rather than an absent account. */
-  /* Order matters on desktop: it decides which painted badge in the footer
-     artwork each link is laid over. The artwork draws Instagram then Facebook,
-     left to right, so this list must match that order — and PAINTED_BADGES in
-     Footer.jsx must list the same two keys. */
   social: [
     {
       key: 'instagram',

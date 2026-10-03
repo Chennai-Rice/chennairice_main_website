@@ -30,29 +30,6 @@
   background: radial-gradient(120% 90% at 60% 20%, #3a2c14 0%, #1c1409 55%, #0e0a05 100%);
 }
 
-/* hero.mp4 is letterboxed: the film is roughly 1920x924, set inside a
-   1920x1080 file with a solid black bar of about 78px (7.2%) along the top
-   and the bottom. Measured by rendering the file in Chrome.
-
-   `cover` scales by whichever axis runs out first. On a wide desktop that is
-   the width, the frame overflows vertically and the bars are cropped off. On
-   a tall phone it is the height, the whole frame shows, and the bars show
-   with it — the top one hidden behind the navbar, the bottom one as a black
-   band above the wave.
-
-   So the element is made taller than the hero by the bars' share of it: 118%
-   tall, lifted 9%. `cover` then fits the picture, not the file, to the hero
-   and both bars land outside it, where .home-hero's overflow clips them. On
-   screens wide enough to be width-limited it simply overflows a little more,
-   which costs nothing. The margin over the measured 7.2% absorbs any
-   difference between the top bar and the bottom one.
-
-   Re-encoding the video without the bars would remove the need for this. */
-.hero-video {
-  top: -9%;
-  bottom: auto;
-  height: 118%;
-}
 
 .hero-overlay {
   position: absolute;

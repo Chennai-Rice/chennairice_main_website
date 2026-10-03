@@ -1,214 +1,137 @@
 /* ============================================================
-   The footer is one piece of artwork with live content laid over it.
+   Footer — maroon block under a landscape-and-gold-wave band.
 
-   Sizing: at full bleed the artwork's own ratio (1535x1024) would make it
-   ~960px tall on a 1440px screen — far too much for a footer. The block is
-   capped instead and the image is cover-fitted from the bottom, so the
-   maroon band, gold curve and fields are always kept and only the empty
-   sky is trimmed off the top.
+   The band is the top 290px of the supplied footer artwork. The rest of that
+   artwork carried painted text, so it is not used: the content here is live
+   HTML on a CSS maroon sampled from the band's own bottom edge (#380708), so
+   the two meet without a join.
+
+   Contrast rule throughout: gold for headings and decoration, cream for text.
+   Both are measured against this maroon — gold #d9b96a is about 9:1 and the
+   cream links about 13:1.
    ============================================================ */
 .foot {
+  --foot-maroon: #380708;
+  --foot-gold: #d9b96a;
+  --foot-cream: #f6efdc;
   position: relative;
-  isolation: isolate;
-  /* The artwork is 3:1 and spans the full width, so it always renders exactly
-     one third of the viewport tall. Matching the block to that plus the legal
-     strip means the whole painting shows with nothing cropped and no dead
-     space under it. Capped at 700px so it cannot run away on very wide
-     screens — past that the sky is trimmed off the top, which costs nothing.
-
-     The previous 3:2 artwork rendered half the viewport tall, which is why
-     everything painted in it came out so large. */
-  min-height: clamp(400px, calc(100vw / 3 + var(--foot-legal-h)), 700px);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
   overflow: hidden;
-  /* Height of the plain strip under the painting that carries the company
-     line. The artwork and the click targets both stop here, so the strip
-     continues the band rather than covering the motto printed in it. */
-  --foot-legal-h: 46px;
-  background: #4a0d11;
+  background: linear-gradient(180deg, var(--foot-maroon) 0%, #320608 100%);
+  color: var(--foot-cream);
 }
 
-/* The artwork is anchored to the bottom of the block at its natural ratio —
-   full width, free height — rather than cover-fitted.
-
-   That matters for more than tidiness. `cover` scales by width on a wide
-   footer and by height on a narrow one, so the picture's own coordinates map
-   onto the page differently depending on the viewport. Because the Facebook
-   and Instagram badges are painted into this image and have to be clickable,
-   the mapping has to be the same everywhere; sizing by width alone makes a
-   percentage of the picture a fixed percentage of the block. Anything taller
-   than the footer overflows off the top and is clipped, which only ever costs
-   empty sky. */
+/* ---------- landscape band ---------- */
 .foot-art {
-  position: absolute;
-  inset: 0 0 var(--foot-legal-h) 0;
-  z-index: 0;
-  overflow: hidden;
-  /* The artwork's own top-row sky, sampled from the file. The picture is
-     anchored to the bottom, so if the block is ever taller than the picture
-     the gap above it continues as sky instead of exposing bare maroon — which
-     would leave the dark footer type invisible on it. */
-  background: #e8d8bb;
+  position: relative;
+  /* The band's sky is a shade warmer than the page above it; this fades it in
+     from the page cream so there is no hard line where the footer starts. */
+  background: var(--cream);
 }
-/* <picture> is inline by default: it would leave a few pixels of line gap
-   under the image, and on phones the image's height: 100% could not resolve
-   through it. */
+.foot-art::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 40%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--cream) 0%, rgba(246, 239, 220, 0) 100%);
+}
 .foot-art picture {
   display: block;
 }
 .foot-art img {
-  position: absolute;
-  left: 0;
-  bottom: 0;
+  display: block;
   width: 100%;
   height: auto;
-  display: block;
 }
 
-/* ---------- clickable areas over the painted social badges ---------- */
-/* Given the artwork's own ratio and pinned to the same edge, so this box
-   coincides exactly with the picture and percentages inside it are picture
-   coordinates. Figures are measured from the 1536x1024 source: both badges
-   are 60px across on the row centred at y=835, at x=1294 and x=1382. */
-.foot-hotspots {
-  position: absolute;
-  left: 0;
-  /* Inside .foot-art now, whose bottom edge is already the picture's. */
-  bottom: 0;
-  width: 100%;
-  aspect-ratio: 2172 / 724;
-  z-index: 2;
-  /* Only the anchors are clickable; the rest of the box must not swallow
-     clicks meant for the content laid over the artwork. */
-  pointer-events: none;
-}
-.foot-hotspot {
-  position: absolute;
-  top: 65.75%;
-  height: 8.98%;
-  width: 3.08%;
-  border-radius: 50%;
-  pointer-events: auto;
-}
-/* Measured off the 2172x724 artwork. Both rings are 67x65 on the row starting
-   at y=476 — Instagram at x=1934, Facebook at x=2017. The Facebook badge
-   replaced a WhatsApp one that was painted into the supplied image. */
-.foot-hotspot--instagram {
-  left: 89.04%;
-}
-.foot-hotspot--facebook {
-  left: 92.86%;
-}
-/* Nothing is drawn normally — the badge underneath is the visual. Keyboard
-   focus has to be visible though, so it gets the ring the painted icon
-   cannot provide. */
-.foot-hotspot:focus-visible {
-  outline: 2px solid var(--gold-soft);
-  outline-offset: 4px;
-}
-
-/* The Chennai Rice seal is baked into the artwork itself, roughly where the
-   gold curve meets the maroon band. At narrower/shorter viewports the
-   bottom-anchored cover crop pulls that seal up into the link-column band,
-   so a soft scrim sits behind the upper content to keep it legible no
-   matter where the seal lands underneath. */
-/* The pale wash that used to sit here has gone — it read as a white haze
-   across the top of the artwork. Legibility now comes from the type itself:
-   the colours below are darkened and weighted so every line clears 4.5:1
-   against the painting, measured at its lightest and its darkest.
-
-   Measured against the artwork behind each column:
-     Stay Connected  #d7b783    Company  #ddc29c    Support  #ceae7f  */
-
-/* ---------- upper block: newsletter + link columns ---------- */
-.foot-top {
+/* ---------- main block ---------- */
+.foot-main {
   position: relative;
   z-index: 1;
-  /* Two zones: the subscribe block on the left, the three link columns on the
-     right. Both hang from the same baseline so the column headings line up
-     with "Stay Connected". The right group is pushed to the end of the row
-     rather than stretched, which keeps the columns off the busiest part of the
-     illustration and leaves the sky clear between them. */
   display: grid;
-  /* The subscribe block is capped rather than elastic, and the columns take
-     the rest. An `auto` second track sized itself to max-content, which let
-     the columns push past the viewport and then collapse. */
-  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
-  gap: clamp(32px, 5vw, 80px);
+  /* logo | Stay Connected | three link columns | Follow Us. minmax(0, …)
+     everywhere so no track can be forced wider than the screen by its
+     content — the form especially. */
+  grid-template-columns: 150px minmax(0, 1.25fr) minmax(0, 2fr) auto;
+  gap: 0;
   align-items: start;
-  /* Tight at the top so the block opens in the clear sky, well above the
-     palms and the field — the illustration only gets busy lower down. */
-  padding-top: clamp(16px, 1.6vw, 26px);
-  padding-bottom: clamp(24px, 2.4vw, 36px);
+  padding-block: clamp(28px, 3vw, 44px) clamp(40px, 4vw, 60px);
+}
+.foot-main > * {
+  min-width: 0;
 }
 
-.foot-connect-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.foot-connect-head svg {
-  flex: 0 0 auto;
+/* Thin gold dividers between the groups, as in the artwork. */
+.foot-connect,
+.foot-cols,
+.foot-follow {
+  border-left: 1px solid rgba(217, 185, 106, 0.35);
+  padding-left: clamp(20px, 2.4vw, 36px);
+  padding-right: clamp(12px, 1.6vw, 24px);
 }
 
-.foot-connect-title {
+.foot-logo {
+  display: block;
+  padding-right: 24px;
+}
+.foot-logo img {
+  width: 100%;
+  max-width: 130px;
+  height: auto;
+}
+
+/* ---------- headings ---------- */
+.foot-title {
   font-family: var(--serif);
-  font-weight: 700;
-  font-size: clamp(27px, 2.5vw, 36px);
-  line-height: 1.15;
-  letter-spacing: -0.01em;
-  color: #4a0d11;
-  margin-top: 0;
+  font-weight: 600;
+  font-size: clamp(19px, 1.5vw, 22px);
+  line-height: 1.2;
+  color: var(--foot-gold);
 }
-/* #4a0d11 measures 7.4–9.0:1 against the artwork behind each column, sampled
-   from the image itself. The pale wash that used to sit behind this block is
-   gone, so the type carries legibility on its own. */
+.foot-rule {
+  display: block;
+  width: 28px;
+  height: 2px;
+  margin: 10px 0 16px;
+  background: var(--foot-gold);
+}
+
+/* ---------- Stay Connected ---------- */
 .foot-connect-text {
-  margin-top: 12px;
-  font-size: clamp(14.5px, 1.1vw, 16px);
-  font-weight: 500;
-  line-height: 1.55;
-  color: #4a0d11;
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(246, 239, 220, 0.82);
   max-width: 34ch;
 }
-
 .foot-subscribe {
-  margin-top: 22px;
+  margin-top: 18px;
   display: flex;
-  align-items: stretch;
-  max-width: 420px;
-  min-height: 50px;
-  background: #fffdf7;
-  border: 1px solid #c69a3f;
-  border-radius: 10px;
+  max-width: 380px;
+  min-height: 46px;
+  border-radius: 8px;
   overflow: hidden;
-  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+  background: #fbf6ea;
+  border: 1px solid rgba(217, 185, 106, 0.6);
 }
-/* The focus ring lives on the wrapper because the input's own outline is
-   suppressed — without this the field takes focus with nothing visible. */
 .foot-subscribe:focus-within {
-  border-color: #4a0d11;
-  box-shadow: 0 0 0 3px rgba(198, 154, 63, 0.3);
+  box-shadow: 0 0 0 3px rgba(217, 185, 106, 0.4);
 }
 .foot-subscribe input {
-  /* width: 0 with flex-grow, rather than the input's built-in width of about
-     twenty characters. That built-in width counted as the form's minimum, so
-     the form refused to get narrower than input + button and overflowed small
-     screens. Now the field simply takes whatever the button leaves. */
+  /* width: 0 + flex-grow, so the field takes whatever the button leaves
+     instead of insisting on its built-in ~20-character width. */
   flex: 1 1 auto;
   width: 0;
   min-width: 0;
   border: none;
   background: transparent;
+  padding: 0 14px;
   font-family: var(--sans);
-  font-size: 15px;
-  color: #4a0d11;
-  padding: 13px 18px;
+  font-size: 14.5px;
+  color: #3a080c;
 }
 .foot-subscribe input::placeholder {
-  color: #a9967c;
+  color: #9a8670;
 }
 .foot-subscribe input:focus {
   outline: none;
@@ -216,373 +139,179 @@
 .foot-subscribe input[aria-invalid='true'] {
   color: #a84230;
 }
+/* Gold button: a maroon one would disappear into the maroon footer. */
 .foot-subscribe button {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  padding: 0 22px;
-  background: #4a0d11;
-  color: #f6efdc;
+  padding: 0 20px;
+  background: var(--foot-gold);
+  color: #3a080c;
   font-family: var(--sans);
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
-  transition: background 0.25s ease, gap 0.25s ease;
+  transition: background 0.25s ease;
 }
 .foot-subscribe button:hover {
-  background: #3a080c;
-  gap: 13px;
+  background: #e6c97f;
 }
 .foot-subscribe button:focus-visible {
-  outline: 2px solid #4a0d11;
-  outline-offset: 2px;
+  outline: 2px solid var(--foot-cream);
+  outline-offset: -4px;
 }
-.foot-subscribe button svg {
-  color: #d9b96a;
-}
-
 .foot-note {
   margin-top: 8px;
-  max-width: 295px;
-  font-size: 12px;
-  line-height: 1.55;
-  color: var(--green-deep);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(246, 239, 220, 0.82);
+  max-width: 380px;
 }
 .foot-note-bad {
-  color: #a84230;
+  color: #f0a58f;
 }
 
-/* --- link columns --- */
+/* ---------- link columns ---------- */
 .foot-cols {
   display: grid;
-  /* Three equal columns with one fixed gap, so each heading starts the same
-     distance from the last. Spreading content-width columns across the row
-     (space-between) made the gaps depend on how long each column's links
-     were — Company and Resources ended up far apart, Support crowded. The
-     group is capped and pushed right so it stays together on wide screens. */
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(24px, 3vw, 48px);
-  width: 100%;
-  max-width: 660px;
-  justify-self: end;
-  text-align: left;
+  gap: clamp(16px, 2vw, 32px);
 }
-/* Grid items default to min-width: auto, which lets one long word or a wide
-   control push its column past its share. Zero here, and links allowed to
-   wrap, so a column can only ever be as wide as the layout gives it — large
-   text wraps to a second line rather than running off the screen. */
-.foot-connect,
 .foot-col {
   min-width: 0;
-}
-.foot-col a {
-  overflow-wrap: anywhere;
-}
-.foot-head {
-  font-size: 13.5px;
-  font-weight: 700;
-  /* 1.5px at this size. text-indent cancels the trailing space the last
-     letter carries, so the heading sits flush-left above its links rather
-     than a pixel adrift. */
-  letter-spacing: 0.111em;
-  text-indent: 0.111em;
-  text-transform: uppercase;
-  color: #4a0d11;
-}
-.foot-head-rule {
-  display: block;
-  width: 34px;
-  height: 1px;
-  margin: 10px 0 16px;
-  background: #c69a3f;
 }
 .foot-col ul {
   list-style: none;
   display: grid;
-  /* The links carry line-height 1.9, which supplies the rhythm on its own;
-     an extra gap on top of that opens the lists up too far. */
-  gap: 2px;
+  gap: 10px;
 }
 .foot-col a {
-  display: inline-block;
-  font-size: 14.5px;
-  font-weight: 500;
-  line-height: 1.9;
-  color: #4a0d11;
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(246, 239, 220, 0.88);
+  overflow-wrap: anywhere;
   transition: color 0.25s ease;
 }
-/* Gold was the obvious hover here, but gold on this cream measures about
-   1.8:1 — the link would get harder to read the moment you pointed at it.
-   The gold moves to an underline, where it is decoration rather than body
-   text, and the label deepens instead. */
 .foot-col a:hover,
 .foot-col a:focus-visible {
-  color: #3a080c;
-  text-decoration: underline;
-  text-decoration-color: #c69a3f;
-  text-decoration-thickness: 1.5px;
-  text-underline-offset: 4px;
+  color: var(--foot-gold);
 }
 
-/* ---------- lower block: sits in the artwork's maroon band ---------- */
-/* The artwork now paints the Estd badge, the Follow Us icons and the motto
-   itself, so the live versions of those three are not drawn wherever the
-   picture is on screen — otherwise each would appear twice. They are kept in
-   the markup and switched back on below 760px, where the full painting is not
-   used and nothing would carry them. */
-.foot-band {
-  position: relative;
-  z-index: 1;
-  display: none;
-}
-
-.foot-crest {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 22px;
-  padding-bottom: 16px;
-}
-
-.foot-estd {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  justify-self: start;
-}
-.foot-estd-text {
-  display: grid;
-  justify-items: center;
-  line-height: 1.1;
-}
-.foot-estd-text small {
-  font-size: 9.5px;
-  letter-spacing: 0.24em;
-  text-indent: 0.24em;
-  text-transform: uppercase;
-  color: var(--gold-soft);
-}
-.foot-estd-text strong {
-  font-family: var(--serif);
-  font-weight: 600;
-  font-size: 21px;
-  color: #f6e7d2;
-}
-
-/* Sits beside the company line in the strip rather than under it, so the
-   strip stays one row deep. */
-.foot-cookie-link {
-  font-size: 11.5px;
-  color: #e3c9b4;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  text-decoration-color: rgba(227, 201, 180, 0.5);
-  opacity: 0.85;
-  transition: opacity 0.25s ease, color 0.25s ease;
-}
-.foot-cookie-link:hover {
-  opacity: 1;
-  color: var(--gold-soft);
-}
-
-.foot-follow {
-  justify-self: end;
-  display: grid;
-  justify-items: center;
-  gap: 8px;
-}
-.foot-follow-label {
-  font-family: var(--serif);
-  font-size: 16px;
-  color: #f3dfc4;
-}
+/* ---------- Follow Us ---------- */
 .foot-social {
+  list-style: none;
   display: flex;
-  gap: 9px;
+  gap: 12px;
 }
 .foot-soc {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid rgba(240, 220, 190, 0.45);
   display: grid;
   place-items: center;
-  color: #e8d5c4;
-  transition: border-color 0.3s ease, color 0.3s ease, transform 0.3s ease;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1.5px solid var(--foot-gold);
+  color: var(--foot-gold);
+  transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
 }
-.foot-soc:hover {
-  border-color: var(--gold-soft);
-  color: var(--gold-soft);
+/* The glyphs are drawn with padding inside their 24-unit grid, so the box is
+   set larger than the visual size wanted: 26px reads as about half the
+   circle, matching the artwork. */
+.foot-soc svg {
+  width: 26px;
+  height: 26px;
+}
+.foot-soc:hover,
+.foot-soc:focus-visible {
+  background: var(--foot-gold);
+  color: #3a080c;
   transform: translateY(-2px);
 }
 
-/* ---------- plain strip under the painting ---------- */
-.foot-legal {
-  position: relative;
-  z-index: 3;
-  min-height: var(--foot-legal-h);
-  display: flex;
-  align-items: center;
+/* ---------- wheat sprig, bottom right ---------- */
+.foot-sprig {
+  position: absolute;
+  right: 0;
+  bottom: 48px;
+  width: clamp(110px, 10vw, 170px);
+  height: auto;
+  pointer-events: none;
 }
-.foot-legal-inner {
+
+/* ---------- bottom bar ---------- */
+.foot-bar {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid rgba(217, 185, 106, 0.4);
+}
+.foot-bar-inner {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  gap: 4px 16px;
-  /* Deliberately the quietest line in the footer — it must not compete with
-     the tagline painted just above it. */
-  font-size: 11.5px;
-  color: rgba(246, 239, 220, 0.65);
-  text-align: center;
+  justify-content: space-between;
+  gap: 8px 20px;
+  padding-block: 16px 18px;
+  font-size: 12.5px;
+  color: rgba(246, 239, 220, 0.72);
+}
+.foot-bar-sep {
+  margin-inline: 12px;
+  color: rgba(217, 185, 106, 0.6);
+}
+.foot-cookie {
+  font: inherit;
+  color: rgba(246, 239, 220, 0.85);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(217, 185, 106, 0.6);
+  padding: 0;
+}
+.foot-cookie:hover {
+  color: var(--foot-gold);
 }
 
-.foot-motto {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding-block: 13px 18px;
-  border-top: 1px solid rgba(230, 200, 140, 0.26);
-  margin-inline: 6vw;
-}
-.foot-motto span {
-  font-family: var(--serif);
-  font-size: 16px;
-  color: #f2ddc0;
-}
-
-/* Tablets and phones: the text stops being laid over the painting.
-
-   On desktop the text sits in the painting's sky. Below 1100px the subscribe
-   block and the columns have to stack, which makes them taller than that sky
-   — the painting is 3:1, so at 1024px its clear sky is only about 100px deep
-   — and the column headings and links slid down onto the maroon band, where
-   dark type cannot be seen. So here the text gets a plain cream area of its
-   own, the painting follows as a band at its natural ratio, and the legal
-   strip closes the footer. The order property sets that sequence without
-   changing the markup, so the desktop layout above is untouched. */
+/* ---------- tablet ---------- */
 @media (max-width: 1100px) {
-  .foot {
-    min-height: 0;
-    background: var(--cream);
+  .foot-main {
+    grid-template-columns: 130px minmax(0, 1fr);
+    row-gap: 36px;
   }
-  .foot-top {
-    order: 1;
-  }
-  .foot-art {
-    order: 2;
-    position: relative;
-    inset: auto;
-    background: none;
-  }
-  .foot-art img {
-    position: static;
-    width: 100%;
-    height: auto;
-  }
-  /* The painting's sky is a shade darker than the cream above it, which drew
-     a hard line where the two meet. This fades the top of the painting in
-     from the page cream so the text area runs into the sky instead. */
-  .foot-art::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 22%;
-    z-index: 1;
-    pointer-events: none;
-    background: linear-gradient(180deg, var(--cream) 0%, rgba(246, 239, 220, 0) 100%);
-  }
-  .foot-band {
-    order: 3;
-  }
-  .foot-legal {
-    order: 4;
-    /* Sampled from the painting's bottom edge, so the strip continues it. */
-    background: #4e0d11;
-  }
-}
-
-/* Tablet: the subscribe block and the columns stop sharing a row, and the
-   type eases back a step. Everything stays left-aligned. */
-@media (max-width: 1100px) {
-  .foot-top {
-    /* minmax(0, 1fr), not plain 1fr. A plain 1fr track may not shrink below
-       its widest item, and the email field plus the Subscribe button is wide
-       — wider than a phone once Android's larger-text setting is on. The
-       track then stretched past the screen, taking the link columns with it,
-       which is what pushed "Terms & Conditions" and the button off the right
-       edge. With a zero minimum the track is always exactly the screen. */
-    grid-template-columns: minmax(0, 1fr);
-    gap: 32px;
-  }
-  /* Stacked under the subscribe block now, so the group takes the full width
-     and starts at the left edge instead of hanging off the right. */
-  .foot-cols {
-    max-width: none;
-    justify-self: stretch;
-    gap: 32px;
-  }
-  .foot-col a {
-    font-size: 14px;
-    line-height: 1.8;
-  }
-}
-
-@media (max-width: 900px) {
-  .foot {
-    min-height: 0;
-  }
-  .foot-art img {
-    object-position: center bottom;
-  }
-  .foot-top {
-    padding-top: 22px;
-  }
-  /* Still three across down to phone width — even at 560px each column is
-     about 160px, room enough for "Shipping & Delivery" on one line. Dropping
-     to two here used to leave Support alone on a second row. */
-  .foot-cols {
-    gap: 22px;
-  }
-  .foot-head-rule {
-    margin-inline: 0;
-  }
-  .foot-crest {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    gap: 14px;
-    padding-top: 26px;
-  }
-  .foot-estd,
+  /* Link columns and Follow Us move to their own rows under the logo and
+     Stay Connected, full width, with no divider to their left. */
+  .foot-cols,
   .foot-follow {
-    justify-self: center;
-  }
-  .foot-motto {
-    gap: 9px;
-    margin-inline: 4vw;
-  }
-  .foot-motto span {
-    font-size: 14px;
-    text-align: center;
+    grid-column: 1 / -1;
+    border-left: none;
+    padding-left: 0;
   }
 }
 
-/* Phones. The 900px rules above already drop the footer to two columns and
-   left-align it; below this the link columns get too narrow to hold labels
-   like "Shipping & Delivery" on one line, so they stack into one. */
-@media (max-width: 560px) {
-  /* Phones: Company and Resources are short, so they share a row; Support
-     has the most links, so it takes the full width underneath and lays those
-     links in two columns. Every row is filled — no group left sitting alone
-     beside an empty half. */
+/* ---------- phones ---------- */
+@media (max-width: 640px) {
+  .foot-main {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 30px;
+    text-align: left;
+  }
+  .foot-logo {
+    justify-self: center;
+    padding-right: 0;
+  }
+  .foot-logo img {
+    max-width: 110px;
+  }
+  .foot-connect {
+    border-left: none;
+    padding-inline: 0;
+  }
+  .foot-subscribe {
+    max-width: none;
+  }
+  .foot-subscribe button {
+    padding: 0 16px;
+  }
+  /* Company and Resources share a row; Support, the longest, spans the width
+     with its links in two columns, so no row is left half empty. */
   .foot-cols {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 26px 18px;
-    text-align: left;
   }
   .foot-col:last-child {
     grid-column: 1 / -1;
@@ -591,119 +320,29 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 18px;
   }
-  .foot-connect-title {
-    font-size: 26px;
-  }
-  .foot-connect-text {
-    font-size: 14.5px;
-  }
   .foot-col a {
-    /* Roughly 44px of vertical room per link, so they stay tappable. */
-    font-size: 14px;
-    line-height: 2.2;
+    line-height: 1.7;
   }
-  /* The dividers that separated single-file groups are gone — side by side
-     the headings already read as separate columns, and the rules only added
-     clutter over the artwork. */
-  .foot-subscribe {
-    max-width: none;
+  /* Beside the Follow Us icons, clear of the copyright bar, whose text wraps
+     to two lines on phones and would otherwise run underneath it. */
+  .foot-sprig {
+    width: 96px;
+    bottom: 140px;
+    opacity: 0.8;
   }
-  .foot-subscribe input {
-    padding-inline: 14px;
-  }
-  .foot-subscribe button {
-    padding: 0 16px;
+  .foot-bar-inner {
+    flex-direction: column;
+    text-align: center;
   }
 }
 
-/* ---------------------------------------------------------------------------
-   Phone footer.
-
-   The backdrop is a 3:2 landscape painting: cream sky and fields on top, a
-   maroon band across the bottom, and the company roundel straddling the join.
-   `object-fit: cover` on a tall, narrow phone footer scales that painting to
-   about three times its intended size, which drags the roundel up into the
-   middle of the link columns — the links end up printed over the emblem and
-   become unreadable.
-
-   So on phones the painting stops being a full-bleed backdrop and becomes a
-   strip along the bottom, and the two areas that carry text get their own
-   solid grounds: cream behind the links, maroon behind the crest. The footer
-   then reads correctly whatever the viewport does, because legibility no
-   longer depends on the artwork lining up.
-   --------------------------------------------------------------------------- */
-@media (max-width: 760px) {
-  .foot {
-    background: var(--cream);
-    min-height: 0;
-    /* No painting here, so no strip to reserve room for. */
-    --foot-legal-h: 0px;
+@media (prefers-reduced-motion: reduce) {
+  .foot-soc,
+  .foot-col a,
+  .foot-subscribe button {
+    transition: none;
   }
-
-  /* The full 3:1 painting would shrink to about 130px tall here, turning its
-     painted "Follow Us", icons and ESTD badge into specks too small to read
-     or tap. Instead it is shown as a 3:2 crop of its centre. `cover` then
-     fills the box by height and keeps the middle half of the picture: the
-     landscape, the gold wave, a large emblem and the painted tagline. The
-     ESTD badge (far left) and Follow Us (far right) fall outside the crop. */
-  .foot-art {
-    aspect-ratio: 3 / 2;
-    overflow: hidden;
-  }
-  .foot-art picture {
-    height: 100%;
-  }
-  .foot-art img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-  }
-
-  /* So those two come back as live elements, at a readable size and with
-     real icons that are big enough to tap. The painted hotspots are cropped
-     away, so they are switched off. */
-  .foot-band {
-    display: block;
-  }
-  .foot-hotspots {
-    display: none;
-  }
-
-  .foot-top {
-    padding-bottom: 24px;
-  }
-
-  /* Same maroon as the painting's bottom edge, so the crop above runs
-     straight into it with no join. */
-  .foot-band {
-    position: relative;
-    background: #4e0d11;
-    /* The crop already ends in open maroon below the tagline, so the band
-       needs almost no top padding of its own. */
-    padding-top: 2px;
-  }
-
-  /* The tagline is already painted in the crop above; the live copy would
-     repeat it. */
-  .foot-motto {
-    display: none;
-  }
-
-  /* ESTD and Follow Us side by side rather than stacked, which keeps the
-     band short. */
-  .foot-crest {
-    grid-template-columns: 1fr 1fr;
-    align-items: center;
-    padding-block: 6px 22px;
-  }
-
-  /* The full company name is long; let it wrap rather than run under the
-     chat launcher in the corner. */
-  .foot-legal-inner {
-    max-width: 22rem;
-    margin-inline: auto;
-    line-height: 1.5;
-    padding-block: 14px 18px;
+  .foot-soc:hover {
+    transform: none;
   }
 }

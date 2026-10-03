@@ -36,3 +36,7 @@ functions/.env
 # Generated before every build by scripts/generate-sitemap.mjs
 frontend/public/sitemap.xml
 frontend/public/robots.txt
+
+# Firebase CLI debug output — can include auth tokens
+firebase-debug.log
+*-debug.log
