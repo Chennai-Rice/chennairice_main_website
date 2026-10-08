@@ -94,7 +94,11 @@ export default function RelatedProducts({ products }) {
     >
       <div className="pdp-related-track" ref={trackRef} tabIndex={0} aria-label="Related products">
         {products.map((product) => {
-          const defaultSize = product.packSizes.find((s) => s.kg === 10) || product.packSizes[0];
+          const buyable = product.packSizes.filter((s) => s.inStock !== false);
+          const defaultSize =
+            buyable.find((s) => s.kg === 10) || buyable[0] ||
+            product.packSizes.find((s) => s.kg === 10) || product.packSizes[0];
+          const soldOut = defaultSize.inStock === false;
           const cartProduct = {
             ...product,
             id: `${product.id}-${defaultSize.kg}kg`,
@@ -113,7 +117,16 @@ export default function RelatedProducts({ products }) {
               {/* Prices are unpublished, so these cards say so and offer a
                   route to sales — exactly as the product grid and the detail
                   page above them do. Without this they printed "₹0". */}
-              {showCardPrices ? (
+              {showCardPrices && soldOut ? (
+                <>
+                  <p className="pdp-related-price">
+                    Out of stock <span>/ {defaultSize.kg} kg</span>
+                  </p>
+                  <button className="add-btn add-btn--soldout" type="button" disabled>
+                    <span className="add-label">Out of stock</span>
+                  </button>
+                </>
+              ) : showCardPrices ? (
                 <>
                   <p className="pdp-related-price">
                     {formatRupees(defaultSize.price)} <span>/ {defaultSize.kg} kg</span>

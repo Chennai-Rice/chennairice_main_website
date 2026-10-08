@@ -126,7 +126,7 @@ function formatStamp(iso) {
 }
 
 export default function PaymentReceipt({ receipt, children }) {
-  const { orderNumber, amount, paidAt, customerName, gatewayLabel, method, last4 } = receipt;
+  const { orderNumber, shipmentId, amount, paidAt, customerName, gatewayLabel, method, last4 } = receipt;
 
   // Two beats, not one. The print starts just after mount so the printer is on
   // screen before anything moves; the confetti waits until the slip is fully
@@ -212,6 +212,22 @@ export default function PaymentReceipt({ receipt, children }) {
               <span className="receipt-status">Paid in full</span>
             </dd>
           </div>
+          {/* Issued by the server with the order, so it is the same ID
+              dispatch uses and the customer can quote it when tracking. */}
+          {shipmentId && (
+            <>
+              <div className="receipt-cell">
+                <dt>Shipment ID</dt>
+                <dd className="receipt-mono">{shipmentId}</dd>
+              </div>
+              <div className="receipt-cell receipt-cell--end">
+                <dt>Shipping</dt>
+                <dd>
+                  <span className="receipt-status receipt-status--pending">To be dispatched</span>
+                </dd>
+              </div>
+            </>
+          )}
         </dl>
 
         <div className="receipt-payer">

@@ -1,0 +1,247 @@
+/* Track Order page. Builds on page.css (.page, .contact-form, .field). */
+
+.track-inner {
+  max-width: 760px;
+}
+
+.track-form {
+  width: 100%;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  text-align: left;
+}
+.track-form .btn-maroon {
+  justify-self: stretch;
+  justify-content: center;
+  border: none;
+  height: 46px;
+}
+.track-form .btn-maroon:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none;
+}
+
+.track-error {
+  width: 100%;
+  font-size: 14px;
+  color: #a84230;
+  background: rgba(168, 66, 48, 0.08);
+  border-radius: 8px;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+.track-result {
+  width: 100%;
+  display: grid;
+  gap: 22px;
+  text-align: left;
+  background: #fffdf6;
+  border: 1px solid rgba(198, 154, 63, 0.18);
+  border-radius: 12px;
+  padding: 26px 28px;
+  box-shadow: 0 14px 32px rgba(90, 60, 30, 0.09);
+  animation: track-in 0.35s ease;
+}
+@keyframes track-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+.track-head {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding-bottom: 18px;
+  border-bottom: 1px dashed rgba(198, 154, 63, 0.4);
+}
+.track-head > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.track-k {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.track-head strong {
+  text-transform: capitalize;
+  font-size: 15px;
+  color: var(--heading);
+  overflow-wrap: anywhere;
+}
+.track-mono {
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  letter-spacing: 0.02em;
+}
+
+/* Progress: five dots joined by a line that fills up to the current step. */
+.track-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.track-step {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.track-step::before {
+  content: '';
+  position: absolute;
+  top: 15px;
+  right: 50%;
+  width: 100%;
+  height: 2px;
+  background: rgba(74, 44, 34, 0.15);
+  z-index: 0;
+}
+.track-step:first-child::before {
+  display: none;
+}
+.track-step.is-done::before {
+  background: var(--maroon);
+}
+.track-dot {
+  position: relative;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--cream);
+  border: 2px solid rgba(74, 44, 34, 0.18);
+}
+.track-step.is-done .track-dot {
+  color: #fff;
+  background: var(--maroon);
+  border-color: var(--maroon);
+}
+.track-step.is-current .track-dot {
+  box-shadow: 0 0 0 5px rgba(122, 31, 43, 0.15);
+}
+.track-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--heading);
+}
+.track-note {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.track-ended {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #6b3a1f;
+  background: rgba(198, 154, 63, 0.12);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.track-shipment,
+.track-items {
+  display: grid;
+  gap: 12px;
+  padding: 18px 20px;
+  border-radius: 10px;
+  background: var(--cream-soft);
+}
+.track-shipment h2,
+.track-items h2 {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 18px;
+  color: var(--heading);
+}
+.track-shipment dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+}
+.track-shipment dt {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.track-shipment dd {
+  font-size: 14px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.track-shipment .btn-outline {
+  justify-self: start;
+}
+
+.track-items ul {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.track-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.track-help {
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.track-help a {
+  color: var(--maroon);
+  text-decoration: underline;
+}
+
+@media (max-width: 720px) {
+  .track-form {
+    grid-template-columns: 1fr;
+  }
+  .track-result {
+    padding: 20px 16px;
+  }
+  .track-head {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* Five steps side by side do not fit a phone: stack them as a timeline. */
+  .track-steps {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .track-step {
+    grid-template-columns: 32px 1fr;
+    grid-template-areas: 'dot label' 'dot note';
+    justify-items: start;
+    column-gap: 12px;
+    row-gap: 0;
+    text-align: left;
+  }
+  .track-dot { grid-area: dot; }
+  .track-label { grid-area: label; }
+  .track-note { grid-area: note; }
+  .track-step::before {
+    top: auto;
+    bottom: 50%;
+    right: auto;
+    left: 15px;
+    width: 2px;
+    height: calc(100% + 14px);
+  }
+  .track-shipment dl {
+    grid-template-columns: 1fr;
+  }
+}

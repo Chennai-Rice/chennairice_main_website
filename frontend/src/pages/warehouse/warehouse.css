@@ -1,0 +1,615 @@
+/* /warehouse — staff tool. Brand colours from global.css, but a working
+   screen: dense, high-contrast, large touch targets for the warehouse floor.
+   A table on wide screens; each order becomes a card below 1100px. */
+
+.wh {
+  --wh-line: rgba(74, 44, 34, 0.12);
+  --wh-ok: #2f6b47;
+  --wh-ok-bg: #e4f4ea;
+  --wh-warn: #8a5a12;
+  --wh-warn-bg: #fbefd4;
+  --wh-bad: #a84230;
+  --wh-bad-bg: #f8e3df;
+  min-height: 100vh;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+.wh .visually-hidden,
+.wh-signin .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.wh-mono {
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  letter-spacing: 0.02em;
+}
+.wh-muted { color: var(--muted); }
+.wh-small { font-size: 12.5px; }
+
+/* ---------- buttons ---------- */
+.wh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.wh-btn--small { min-height: 34px; padding: 0 12px; font-size: 13px; }
+.wh-btn--primary { background: var(--maroon); color: #fff; }
+.wh-btn--primary:hover:not(:disabled) { background: var(--maroon-deep); }
+.wh-btn--ghost { background: #fff; color: var(--maroon); border-color: rgba(122, 31, 43, 0.35); }
+.wh-btn--ghost:hover { background: var(--maroon); color: #fff; }
+.wh-btn--light { background: rgba(255, 255, 255, 0.14); color: #fff; border-color: rgba(255, 255, 255, 0.3); }
+.wh-btn--light:hover { background: rgba(255, 255, 255, 0.24); }
+.wh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.wh-btn:focus-visible,
+.wh-switch:focus-visible,
+.wh-tab:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ---------- sign-in ---------- */
+.wh-signin {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: var(--cream);
+  font-family: var(--sans);
+}
+.wh-signin-card {
+  width: min(420px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 36px 28px;
+  background: #fffdf6;
+  border: 1px solid rgba(198, 154, 63, 0.25);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(90, 60, 30, 0.12);
+  text-align: center;
+}
+.wh-signin-card h1 {
+  font-size: 30px;
+  font-weight: 400;
+}
+.wh-signin-card form {
+  width: 100%;
+  display: grid;
+  gap: 14px;
+  margin-top: 10px;
+  text-align: left;
+}
+.wh-field {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--heading);
+}
+.wh-field input {
+  font: inherit;
+  font-size: 15px;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(74, 44, 34, 0.25);
+  background: #fff;
+  color: var(--ink);
+}
+.wh-note {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+.wh-error {
+  width: 100%;
+  font-size: 14px;
+  color: var(--wh-bad);
+  background: var(--wh-bad-bg);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+/* ---------- top bar ---------- */
+.wh-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 24px;
+  background: linear-gradient(90deg, #4a1016, var(--maroon) 50%, #4a1016);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(40, 8, 12, 0.3);
+}
+.wh-top-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.wh-top-brand img {
+  border-radius: 50%;
+  background: #fff;
+}
+.wh-top-brand strong {
+  display: block;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 20px;
+}
+.wh-top-brand span {
+  font-size: 12px;
+  opacity: 0.8;
+}
+.wh-top-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.wh-role {
+  text-transform: capitalize;
+  color: var(--gold-pale);
+}
+
+.wh-main {
+  width: min(1480px, 100%);
+  margin: 0 auto;
+  padding: 20px 24px 60px;
+  display: grid;
+  gap: 16px;
+}
+
+/* ---------- tabs ---------- */
+.wh-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+.wh-tab {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--heading);
+  background: #fff;
+  border: 1px solid var(--wh-line);
+}
+.wh-tab.is-active {
+  background: var(--maroon);
+  border-color: var(--maroon);
+  color: #fff;
+}
+.wh-tab-count {
+  min-width: 24px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--cream);
+  color: var(--heading);
+}
+.wh-tab.is-active .wh-tab-count {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* ---------- toolbar ---------- */
+.wh-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.2fr) auto;
+  gap: 10px 16px;
+  align-items: center;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid var(--wh-line);
+  border-radius: 10px;
+}
+.wh-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+}
+.wh-search svg {
+  position: absolute;
+  left: 12px;
+}
+.wh-search input {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  font-size: 14.5px;
+  padding: 10px 12px 10px 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(74, 44, 34, 0.22);
+  background: var(--cream-soft);
+  color: var(--ink);
+}
+.wh-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.wh-filters select,
+.wh-filters input[type='date'] {
+  font: inherit;
+  font-size: 13.5px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(74, 44, 34, 0.22);
+  background: #fff;
+  color: var(--ink);
+}
+.wh-toolbar-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.wh-search input:focus,
+.wh-filters select:focus,
+.wh-filters input:focus,
+.wh-field input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(198, 154, 63, 0.22);
+}
+
+/* ---------- order list ---------- */
+.wh-list {
+  display: grid;
+  gap: 8px;
+}
+.wh-head,
+.wh-row {
+  display: grid;
+  grid-template-columns: 28px 190px minmax(200px, 1.3fr) minmax(150px, 1fr) minmax(220px, 1.5fr) 120px 170px;
+  gap: 16px;
+  align-items: start;
+}
+.wh-head {
+  padding: 0 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.wh-row {
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid var(--wh-line);
+  border-left: 4px solid var(--gold-soft);
+  border-radius: 10px;
+}
+.wh-row--placed { border-left-color: var(--maroon); }
+.wh-row--confirmed { border-left-color: var(--gold); }
+.wh-row--packed { border-left-color: var(--wh-ok); }
+.wh-row--cancelled,
+.wh-row--returned { opacity: 0.7; border-left-color: #999; }
+
+.wh-cell {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+/* Labels only show on cards, where there is no column header above them. */
+.wh-k {
+  display: none;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.wh-cell--order .wh-k { display: block; margin-top: 2px; }
+.wh-cell--order .wh-k:first-child { margin-top: 0; }
+.wh-cell ul {
+  list-style: none;
+  display: grid;
+  gap: 2px;
+}
+.wh-cell address {
+  font-style: normal;
+}
+.wh-phone {
+  color: var(--maroon);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.wh-badge {
+  justify-self: start;
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.wh-badge--pay-paid { background: var(--wh-ok-bg); color: var(--wh-ok); }
+.wh-badge--pay-refunded,
+.wh-badge--pay-partially_refunded { background: var(--wh-warn-bg); color: var(--wh-warn); }
+
+.wh-badge--flag { background: var(--wh-warn-bg); color: var(--wh-warn); margin-top: 4px; }
+.wh-status {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.wh-cell--actions {
+  gap: 8px;
+}
+
+/* ---------- switch ---------- */
+.wh-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 2px 4px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--heading);
+  background: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+.wh-switch-track {
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  background: #cfc6b8;
+  transition: background 0.2s ease;
+}
+.wh-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease;
+}
+.wh-switch.is-on .wh-switch-track { background: var(--wh-ok); }
+.wh-switch.is-on .wh-switch-knob { transform: translateX(20px); }
+.wh-switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.wh-switch.is-busy {
+  opacity: 0.7;
+  cursor: progress;
+}
+.wh-switch.is-busy .wh-switch-knob {
+  animation: wh-pulse 0.8s ease-in-out infinite alternate;
+}
+@keyframes wh-pulse {
+  to { opacity: 0.4; }
+}
+
+.wh-empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--muted);
+  background: #fff;
+  border: 1px dashed var(--wh-line);
+  border-radius: 10px;
+}
+
+/* ---------- toast ---------- */
+.wh-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 30;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 10px 30px rgba(40, 20, 10, 0.25);
+  animation: wh-toast-in 0.2s ease;
+}
+.wh-toast--ok { background: #1f3d2b; color: #fff; }
+.wh-toast--error { background: var(--wh-bad); color: #fff; }
+@keyframes wh-toast-in {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wh-switch-track,
+  .wh-switch-knob,
+  .wh-toast { transition: none; animation: none; }
+}
+
+/* ---------- cards (tablets and phones) ---------- */
+@media (max-width: 1100px) {
+  .wh-head { display: none; }
+  .wh-row {
+    position: relative;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 18px;
+  }
+  /* The checkbox sits in the card's top-right corner. */
+  .wh-cell--pick {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+  }
+  .wh-cell--order { padding-right: 40px; }
+  .wh-k { display: block; }
+  .wh-cell--actions {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 20px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--wh-line);
+  }
+  .wh-cell--actions .wh-btn { margin-left: auto; }
+  .wh-toolbar { grid-template-columns: 1fr; }
+  .wh-filters { grid-row: auto; }
+  .wh-toolbar-end { justify-content: flex-start; flex-wrap: wrap; }
+}
+
+@media (max-width: 640px) {
+  .wh-top { padding: 10px 16px; }
+  .wh-top-brand span { display: none; }
+  .wh-main { padding: 16px 16px 60px; }
+  .wh-row { grid-template-columns: 1fr; }
+  .wh-filters select,
+  .wh-filters input[type='date'] { flex: 1 1 140px; }
+  .wh-switch { min-height: 44px; }
+}
+
+/* ---------- order date and time ----------
+   The first thing the floor looks at (oldest orders go first), so it reads
+   as a solid chip rather than small grey text. */
+.wh-when {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--cream);
+  border: 1px solid rgba(122, 31, 43, 0.2);
+  color: var(--maroon);
+}
+.wh-when-text {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  color: var(--heading);
+}
+.wh-when-text strong {
+  font-size: 15px;
+  font-weight: 700;
+}
+.wh-when-text span {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--maroon);
+}
+
+/* ---------- selection ---------- */
+.wh-check {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  accent-color: var(--maroon);
+  cursor: pointer;
+}
+.wh-check:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+.wh-row.is-selected {
+  background: #fff8ec;
+  border-color: rgba(198, 154, 63, 0.6);
+  box-shadow: 0 0 0 2px rgba(198, 154, 63, 0.35);
+}
+
+/* Sits just under the top bar while the list scrolls, so "Select all" can be
+   pressed again after more cards load. */
+.wh-bulk {
+  position: sticky;
+  top: 62px;
+  z-index: 15;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid var(--wh-line);
+  border-radius: 10px;
+  box-shadow: 0 6px 16px rgba(60, 30, 10, 0.08);
+}
+.wh-bulk.has-selection {
+  background: #fff8ec;
+  border-color: rgba(198, 154, 63, 0.55);
+}
+.wh-bulk-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--heading);
+  margin-right: auto;
+}
+.wh-btn--danger {
+  background: #a84230;
+  color: #fff;
+}
+.wh-btn--link {
+  background: none;
+  color: var(--maroon);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 0 6px;
+}
+
+/* ---------- paging ---------- */
+.wh-sentinel {
+  height: 1px;
+}
+.wh-more {
+  justify-self: center;
+  min-width: 180px;
+}
+.wh-end {
+  text-align: center;
+  padding: 8px 0 4px;
+}
+
+@media (max-width: 640px) {
+  .wh-bulk { top: 58px; }
+  .wh-bulk-count { width: 100%; order: -1; }
+}

@@ -9,13 +9,17 @@ export default function PackSizeSelector({ sizes, selectedKg, onSelect }) {
         <button
           key={size.kg}
           type="button"
-          className={`pdp-pack-pill${size.kg === selectedKg ? " is-selected" : ""}`}
+          className={`pdp-pack-pill${size.kg === selectedKg ? " is-selected" : ""}${size.inStock === false ? " is-soldout" : ""}`}
           aria-pressed={size.kg === selectedKg}
           onClick={() => onSelect(size.kg)}
         >
           <span className="pdp-pack-kg">{size.kg} KG</span>
           {/* Omitted rather than shown as ₹0 while prices are unpublished. */}
-          {showCardPrices && <span className="pdp-pack-price">{formatRupees(size.price)}</span>}
+          {showCardPrices && (
+            <span className="pdp-pack-price">
+              {size.inStock === false ? "Out of stock" : formatRupees(size.price)}
+            </span>
+          )}
         </button>
       ))}
     </div>

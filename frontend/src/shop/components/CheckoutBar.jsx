@@ -33,12 +33,14 @@ export default function CheckoutBar() {
 
   return (
     <div className="checkout-bar" role="status">
+      {/* To the cart, so the basket can be reviewed before paying; the cart
+          page carries on to checkout. */}
       <Link className="checkout-bar-link" to="/cart">
         <span className="checkout-bar-icon" aria-hidden="true">
           <BagGlyph />
         </span>
         <span className="checkout-bar-text">
-          <strong>Proceed to checkout</strong>
+          <strong>Proceed to cart</strong>
           <span className="checkout-bar-count">
             {count} {count === 1 ? "item" : "items"} in cart
           </span>

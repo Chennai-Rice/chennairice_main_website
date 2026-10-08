@@ -31,7 +31,10 @@ export default function ProductDetailPage() {
   const { products: allProducts } = useProducts();
 
   const sizes = product?.packSizes || [];
-  const defaultSize = sizes.find((s) => s.kg === 10) || sizes[0];
+  // Prefer a size that can actually be bought (inStock is only known when
+  // the catalog comes from the sales backend; undefined means available).
+  const buyable = sizes.filter((s) => s.inStock !== false);
+  const defaultSize = buyable.find((s) => s.kg === 10) || buyable[0] || sizes.find((s) => s.kg === 10) || sizes[0];
   const [selectedKg, setSelectedKg] = useState(defaultSize?.kg);
   const [qty, setQty] = useState(1);
   // Saved state lives in the shared store, so it persists and the header
@@ -69,6 +72,7 @@ export default function ProductDetailPage() {
   }
 
   const selected = sizes.find((s) => s.kg === selectedKg) || defaultSize;
+  const soldOut = selected?.inStock === false;
   const category = getCategoryLabel(product);
   const details = getDetails(product.id);
   const inCart = items.find((item) => item.id === `${product.id}-${selected.kg}kg`);
@@ -133,8 +137,10 @@ export default function ProductDetailPage() {
             <div className="pdp-price-hero">
               {showCardPrices ? (
                 <>
-                  <span className="pdp-price">{formatRupees(selected.price * qty)}</span>
-                  <span className="pdp-price-note">Inclusive of applicable taxes</span>
+                  <span className="pdp-price">{soldOut ? "Out of stock" : formatRupees(selected.price * qty)}</span>
+                  <span className="pdp-price-note">
+                    {soldOut ? "This pack size is not available right now." : "Inclusive of applicable taxes"}
+                  </span>
                 </>
               ) : (
                 <>
@@ -161,7 +167,7 @@ export default function ProductDetailPage() {
                   call to action is a route to the people who can quote it. */}
               {showCardPrices ? (
                 <>
-                  <button type="button" className="btn-maroon pdp-add-btn" onClick={handleAddToCart}>
+                  <button type="button" className="btn-maroon pdp-add-btn" onClick={handleAddToCart} disabled={soldOut}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <path
                         d="M6 6h15l-1.5 9h-12z M6 6l-1-3H2 M9 21a1 1 0 100-2 1 1 0 000 2zM18 21a1 1 0 100-2 1 1 0 000 2z"
@@ -171,9 +177,9 @@ export default function ProductDetailPage() {
                         fill="none"
                       />
                     </svg>
-                    {inCart ? "Add Another" : "Add to Cart"}
+                    {soldOut ? "Out of stock" : inCart ? "Add Another" : "Add to Cart"}
                   </button>
-                  <button type="button" className="btn-outline" onClick={handleBuyNow}>
+                  <button type="button" className="btn-outline" onClick={handleBuyNow} disabled={soldOut}>
                     Buy Now
                   </button>
                 </>

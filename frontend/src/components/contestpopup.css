@@ -1,0 +1,148 @@
+/* Contest popup: the poster, centred, above everything else on the page
+   (the cookie banner sits at 900). Sized by the viewport's height as well as
+   its width, so the whole poster and its buttons always fit without
+   scrolling, from a small phone to a wide desktop. */
+
+.contest-pop-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(24, 10, 6, 0.62);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: contest-fade 0.25s ease;
+}
+
+.contest-pop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* Poster is 4:5. Height left for it = viewport minus padding and the
+     footer (~118px); width follows from that, capped at 460px. */
+  width: min(460px, calc(100vw - 32px), calc((100dvh - 32px - 118px) * 0.8));
+  background: #fffaf0;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(20, 6, 2, 0.45), 0 0 0 1px rgba(198, 154, 63, 0.35);
+  animation: contest-rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.contest-pop-poster {
+  display: block;
+  line-height: 0;
+}
+.contest-pop-poster img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}
+
+.contest-pop-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(40, 14, 8, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.contest-pop-close:hover {
+  background: var(--maroon);
+  transform: scale(1.06);
+}
+
+.contest-pop-foot {
+  display: grid;
+  gap: 10px;
+  padding: 12px 16px 16px;
+  text-align: center;
+  background: linear-gradient(180deg, #fffaf0, #f6ecd6);
+  border-top: 1px solid rgba(198, 154, 63, 0.35);
+}
+.contest-pop-title {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 19px;
+  line-height: 1.2;
+  color: var(--heading);
+}
+.contest-pop-actions {
+  display: flex;
+  gap: 10px;
+}
+.contest-pop-cta,
+.contest-pop-later {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+.contest-pop-cta {
+  flex: 1.4;
+  color: #fff;
+  background: linear-gradient(135deg, var(--maroon), var(--maroon-deep));
+  box-shadow: 0 8px 18px rgba(122, 31, 43, 0.35);
+}
+.contest-pop-cta:hover {
+  transform: translateY(-1px);
+}
+.contest-pop-later {
+  color: var(--maroon);
+  background: transparent;
+  border: 1.5px solid rgba(122, 31, 43, 0.4);
+}
+.contest-pop-later:hover {
+  background: rgba(122, 31, 43, 0.06);
+}
+
+.contest-pop-close:focus-visible,
+.contest-pop-cta:focus-visible,
+.contest-pop-later:focus-visible,
+.contest-pop-poster:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+@keyframes contest-fade {
+  from { opacity: 0; }
+}
+@keyframes contest-rise {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .contest-pop-backdrop,
+  .contest-pop { animation: none; }
+}
+
+/* Phones: a little tighter so the poster gets the room. */
+@media (max-width: 480px) {
+  .contest-pop-backdrop { padding: 12px; }
+  .contest-pop {
+    width: min(460px, calc(100vw - 24px), calc((100dvh - 24px - 112px) * 0.8));
+    border-radius: 14px;
+  }
+  .contest-pop-title { font-size: 17px; }
+  .contest-pop-foot { padding: 10px 12px 12px; gap: 8px; }
+  .contest-pop-cta,
+  .contest-pop-later { font-size: 13.5px; }
+}

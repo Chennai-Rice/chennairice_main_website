@@ -309,10 +309,56 @@ function mapProduct(row) {
   };
 }
 
+// The sales backend's catalog (/api/catalog, PostgreSQL). It is the same
+// database checkout charges from, so the price on the card is the price paid.
+// Where that backend is not running (it answers 404 until a database is
+// configured), this returns null and Supabase / the bundled packs are used.
+async function fetchSalesCatalog() {
+  try {
+    const res = await fetch("/api/catalog", { headers: { Accept: "application/json" } });
+    if (!res.ok || !(res.headers.get("content-type") || "").includes("json")) return null;
+    const { products } = await res.json();
+    if (!Array.isArray(products) || !products.length) return null;
+    return products.map((row) => {
+      const presentation = PRESENTATION[row.slug] || { ...FALLBACK_PRESENTATION };
+      const fallback = FALLBACK_PRODUCTS.find((p) => p.id === row.slug);
+      const packSizes = row.variants
+        // An unpriced pack cannot be ordered, so it is out of stock as far as
+        // the shop is concerned.
+        .map((v) => ({ kg: Number(v.packKg), price: Number(v.price) || 0, inStock: v.price != null && v.inStock }))
+        .sort((a, b) => a.kg - b.kg);
+      const tenKg = packSizes.find((s) => s.kg === 10) || packSizes[0];
+      return {
+        id: row.slug,
+        variant: presentation.variant,
+        tag: row.tag || fallback?.tag || "",
+        flag: presentation.flag,
+        name: row.name,
+        description: row.description || "",
+        price: tenKg ? tenKg.price : 0,
+        packSizes,
+        image: row.image || FALLBACK_IMAGES[row.slug] || null,
+        alt: fallback?.alt || row.name,
+        width: presentation.width,
+        height: presentation.height,
+        tags: presentation.tags,
+        search: presentation.search,
+        inStock: packSizes.some((s) => s.inStock),
+      };
+    })
+      // Stable sort: packs that can be bought first, catalog order otherwise.
+      .sort((a, b) => Number(b.inStock) - Number(a.inStock));
+  } catch {
+    return null;
+  }
+}
+
 /** Fetch the full active catalog, mapped to the shop's product shape. Also
  * derives LINEUP (the closing 3D-stage strip) from the same fetch so both
  * stay in sync with the live catalog automatically. */
 export async function fetchProducts() {
+  const sales = await fetchSalesCatalog();
+  if (sales) return { products: sales, lineup: toLineup(sales) };
   if (hasSupabase) {
     try {
       const rows = await getProducts({ isActive: true });
@@ -329,6 +375,8 @@ export async function fetchProducts() {
 /** Fetch one product by its slug (the old static `id`). Returns null if not
  * found or inactive. */
 export async function fetchProductBySlug(slug) {
+  const sales = await fetchSalesCatalog();
+  if (sales) return sales.find((p) => p.id === slug) || null;
   if (hasSupabase) {
     try {
       const row = await getProductBySlug(slug);

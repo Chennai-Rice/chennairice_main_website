@@ -43,11 +43,10 @@
   --pack-orange: #C4501A;
 
   /* Type */
-  --font-display: "Marcellus", Georgia, "Times New Roman", serif;
-  --font-body: "Karla", "Segoe UI", Arial, sans-serif;
-  --fs-h1: clamp(2rem, 4.5vw, 3rem);        /* 32–48 */
-  --fs-h2: clamp(1.5rem, 3vw, 2rem);        /* 24–32 */
-  --fs-h3: 1.25rem;                         /* 20 */
+  /* Fonts and the heading scale come from global.css, shared with the rest
+     of the site; these names stay because the shop's rules read them. */
+  --font-display: var(--serif);
+  --font-body: var(--sans);
   --fs-body: 1rem;                          /* 16 */
   --fs-small: 0.875rem;                     /* 14 */
   --fs-tag: 0.75rem;                        /* 12, uppercase */
@@ -756,23 +755,16 @@
 }
 
 /* Heavy grotesque for the statement — deliberately not the page's serif */
+/* A section heading like any other, in the shared h2 style. It was heavy
+   uppercase sans with tight tracking and a maroon-to-gold gradient fill —
+   a template-site look that set it apart from every other heading here. */
 .shop-scope .lineup-title {
   margin: 0;
-  font-family: var(--font-body);
-  font-weight: 800;
-  font-size: clamp(2.1rem, 5.5vw, 3.75rem);
-  line-height: 1.02;
-  letter-spacing: -0.025em;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--fs-h2);
+  line-height: 1.2;
   color: var(--maroon-600);
-}
-@supports (background-clip: text) or (-webkit-background-clip: text) {
-  .shop-scope .lineup-title {
-    background: linear-gradient(100deg, var(--maroon-700) 10%, var(--gold-600) 52%, var(--maroon-600) 88%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
 }
 
 .shop-scope .lineup-sub {
@@ -1220,7 +1212,7 @@
 }
 .shop-scope .founder figcaption { display: flex; flex-direction: column; gap: var(--s-1); }
 .shop-scope .founder-sign {
-  font-family: "Great Vibes", "Segoe Script", cursive;
+  font-family: var(--script);
   font-size: clamp(2rem, 5vw, 2.75rem);
   line-height: 1.2;
   color: var(--ink-900);
@@ -1701,14 +1693,16 @@
   display: block;
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(2.25rem, 6vw, 3.5rem);
+  /* The Founder title is a two-part heading; its parts take the shared h2
+     and h1 sizes so it sits on the same scale as every other page. */
+  font-size: var(--fs-h2);
   color: var(--ink-900);
 }
 .shop-scope .fp-hero-title-strong {
   display: block;
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(2.75rem, 8vw, 4.25rem);
+  font-weight: 400;
+  font-size: var(--fs-h1);
   letter-spacing: -0.01em;
   color: var(--maroon-700);
 }
@@ -2563,3 +2557,67 @@
 
 .shop-scope .contact-sales-btn:hover { background: var(--maroon-700); }
 .shop-scope .contact-sales-btn:active { transform: scale(0.98); }
+
+/* ---- Out of stock (catalog from the sales backend) ----
+   A size with no stock or no price stays selectable, so the customer can see
+   it exists, but reads as unavailable and cannot be added to the cart. */
+.shop-scope .stock-flag {
+  position: absolute;
+  left: var(--s-3);
+  bottom: var(--s-3);
+  z-index: 2;
+  padding: var(--s-1) var(--s-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-tag);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cream-50);
+  background: rgba(40, 24, 20, 0.78);
+}
+.shop-scope .pack-size-pill.is-soldout {
+  color: var(--ink-500);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.shop-scope .pack-size-pill.is-soldout.is-selected {
+  background: var(--ink-500);
+  color: var(--cream-50);
+}
+.shop-scope .price-soldout {
+  color: var(--maroon-600);
+}
+.shop-scope .add-btn.add-btn--soldout,
+.shop-scope .add-btn.add-btn--soldout:hover {
+  background: var(--cream-200);
+  color: var(--ink-500);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Receipt: "Download invoice" sits above "Continue shopping" as the quieter,
+   outlined twin, so paying customers find it without it competing. */
+.shop-scope .receipt-actions .checkout-btn--link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  width: 100%;
+  margin-top: 0; /* the column gap spaces them */
+}
+.shop-scope .receipt-actions .checkout-btn--outline {
+  color: var(--maroon-600);
+  background: transparent;
+  border: 1.5px solid var(--maroon-600);
+}
+.shop-scope .receipt-actions .checkout-btn--outline:hover {
+  color: var(--cream-50);
+  background: var(--maroon-600);
+}
+
+/* "To be dispatched": gold rather than green, so it reads as "next step",
+   not as a second "done" next to "Paid in full". */
+.shop-scope .receipt-status--pending {
+  background: #f6ecd2;
+  color: #8a6420;
+}

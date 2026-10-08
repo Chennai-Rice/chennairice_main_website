@@ -880,3 +880,18 @@
     text-align: center;
   }
 }
+
+/* Sold-out pack size: still selectable (so it can be seen), clearly unavailable. */
+.pdp-pack-pill.is-soldout .pdp-pack-kg {
+  text-decoration: line-through;
+  color: var(--ink-500);
+}
+.pdp-pack-pill.is-soldout.is-selected {
+  background: var(--ink-500);
+  border-color: var(--ink-500);
+}
+.pdp-add-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}

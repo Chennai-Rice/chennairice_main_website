@@ -155,7 +155,9 @@ export default function CheckoutPage() {
       // not from what this page sent — the amount in particular is the one the
       // gateway actually captured.
       setConfirmed({
+        orderId: session.orderId,
         orderNumber: result.orderNumber,
+        shipmentId: result.shipmentId,
         amount: result.amount ?? session.amount,
         paidAt: result.paidAt,
         gatewayLabel: result.gatewayLabel,
@@ -196,6 +198,31 @@ export default function CheckoutPage() {
               Keep your order number safe — quote it if you need to ask us anything about this
               order.
             </p>
+            {/* Opens the GST invoice in a new tab, which offers its own
+                "Download PDF" (the browser's Save as PDF). Needs the order id
+                this browser was given at checkout plus the order number. */}
+            <a
+              className="checkout-btn checkout-btn--link checkout-btn--outline"
+              href={`/api/orders/${confirmed.orderId}/invoice?n=${encodeURIComponent(confirmed.orderNumber)}`}
+              target="_blank"
+              rel="noopener"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 3v12m0 0l-5-5m5 5l5-5M4 17v3h16v-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Download invoice
+            </a>
+            {/* The private order id lets the tracking page show the status
+                at once, without asking for the phone number. */}
+            <Link
+              className="checkout-btn checkout-btn--link checkout-btn--outline"
+              to={`/track-order?order=${encodeURIComponent(confirmed.orderNumber)}&id=${confirmed.orderId}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19a2 2 0 100-4 2 2 0 000 4zM17 19a2 2 0 100-4 2 2 0 000 4z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+              </svg>
+              Track order
+            </Link>
             <Link className="checkout-btn checkout-btn--link" to="/products">
               Continue shopping
             </Link>

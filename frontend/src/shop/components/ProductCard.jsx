@@ -16,9 +16,16 @@ export default function ProductCard({ product }) {
   const saved = wishlist.has(product.id);
 
   const sizes = product.packSizes || [{ kg: 10, price: product.price }];
-  const defaultSize = sizes.find((s) => s.kg === 10) || sizes[0];
+  // Open on the 10 kg pack when it can be bought, else the first size that
+  // can, so a card never opens on a sold-out size when another is available.
+  const buyable = sizes.filter((s) => s.inStock !== false);
+  const defaultSize = buyable.find((s) => s.kg === 10) || buyable[0] || sizes.find((s) => s.kg === 10) || sizes[0];
   const [selectedKg, setSelectedKg] = useState(defaultSize.kg);
   const selected = sizes.find((s) => s.kg === selectedKg) || defaultSize;
+  // inStock is only known when the catalog comes from the sales backend;
+  // undefined (Supabase / bundled packs) means "assume available".
+  const soldOut = selected.inStock === false;
+  const allSoldOut = product.inStock === false;
 
   // The cart line item needs a unique id per size and the size's own price,
   // so switching pack size never overwrites a different size already in cart.
@@ -36,6 +43,7 @@ export default function ProductCard({ product }) {
     <article className={`card card--${product.variant}`}>
       <figure className="card-media">
         {product.flag && <span className="premium-flag">{product.flag}</span>}
+        {allSoldOut && <span className="stock-flag">Out of stock</span>}
 
         {/* Pinned opposite the premium flag so the two never collide. The
             label carries the product name because a grid of cards would
@@ -85,11 +93,12 @@ export default function ProductCard({ product }) {
             <button
               key={size.kg}
               type="button"
-              className={`pack-size-pill${size.kg === selectedKg ? " is-selected" : ""}`}
+              className={`pack-size-pill${size.kg === selectedKg ? " is-selected" : ""}${size.inStock === false ? " is-soldout" : ""}`}
               aria-pressed={size.kg === selectedKg}
               onClick={() => setSelectedKg(size.kg)}
             >
               {size.kg} kg
+              {size.inStock === false && <span className="visually-hidden"> (out of stock)</span>}
             </button>
           ))}
         </div>
@@ -98,7 +107,12 @@ export default function ProductCard({ product }) {
             above still say what exists, and the price and the cart give way to
             a route to the sales team. */}
         <div className={`card-foot${showCardPrices ? "" : " card-foot--enquiry"}`}>
-          {showCardPrices ? (
+          {showCardPrices && soldOut ? (
+            <p className="price-enquiry">
+              <span className="price-enquiry-label price-soldout">Out of stock</span>
+              <span className="price-unit">{selected.kg} kg pack</span>
+            </p>
+          ) : showCardPrices ? (
             <p className="price">
               <span className="price-amount">{formatRupees(selected.price)}</span>{" "}
               <span className="price-unit">/ {selected.kg} kg</span>
@@ -113,7 +127,11 @@ export default function ProductCard({ product }) {
             <Link className="view-btn" to={`/products/${product.id}`} onClick={spawnRipple}>
               View more
             </Link>
-            {showCardPrices ? (
+            {showCardPrices && soldOut ? (
+              <button className="add-btn add-btn--soldout" type="button" disabled>
+                <span className="add-label">Out of stock</span>
+              </button>
+            ) : showCardPrices ? (
               <CardQuantityControl product={cartProduct} />
             ) : (
               <Link

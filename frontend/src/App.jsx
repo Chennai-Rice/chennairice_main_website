@@ -12,10 +12,12 @@ import Footer from './components/Footer.jsx'
 import RiceCursor from './components/RiceCursor.jsx'
 import SoruKutty from './components/chatbot/SoruKutty.jsx'
 import CookieBanner from './components/CookieBanner.jsx'
+import ContestPopup from './components/ContestPopup.jsx'
 
 import HomePage from './pages/HomePage.jsx'
 import ComingSoonPage from './pages/ComingSoonPage.jsx'
 import ContactPage from './pages/ContactPage.jsx'
+import TrackOrderPage from './pages/TrackOrderPage.jsx'
 import BulkOrderPage from './pages/BulkOrderPage.jsx'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage.jsx'
 import TermsPage from './pages/TermsPage.jsx'
@@ -33,6 +35,8 @@ import InfrastructurePage from './pages/infrastructure/InfrastructurePage.jsx'
    out of the bundle every ordinary shopper downloads — only someone who
    actually opens /admin pays for it. */
 const AdminPage = lazy(() => import('./pages/admin/AdminPage.jsx'))
+// Staff-only order screen for the mill; loaded only when visited.
+const WarehousePage = lazy(() => import('./pages/warehouse/WarehousePage.jsx'))
 
 /* The journal is split out too. It carries its own Markdown renderer, and
    most visitors come for the packs — there is no reason for every one of
@@ -51,7 +55,6 @@ const PLACEHOLDER_PAGES = [
   { path: '/csr', title: 'CSR', blurb: 'Our work with farming families and the community around Erode is being written up for this page.' },
   { path: '/downloads', title: 'Downloads', blurb: 'Product sheets, certifications and trade catalogues will be available to download here.' },
   { path: '/faqs', title: 'FAQs', blurb: 'Answers to the questions we are asked most about storage, cooking and ordering are being compiled.' },
-  { path: '/track-order', title: 'Track Order', blurb: 'Order tracking will live here once our ordering system is connected.' },
   { path: '/shipping', title: 'Shipping & Delivery', blurb: 'Dispatch timelines, delivery areas and freight terms are on their way to this page.' },
   { path: '/refund', title: 'Refund Policy', blurb: 'Our returns and refund process is being documented and will be published here shortly.' },
 ]
@@ -88,7 +91,7 @@ export default function App() {
      It gets no marketing chrome and, importantly, no visitor tracking:
      whoever is reading the numbers or writing the posts must not appear
      inside them. */
-  const isTool = pathname.startsWith('/admin')
+  const isTool = pathname.startsWith('/admin') || pathname.startsWith('/warehouse')
   const isStorefront = !isTool && !isEmbedded
 
   return (
@@ -109,10 +112,19 @@ export default function App() {
             </Suspense>
           }
         />
+        <Route
+          path="/warehouse"
+          element={
+            <Suspense fallback={null}>
+              <WarehousePage />
+            </Suspense>
+          }
+        />
         <Route path="/" element={<HomePage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/track-order" element={<TrackOrderPage />} />
         <Route path="/bulk-order" element={<BulkOrderPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/founder" element={<FounderPage />} />
@@ -176,6 +188,8 @@ export default function App() {
       {isStorefront && <RiceCursor />}
       {isStorefront && <SoruKutty />}
       {isStorefront && <CookieBanner />}
+      {/* Waits for the cookie banner to be answered, then shows once a day at most. */}
+      {isStorefront && <ContestPopup />}
       </WishlistProvider>
     </CartProvider>
     </CookieConsentProvider>
