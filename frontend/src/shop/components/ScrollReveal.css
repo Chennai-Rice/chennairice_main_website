@@ -2,10 +2,14 @@
   margin: 20px 0;
 }
 
+/* An h2 on the About page's scale section, so it takes the shared heading
+   face and size. */
 .scroll-reveal-text {
-  font-size: clamp(1.6rem, 4vw, 3rem);
-  line-height: 1.5;
-  font-weight: 600;
+  display: block;
+  font-family: var(--serif);
+  font-size: var(--fs-h2);
+  line-height: 1.35;
+  font-weight: 400;
 }
 
 .word {

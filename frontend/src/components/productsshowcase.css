@@ -82,7 +82,7 @@
   justify-items: center;
   row-gap: 4px;
   font-family: var(--serif);
-  font-weight: 600;
+  font-weight: 400;
   font-size: clamp(80px, 10vw, 150px);
   line-height: 0.95;
   letter-spacing: 0.08em;
@@ -99,7 +99,7 @@
 /* ---------- left column ---------- */
 .slide-num {
   font-family: var(--serif);
-  font-weight: 300;
+  font-weight: 400;
   font-size: 58px;
   line-height: 1;
   color: var(--gold);
@@ -174,7 +174,7 @@
 }
 .slide-name {
   font-family: var(--serif);
-  font-weight: 600;
+  font-weight: 500;
   font-size: 27px;
   letter-spacing: 0.05em;
   color: var(--green-deep);
@@ -217,7 +217,7 @@
 }
 .showcase-cta-title {
   font-family: var(--serif);
-  font-weight: 600;
+  font-weight: 500;
   font-size: clamp(30px, 3.4vw, 44px);
   color: var(--heading);
   line-height: 1.2;

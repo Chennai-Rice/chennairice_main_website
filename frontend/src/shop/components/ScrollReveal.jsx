@@ -14,6 +14,8 @@ const ScrollReveal = ({
   baseRotation = 3,
   blurStrength = 4,
   containerClassName = '',
+  /* Which heading level to render — the About page uses it as its h1. */
+  as: Heading = 'h2',
   textClassName = '',
   rotationEnd = 'bottom bottom',
   wordAnimationEnd = 'bottom bottom'
@@ -118,9 +120,10 @@ const ScrollReveal = ({
   }, [scrollContainerRef, enableBlur, baseRotation, baseOpacity, rotationEnd, wordAnimationEnd, blurStrength]);
 
   return (
-    <h2 ref={containerRef} className={`scroll-reveal ${containerClassName}`}>
-      <p className={`scroll-reveal-text ${textClassName}`}>{splitText}</p>
-    </h2>
+    <Heading ref={containerRef} className={`scroll-reveal ${containerClassName}`}>
+      {/* A span, not a p: a paragraph is not allowed inside a heading. */}
+      <span className={`scroll-reveal-text ${textClassName}`}>{splitText}</span>
+    </Heading>
   );
 };
 

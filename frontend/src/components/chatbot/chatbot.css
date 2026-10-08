@@ -194,7 +194,7 @@
 }
 .sk-header-name {
   font-family: var(--serif);
-  font-weight: 600;
+  font-weight: 500;
   font-size: 16px;
   color: var(--sk-ink);
 }
@@ -301,7 +301,7 @@
 
 .sk-welcome-title {
   font-family: var(--serif);
-  font-weight: 600;
+  font-weight: 500;
   font-size: 20px;
   color: var(--sk-ink);
 }
@@ -489,7 +489,7 @@
 .sk-product-name {
   margin-top: 2px;
   font-family: var(--serif);
-  font-weight: 600;
+  font-weight: 500;
   font-size: 14px;
   color: var(--sk-ink);
 }

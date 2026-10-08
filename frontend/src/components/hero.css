@@ -73,10 +73,15 @@
    sizes otherwise. */
 .hero-title {
   font-family: var(--display);
-  font-weight: 400;
+  /* One step above the regular used elsewhere: it sits on moving video, where
+     the finest Didone hairlines would otherwise thin out against the footage. */
+  font-weight: 500;
+  /* At 90px+ the small-size cut used site-wide turns heavy, so the headline
+     takes a middle optical size: more contrast, still sturdy over video. */
+  font-variation-settings: 'opsz' 18;
   font-size: clamp(90px, 6.6vw, 105px);
   line-height: 1.06;
-  letter-spacing: -2px;
+  letter-spacing: -0.01em;
   /* Holds the measure at a comfortable width and keeps the block centred in
      the hero independently of .hero-content's padding. */
   max-width: 900px;
@@ -93,7 +98,7 @@
   .hero-title {
     font-size: clamp(60px, 7vw, 72px);
     line-height: 1.08;
-    letter-spacing: -1.5px;
+    letter-spacing: -0.01em;
   }
 }
 
@@ -104,14 +109,14 @@
   .hero-title {
     font-size: clamp(42px, 11vw, 50px);
     line-height: 1.1;
-    letter-spacing: -1px;
+    letter-spacing: -0.01em;
   }
 }
 
 .home-hero-sub {
   margin-top: 26px;
-  font-size: 15px;
-  font-weight: 300;
+  font-size: 16px;
+  font-weight: 400;
   color: #e6dac0;
 }
 

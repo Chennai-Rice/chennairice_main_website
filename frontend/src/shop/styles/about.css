@@ -20,8 +20,6 @@
   --ink: #23301F;
   --ink-soft: #55604F;
 
-  --serif: "Marcellus", Georgia, serif;
-  --sans: "Karla", "Segoe UI", Arial, sans-serif;
 
   /* long, gentle deceleration — nothing arrives abruptly */
   --ease: cubic-bezier(0.16, 0.68, 0.24, 1);
@@ -227,7 +225,7 @@
 .ab-heritage-kicker {
   margin: 0 0 0.6rem;
   font-family: var(--serif);
-  font-size: clamp(1.5rem, 2.6vw, 1.9rem);
+  font-size: var(--fs-h2);
   font-weight: 400;
   color: var(--forest);
 }
@@ -286,10 +284,10 @@
   color: var(--tl-ink);
 }
 .tl-title {
-  font-family: var(--sans);
-  font-weight: 800;
-  font-size: clamp(0.95rem, 1.25vw, 1.1rem);
-  letter-spacing: -0.015em;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(1.05rem, 1.4vw, 1.2rem);
+  letter-spacing: 0;
   line-height: 1.25;
   color: var(--forest);
 }
@@ -489,9 +487,8 @@
   margin: 0 0 1.6rem;
   font-family: var(--serif);
   font-weight: 400;
-  font-size: clamp(1.9rem, 4vw, 3rem);
-  line-height: 1.12;
-  letter-spacing: -0.01em;
+  font-size: var(--fs-h2);
+  line-height: 1.2;
   color: var(--maroon-600);
 }
 
@@ -672,11 +669,11 @@
 }
 .about-page .sc-text {
   margin: 0;
-  font-family: var(--sans);
-  font-weight: 800;
-  font-size: clamp(1.05rem, 1.85vw, 1.5rem);
-  line-height: 1.34;
-  letter-spacing: -0.02em;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(1.15rem, 1.9vw, 1.55rem);
+  line-height: 1.4;
+  letter-spacing: 0;
 }
 .sc-quiet { font-weight: 500; opacity: 0.72; display: block; margin-top: 0.6rem; font-size: 0.78em; letter-spacing: 0; line-height: 1.5; }
 .sc-foot {
@@ -878,20 +875,20 @@
 
 /* ===================== bold display type + layout 2/4 ==================== */
 
-/* The brief asked for bold. Karla 800, tight and large, is the voice of this
-   page — the serif is kept only for the shop so the two stay distinct. */
+/* Section headings on this page now use the shared heading style like every
+   other page. They were Karla 800 in tight uppercase, which made About read
+   as if it belonged to a different site. */
 .about-page .ab-display {
-  font-family: var(--sans);
-  font-weight: 800;
-  letter-spacing: -0.035em;
+  font-family: var(--serif);
+  font-weight: 400;
+  letter-spacing: 0;
   /* Must stay >= 1: the reveal masks each line with overflow:hidden, and a
      line-height below 1 makes that box shorter than the glyphs, which clips
      the tops and bottoms of the type. */
-  line-height: 1.04;
-  text-transform: uppercase;
+  line-height: 1.2;
 }
 
-.about-page h2.ab-display { font-size: clamp(1.7rem, 3.8vw, 2.9rem); }
+.about-page h2.ab-display { font-size: var(--fs-h2); }
 
 /* each line masked and pushed up on entry — the padding keeps ascenders and
    descenders inside the mask, the negative margin keeps the rhythm tight */
@@ -927,12 +924,13 @@
 /* Scroll-revealed statement. The component ships its own sizing; these
    overrides put it in the page's bold display voice. */
 .about-page .ab-scroll-reveal { margin: 0.4rem 0 0; }
+/* The About page's h1: same face and size as every page title. */
 .about-page .ab-scroll-reveal-text {
-  font-family: var(--sans);
-  font-weight: 800;
-  font-size: clamp(1.25rem, 2.7vw, 2.15rem);
-  line-height: 1.34;
-  letter-spacing: -0.025em;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: var(--fs-h1);
+  line-height: 1.2;
+  letter-spacing: 0;
   color: var(--rice);
   max-width: 24ch;
   margin: 0;
@@ -960,11 +958,11 @@
 
 .about-page .ab-fig-value {
   margin: 0;
-  font-family: var(--sans);
-  font-weight: 800;
+  font-family: var(--serif);
+  font-weight: 400;
   font-size: clamp(1.9rem, 3.6vw, 2.9rem);
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   color: var(--gold-light);
   font-variant-numeric: tabular-nums;
 }

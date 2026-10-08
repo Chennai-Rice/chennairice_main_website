@@ -153,11 +153,13 @@ export default function InfraShowcase() {
           <div className="ish-hero-body">
             <span className="infra-eyebrow">Our Infrastructure</span>
 
-            <h2 className="infra-title ish-hero-title" key={active.id}>
+            {/* The page's h1 — Infrastructure had none, so its main headline
+                is promoted and takes the shared page-title size. */}
+            <h1 className="infra-title ish-hero-title" key={active.id}>
               {active.titleLines.map(line => (
                 <span key={line}>{line}</span>
               ))}
-            </h2>
+            </h1>
 
             <Divider />
 

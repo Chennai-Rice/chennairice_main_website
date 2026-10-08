@@ -33,6 +33,7 @@ export default function Scale() {
             It needs scroll distance to scrub against, which is why it lives
             here rather than in the hero (nothing scrolls above the hero). */}
         <ScrollReveal
+          as="h1"
           containerClassName="ab-scroll-reveal"
           textClassName="ab-scroll-reveal-text"
           baseOpacity={0.12}

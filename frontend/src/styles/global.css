@@ -43,13 +43,30 @@
   --heading: #4a2c22;
   --muted: #7d6a5b;
 
-  --serif: 'Playfair Display', Georgia, serif;
-  /* Reserved for hero headlines only. DM Serif Display ships a single
-     weight (400) and is drawn for large sizes — its hairlines thin out and
-     close up below about 40px, which is why it is not the body serif. */
-  --display: 'DM Serif Display', Georgia, serif;
-  --sans: 'Poppins', 'Segoe UI', sans-serif;
-  --script: 'Great Vibes', cursive;
+  /* ---- Typography: one pair for the whole site ----
+     Bodoni Moda for every heading — a high-contrast Didone, the letterform
+     of luxury labels and editorial mastheads. It is variable in weight and
+     optical size, so the hairlines are drawn sturdier at small sizes and
+     finer at display sizes rather than simply scaled.
+     Jost for all running text — a geometric sans in the Futura tradition,
+     quiet and precise next to the serif.
+
+     Every font-family rule on the site reads these tokens, so the pairing
+     is changed here and nowhere else. --display and --serif are kept as
+     separate names because many rules read them; both resolve to the same
+     face. */
+  --serif: 'Bodoni Moda', 'Bodoni 72', Didot, Georgia, serif;
+  --display: var(--serif);
+  --sans: 'Jost', 'Futura', 'Segoe UI', Arial, sans-serif;
+  /* Signatures only (the founder's name). */
+  --script: 'Mrs Saint Delafield', cursive;
+
+  /* One heading scale, shared by the shop's own rules (which already read
+     these names) and the main site's. Every page title uses --fs-h1, every
+     section heading --fs-h2. */
+  --fs-h1: clamp(2.125rem, 4.4vw, 3.25rem);   /* 34–52px */
+  --fs-h2: clamp(1.75rem, 3vw, 2.375rem);     /* 28–38px */
+  --fs-h3: clamp(1.25rem, 1.8vw, 1.5rem);     /* 20–24px */
 }
 
 * {
@@ -60,6 +77,27 @@
 
 html {
   scroll-behavior: smooth;
+  /* Never let the browser fake a weight or an italic by distorting the
+     outlines — only the cuts actually loaded (Bodoni Moda 400–700, Jost
+     300–700) are ever drawn. Heading weights: 400 for page and section
+     headings, 500 for smaller component titles. */
+  font-synthesis: none;
+  /* Bodoni Moda's optical-size axis, pinned low. Left on auto it picks the
+     size-matched cut, whose hairlines are drawn for print: on screen at
+     heading sizes they all but vanish, and letters like F, R and e looked
+     broken ("Finest Rice, Finest Life"). The small-size cut keeps the
+     Didone contrast but draws the thin strokes sturdily enough to hold.
+     Jost has no such axis and ignores this. */
+  font-variation-settings: 'opsz' 11;
+}
+
+/* Default look for any heading not given its own class. */
+h1,
+h2,
+h3 {
+  font-family: var(--serif);
+  font-weight: 400;
+  color: var(--heading);
 }
 
 body {
@@ -100,19 +138,21 @@ button {
   gap: 16px;
   color: var(--gold-deep);
   font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.35em;
+  font-weight: 600;
+  /* Was 0.35em. Letters spaced that far apart read as a template flourish
+     rather than a label; 0.2em still says "small caps label" calmly. */
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  text-indent: 0.35em;
+  text-indent: 0.2em;
 }
 
-/* ---- Shared: serif section heading ---- */
+/* ---- Shared: section heading (h2) ---- */
 .section-title {
   font-family: var(--serif);
-  font-weight: 600;
+  font-weight: 400;
   color: var(--heading);
   text-align: center;
-  font-size: clamp(30px, 3.4vw, 44px);
+  font-size: var(--fs-h2);
   line-height: 1.2;
 }
 

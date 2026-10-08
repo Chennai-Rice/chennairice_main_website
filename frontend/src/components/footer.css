@@ -84,7 +84,7 @@
 /* ---------- headings ---------- */
 .foot-title {
   font-family: var(--serif);
-  font-weight: 600;
+  font-weight: 500;
   font-size: clamp(19px, 1.5vw, 22px);
   line-height: 1.2;
   color: var(--foot-gold);
