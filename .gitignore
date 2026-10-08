@@ -40,3 +40,6 @@ frontend/public/robots.txt
 # Firebase CLI debug output — can include auth tokens
 firebase-debug.log
 *-debug.log
+
+# Local PostgreSQL data (backend/db/dev-server.js and the test suite)
+backend/.data/

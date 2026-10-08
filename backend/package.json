@@ -1,0 +1,24 @@
+{
+  "name": "chennai-rice-backend",
+  "private": true,
+  "type": "module",
+  "description": "Sales backend: catalog, checkout, payments, orders, inventory, dispatch. Shared by the local dev server (backend/server) and the Cloud Function (functions/).",
+  "scripts": {
+    "db:start": "node db/dev-server.js",
+    "db:migrate": "node db/migrate.js",
+    "db:seed": "node db/seed.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js",
+    "db:prices": "node db/apply-price-list.js",
+    "db:demo-orders": "node db/demo-orders.js",
+    "db:order-ids": "node db/order-ids.js"
+  },
+  "dependencies": {
+    "@google-cloud/cloud-sql-connector": "^1.4.0",
+    "express": "^4.19.2",
+    "firebase-admin": "^12.7.0",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "embedded-postgres": "16.14.0-beta.17"
+  }
+}

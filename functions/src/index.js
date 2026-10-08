@@ -32,3 +32,19 @@ export const api = onRequest(
   },
   app
 )
+
+// Sales housekeeping every 10 minutes: expire unpaid orders (freeing their
+// stock), remind the team about orders stuck at a step, low-stock warnings,
+// and sending queued emails. Does nothing until the sales database is
+// configured (CLOUD_SQL_INSTANCE), so deploying it early is harmless.
+import { onSchedule } from 'firebase-functions/v2/scheduler'
+import { hasDatabase } from '../../backend/lib/db.js'
+import { runJobs } from '../../backend/lib/sales/jobs.js'
+
+export const salesJobs = onSchedule(
+  { schedule: 'every 10 minutes', region: 'asia-south1', timeZone: 'Asia/Kolkata', memory: '256MiB', timeoutSeconds: 120 },
+  async () => {
+    if (!hasDatabase()) return
+    console.log('[salesJobs]', JSON.stringify(await runJobs()))
+  }
+)

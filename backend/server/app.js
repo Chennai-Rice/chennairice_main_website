@@ -32,17 +32,34 @@ import {
 import { hasSupabase } from '../lib/supabase.js'
 import { createCheckoutSession, confirmCheckout } from '../lib/checkout.js'
 import { availableGateways } from '../lib/gateways.js'
+import { hasDatabase } from '../lib/db.js'
+import { createSalesRouter } from '../lib/sales/routes.js'
 
 export const app = express()
 app.use(cors())
-app.use(express.json({ limit: '200kb' }))
+app.use(
+  express.json({
+    limit: '200kb',
+    // Webhook signatures are computed over the exact bytes received. Cloud
+    // Functions already provide req.rawBody; this covers the local server.
+    verify: (req, _res, buf) => {
+      if (!req.rawBody) req.rawBody = buf
+    },
+  })
+)
+
+// The sales backend (PostgreSQL / Cloud SQL): catalog, checkout, order
+// tracking, webhooks and the staff admin API. Mounted ahead of the older
+// Supabase checkout routes below, so once a database is configured it answers
+// /api/checkout/* and those are never reached. Without one, nothing changes.
+if (hasDatabase()) app.use(createSalesRouter())
 
 const PORT = process.env.PORT || 8787
 const GROQ_API_KEY = process.env.GROQ_API_KEY
 const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b'
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, hasKey: Boolean(GROQ_API_KEY), consentStore: hasStore, supabase: hasSupabase })
+  res.json({ ok: true, hasKey: Boolean(GROQ_API_KEY), consentStore: hasStore, supabase: hasSupabase, salesDb: hasDatabase() })
 })
 
 /* Cookie consent — mirrors api/consent.js so the banner behaves the same

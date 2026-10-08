@@ -180,3 +180,19 @@ export function verifyCheckoutSignature({ orderId, paymentId, signature }) {
 export function paiseToRupees(paise) {
   return Number(paise) / 100
 }
+
+/**
+ * Refund a captured payment, fully or in part.
+ *
+ * @param {string} paymentId Razorpay payment id (pay_...)
+ * @param {{ amountPaise: number, notes?: Record<string, string>, receipt?: string }} input
+ * @returns {Promise<{ id: string, status: string, amount: number }>}
+ */
+export async function createRefund(paymentId, { amountPaise, notes, receipt } = {}) {
+  if (!paymentId) throw gatewayError('createRefund requires a payment id.', { status: 400, retriable: false })
+  if (!(Number(amountPaise) > 0)) throw gatewayError('createRefund requires a positive amount.', { status: 400, retriable: false })
+  const body = { amount: Math.round(Number(amountPaise)), speed: 'normal' }
+  if (notes) body.notes = notes
+  if (receipt) body.receipt = String(receipt).slice(0, 40)
+  return razorpayFetch('/payments/' + encodeURIComponent(paymentId) + '/refund', { method: 'POST', body })
+}
