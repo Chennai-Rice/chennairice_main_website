@@ -848,7 +848,7 @@ test('order confirmation email: sent over SMTP once payment verifies, with the o
   }
 })
 
-test('shipped email: sent with shipment ID and tracking; one-tap dispatch waits for the tracking; undo stops it', async () => {
+test('shipped email: sent on dispatch with shipment ID and tracking; tracking added later follows; never duplicated', async () => {
   const { SMTPServer } = await import('smtp-server')
   const { simpleParser } = await import('mailparser')
   const wh = 'store@x.test|uid-store'
@@ -893,39 +893,34 @@ test('shipped email: sent with shipment ID and tracking; one-tap dispatch waits 
     assert.ok(ma.html.includes('Track on Blue Dart') && ma.html.includes('paste it on the Blue Dart'))
     assert.ok(!/\{\{|<!-- IF/.test(ma.html), 'every placeholder and condition resolved')
 
-    // B: one-tap dispatch: nothing yet; the tracking sheet then sends one email with the tracking.
+    // B: one-tap dispatch: "Order Shipped" at once; the courier sheet then sends the tracking.
     const { session: b } = await buy([{ id: 'rudra', qty: 1 }], buyer({ email: 'ship-b@example.com' }))
     await api('POST', `/api/admin/orders/${b.orderId}/dispatched`, { token: wh, body: { on: true } })
-    assert.equal((await settle('ship-b@example.com', 1)).length, 0, 'waits for the tracking')
-    const { rows: [waiting] } = await db.query(`select send_after from email_outbox where order_id = $1 and template = 'order_shipped'`, [b.orderId])
-    assert.ok(waiting.send_after > new Date(), 'held for the courier sheet')
+    const [mb1] = await settle('ship-b@example.com', 1)
+    assert.equal(mb1.subject, `Order Shipped - ${b.orderNumber}`)
+    assert.ok(mb1.html.includes('To be confirmed') && mb1.html.includes('tracking details as soon as they are ready'))
     const csv = Buffer.from(`${b.orderNumber},D55566677,DTDC\n`)
     const up = await fetch(`${base}/api/admin/warehouse/tracker?apply=1&filename=agent.csv`, {
       method: 'POST', headers: { Authorization: 'Bearer ' + wh, 'Content-Type': 'application/octet-stream' }, body: csv,
     })
     assert.equal((await up.json()).summary.updated, 1)
-    const mb = await settle('ship-b@example.com', 1)
-    assert.equal(mb.length, 1)
-    assert.equal(mb[0].subject, `Order Shipped - ${b.orderNumber}`)
-    assert.ok(mb[0].html.includes('D55566677') && mb[0].html.includes('DTDC') && mb[0].html.includes('dtdc.com'))
+    const mb = await settle('ship-b@example.com', 2)
+    assert.equal(mb.length, 2)
+    assert.equal(mb[1].subject, `Tracking details - ${b.orderNumber}`)
+    assert.ok(mb[1].html.includes('D55566677') && mb[1].html.includes('DTDC') && mb[1].html.includes('dtdc.com'))
 
-    // C: one-tap then undo before the email went out: never sent.
+    // C: one-tap, undo, dispatch again: the customer got one "Order Shipped", not two.
     const { session: c } = await buy([{ id: 'rudra', qty: 1 }], buyer({ email: 'ship-c@example.com' }))
     await api('POST', `/api/admin/orders/${c.orderId}/dispatched`, { token: wh, body: { on: true } })
+    await settle('ship-c@example.com', 1)
     await api('POST', `/api/admin/orders/${c.orderId}/dispatched`, { token: wh, body: { on: false } })
-    const { rows: [stopped] } = await db.query(`select status, last_error from email_outbox where order_id = $1 and template = 'order_shipped'`, [c.orderId])
-    assert.deepEqual([stopped.status, stopped.last_error], ['failed', 'Dispatch undone before the email went out'])
-    assert.equal((await settle('ship-c@example.com', 1)).length, 0)
+    await api('POST', `/api/admin/orders/${c.orderId}/dispatched`, { token: wh, body: { on: true } })
+    assert.equal((await settle('ship-c@example.com', 2)).length, 1)
 
-    // D: one-tap and no tracking within the wait: "on its way", then a tracking email when it is added.
+    // D: tracking added by editing the shipment details: one tracking email, never repeated.
     const { session: d } = await buy([{ id: 'rudra', qty: 1 }], buyer({ email: 'ship-d@example.com' }))
     await api('POST', `/api/admin/orders/${d.orderId}/dispatched`, { token: wh, body: { on: true } })
-    await db.query(`update email_outbox set send_after = now() - interval '1 minute' where order_id = $1 and template = 'order_shipped'`, [d.orderId])
-    const { sendQueued } = await import('../lib/sales/email.js')
-    await sendQueued(db)
-    const [first] = await settle('ship-d@example.com', 1)
-    assert.equal(first.subject, `Order Shipped - ${d.orderNumber}`)
-    assert.ok(first.html.includes('To be confirmed') && first.html.includes('tracking details as soon as they are ready'))
+    await settle('ship-d@example.com', 1)
     const shD = await shipmentOf(d.orderId)
     const details = { method: 'courier', carrierName: 'Trackon', trackingNumber: 'T99887766' }
     assert.equal((await api('PATCH', `/api/admin/shipments/${shD.id}/details`, { token: wh, body: details })).status, 200)

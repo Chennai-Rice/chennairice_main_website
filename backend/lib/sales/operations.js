@@ -238,7 +238,9 @@ export async function setDispatched(staff, id, { on, expect } = {}) {
         shipped_at: now, confirmed_at: order.confirmed_at || now, packed_at: order.packed_at || now,
       })
       await issueInvoice(db, updated)
-      await queueShippedEmail(db, updated, shipment, { waitForTracking: true })
+      // The customer hears straight away; the AWB, when it comes, follows in a
+      // "Tracking details" email (queueShippedEmail).
+      await queueShippedEmail(db, updated, shipment)
       return { id, status: updated.status, shippedAt: updated.shipped_at }
     }
 
