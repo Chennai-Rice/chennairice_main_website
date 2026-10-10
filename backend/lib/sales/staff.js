@@ -71,7 +71,10 @@ async function firebaseVerifier() {
     const { getAuth } = await import('firebase-admin/auth')
     const app = getApps()[0] || initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID || 'chennai-rice-website' })
     const auth = getAuth(app)
-    defaultVerifier = (token) => auth.verifyIdToken(token, true)
+    // Signature, expiry and project are checked here. Taking access away is
+    // handled by staff_users.is_active, read on every request, so the extra
+    // "revoked?" lookup (which needs Firebase Auth admin rights) is not used.
+    defaultVerifier = (token) => auth.verifyIdToken(token)
   }
   return defaultVerifier
 }
@@ -108,7 +111,9 @@ export function staffAuth({ verifyIdToken } = {}) {
         try {
           const verify = verifyIdToken || (await firebaseVerifier())
           decoded = await verify(token)
-        } catch {
+        } catch (err) {
+          // The reason only (never the token), so a failing sign-in can be diagnosed.
+          console.warn('[staff] token rejected:', err?.code || err?.message || err)
           throw httpError('Invalid token', { status: 401, publicMessage: 'Your session has expired. Please sign in again.' })
         }
       }
