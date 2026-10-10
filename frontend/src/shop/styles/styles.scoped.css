@@ -2615,9 +2615,3 @@
   background: var(--maroon-600);
 }
 
-/* "To be dispatched": gold rather than green, so it reads as "next step",
-   not as a second "done" next to "Paid in full". */
-.shop-scope .receipt-status--pending {
-  background: #f6ecd2;
-  color: #8a6420;
-}

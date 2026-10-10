@@ -17,7 +17,8 @@ export const api = onRequest(
     region: 'asia-south1',
     // The gateways and Supabase are all reached over the network, so these
     // spend most of their time waiting rather than computing.
-    memory: '256MiB',
+    // Invoice PDFs and tracker spreadsheets are built in memory.
+    memory: '512MiB',
     // Long enough for a Groq completion, which is the slowest thing here;
     // every payment call has its own 15s deadline well inside this.
     timeoutSeconds: 60,
@@ -25,9 +26,17 @@ export const api = onRequest(
     // request of a quiet period. Raise it if cold starts still show up.
     minInstances: 0,
     maxInstances: 10,
-    // Secrets are provided as environment variables through Firebase's secret
-    // manager — see the deploy notes in README terms; nothing is read from a
-    // .env file here, because .env files are not deployed.
+    // Plain settings come from functions/.env, which the Firebase CLI uploads
+    // as environment variables on deploy (the file itself is git-ignored).
+    // Passwords belong in Secret Manager instead, listed here:
+    // SMTP_PASS: the support@ Google Workspace app password, used to send the
+    // order emails (firebase functions:secrets:set SMTP_PASS).
+    // DB_PASSWORD: the chennairice_app password for Cloud SQL, copied from the
+    // database project's Secret Manager (infra/gcp/GO-LIVE.md, step 3).
+    secrets: ['SMTP_PASS', 'DB_PASSWORD'],
+    // Runs as the backend account that phase1-setup.ps1 allowed into Cloud SQL
+    // (Cloud SQL client) and nothing else.
+    serviceAccount: 'api-backend@chennai-rice-website.iam.gserviceaccount.com',
     invoker: 'public',
   },
   app
@@ -42,7 +51,11 @@ import { hasDatabase } from '../../backend/lib/db.js'
 import { runJobs } from '../../backend/lib/sales/jobs.js'
 
 export const salesJobs = onSchedule(
-  { schedule: 'every 10 minutes', region: 'asia-south1', timeZone: 'Asia/Kolkata', memory: '256MiB', timeoutSeconds: 120 },
+  {
+    schedule: 'every 10 minutes', region: 'asia-south1', timeZone: 'Asia/Kolkata', memory: '256MiB', timeoutSeconds: 120,
+    secrets: ['SMTP_PASS', 'DB_PASSWORD'], // the database, and sending the queued emails
+    serviceAccount: 'api-backend@chennai-rice-website.iam.gserviceaccount.com',
+  },
   async () => {
     if (!hasDatabase()) return
     console.log('[salesJobs]', JSON.stringify(await runJobs()))

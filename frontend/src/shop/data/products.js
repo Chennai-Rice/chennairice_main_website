@@ -29,6 +29,14 @@ export const FILTERS = [
 
 // slug -> presentation metadata not carried by the `products` table.
 const PRESENTATION = {
+  "kitchidi-ponni-rice": {
+    variant: "red",
+    width: 600,
+    height: 843,
+    tags: ["ponni", "premium"],
+    search: "kitchidi ponni rice chennai rice premium pack 1 year aged 5kg 26kg ponni premium offer",
+    flag: "★ Offer",
+  },
   "special-rajabhogam": {
     variant: "red",
     width: 592,
@@ -85,7 +93,7 @@ const PRESENTATION = {
     width: 488,
     height: 624,
     tags: ["ponni","bulk"],
-    search: "chennai bullets rajabhogam ponni rajabhogam ponni 26kg ponni bulk",
+    search: "chennai bullets rajabhogam ponni rnr kodad bapatla knm 5kg 10kg 26kg ponni bulk",
   },
   "a1-special-ponni": {
     variant: "orange",
@@ -107,6 +115,14 @@ const PRESENTATION = {
     height: 808,
     tags: ["ponni","bulk"],
     search: "thaaram nei kitchadi akshaya ponni akshaya ponni 25kg ponni bulk",
+  },
+  "special-idly-rice": {
+    variant: "red",
+    width: 600,
+    height: 924,
+    tags: [],
+    search: "special idly rice idli dosa pink pack kalli muthan kar 5kg offer",
+    flag: "★ Offer",
   },
 };
 
@@ -132,6 +148,15 @@ const FALLBACK_PRESENTATION = { variant: "red", width: 500, height: 800, tags: [
 // the matching product_variants rows, once real prices are confirmed.
 // ---------------------------------------------------------------------------
 const FALLBACK_PRODUCTS = [
+  {
+    slug: "kitchidi-ponni-rice",
+    tag: "1 Year Aged",
+    name: "Kitchidi Ponni Rice",
+    description: "Kitchidi Ponni, aged for a year, in our Chennai Rice premium pack. From Mother's Hands to Your Heart.",
+    packKg: 5,
+    image: "/assets/shop/packs/kitchidi-ponni-rice.png",
+    alt: "Chennai Rice Kitchidi Ponni Rice — premium pack, 1 year aged",
+  },
   {
     slug: "special-rajabhogam",
     tag: "Classic Red",
@@ -230,6 +255,15 @@ const FALLBACK_PRODUCTS = [
     packKg: 25,
     image: "/assets/shop/packs/thaaram.png",
     alt: "Thaaram Nei Kitchadi — Akshaya Ponni, 25 kg pack",
+  },
+  {
+    slug: "special-idly-rice",
+    tag: "Idly Rice",
+    name: "Special Idly Rice",
+    description: "Idly rice in our pink pack, for soft, fluffy idlis and crisp dosas.",
+    packKg: 5,
+    image: "/assets/shop/packs/special-idly-rice.png",
+    alt: "Chennai Rice Special Idly Rice — pink pack",
   },
 ].map(({ slug, tag, name, description, packKg, image, alt }) => {
   const presentation = PRESENTATION[slug] || { ...FALLBACK_PRESENTATION };

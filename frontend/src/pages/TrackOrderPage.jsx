@@ -58,6 +58,10 @@ export default function TrackOrderPage() {
   const [params] = useSearchParams()
   const [orderRef, setOrderRef] = useState(params.get('order') || '')
   const [state, setState] = useState({ status: 'idle', data: null, error: '' })
+  const [copied, setCopied] = useState('')
+  const copyNumber = (n) => {
+    navigator.clipboard?.writeText(n).then(() => setCopied(n), () => {})
+  }
 
   async function track(body) {
     setState({ status: 'loading', data: null, error: '' })
@@ -190,9 +194,18 @@ export default function TrackOrderPage() {
                       ? <div><dt>Delivered</dt><dd>{when(s.deliveredAt)}</dd></div>
                       : s.expectedDelivery && <div><dt>Expected delivery</dt><dd>{day(s.expectedDelivery)}</dd></div>}
                   </dl>
+                  {s.trackingUrl && !s.trackingPrefilled && s.trackingNumber && (
+                    <p className="track-paste">
+                      The {s.carrier || 'courier'} page asks for the tracking number: copy it, then paste it there.
+                      <button type="button" className="track-copy" onClick={() => copyNumber(s.trackingNumber)}>
+                        {copied === s.trackingNumber ? 'Copied ✓' : 'Copy ' + s.trackingNumber}
+                      </button>
+                    </p>
+                  )}
                   {s.trackingUrl && (
-                    <a className="btn-outline" href={s.trackingUrl} target="_blank" rel="noopener noreferrer">
-                      Track with {s.carrier || 'courier'}
+                    <a className="btn-outline" href={s.trackingUrl} target="_blank" rel="noopener noreferrer"
+                      onClick={() => { if (!s.trackingPrefilled && s.trackingNumber) copyNumber(s.trackingNumber) }}>
+                      Track on {s.carrier || 'the courier website'}
                     </a>
                   )}
                 </div>

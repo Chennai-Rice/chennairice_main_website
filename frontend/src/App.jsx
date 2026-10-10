@@ -4,6 +4,7 @@ import { CartProvider } from './shop/hooks/useCart.jsx'
 import { WishlistProvider } from './shop/hooks/useWishlist.jsx'
 import { CookieConsentProvider } from './hooks/useCookieConsent.jsx'
 import { useVisitorTracking } from './hooks/useVisitorTracking.jsx'
+import { useMetaPixel } from './hooks/useMetaPixel.js'
 import './shop/styles/styles.scoped.css'
 import './styles/shop-bridge.css'
 
@@ -74,6 +75,12 @@ function VisitorTracking() {
   return null
 }
 
+/** Meta Pixel — only after the visitor accepts marketing cookies. */
+function MetaPixel() {
+  useMetaPixel()
+  return null
+}
+
 /* The heatmap panel in /admin loads the real site into an iframe so click
    positions can be drawn on top of the layout they were recorded against.
    That embedded copy must not be counted as a visit — the dashboard would
@@ -100,6 +107,7 @@ export default function App() {
       <WishlistProvider>
       <ScrollToTop />
       {isStorefront && <VisitorTracking />}
+      {isStorefront && <MetaPixel />}
       {!isTool && <Navbar />}
       <Routes>
         {/* Must be declared before the "*" catch-all below, which would
@@ -188,7 +196,7 @@ export default function App() {
       {isStorefront && <RiceCursor />}
       {isStorefront && <SoruKutty />}
       {isStorefront && <CookieBanner />}
-      {/* Waits for the cookie banner to be answered, then shows once a day at most. */}
+      {/* Appears 8 seconds into the visit; once closed, not again for a day. */}
       {isStorefront && <ContestPopup />}
       </WishlistProvider>
     </CartProvider>

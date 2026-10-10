@@ -37,7 +37,8 @@ async function locationOrDefault(db, id) {
 
 export async function listStock() {
   const { rows } = await query(
-    `select v.id as variant_id, p.name as product_name, v.sku, v.pack_kg, v.reorder_level, v.is_active,
+    `select v.id as variant_id, p.name as product_name, p.image_url, p.is_active as product_active, v.sku, v.pack_kg, v.reorder_level, v.is_active,
+            (v.price_paise is not null) as priced,
             l.id as location_id, l.name as location_name, l.is_fulfilment,
             coalesce(s.on_hand, 0) as on_hand, coalesce(s.reserved, 0) as reserved, coalesce(s.damaged, 0) as damaged,
             coalesce(s.on_hand - s.reserved, 0) as available

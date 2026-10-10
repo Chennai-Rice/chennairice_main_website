@@ -14,11 +14,16 @@
   },
   "dependencies": {
     "@google-cloud/cloud-sql-connector": "^1.4.0",
+    "exceljs": "^4.4.0",
     "express": "^4.19.2",
     "firebase-admin": "^12.7.0",
+    "nodemailer": "^6.10.1",
+    "pdfkit": "^0.15.2",
     "pg": "^8.13.1"
   },
   "devDependencies": {
-    "embedded-postgres": "16.14.0-beta.17"
+    "embedded-postgres": "16.14.0-beta.17",
+    "mailparser": "^3.9.37",
+    "smtp-server": "^3.19.18"
   }
 }

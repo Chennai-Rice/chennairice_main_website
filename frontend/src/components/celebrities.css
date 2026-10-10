@@ -212,3 +212,98 @@
     font-size: 15px;
   }
 }
+
+/* ------------------------------------------- one ambassador: spotlight
+   Wide card: portrait on its tint panel (left), name, quote and role on the
+   cream panel (right). Stacks on phones, portrait on top. */
+.celeb-spot {
+  position: relative;
+  z-index: 1;
+  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1fr);
+  grid-template-rows: none;
+  width: min(840px, 100%);
+  margin-inline: auto;
+  border: 1px solid rgba(160, 130, 90, 0.18);
+  box-shadow: 0 24px 60px rgba(90, 55, 20, 0.1);
+}
+
+.celeb-spot-photo {
+  position: relative;
+  min-height: 460px;
+  background: var(--tint);
+  overflow: hidden;
+}
+.celeb-spot-photo img {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  height: 94%;
+  width: auto;
+  max-width: none;
+  object-fit: contain;
+  object-position: bottom center;
+}
+
+.celeb-spot-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 48px 44px;
+  text-align: center;
+  background: #faf6ee;
+}
+
+.celeb-spot-name {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(2rem, 3.4vw, 2.75rem);
+  line-height: 1.1;
+  color: var(--heading);
+  margin-bottom: 6px;
+}
+
+.celeb-spot .celeb-mark {
+  width: 34px;
+  height: 24px;
+}
+
+.celeb-spot .celeb-rule {
+  width: 40px;
+}
+
+.celeb-spot-quote {
+  max-width: 380px;
+  margin: 8px 0 0;
+  font-size: 18px;
+  line-height: 1.75;
+  color: #5d4a3c;
+  text-wrap: pretty;
+}
+
+/* Tablets: a little tighter. */
+@media (max-width: 900px) {
+  .celeb-spot-photo { min-height: 400px; }
+  .celeb-spot-body { padding: 40px 28px; }
+  .celeb-spot-quote { font-size: 16.5px; }
+}
+
+/* Phones: stacked, portrait on top. */
+@media (max-width: 640px) {
+  .celeb-spot {
+    grid-template-columns: 1fr;
+    width: min(420px, 100%);
+  }
+  .celeb-spot-photo {
+    min-height: 0;
+    aspect-ratio: 1 / 1;
+  }
+  .celeb-spot-body {
+    padding: 28px 22px 32px;
+    gap: 12px;
+  }
+  .celeb-spot-name { font-size: 2rem; }
+  .celeb-spot-quote { font-size: 15.5px; margin: 4px 0 0; }
+}

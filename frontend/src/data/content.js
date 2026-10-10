@@ -203,11 +203,18 @@ export const TESTIMONIALS = [
 ]
 
 export const CELEB_HEAD = {
-  label: 'Brand Ambassadors',
+  label: 'Brand Ambassador',
   title: 'Trusted by the Best',
   blurb:
-    'Our brand ambassadors share their trust in Chennai Rice — a promise of purity, quality and tradition in every grain.',
+    'Actor Prabhu, our brand ambassador, trusts Chennai Rice for its purity, quality and tradition in every grain.',
 }
+
+/**
+ * Who appears in the section, by name. Only Prabhu is the brand ambassador
+ * now; the other cards below are kept so they can be shown again by adding
+ * their names here.
+ */
+export const ACTIVE_AMBASSADORS = ['Prabhu']
 
 /**
  * The four ambassador cards.

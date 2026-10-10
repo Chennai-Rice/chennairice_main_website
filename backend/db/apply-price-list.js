@@ -4,8 +4,10 @@
 //   npm run db:prices -- --stock 100     ALSO sets 100 packs of every priced
 //                                        size in stock (local databases only)
 //
-// Price list "New Price List Effect From 27-09-2026". Prices are the
-// customer price per pack (GST-inclusive), in rupees.
+// Price list "New Price List Effect From 09-10-2026" (CRIIPL). Prices are the
+// customer price per pack, in rupees; the list notes GST is included on the
+// 5 kg and 10 kg packs. Sizes a product no longer has on the list (e.g. the
+// Idly Rice 10/26 kg) are switched off, not deleted.
 //
 // What it does, and it is safe to re-run:
 //   - creates any pack size on the list that does not exist yet
@@ -19,29 +21,38 @@ import { getPool, closePool } from '../lib/db.js'
 import { moveStock } from '../lib/sales/stock.js'
 import { defaultTaxRateBp, skuFor } from './seed.js'
 
-export const EFFECTIVE_FROM = '2026-09-27'
+export const EFFECTIVE_FROM = '2026-10-09'
 
-// slug → { packKg: price }. Brand names as on the price list in comments.
+// slug → { packKg: price }. Item and variety as on the price list in comments.
 export const PRICE_LIST = {
-  'vintage': { 5: 451, 10: 889, 26: 2150 },            // Vintage Spl Ponni
-  'special-rajabhogam': { 5: 420, 10: 828, 26: 1999 }, // Chennai Rice (the red Chennai Rice pack)
-  'vijaya-nagaram': { 5: 420, 10: 828, 26: 1999 },     // Vijayanagaram
-  'united-5kg': { 5: 420, 10: 828, 26: 1999 },         // United
-  'viruchagam': { 5: 420, 10: 828, 26: 1999 },         // Viruchagam
-  'nayara-super-aged': { 5: 420, 10: 828, 26: 1999 },  // Nayara
-  'a1-special-ponni': { 5: 420, 10: 828, 26: 1999 },   // A1 Ponni Rice
-  'chennai-bullets': { 26: 1900 },                     // Chennai Bullets
-  'alibaba': { 5: 400, 10: 788, 26: 1900 },            // Alibaba
-  'special-idly-rice': { 5: 290, 10: 566, 26: 1350 },  // Special Idly Rice (Pink)
-  // Broken Rice (26 kg, ₹1000) is on the list but not sold online.
+  'vintage': { 5: 471, 10: 930, 26: 2249 },            // Vintage Spl Ponni · JSR Kolam
+  'special-rajabhogam': { 5: 441, 10: 870, 26: 2099 }, // Chennai Rice · Vada Kolam Kitchidi Ponni
+  'vijaya-nagaram': { 5: 471, 10: 930, 26: 2249 },     // Vijayanagaram · Shikaripura Amaan Ponni
+  'united-5kg': { 5: 471, 10: 930, 26: 2249 },         // United · Shikaripura Amaan Ponni
+  'viruchagam': { 5: 471, 10: 930, 26: 2249 },         // Viruchagam · Shikaripura Amaan Ponni
+  'nayara-super-aged': { 5: 471, 10: 930, 26: 2249 },  // Nayara · Akshaya Amman Ponni
+  'a1-special-ponni': { 5: 471, 10: 930, 26: 2249 },   // A1 Ponni Rice · Akshaya Amman Ponni
+  'chennai-bullets': { 5: 441, 10: 870, 26: 2099 },    // Chennai Bullets · TN RNR / Kodad Bapatla / KA KNM
+  'alibaba': { 5: 441, 10: 870, 26: 2099 },            // Alibaba · TN RNR / Kodad Bapatla / KA KNM
+  'special-idly-rice': { 5: 255 },                     // OFFER: Special Idly Rice (Pink) 5 kg · Kalli Muthan kar
+  'kitchidi-ponni-rice': { 5: 444, 26: 2099 },         // OFFER: Chennai Rice Premium Kitchidi Ponni Rice
+  // Broken Rice (Jeera Old, 26 kg, ₹1000) is on the list but not sold online.
 }
 
-// On the price list but with no pack photo yet: priced, kept hidden from the
-// shop until an image is added and the product is switched on.
+// On the price list and added after the first catalog: created if missing,
+// and shown in the shop with its pack photo.
 const NEW_PRODUCTS = {
   'special-idly-rice': {
     name: 'Special Idly Rice', tag: 'Idly Rice',
-    description: 'Special idly rice in the pink pack, for soft idlis and dosas.',
+    description: 'Idly rice in our pink pack, for soft, fluffy idlis and crisp dosas.',
+    image: '/assets/shop/packs/special-idly-rice.png',
+  },
+  // The contest pack: listed first in the shop.
+  'kitchidi-ponni-rice': {
+    name: 'Kitchidi Ponni Rice', tag: '1 Year Aged',
+    description: "Kitchidi Ponni, aged for a year, in our Chennai Rice premium pack. From Mother's Hands to Your Heart.",
+    image: '/assets/shop/packs/kitchidi-ponni-rice.png',
+    displayOrder: 0,
   },
 }
 
@@ -55,10 +66,11 @@ export async function applyPriceList({ pool, stock = 0, log = console.log } = {}
 
     for (const [slug, info] of Object.entries(NEW_PRODUCTS)) {
       await client.query(
-        `insert into products (slug, name, tag, description, is_active, display_order)
-         values ($1, $2, $3, $4, false, (select coalesce(max(display_order), 0) + 1 from products))
-         on conflict (slug) do nothing`,
-        [slug, info.name, info.tag, info.description]
+        `insert into products (slug, name, tag, description, image_url, is_active, display_order)
+         values ($1, $2, $3, $4, $5, true, coalesce($6, (select coalesce(max(display_order), 0) + 1 from products)))
+         on conflict (slug) do update set image_url = excluded.image_url, description = excluded.description,
+                                          is_active = true`,
+        [slug, info.name, info.tag, info.description, info.image, info.displayOrder ?? null]
       )
     }
 

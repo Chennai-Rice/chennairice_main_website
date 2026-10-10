@@ -30,18 +30,16 @@ function addressLines(a) {
 
 const METHOD = { own_vehicle: 'Own vehicle', courier: 'Courier', transport: 'Transport', pickup: 'Pickup from mill' }
 
-/** Shipment ID(s) and, once shipped, how and when it left. */
+/** How and when it left, once shipped. The shipment ID is not shown on the invoice. */
 function shipmentBlock(order, all = []) {
   // A dispatch switched back off on the warehouse page is not a shipment.
   const shipments = all.filter((s) => s.status !== 'cancelled')
-  if (!shipments.length) {
-    return `<strong>${esc(order.shipment_id || '—')}</strong><br><span class="muted">To be dispatched</span>`
-  }
+  if (!shipments.length) return '<span class="muted">To be dispatched</span>'
   return shipments.map((s) => {
     const ref = s.tracking_number ? 'Tracking no. ' + s.tracking_number
       : s.lr_number ? 'LR no. ' + s.lr_number
       : s.vehicle_number ? 'Vehicle ' + s.vehicle_number : ''
-    return `<strong>${esc(s.shipment_number)}</strong><br>${esc(METHOD[s.method] || 'Dispatched')}${s.carrier_name ? ' · ' + esc(s.carrier_name) : ''}` +
+    return `<strong>${esc(METHOD[s.method] || 'Dispatched')}${s.carrier_name ? ' · ' + esc(s.carrier_name) : ''}</strong>` +
       (ref ? `<br>${esc(ref)}` : '') +
       `<br><span class="muted">${s.status === 'delivered' ? 'Delivered' : 'Shipped'} ${new Date(s.delivered_at || s.shipped_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</span>`
   }).join('<br><br>')
@@ -67,7 +65,7 @@ export function invoiceHtml({ order, items, invoice, shipments }, { forCustomer 
       GSTIN: ${esc(s.gstin || '— not yet set —')}<br>State: ${esc(s.state)} (${esc(s.stateCode)})<br>${esc(s.phone)} · ${esc(s.email)}</div>
     <div><h2>Bill / ship to</h2><strong>${esc(order.contact_name)}</strong><br>${addressLines(order.shipping_address)}<br>
       ${esc(order.contact_phone)}<br>Place of supply: ${esc(invoice.place_of_supply)}</div>
-    <div><h2>Shipment</h2>${shipmentBlock(order, shipments)}</div>
+    <div><h2>Delivery</h2>${shipmentBlock(order, shipments)}</div>
   </div>
   <table><thead><tr><th>#</th><th>Item</th><th>HSN</th><th class="n">Qty</th><th class="n">Rate (incl. GST)</th>
     <th class="n">Taxable value</th><th class="n">GST</th>${intra ? '<th class="n">CGST</th><th class="n">SGST</th>' : '<th class="n">IGST</th>'}

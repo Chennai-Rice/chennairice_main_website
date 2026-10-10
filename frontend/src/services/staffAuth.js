@@ -1,11 +1,12 @@
 // Staff sign-in for the internal pages (/warehouse).
 //
 // The backend decides everything: who is staff, and what each role may do.
-// This file only holds the sign-in token for the browser tab and attaches it
-// to /api/admin requests.
+// This file only signs the person in and attaches proof of it to
+// /api/admin requests.
 //
 // Two kinds of token:
-//   - Firebase ID token (live site, once Google sign-in is set up)
+//   - Firebase ID token: the live site. Staff sign in with their Google
+//     account; Firebase refreshes the token by itself every hour.
 //   - "dev:<email>" for local testing. The backend accepts it ONLY when it is
 //     running against a database on the same machine with STAFF_DEV_LOGIN=true
 //     (see devLoginEnabled in backend/lib/sales/staff.js), and only `npm run
@@ -14,6 +15,17 @@
 const KEY = 'cr.staff.token'
 
 export const canUseLocalSignIn = import.meta.env.DEV
+
+const FIREBASE = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+}
+/** Google sign-in is available once the Firebase web settings are in the build. */
+export const canUseGoogleSignIn = Boolean(FIREBASE.apiKey && FIREBASE.authDomain && FIREBASE.projectId && FIREBASE.appId)
+
+/* ---------------------------------------------------- local test token */
 
 function read() {
   try {
@@ -32,33 +44,94 @@ function write(token) {
   }
 }
 
-let memoryToken = read()
+let devToken = canUseLocalSignIn ? read() : null
 
-export function hasStaffToken() {
-  return Boolean(memoryToken)
+/* ------------------------------------------------------------- Firebase */
+
+// Loaded only on /warehouse, so shoppers never download the Firebase SDK.
+let firebasePromise = null
+function firebase() {
+  if (!firebasePromise) {
+    firebasePromise = Promise.all([import('firebase/app'), import('firebase/auth')]).then(([app, auth]) => {
+      const instance = app.getApps()[0] || app.initializeApp(FIREBASE)
+      return { auth: auth.getAuth(instance), lib: auth }
+    })
+  }
+  return firebasePromise
 }
 
-export function signOutStaff() {
-  memoryToken = null
+/** Resolves once Firebase knows whether someone is still signed in from before. */
+async function currentUser() {
+  if (!canUseGoogleSignIn) return null
+  const { auth } = await firebase()
+  await auth.authStateReady()
+  return auth.currentUser
+}
+
+async function bearer() {
+  if (devToken) return devToken
+  const user = await currentUser()
+  return user ? user.getIdToken() : null
+}
+
+/* ----------------------------------------------------------- public API */
+
+/** Is someone signed in from an earlier visit? (Checks Firebase, so it is async.) */
+export async function hasStaffSession() {
+  if (devToken) return true
+  return Boolean(await currentUser())
+}
+
+export async function signOutStaff() {
+  devToken = null
   write(null)
+  if (canUseGoogleSignIn && firebasePromise) {
+    const { auth, lib } = await firebase()
+    await lib.signOut(auth).catch(() => {})
+  }
+}
+
+/** Live site: Google sign-in pop-up, then the staff profile from the backend. */
+export async function signInWithGoogle() {
+  const { auth, lib } = await firebase()
+  const provider = new lib.GoogleAuthProvider()
+  // Suggests the company account first; the backend still checks the staff list.
+  provider.setCustomParameters({ hd: 'chennairiceindustries.com', prompt: 'select_account' })
+  try {
+    await lib.signInWithPopup(auth, provider)
+  } catch (err) {
+    if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+      throw new Error('Sign-in was cancelled.')
+    }
+    if (err?.code === 'auth/popup-blocked') throw new Error('Your browser blocked the sign-in window. Allow pop-ups for this site and try again.')
+    if (err?.code === 'auth/unauthorized-domain') throw new Error('Google sign-in is not enabled for this website address yet.')
+    throw new Error('Google sign-in failed. Please try again.')
+  }
+  try {
+    return await staffJson('/api/admin/me')
+  } catch (err) {
+    await signOutStaff()
+    throw err
+  }
 }
 
 /** Local testing only: sign in by email. Returns the staff profile. */
 export async function signInLocal(email) {
-  memoryToken = 'dev:' + String(email || '').trim().toLowerCase()
+  devToken = 'dev:' + String(email || '').trim().toLowerCase()
   try {
     const me = await staffJson('/api/admin/me')
-    write(memoryToken)
+    write(devToken)
     return me
   } catch (err) {
-    memoryToken = null
+    devToken = null
     throw err
   }
 }
 
 /** fetch() for /api/admin, with the sign-in attached. A 401 signs out. */
 export async function staffFetch(path, options = {}) {
-  if (!memoryToken) {
+  const token = await bearer()
+  if (!token) {
     const err = new Error('Please sign in.')
     err.status = 401
     throw err
@@ -66,12 +139,12 @@ export async function staffFetch(path, options = {}) {
   const res = await fetch(path, {
     ...options,
     headers: {
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(typeof options.body === 'string' ? { 'Content-Type': 'application/json' } : {}),
       ...options.headers,
-      Authorization: 'Bearer ' + memoryToken,
+      Authorization: 'Bearer ' + token,
     },
   })
-  if (res.status === 401) signOutStaff()
+  if (res.status === 401) await signOutStaff()
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
     const err = new Error(

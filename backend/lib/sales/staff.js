@@ -29,14 +29,18 @@ const PERMISSIONS = {
   // The /warehouse page and its CSV export. Prices are never sent to it.
   'warehouse.view': ['owner', 'admin', 'sales', 'dispatch', 'inventory', 'warehouse'],
   'order.ship': ['owner', 'admin', 'dispatch', 'warehouse'],
-  'order.deliver': ['owner', 'admin', 'dispatch'],
+  'order.deliver': ['owner', 'admin', 'dispatch', 'warehouse'],
   'order.cancel': ['owner', 'admin', 'sales'],
   'order.return': ['owner', 'admin', 'sales'],
   'order.resolve': ['owner', 'admin', 'sales'],
   'refund.create': ['owner', 'admin'],
+  // Returns & Issues: anyone on the panel may log and work an issue.
+  'issues.manage': ['owner', 'admin', 'sales', 'dispatch', 'inventory', 'warehouse'],
+  // Money in the panel (order amounts, sales figures): owner and admin only.
+  'money.view': ['owner', 'admin'],
   'inventory.view': ALL,
-  'inventory.adjust': ['owner', 'admin', 'inventory'],
-  'production.create': ['owner', 'admin', 'plant', 'inventory'],
+  'inventory.adjust': ['owner', 'admin', 'inventory', 'warehouse'],
+  'production.create': ['owner', 'admin', 'plant', 'inventory', 'warehouse'],
   'catalog.edit': ['owner', 'admin'],
   'staff.manage': ['owner', 'admin'],
   'settings.manage': ['owner'],

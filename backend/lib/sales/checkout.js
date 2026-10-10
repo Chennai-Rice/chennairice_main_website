@@ -256,9 +256,15 @@ export async function markOrderPaid({ paymentRowId, outcome, actor }) {
     )
     await recordOrderStatus(db, { orderId: order.id, from: order.status, to: 'placed', actor, reason: 'Paid via ' + payment.gateway })
 
-    const { rows: items } = await db.query('select * from order_items where order_id = $1', [order.id])
-    const forCustomer = templates.orderPlaced(updated, items)
-    await queueEmail(db, { to: updated.contact_email, ...forCustomer, orderId: order.id, dedupeKey: 'placed:' + order.id })
+    const { rows: items } = await db.query(
+      `select i.*, p.image_url from order_items i
+         left join product_variants v on v.id = i.variant_id left join products p on p.id = v.product_id
+        where i.order_id = $1 order by i.product_name`, [order.id])
+    const forCustomer = templates.orderPlaced(updated, items, paid)
+    await queueEmail(db, {
+      to: updated.contact_email, ...forCustomer, orderId: order.id, dedupeKey: 'placed:' + order.id,
+      attachments: [{ kind: 'invoice', orderId: order.id }], // GST invoice PDF, made when sent
+    })
     const forStaff = templates.newOrderForStaff(updated, items)
     await queueEmail(db, { to: staffInbox(), ...forStaff, orderId: order.id, dedupeKey: 'staff-placed:' + order.id })
 

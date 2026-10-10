@@ -14,6 +14,7 @@ import { getPool, closePool } from '../lib/db.js'
 // size each. Prices start empty on purpose: an unpriced pack is listed but can
 // never be ordered, so nothing sells at a guessed price.
 export const CATALOG = [
+  { slug: 'kitchidi-ponni-rice', name: 'Kitchidi Ponni Rice', tag: '1 Year Aged', packKg: 5, description: "Kitchidi Ponni, aged for a year, in our Chennai Rice premium pack. From Mother's Hands to Your Heart." },
   { slug: 'special-rajabhogam', name: 'Special Rajabhogam', tag: 'Classic Red', packKg: 10, description: 'Kitchidi Ponni rice in our signature red pack, milled and sealed at Erode.' },
   { slug: 'nayara-super-aged', name: 'Nayara Super Aged', tag: 'Super Aged', packKg: 10, description: 'Super-aged gel cook rice that stays separate and firm on the plate.' },
   { slug: 'vijaya-nagaram', name: 'Vijaya Nagaram', tag: 'Amman Ponni', packKg: 5, description: 'Amman Ponni, HMT Ponni grain, milled for everyday South Indian meals.' },
@@ -25,6 +26,7 @@ export const CATALOG = [
   { slug: 'a1-special-ponni', name: 'A1 Special Ponni', tag: 'No.1 Ponni', packKg: 5, description: 'Special Ponni rice, quality graded and packed at our Erode facility.' },
   { slug: 'rudra', name: 'Rudra', tag: 'Rajabhogam Ponni', packKg: 25, description: 'Rajabhogam Ponni rice, original taste and rich aroma, in a 25 kg pack.' },
   { slug: 'thaaram', name: 'Thaaram Nei Kitchadi', tag: 'Akshaya Ponni', packKg: 25, description: 'Akshaya Ponni for nei kitchadi: strong grain, superior taste, rich aroma.' },
+  { slug: 'special-idly-rice', name: 'Special Idly Rice', tag: 'Idly Rice', packKg: 5, description: 'Idly rice in our pink pack, for soft, fluffy idlis and crisp dosas.' },
 ]
 
 // GST on pre-packaged, labelled rice is 5% for packs up to 25 kg. A single

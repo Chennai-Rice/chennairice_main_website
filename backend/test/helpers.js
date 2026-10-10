@@ -48,6 +48,8 @@ export function setTestEnv() {
   process.env.SALES_NOTIFY_EMAIL = 'sales@chennairice.test'
   process.env.JOB_TOKEN = 'job-token-for-tests'
   delete process.env.RESEND_API_KEY
+  delete process.env.SMTP_HOST
+  delete process.env.EMAIL_FROM
   delete process.env.CLOUD_SQL_INSTANCE
 }
 

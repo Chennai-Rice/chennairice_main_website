@@ -1,7 +1,8 @@
-/* Contest popup: the poster, centred, above everything else on the page
-   (the cookie banner sits at 900). Sized by the viewport's height as well as
-   its width, so the whole poster and its buttons always fit without
-   scrolling, from a small phone to a wide desktop. */
+/* Slogan Competition popup.
+   Wide screens: artwork left, invitation right, in a gold-edged cream card.
+   Phones: artwork on top as a short banner, invitation below; the card
+   scrolls inside itself if a very short screen cannot fit it all.
+   Sits above everything (the cookie banner is at 900). */
 
 .contest-pop-backdrop {
   position: fixed;
@@ -9,140 +10,330 @@
   z-index: 1000;
   display: grid;
   place-items: center;
-  padding: 16px;
-  background: rgba(24, 10, 6, 0.62);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  padding: 20px;
+  background: rgba(24, 8, 6, 0.66);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   animation: contest-fade 0.25s ease;
 }
 
 .contest-pop {
+  --cp-maroon: #5e0f17;
+  --cp-maroon-2: #7a1622;
+  --cp-gold: #b8862b;
+  --cp-gold-soft: #d9b866;
+  --cp-cream: #fdf6e7;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.02fr 1fr;
+  width: min(1120px, 100%);
+  max-height: calc(100dvh - 40px);
+  background:
+    radial-gradient(120% 90% at 100% 0%, #fffaf0 0%, var(--cp-cream) 55%, #f6e8c9 100%);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1.5px var(--cp-gold-soft),
+    0 0 0 5px rgba(217, 184, 102, 0.18),
+    0 40px 90px rgba(20, 4, 2, 0.55);
+  animation: contest-rise 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ---------- artwork ---------- */
+.contest-pop-art {
+  position: relative;
+  display: block;
+  min-height: 100%;
+  line-height: 0;
+  overflow: hidden;
+}
+.contest-pop-art picture,
+.contest-pop-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.contest-pop-art img {
+  object-fit: cover;
+  object-position: 50% 60%;
+  transition: transform 0.6s ease;
+}
+.contest-pop-art:hover img {
+  transform: scale(1.02);
+}
+/* Blend the artwork's right edge into the cream panel. */
+.contest-pop-art::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 22%;
+  background: linear-gradient(90deg, rgba(253, 246, 231, 0) 0%, rgba(253, 246, 231, 0.85) 80%, var(--cp-cream) 100%);
+  pointer-events: none;
+}
+
+/* ---------- invitation ---------- */
+.contest-pop-body {
   position: relative;
   display: flex;
   flex-direction: column;
-  /* Poster is 4:5. Height left for it = viewport minus padding and the
-     footer (~118px); width follows from that, capped at 460px. */
-  width: min(460px, calc(100vw - 32px), calc((100dvh - 32px - 118px) * 0.8));
-  background: #fffaf0;
-  border-radius: 18px;
-  overflow: hidden;
-  box-shadow: 0 30px 80px rgba(20, 6, 2, 0.45), 0 0 0 1px rgba(198, 154, 63, 0.35);
-  animation: contest-rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 44px 44px 40px 24px;
+  text-align: center;
+  overflow-y: auto;
 }
 
-.contest-pop-poster {
-  display: block;
-  line-height: 0;
-}
-.contest-pop-poster img {
+.contest-pop-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   width: 100%;
-  height: auto;
-  aspect-ratio: 4 / 5;
-  object-fit: cover;
+  font-family: var(--serif);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-indent: 0.32em;
+  text-transform: uppercase;
+  color: var(--cp-maroon);
+}
+.contest-pop-eyebrow::before,
+.contest-pop-eyebrow::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cp-gold));
+}
+.contest-pop-eyebrow::after {
+  background: linear-gradient(90deg, var(--cp-gold), transparent);
 }
 
-.contest-pop-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 1;
+.contest-pop-title {
+  margin: 2px 0 0;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(2.6rem, 5vw, 4.3rem);
+  line-height: 0.98;
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+  color: var(--cp-maroon);
+  background: linear-gradient(180deg, #3a070c 0%, var(--cp-maroon-2) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.contest-pop-word {
+  display: block;
+  font-size: 0.74em;
+}
+.contest-pop-word > span {
+  font-size: 1.35em;
+}
+
+.contest-pop-tagline {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(1.15rem, 1.9vw, 1.6rem);
+  line-height: 1.2;
+  color: var(--cp-gold);
+}
+
+.contest-pop-text {
+  max-width: 440px;
+  font-family: var(--sans);
+  font-size: 15.5px;
+  line-height: 1.7;
+  color: #3b2a22;
+}
+
+.contest-pop-perks {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  margin: 6px 0 4px;
+}
+.contest-pop-perks li {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 10px;
+  padding: 0 10px;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cp-maroon);
+}
+.contest-pop-perks li + li {
+  border-left: 1px solid rgba(184, 134, 43, 0.45);
+}
+.contest-pop-icon {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
-  color: #fff;
-  background: rgba(40, 14, 8, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-.contest-pop-close:hover {
-  background: var(--maroon);
-  transform: scale(1.06);
+  color: var(--cp-maroon-2);
+  background: radial-gradient(circle at 50% 35%, #fffaf0, #f3e2bd);
+  box-shadow: inset 0 0 0 1.5px var(--cp-gold-soft), 0 4px 10px rgba(120, 80, 20, 0.12);
 }
 
-.contest-pop-foot {
-  display: grid;
-  gap: 10px;
-  padding: 12px 16px 16px;
-  text-align: center;
-  background: linear-gradient(180deg, #fffaf0, #f6ecd6);
-  border-top: 1px solid rgba(198, 154, 63, 0.35);
-}
-.contest-pop-title {
-  font-family: var(--serif);
-  font-weight: 500;
-  font-size: 19px;
-  line-height: 1.2;
-  color: var(--heading);
-}
 .contest-pop-actions {
   display: flex;
-  gap: 10px;
+  gap: 14px;
+  width: 100%;
+  margin-top: 8px;
 }
 .contest-pop-cta,
 .contest-pop-later {
-  flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  padding: 0 14px;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 22px;
   border-radius: 999px;
-  font-family: var(--sans);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 .contest-pop-cta {
-  flex: 1.4;
-  color: #fff;
-  background: linear-gradient(135deg, var(--maroon), var(--maroon-deep));
-  box-shadow: 0 8px 18px rgba(122, 31, 43, 0.35);
+  flex: 1.6;
+  color: #fff4dc;
+  background: linear-gradient(180deg, var(--cp-maroon-2) 0%, var(--cp-maroon) 60%, #43080f 100%);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(217, 184, 102, 0.75),
+    0 10px 22px rgba(94, 15, 23, 0.35);
+}
+.contest-pop-cta svg {
+  transition: transform 0.2s ease;
 }
 .contest-pop-cta:hover {
   transform: translateY(-1px);
+  box-shadow:
+    inset 0 0 0 1.5px var(--cp-gold-soft),
+    0 14px 28px rgba(94, 15, 23, 0.42);
+}
+.contest-pop-cta:hover svg {
+  transform: translateX(3px);
 }
 .contest-pop-later {
-  color: var(--maroon);
-  background: transparent;
-  border: 1.5px solid rgba(122, 31, 43, 0.4);
+  flex: 1;
+  color: var(--cp-maroon);
+  background: rgba(255, 250, 240, 0.7);
+  border: 1.5px solid var(--cp-gold);
 }
 .contest-pop-later:hover {
-  background: rgba(122, 31, 43, 0.06);
+  background: #fff;
+}
+
+/* ---------- close ---------- */
+.contest-pop-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: #fff4dc;
+  background: radial-gradient(circle at 40% 35%, var(--cp-maroon-2), #3a070c);
+  border: none;
+  box-shadow: 0 0 0 1.5px var(--cp-gold-soft), 0 6px 14px rgba(40, 6, 4, 0.35);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.contest-pop-close:hover {
+  transform: rotate(90deg);
 }
 
 .contest-pop-close:focus-visible,
 .contest-pop-cta:focus-visible,
-.contest-pop-later:focus-visible,
-.contest-pop-poster:focus-visible {
-  outline: 3px solid var(--gold);
-  outline-offset: 2px;
+.contest-pop-later:focus-visible {
+  outline: 3px solid var(--cp-gold);
+  outline-offset: 3px;
 }
 
 @keyframes contest-fade {
   from { opacity: 0; }
 }
 @keyframes contest-rise {
-  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
 }
 @media (prefers-reduced-motion: reduce) {
   .contest-pop-backdrop,
   .contest-pop { animation: none; }
+  .contest-pop-art img,
+  .contest-pop-close,
+  .contest-pop-cta svg { transition: none; }
 }
 
-/* Phones: a little tighter so the poster gets the room. */
-@media (max-width: 480px) {
+/* ---------- tablets: tighter ---------- */
+@media (max-width: 1000px) {
+  .contest-pop-body { padding: 36px 30px 30px 16px; gap: 12px; }
+  .contest-pop-text { font-size: 14.5px; }
+  .contest-pop-perks li { font-size: 11.5px; letter-spacing: 0.05em; padding: 0 6px; }
+  .contest-pop-icon { width: 46px; height: 46px; }
+  .contest-pop-cta, .contest-pop-later { min-height: 50px; font-size: 14px; padding: 0 16px; }
+}
+
+/* ---------- phones: stacked ---------- */
+@media (max-width: 720px) {
   .contest-pop-backdrop { padding: 12px; }
+  /* A plain stack, not a grid: a grid row would squeeze the artwork under
+     the text on short screens; stacked, the card scrolls instead. */
   .contest-pop {
-    width: min(460px, calc(100vw - 24px), calc((100dvh - 24px - 112px) * 0.8));
-    border-radius: 14px;
+    display: block;
+    width: min(460px, 100%);
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    border-radius: 16px;
   }
-  .contest-pop-title { font-size: 17px; }
-  .contest-pop-foot { padding: 10px 12px 12px; gap: 8px; }
-  .contest-pop-cta,
-  .contest-pop-later { font-size: 13.5px; }
+  /* A short banner of the artwork: pack and car stay in view. */
+  .contest-pop-art {
+    aspect-ratio: 16 / 10;
+    min-height: 0;
+  }
+  .contest-pop-art img { object-position: 50% 62%; }
+  .contest-pop-art::after {
+    inset: auto 0 0 0;
+    width: auto;
+    height: 28%;
+    background: linear-gradient(180deg, rgba(253, 246, 231, 0) 0%, var(--cp-cream) 100%);
+  }
+  .contest-pop-body {
+    padding: 4px 18px 20px;
+    gap: 10px;
+    overflow: visible;
+  }
+  .contest-pop-eyebrow { font-size: 11px; letter-spacing: 0.24em; text-indent: 0.24em; gap: 10px; }
+  .contest-pop-title { font-size: clamp(2rem, 10vw, 2.6rem); }
+  .contest-pop-tagline { font-size: 1.1rem; }
+  .contest-pop-text { font-size: 14px; line-height: 1.6; }
+  .contest-pop-perks li { font-size: 10.5px; letter-spacing: 0.04em; gap: 8px; padding: 0 4px; }
+  .contest-pop-icon { width: 42px; height: 42px; }
+  .contest-pop-icon svg { width: 19px; height: 19px; }
+  .contest-pop-actions { flex-direction: column; gap: 10px; margin-top: 4px; }
+  .contest-pop-cta, .contest-pop-later { flex: none; width: 100%; min-height: 50px; font-size: 14.5px; }
+  .contest-pop-close { top: 10px; right: 10px; width: 38px; height: 38px; }
+}
+
+/* Short phones: a shallower artwork strip so the invitation fits. */
+@media (max-width: 720px) and (max-height: 700px) {
+  .contest-pop-art { aspect-ratio: 2 / 1; }
+  .contest-pop-art img { object-position: 50% 58%; }
+  .contest-pop-body { gap: 8px; padding-bottom: 16px; }
+  .contest-pop-text { font-size: 13.5px; }
+  .contest-pop-icon { width: 38px; height: 38px; }
+  .contest-pop-cta, .contest-pop-later { min-height: 46px; }
 }

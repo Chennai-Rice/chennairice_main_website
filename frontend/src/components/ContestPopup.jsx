@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { useCookieConsent } from '../hooks/useCookieConsent.jsx'
 import './contestpopup.css'
 
 // The Slogan Contest runs on its own site (Firebase project couponchennairice).
@@ -15,8 +14,9 @@ const KEY = 'cr.contestPopup.hiddenUntil'
 // Never over a purchase in progress or a page the customer came to for a reason.
 const QUIET_PATHS = ['/cart', '/checkout', '/track-order', '/privacy', '/terms']
 
-// A beat after the cookie banner closes, so the two never stack.
-const SHOW_DELAY_MS = 1200
+// Shown 8 seconds into the visit, whether or not the cookie banner has been
+// answered (an unanswered banner simply stays underneath).
+const SHOW_DELAY_MS = 8000
 
 function hiddenUntil() {
   try {
@@ -35,22 +35,23 @@ function hideFor(ms) {
 }
 
 /**
- * Centred contest poster, shown once the visitor has answered the cookie
- * banner. Closes on ✕, the backdrop, "Maybe later" or Escape.
+ * Centred contest poster, 8 seconds into the visit. Closes on ✕, the
+ * backdrop, "Maybe later" or Escape.
  */
 export default function ContestPopup() {
-  const { decided } = useCookieConsent()
   const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
   const closeRef = useRef(null)
   const lastFocus = useRef(null)
   const quiet = QUIET_PATHS.some((p) => pathname.startsWith(p))
 
+  // The clock starts when the visitor arrives and keeps running as they move
+  // between pages; it only waits while they are on a quiet page.
   useEffect(() => {
-    if (!decided || quiet || open || hiddenUntil() > Date.now()) return undefined
+    if (quiet || open || hiddenUntil() > Date.now()) return undefined
     const t = window.setTimeout(() => setOpen(true), SHOW_DELAY_MS)
     return () => window.clearTimeout(t)
-  }, [decided, quiet, open])
+  }, [quiet, open])
 
   function close(ms = HIDE_AFTER_CLOSE_MS) {
     hideFor(ms)
@@ -114,27 +115,70 @@ export default function ContestPopup() {
           </svg>
         </button>
 
+        {/* Artwork: the prizes bursting from a Kitchidi Ponni pack. */}
         <a
-          data-focus
-          className="contest-pop-poster"
+          className="contest-pop-art"
           href={CONTEST_URL}
           target="_blank"
           rel="noopener"
+          tabIndex={-1}
           onClick={() => close(HIDE_AFTER_JOIN_MS)}
         >
           <picture>
-            <source srcSet="/assets/contest-popup-v1.webp" type="image/webp" />
+            <source srcSet="/assets/contest-art-v1.webp" type="image/webp" />
             <img
-              src="/assets/contest-popup-v1.jpg"
-              width="1080"
-              height="1350"
-              alt="Chennai Rice contest: buy Kitchidi Ponni Rice and stand a chance to win a car, a scooter, gold jewellery, a phone, a TV, a fridge, silk sarees and kitchen appliances."
+              src="/assets/contest-art-v1.jpg"
+              width="745"
+              height="725"
+              alt="A Chennai Rice Kitchidi Ponni pack with prizes around it: a car, a scooter, a phone, a TV, a fridge, a camera, silk sarees and a gas stove."
             />
           </picture>
         </a>
 
-        <div className="contest-pop-foot">
-          <h2 id="contest-pop-title" className="contest-pop-title">Chennai Rice Slogan Contest</h2>
+        <div className="contest-pop-body">
+          <p className="contest-pop-eyebrow">Chennai Rice presents</p>
+          {/* Drawn as small capitals: a tall first letter, the rest smaller
+              (Bodoni Moda has no small-caps cut of its own). */}
+          <h2 id="contest-pop-title" className="contest-pop-title" aria-label="Slogan Competition">
+            <span className="contest-pop-word" aria-hidden="true"><span>S</span>logan</span>
+            <span className="contest-pop-word" aria-hidden="true"><span>C</span>ompetition</span>
+          </h2>
+          <p className="contest-pop-tagline">Give Rice a Voice. Create a Slogan.</p>
+          <p className="contest-pop-text">
+            Your creativity can bring home amazing prizes! Stand a chance to win exciting rewards and get
+            featured in our next campaign.
+          </p>
+
+          <ul className="contest-pop-perks">
+            <li>
+              <span className="contest-pop-icon" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7c-1.5-3-5-3.5-5-1s3 1 5 1zm0 0c1.5-3 5-3.5 5-1s-3 1-5 1z"
+                    stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                </svg>
+              </span>
+              Exciting prizes
+            </li>
+            <li>
+              <span className="contest-pop-icon" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8L3.5 9.7l5.9-.9z" />
+                </svg>
+              </span>
+              Get featured in our campaign
+            </li>
+            <li>
+              <span className="contest-pop-icon" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <rect x="4" y="5.5" width="16" height="14.5" rx="2" stroke="currentColor" strokeWidth="1.6" />
+                  <path d="M4 10h16M8.5 3.5v4M15.5 3.5v4M8 13.5h2M11 13.5h2M14 13.5h2M8 16.5h2M11 16.5h2"
+                    stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+              </span>
+              Submission deadline coming soon
+            </li>
+          </ul>
+
           <div className="contest-pop-actions">
             <a
               data-focus
@@ -145,6 +189,9 @@ export default function ContestPopup() {
               onClick={() => close(HIDE_AFTER_JOIN_MS)}
             >
               Participate now
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </a>
             <button data-focus type="button" className="contest-pop-later" onClick={() => close()}>
               Maybe later

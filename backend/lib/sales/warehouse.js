@@ -10,6 +10,9 @@ import { httpError, str, parseTrackingRef, phoneKey } from './util.js'
 // orders confirmed or packed from the office screens.
 export const TABS = {
   to_dispatch: ['placed', 'confirmed', 'packed'],
+  // The Dispatch page splits "to dispatch" into Ready and Packing.
+  ready: ['placed', 'confirmed'],
+  packing: ['packed'],
   dispatched: ['shipped'],
   delivered: ['delivered'],
   cancelled: ['cancelled', 'returned'],
@@ -21,7 +24,7 @@ const PAGE = 20
 // The page asks for everything it has already loaded when it auto-refreshes.
 const MAX_PAGE = 500
 
-const DATE = /^\d{4}-\d{2}-\d{2}$/
+export const DATE = /^\d{4}-\d{2}-\d{2}$/
 // India time, so "today" means the shop's today, not UTC's.
 const IST_DAY = `(o.placed_at at time zone 'Asia/Kolkata')::date`
 
@@ -29,7 +32,7 @@ const IST_DAY = `(o.placed_at at time zone 'Asia/Kolkata')::date`
  * WHERE clause for every filter except the status tab, so the same filters
  * can drive the list, the tab counts and the packing summary.
  */
-function filterSql(f, params) {
+export function filterSql(f, params) {
   const where = [`o.status <> 'pending_payment'`]
   const add = (value) => {
     params.push(value)
@@ -105,7 +108,7 @@ function shapeRow(r) {
  * every tab under the same filters (so the page knows when it has them all).
  * `limit`/`offset` page through; the CSV export passes a large limit.
  */
-export async function listWarehouseOrders(f = {}, { maxLimit = MAX_PAGE } = {}) {
+export async function listWarehouseOrders(f = {}, { maxLimit = MAX_PAGE, money = false } = {}) {
   const tab = TABS[f.tab] ? f.tab : 'to_dispatch'
   const sort = f.sort === 'newest' ? 'desc' : 'asc'
   const limit = Math.min(Math.max(Number(f.limit) || PAGE, 1), maxLimit)
@@ -118,12 +121,22 @@ export async function listWarehouseOrders(f = {}, { maxLimit = MAX_PAGE } = {}) 
   const listParams = [...params, TABS[tab]]
   const { rows } = await query(
     `select o.id, o.order_number, o.shipment_id, o.status, o.payment_status, o.placed_at, o.shipped_at,
-            o.contact_name, o.contact_phone, o.shipping_address, o.needs_attention,
-            json_agg(json_build_object('name', i.product_name, 'packKg', i.pack_kg, 'qty', i.quantity, 'sku', i.sku)
+            o.contact_name, o.contact_phone, o.shipping_address, o.needs_attention, o.total_paise,
+            (select json_build_object('id', sh.id, 'method', sh.method, 'carrier', sh.carrier_name,
+                    'trackingNumber', sh.tracking_number, 'lrNumber', sh.lr_number, 'vehicle', sh.vehicle_number,
+                    'trackingUrl', sh.tracking_url, 'driverName', sh.driver_name, 'driverPhone', sh.driver_phone,
+                    'notes', sh.notes, 'expectedDelivery', sh.expected_delivery)
+               from shipments sh where sh.order_id = o.id and sh.status <> 'cancelled'
+              order by sh.created_at desc limit 1) as shipment,
+            json_agg(json_build_object('name', i.product_name, 'packKg', i.pack_kg, 'qty', i.quantity, 'sku', i.sku,
+                                       'image', p.image_url)
                      order by i.product_name, i.pack_kg) as items,
             sum(i.quantity)::int as packs,
             sum(i.quantity * i.pack_kg) as total_kg
-       from orders o join order_items i on i.order_id = o.id
+       from orders o
+       join order_items i on i.order_id = o.id
+       join product_variants v on v.id = i.variant_id
+       join products p on p.id = v.product_id
       where ${base} and o.status = any($${listParams.length})
       group by o.id
       order by o.placed_at ${sort}, o.order_number
@@ -142,7 +155,8 @@ export async function listWarehouseOrders(f = {}, { maxLimit = MAX_PAGE } = {}) 
 
   return {
     tab,
-    orders: rows.map(shapeRow),
+    // Amounts only for roles allowed to see money (owner, admin).
+    orders: rows.map((r) => ({ ...shapeRow(r), shipment: r.shipment, ...(money ? { total: Number(r.total_paise) / 100 } : {}) })),
     counts: tabCounts,
     offset,
     tabCount: tabCounts[tab],
@@ -157,7 +171,7 @@ const STATUS_LABEL = {
 const PAYMENT_LABEL = { paid: 'Paid', refunded: 'Refunded', partially_refunded: 'Partly refunded', pending: 'Pending', failed: 'Failed' }
 
 /** One CSV cell. Text that Excel would run as a formula is defused. */
-function cell(value) {
+export function cell(value) {
   let s = value == null ? '' : String(value)
   if (/^[=+\-@\t\r]/.test(s)) s = "'" + s
   return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
@@ -198,4 +212,93 @@ export async function warehouseCsv(f = {}) {
 
 export function assertTab(tab) {
   if (tab && !TABS[tab]) throw httpError('Unknown tab.')
+}
+
+/**
+ * Customers who have paid for an order, for the warehouse's Customers page:
+ * who they are, how to reach them, where they are, and how often they buy.
+ * No money: order counts and packs only.
+ */
+export async function listWarehouseCustomers(f = {}) {
+  const params = []
+  let where = `o.status <> 'pending_payment'`
+  const q = str(f.q).slice(0, 100)
+  if (q) {
+    params.push('%' + q + '%')
+    const digits = q.replace(/\D/g, '')
+    where += ` and (c.name ilike $1 or c.email::text ilike $1 or o.shipping_address->>'city' ilike $1`
+    if (digits.length >= 4) {
+      params.push('%' + digits + '%')
+      where += ` or regexp_replace(c.phone, '\D', '', 'g') like $2`
+    }
+    where += ')'
+  }
+  const limit = Math.min(Math.max(Number(f.limit) || 20, 1), 100)
+  const offset = Math.max(Number(f.offset) || 0, 0)
+  const { rows } = await query(
+    `select c.id, c.name, c.phone,
+            (array_agg(o.shipping_address->>'city' order by o.placed_at desc))[1] as city,
+            (array_agg(o.ship_state order by o.placed_at desc))[1] as state,
+            count(distinct o.id)::int as orders,
+            coalesce(sum(i.quantity), 0)::int as packs,
+            max(o.placed_at) as last_order_at,
+            min(o.placed_at) as first_order_at
+       from customers c
+       join orders o on o.customer_id = c.id
+       join order_items i on i.order_id = o.id
+      where ${where}
+      group by c.id
+      order by max(o.placed_at) desc
+      limit ${limit} offset ${offset}`,
+    params
+  )
+  const { rows: [{ n }] } = await query(
+    `select count(distinct c.id)::int as n from customers c join orders o on o.customer_id = c.id where ${where}`,
+    params
+  )
+  return {
+    total: n,
+    customers: rows.map((r) => ({
+      id: r.id, name: r.name, phone: r.phone, city: r.city, state: r.state,
+      orders: r.orders, packs: r.packs, lastOrderAt: r.last_order_at, firstOrderAt: r.first_order_at,
+    })),
+  }
+}
+
+/**
+ * Warehouse reports over the last `days` days (default 30), in packs and
+ * orders, never money: dispatches per day, packs per product, the status mix,
+ * and how long paid orders wait before dispatch.
+ */
+export async function warehouseReport({ days } = {}) {
+  const span = Math.min(Math.max(Number(days) || 30, 1), 365)
+  const since = `now() - make_interval(days => ${span})`
+  const [perDay, perProduct, mix, speed] = await Promise.all([
+    query(
+      `select (o.shipped_at at time zone 'Asia/Kolkata')::date::text as day, count(*)::int as orders,
+              sum((select sum(quantity) from order_items i where i.order_id = o.id))::int as packs
+         from orders o
+        where o.shipped_at is not null and o.shipped_at > ${since} and o.status in ('shipped', 'delivered')
+        group by 1 order by 1`),
+    query(
+      `select i.product_name as name, i.pack_kg as "packKg", sum(i.quantity)::int as packs, count(distinct o.id)::int as orders
+         from orders o join order_items i on i.order_id = o.id
+        where o.status not in ('pending_payment', 'cancelled') and o.placed_at > ${since}
+        group by 1, 2 order by packs desc, name limit 20`),
+    query(
+      `select status, count(*)::int as n from orders
+        where status <> 'pending_payment' and placed_at > ${since} group by status`),
+    query(
+      `select round(avg(extract(epoch from (shipped_at - placed_at)) / 3600)::numeric, 1)::float as avg_hours,
+              count(*)::int as dispatched
+         from orders where shipped_at is not null and placed_at > ${since} and status in ('shipped', 'delivered')`),
+  ])
+  return {
+    days: span,
+    perDay: perDay.rows,
+    perProduct: perProduct.rows.map((r) => ({ ...r, packKg: Number(r.packKg) })),
+    statusMix: Object.fromEntries(mix.rows.map((r) => [r.status, r.n])),
+    avgHoursToDispatch: speed.rows[0].avg_hours,
+    dispatched: speed.rows[0].dispatched,
+  }
 }

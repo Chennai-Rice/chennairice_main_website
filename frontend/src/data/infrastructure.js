@@ -40,7 +40,7 @@ export const INFRA_ASSETS = {
 /* -------------------- capacity & storage (current, reported) -------------------- */
 
 export const FACILITY_CAPACITY = {
-  value: '210,240',
+  value: '2,44,000',
   unit: 'TONNES / YEAR',
   label: 'Current Processing Capacity',
   status: 'Current',
@@ -193,7 +193,7 @@ export const QC_CARDS = [
 
 export const INFRA_NUMBERS = [
   { value: '1950s', unit: '', label: 'Heritage', status: 'Reported' },
-  { value: '210,240', unit: 'MTPA', label: 'Current Capacity', status: 'Current' },
+  { value: '2,44,000', unit: 'MTPA', label: 'Current Capacity', status: 'Current' },
   { value: '61,500', unit: 'MT', label: 'Storage', status: 'Current' },
   { value: '21', unit: '', label: 'Silos', status: 'Current' },
   { value: '420,480', unit: 'MTPA', label: 'Planned Capacity', status: 'Planned' },
@@ -246,7 +246,7 @@ export const SHOWCASE_SLIDES = [
 ]
 
 export const SHOWCASE_STATS = [
-  { icon: 'capacity', value: '210,240', label: 'MTPA Capacity' },
+  { icon: 'capacity', value: '2,44,000', label: 'MTPA Capacity' },
   { icon: 'storage', value: '61,500', label: 'MT Paddy Storage' },
   { icon: 'silos', value: '21', label: 'Storage Silos' },
   { icon: 'stages', value: '10', label: 'Processing Stages' },

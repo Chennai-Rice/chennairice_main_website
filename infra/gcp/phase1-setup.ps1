@@ -1,5 +1,5 @@
 <#
-  Phase 1 — Cloud SQL foundation for B2C sales.
+  Phase 1 - Cloud SQL foundation for B2C sales.
 
   Builds everything the sales database needs in project `chennairice-website`:
     1.1  link billing                  1.5  database + login users
@@ -8,7 +8,7 @@
     1.4  PostgreSQL 16 server, Mumbai  1.8  access for the website's backend
 
   Safe to re-run: every step checks for what already exists and skips it.
-  Passwords are generated here and written straight into Secret Manager —
+  Passwords are generated here and written straight into Secret Manager -
   they are never printed, logged or saved to disk beyond a temp file that is
   deleted immediately.
 
@@ -40,16 +40,39 @@ function Step($n, $text) { Write-Host "`n=== $n  $text" -ForegroundColor Cyan }
 function Ok($text)       { Write-Host "    ok    $text" -ForegroundColor Green }
 function Skip($text)     { Write-Host "    skip  $text" -ForegroundColor DarkGray }
 
-# Runs gcloud, returns its output, throws with the real message on failure.
+# Runs gcloud, returns what it printed as a result, throws with the real
+# message on failure.
+#
+# gcloud writes its progress ("Operation ... finished successfully.") to
+# stderr. Windows PowerShell turns redirected stderr lines into error records,
+# and under ErrorActionPreference=Stop those halt the script even when gcloud
+# succeeded. So stderr goes to a temp file with errors relaxed for that one
+# call, and success is judged by gcloud's exit code alone.
 function G {
-  $out = & $Gcloud @args 2>&1
-  if ($LASTEXITCODE -ne 0) { throw "gcloud $($args -join ' ')`n$($out | Out-String)" }
+  $errFile = [System.IO.Path]::GetTempFileName()
+  $previous = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try {
+    $out = & $Gcloud @args 2> $errFile
+    $code = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previous
+  }
+  $err = (Get-Content $errFile -Raw -ErrorAction SilentlyContinue)
+  Remove-Item $errFile -Force -ErrorAction SilentlyContinue
+  if ($code -ne 0) { throw "gcloud $($args -join ' ') failed:`n$err" }
   return $out
 }
-# Runs gcloud only to ask "does this exist?" — never throws.
+# Runs gcloud only to ask "does this exist?" - never throws.
 function Exists {
-  & $Gcloud @args *> $null
-  return ($LASTEXITCODE -eq 0)
+  $previous = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try {
+    & $Gcloud @args *> $null
+    return ($LASTEXITCODE -eq 0)
+  } finally {
+    $ErrorActionPreference = $previous
+  }
 }
 
 function New-Password {
@@ -101,7 +124,7 @@ else {
 Step '1.4' "PostgreSQL 16 server '$Instance' in $Region"
 if (Exists sql instances describe $Instance --project=$DbProject) { Skip 'instance already exists' }
 else {
-  Write-Host '    creating — this takes 5–10 minutes...'
+  Write-Host '    creating - this takes 5-10 minutes...'
   # Backups at 21:30 UTC = 03:00 IST, maintenance Sunday 21:00 UTC = Monday
   # 02:30 IST: both in the quietest hours for an Indian shop.
   # ENCRYPTED_ONLY + no authorised networks: reachable only through Google's
@@ -163,20 +186,36 @@ else {
     --description='Runs the /api Cloud Function. Database and secret access only.' | Out-Null
   Ok 'service account created'
 }
-G projects add-iam-policy-binding $DbProject --member="serviceAccount:$BackendSa" `
-  --role=roles/cloudsql.client --condition=None | Out-Null
+# A service account takes a little while to become visible to other
+# projects after it is created; granting it access straight away fails with
+# "does not exist". Retry for up to two minutes before giving up.
+function GrantWithRetry {
+  for ($attempt = 1; $attempt -le 12; $attempt++) {
+    try {
+      G @args | Out-Null
+      return
+    } catch {
+      if ($_.Exception.Message -notmatch 'does not exist' -or $attempt -eq 12) { throw }
+      Write-Host "    wait  new service account not visible yet, retrying in 10 s ($attempt/12)" -ForegroundColor DarkGray
+      Start-Sleep -Seconds 10
+    }
+  }
+}
+
+GrantWithRetry projects add-iam-policy-binding $DbProject --member="serviceAccount:$BackendSa" `
+  --role=roles/cloudsql.client --condition=None
 Ok 'Cloud SQL client'
 foreach ($s in @('db-app-password')) {
-  G secrets add-iam-policy-binding $s --project=$DbProject --member="serviceAccount:$BackendSa" `
-    --role=roles/secretmanager.secretAccessor | Out-Null
+  GrantWithRetry secrets add-iam-policy-binding $s --project=$DbProject --member="serviceAccount:$BackendSa" `
+    --role=roles/secretmanager.secretAccessor
 }
 Ok 'can read the app password (not the admin one)'
-G storage buckets add-iam-policy-binding "gs://$AssetsBucket" --member="serviceAccount:$BackendSa" `
-  --role=roles/storage.objectAdmin | Out-Null
+GrantWithRetry storage buckets add-iam-policy-binding "gs://$AssetsBucket" --member="serviceAccount:$BackendSa" `
+  --role=roles/storage.objectAdmin
 Ok 'can read/write site files bucket (not backups)'
 
 # ------------------------------------------------------------------ summary
 $conn = G sql instances describe $Instance --project=$DbProject --format='value(connectionName)'
 Write-Host "`n=== Phase 1 complete" -ForegroundColor Green
 Write-Host "    Instance connection name: $conn"
-Write-Host "    Next: run infra\gcp\phase1-verify.mjs to prove a real connection works."
+Write-Host "    Next: powershell -ExecutionPolicy Bypass -File infra\gcp\phase2-load.ps1  (tables, products, prices)"

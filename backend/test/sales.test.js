@@ -41,8 +41,13 @@ async function stockOf(slug) {
 }
 
 /** Full happy-path purchase; returns the session and the verify result. */
+let buyerSeq = 0
 async function buy(items, who = buyer()) {
-  const session = await api('POST', '/api/checkout/session', { body: { ...who, items } })
+  // Each simulated buyer has their own address, as real customers do, so the
+  // whole suite does not trip the per-visitor checkout rate limit.
+  const session = await api('POST', '/api/checkout/session', {
+    body: { ...who, items }, headers: { 'X-Forwarded-For': `10.0.${Math.floor(++buyerSeq / 250)}.${buyerSeq % 250}` },
+  })
   assert.equal(session.status, 200, JSON.stringify(session.body))
   const paid = rzp.pay(session.body.client.razorpayOrderId)
   const verify = await api('POST', '/api/checkout/verify', {
@@ -77,10 +82,10 @@ after(async () => {
   await stopDb?.(closePool)
 })
 
-test('catalog lists all 11 packs, none orderable before prices are set', async () => {
+test('catalog lists all 13 packs, none orderable before prices are set', async () => {
   const res = await api('GET', '/api/catalog')
   assert.equal(res.status, 200)
-  assert.equal(res.body.products.length, 11)
+  assert.equal(res.body.products.length, 13)
   assert.ok(res.body.products.every((p) => p.variants.every((v) => v.price === null && v.inStock === false)))
 
   const order = await api('POST', '/api/checkout/session', { body: { ...buyer(), items: [{ id: 'rudra', qty: 1 }] } })
@@ -436,6 +441,25 @@ test('warehouse page: list without prices, one Dispatched switch with undo, sele
   const allCsv = await api('GET', '/api/admin/warehouse/orders.csv?tab=all', { token: wh })
   assert.ok(allCsv.body.trim().split('\r\n').length - 1 >= p1.body.tabCount)
 
+  // Order rows carry each pack's photo for the table.
+  assert.match(row.items[0].image, /\/assets\/shop\/packs\//)
+
+  // Customers and reports: available to the warehouse, never with money.
+  const cust = await api('GET', '/api/admin/warehouse/customers?q=Meena', { token: wh })
+  assert.equal(cust.status, 200, JSON.stringify(cust.body))
+  const meena = cust.body.customers.find((c) => c.name === 'Meena Sundaram')
+  assert.ok(meena && meena.orders >= 1 && meena.packs >= 2)
+  assert.doesNotMatch(JSON.stringify(cust.body), /price|paise|total_|amount/i)
+  const byPhone = await api('GET', '/api/admin/warehouse/customers?q=12345', { token: wh })
+  assert.ok(byPhone.body.customers.some((c) => c.name === 'Meena Sundaram'))
+  const report = await api('GET', '/api/admin/warehouse/reports?days=30', { token: wh })
+  assert.equal(report.status, 200, JSON.stringify(report.body))
+  assert.ok(report.body.dispatched >= 4)
+  assert.ok(report.body.perDay.length >= 1)
+  assert.ok(report.body.perProduct.some((p) => p.name === 'Alibaba'))
+  assert.doesNotMatch(JSON.stringify(report.body), /price|paise|amount|revenue/i)
+  assert.equal((await api('GET', '/api/admin/warehouse/reports', { token: tokens.plant })).status, 403)
+
   // Packing slip prints for the warehouse, with both IDs.
   const slip = await api('GET', `/api/admin/orders/${id}/packing-slip`, { token: wh })
   assert.equal(slip.status, 200)
@@ -488,7 +512,7 @@ test('inventory: damage and adjustments go through the ledger and never below ze
   assert.equal(dash.status, 200)
   assert.ok(dash.body.today.orders >= 4)
   const demand = await api('GET', '/api/admin/production/demand', { token: tokens.plant })
-  assert.equal(demand.body.demand.length, 11)
+  assert.equal(demand.body.demand.length, 13)
 })
 
 test('order IDs: every checkout gets its own ID, claimed once in the register, never reused', async () => {
@@ -567,4 +591,353 @@ test('order IDs: every checkout gets its own ID, claimed once in the register, n
   const check = await api('GET', '/api/admin/order-ids/check', { token: OWNER })
   assert.equal(check.body.ok, true, JSON.stringify(check.body.problems))
   assert.ok(check.body.totals.orders >= 30)
+})
+
+test('warehouse panel phase 1: dashboard, packing, dispatch with details, deliveries, pick list, issues, money only for owner', async () => {
+  const wh = 'store@x.test|uid-store'
+  const { session: a } = await buy([{ id: 'rudra', qty: 2 }], buyer({ name: 'Panel One', email: 'panel1@example.com', city: 'Erode' }))
+  const { session: b } = await buy([{ id: 'rudra', qty: 1 }], buyer({ name: 'Panel Two', email: 'panel2@example.com', state: 'Kerala', city: 'Kochi' }))
+
+  // Dashboard: counts for everyone; amounts only for the owner.
+  const dw = await api('GET', '/api/admin/warehouse/dashboard', { token: wh })
+  assert.equal(dw.status, 200, JSON.stringify(dw.body))
+  assert.ok(dw.body.counts.toDispatch >= 2)
+  assert.equal(dw.body.todayByHour.length, 24)
+  assert.ok(dw.body.recentOrders.length > 0 && dw.body.recentOrders.every((o) => o.total === undefined))
+  const dOwner = await api('GET', '/api/admin/warehouse/dashboard', { token: OWNER })
+  assert.ok(dOwner.body.recentOrders.some((o) => typeof o.total === 'number'))
+  const ordersOwner = await api('GET', '/api/admin/warehouse/orders?tab=all&q=Panel', { token: OWNER })
+  assert.ok(ordersOwner.body.orders.every((o) => typeof o.total === 'number'))
+  const ordersWh = await api('GET', '/api/admin/warehouse/orders?tab=all&q=Panel', { token: wh })
+  assert.ok(ordersWh.body.orders.every((o) => o.total === undefined))
+
+  // Pick list for what is waiting.
+  const pick = await api('GET', '/api/admin/warehouse/pick-list?tab=ready&q=Panel', { token: wh })
+  assert.deepEqual(pick.body.lines.map((l) => [l.name, l.packs, l.orders]), [['Rudra', 3, 2]])
+
+  // Packing step: Ready → Packing → back → Packing.
+  const pack = (id, on, expect) => api('POST', `/api/admin/orders/${id}/packing`, { token: wh, body: { on, expect } })
+  assert.equal((await pack(a.orderId, true, 'placed')).body.order.status, 'packed')
+  assert.equal((await pack(a.orderId, false)).body.order.status, 'confirmed')
+  assert.equal((await pack(a.orderId, true)).body.order.status, 'packed')
+  const tabs = await api('GET', '/api/admin/warehouse/orders?tab=packing&q=Panel', { token: wh })
+  assert.deepEqual(tabs.body.orders.map((o) => o.orderNumber), [a.orderNumber])
+
+  // Dispatch with courier details straight from Ready (order b), and from Packing (order a).
+  const shipB = await api('POST', `/api/admin/orders/${b.orderId}/ship`, {
+    token: wh, body: { method: 'courier', carrierName: 'DTDC', trackingNumber: 'DT555', expectedDelivery: '2026-01-01' },
+  })
+  assert.equal(shipB.status, 200, JSON.stringify(shipB.body))
+  assert.match(shipB.body.shipment.shipment_number, /^SHP-/)
+  // One-tap dispatch for a, then add its details afterwards.
+  const tapA = await api('POST', `/api/admin/orders/${a.orderId}/dispatched`, { token: wh, body: { on: true } })
+  assert.equal(tapA.body.order.status, 'shipped')
+  const { rows: [shA] } = await db.query(`select id from shipments where order_id = $1 and status = 'shipped'`, [a.orderId])
+  const det = await api('PATCH', `/api/admin/shipments/${shA.id}/details`, {
+    token: wh, body: { method: 'own_vehicle', vehicleNumber: 'TN 33 AB 1234', driverName: 'Ravi', driverPhone: '9000011111' },
+  })
+  assert.equal(det.status, 200, JSON.stringify(det.body))
+  assert.equal(det.body.shipment.vehicle_number, 'TN 33 AB 1234')
+  assert.equal((await api('PATCH', `/api/admin/shipments/${shA.id}/details`, { token: wh, body: { method: 'courier' } })).status, 400)
+
+  // Deliveries: both in transit; b is delayed (expected date has passed).
+  const dl = await api('GET', '/api/admin/warehouse/shipments?tab=in_transit&q=Panel', { token: wh })
+  assert.equal(dl.status, 200, JSON.stringify(dl.body))
+  assert.equal(dl.body.shipments.length, 2)
+  const delayed = await api('GET', '/api/admin/warehouse/shipments?tab=delayed&q=Panel', { token: wh })
+  assert.deepEqual(delayed.body.shipments.map((s) => s.orderNumber), [b.orderNumber])
+  assert.equal((await api('GET', '/api/admin/warehouse/shipments?tab=all&q=DT555', { token: wh })).body.shipments[0].trackingNumber, 'DT555')
+  // Confirm delivery from the warehouse.
+  const bShip = dl.body.shipments.find((s) => s.orderNumber === b.orderNumber)
+  const dv = await api('POST', `/api/admin/shipments/${bShip.id}/deliver`, { token: wh, body: { note: 'Handed over' } })
+  assert.equal(dv.status, 200, JSON.stringify(dv.body))
+  assert.equal(dv.body.order.status, 'delivered')
+  assert.equal((await api('GET', '/api/admin/warehouse/shipments?tab=delivered&q=Panel', { token: wh })).body.total, 1)
+
+  // Returns & Issues: log against a shipment ID, review, resolve with a note.
+  const bad = await api('POST', '/api/admin/warehouse/issues', { token: wh, body: { order: 'CR-20000101-ZZZZZ', type: 'damaged', description: 'x' } })
+  assert.equal(bad.status, 404)
+  const { rows: [{ shipment_id: bShipmentId }] } = await db.query('select shipment_id from orders where id = $1', [b.orderId])
+  const iss = await api('POST', '/api/admin/warehouse/issues', {
+    token: wh, body: { order: bShipmentId, type: 'damaged', description: '2 bags torn on arrival' },
+  })
+  assert.equal(iss.status, 200, JSON.stringify(iss.body))
+  assert.match(iss.body.ref, /^ISS-\d{6}$/)
+  let list = await api('GET', '/api/admin/warehouse/issues?tab=open', { token: wh })
+  assert.ok(list.body.issues.some((i) => i.id === iss.body.id && i.typeLabel === 'Damaged bags' && i.orderNumber === b.orderNumber))
+  assert.equal((await api('PATCH', `/api/admin/warehouse/issues/${iss.body.id}`, { token: wh, body: { status: 'resolved' } })).status, 400)
+  await api('PATCH', `/api/admin/warehouse/issues/${iss.body.id}`, { token: wh, body: { status: 'under_review', note: 'Called the customer' } })
+  await api('PATCH', `/api/admin/warehouse/issues/${iss.body.id}`, { token: wh, body: { status: 'resolved', note: 'Sent 2 replacement bags' } })
+  const one = await api('GET', `/api/admin/warehouse/issues/${iss.body.id}`, { token: wh })
+  assert.equal(one.body.status, 'resolved')
+  assert.equal(one.body.resolution, 'Sent 2 replacement bags')
+  assert.deepEqual(one.body.events.map((e) => e.to_status), ['open', 'under_review', 'resolved'])
+  list = await api('GET', '/api/admin/warehouse/issues?tab=resolved', { token: wh })
+  assert.ok(list.body.counts.resolved >= 1)
+  assert.equal((await api('GET', '/api/admin/warehouse/dashboard', { token: wh })).body.counts.openIssues, 0)
+  assert.equal((await api('GET', '/api/admin/warehouse/issues', { token: tokens.plant })).status, 403)
+})
+
+test('product tracker upload: preview, dispatch and update from the sheet, courier links, customer redirect', async () => {
+  const wh = 'store@x.test|uid-store'
+  const { findCourier, isCourierHost } = await import('../lib/sales/couriers.js')
+  const ExcelJS = (await import('exceljs')).default
+  const { session: a } = await buy([{ id: 'rudra', qty: 1 }], buyer({ name: 'Track One', email: 'track1@example.com' }))
+  const { session: b } = await buy([{ id: 'rudra', qty: 1 }], buyer({ name: 'Track Two', email: 'track2@example.com' }))
+  await api('POST', `/api/admin/orders/${b.orderId}/dispatched`, { token: wh, body: { on: true } })
+  const { rows: [{ shipment_id: bShipmentId }] } = await db.query('select shipment_id from orders where id = $1', [b.orderId])
+
+  // The courier's sheet, headings in their own words; columns in any order.
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet('Sheet1')
+  ws.addRow(['Courier Name', 'Product ID', 'Tracking Link'])
+  ws.addRow(['BLUEDART', a.orderNumber, '81234567890'])
+  ws.addRow(['dtdc', bShipmentId, 'https://evil.example/track?cn=D12345678'])
+  ws.addRow(['Blue Dart', 'CR-20000101-ZZZZZ', '1111111111'])
+  ws.addRow(['Trackon', 'hello', '2222222222'])
+  const xlsx = Buffer.from(await wb.xlsx.writeBuffer())
+  const upload = async (bytes, { apply = false, token = wh, filename = 'tracker.xlsx' } = {}) => {
+    const res = await fetch(`${base}/api/admin/warehouse/tracker?apply=${apply ? 1 : 0}&filename=${filename}`, {
+      method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/octet-stream' }, body: bytes,
+    })
+    return { status: res.status, body: await res.json() }
+  }
+
+  // Preview changes nothing.
+  const pv = await upload(xlsx)
+  assert.equal(pv.status, 200, JSON.stringify(pv.body))
+  assert.equal(pv.body.applied, false)
+  assert.deepEqual(pv.body.rows.map((r) => r.action), ['dispatch', 'update', 'skip', 'skip'])
+  assert.deepEqual(pv.body.summary.partners.sort(), ['Blue Dart', 'DTDC'])
+  const [ra, rb] = pv.body.rows
+  assert.ok(isCourierHost(findCourier('Blue Dart'), new URL(ra.trackingUrl).hostname), ra.trackingUrl)
+  // Each partner opens its own fixed tracking page; the AWB is pasted there.
+  assert.equal(ra.trackingUrl, 'https://www.bluedart.com/web/guest/domestic')
+  assert.equal(findCourier('delhivery').trackingPage, 'https://www.delhivery.com/tracking')
+  // A link on someone else's website is never used; DTDC's own page is.
+  assert.equal(rb.trackingNumber, 'D12345678')
+  assert.ok(isCourierHost(findCourier('DTDC'), new URL(rb.trackingUrl).hostname), rb.trackingUrl)
+  assert.equal((await db.query('select status from orders where id = $1', [a.orderId])).rows[0].status, 'placed')
+
+  // Only people who dispatch may upload.
+  assert.equal((await upload(xlsx, { token: tokens.plant })).status, 403)
+
+  // Apply.
+  const ap = await upload(xlsx, { apply: true })
+  assert.equal(ap.status, 200, JSON.stringify(ap.body))
+  assert.equal(ap.body.summary.dispatched, 1)
+  assert.equal(ap.body.summary.updated, 1)
+  const { rows: [sa] } = await db.query(
+    `select o.status, s.carrier_name, s.tracking_number, s.tracking_url from orders o join shipments s on s.order_id = o.id
+      where o.id = $1 and s.status <> 'cancelled'`, [a.orderId])
+  assert.deepEqual([sa.status, sa.carrier_name, sa.tracking_number], ['shipped', 'Blue Dart', '81234567890'])
+
+  // Same sheet again: nothing to do.
+  const again = await upload(xlsx)
+  assert.deepEqual(again.body.rows.slice(0, 2).map((r) => r.action), ['unchanged', 'unchanged'])
+
+  // A CSV without headings: ID, tracking, partner.
+  const csv = Buffer.from(`${a.orderNumber},81234567899,Blue Dart\n`)
+  const c = await upload(csv, { filename: 'agent.csv' })
+  assert.deepEqual(c.body.rows.map((r) => [r.action, r.trackingNumber]), [['update', '81234567899']])
+
+  // Uploads history and template.
+  const ups = await api('GET', '/api/admin/warehouse/tracker/uploads', { token: wh })
+  assert.equal(ups.body.uploads[0].dispatched, 1)
+  const tpl = await fetch(`${base}/api/admin/warehouse/tracker/template.xlsx`, { headers: { Authorization: 'Bearer ' + wh } })
+  assert.equal(tpl.status, 200)
+  assert.match(tpl.headers.get('content-type'), /spreadsheetml/)
+
+  // Customers: Track Order shows the courier and link; "go" sends them to the courier's page.
+  const tr = await api('POST', '/api/orders/track', { body: { orderNumber: a.orderNumber } })
+  assert.equal(tr.status, 200, JSON.stringify(tr.body))
+  assert.equal(tr.body.shipments[0].trackingUrl, sa.tracking_url)
+  const go = await fetch(`${base}/api/orders/track/go?ref=${bShipmentId}`, { redirect: 'manual' })
+  assert.equal(go.status, 302)
+  assert.equal(go.headers.get('location'), rb.trackingUrl)
+  const none = await fetch(`${base}/api/orders/track/go?ref=CR-20000101-ZZZZZ`, { redirect: 'manual' })
+  assert.equal(none.headers.get('location'), '/track-order?order=CR-20000101-ZZZZZ')
+})
+
+test('order confirmation email: sent over SMTP once payment verifies, with the order details and links', async () => {
+  const { SMTPServer } = await import('smtp-server')
+  const { simpleParser } = await import('mailparser')
+  const inbox = []
+  const logins = []
+  const smtpd = new SMTPServer({
+    disabledCommands: ['STARTTLS'],
+    allowInsecureAuth: true,
+    onAuth(auth, _session, cb) {
+      logins.push(auth.username)
+      return auth.username === 'orders@chennairice.test' && auth.password === 'app-password'
+        ? cb(null, { user: auth.username }) : cb(new Error('Invalid login'))
+    },
+    onData(stream, session, cb) {
+      simpleParser(stream).then((m) => { inbox.push({ rcpt: session.envelope.rcptTo.map((r) => r.address), m }); cb() }, cb)
+    },
+  })
+  await new Promise((r) => smtpd.listen(0, '127.0.0.1', r))
+  Object.assign(process.env, {
+    SMTP_HOST: '127.0.0.1', SMTP_PORT: String(smtpd.server.address().port), SMTP_REQUIRE_TLS: 'false',
+    SMTP_USER: 'orders@chennairice.test', SMTP_PASS: 'app-password',
+    EMAIL_FROM: 'Chennai Rice <orders@chennairice.test>', EMAIL_REPLY_TO: 'support@chennairice.test',
+  })
+  try {
+    const { session } = await buy([{ id: 'rudra', qty: 1 }], buyer({ name: 'Mail <Test>', email: 'mailtest@example.com', addressLine2: 'Near the temple' }))
+    const { rows: [{ shipment_id: shipmentId }] } = await db.query('select shipment_id from orders where id = $1', [session.orderId])
+    // Sent straight after payment, without waiting for the timer.
+    let mine
+    for (let i = 0; i < 50 && !mine; i++) {
+      await new Promise((r) => setTimeout(r, 100))
+      mine = inbox.find((x) => x.rcpt.includes('mailtest@example.com'))
+    }
+    assert.ok(mine, 'confirmation email arrived')
+    const { m } = mine
+    assert.equal(m.subject, `Order Confirmed - ${session.orderNumber}`)
+    assert.equal(m.from.value[0].address, 'orders@chennairice.test')
+    assert.equal(m.replyTo.value[0].address, 'support@chennairice.test')
+    assert.ok(logins.includes('orders@chennairice.test'))
+    for (const part of [m.text, m.html]) {
+      assert.ok(part.includes(session.orderNumber), 'order ID')
+      assert.ok(part.includes('Near the temple'), 'address')
+      assert.ok(part.includes('/track-order?order=' + session.orderNumber), 'track link')
+    }
+    // The shipment ID is kept off the email and the invoice.
+    assert.ok(!m.text.includes(shipmentId) && !m.html.includes(shipmentId), 'no shipment ID in the email')
+    const invoicePage = await api('GET', `/api/orders/${session.orderId}/invoice?n=${session.orderNumber}`)
+    assert.equal(invoicePage.status, 200)
+    assert.ok(invoicePage.body.includes('To be dispatched') && !invoicePage.body.includes(shipmentId), 'no shipment ID on the invoice')
+    assert.ok(m.text.includes(`/api/orders/${session.orderId}/invoice?n=${session.orderNumber}`), 'invoice link')
+    // The HTML template: every placeholder filled, one product row per item, payment details.
+    assert.ok(!/\{\{[A-Za-z ]+\}\}/.test(m.html), 'no placeholder left unfilled')
+    assert.ok(m.html.includes('Rudra (') && m.html.includes('/assets/shop/'), 'product row with its image')
+    assert.ok(m.html.includes('Card ending 1111') && m.html.includes('>Paid<'), 'payment method and status')
+    assert.ok(m.html.includes('Coimbatore, Tamil Nadu - 641001'), 'city, state, pincode')
+    // The GST invoice is attached as a PDF, the same invoice the receipt's download shows.
+    const { rows: [inv] } = await db.query('select invoice_number from invoices where order_id = $1', [session.orderId])
+    assert.ok(inv, 'invoice issued when the email was sent')
+    assert.equal(m.attachments.length, 1)
+    const [pdf] = m.attachments
+    assert.equal(pdf.contentType, 'application/pdf')
+    assert.equal(pdf.filename, `Invoice ${inv.invoice_number.replaceAll('/', '-')}.pdf`)
+    assert.equal(pdf.content.subarray(0, 5).toString(), '%PDF-')
+    assert.ok(pdf.content.includes(`Invoice ${inv.invoice_number}`), 'invoice number in the PDF')
+    assert.ok(m.text.includes('invoice is attached'))
+    // Names are escaped in the HTML.
+    assert.ok(m.html.includes('Mail &lt;Test&gt;') && !m.html.includes('Mail <Test>'))
+    const { rows: [row] } = await db.query(`select status, attempts from email_outbox where order_id = $1 and template = 'order_placed'`, [session.orderId])
+    assert.deepEqual([row.status, row.attempts], ['sent', 1])
+
+    // Running the sender again (the timer) never sends it a second time.
+    const { sendQueued } = await import('../lib/sales/email.js')
+    await Promise.all([sendQueued(db), sendQueued(db)])
+    assert.equal(inbox.filter((x) => x.rcpt.includes('mailtest@example.com')).length, 1)
+
+    // A wrong password: the mail stays queued with the error, to be retried.
+    process.env.SMTP_PASS = 'wrong'
+    const { session: s2 } = await buy([{ id: 'rudra', qty: 1 }], buyer({ email: 'mailtest2@example.com' }))
+    await new Promise((r) => setTimeout(r, 800))
+    const { rows: [r2] } = await db.query(`select status, attempts, last_error from email_outbox where order_id = $1 and template = 'order_placed'`, [s2.orderId])
+    assert.equal(r2.status, 'queued')
+    assert.equal(r2.attempts, 1)
+    assert.match(r2.last_error, /auth|login/i)
+    assert.ok(!r2.last_error.includes('wrong'), 'the password is never stored')
+  } finally {
+    for (const k of ['SMTP_HOST', 'SMTP_PORT', 'SMTP_REQUIRE_TLS', 'SMTP_USER', 'SMTP_PASS', 'EMAIL_FROM', 'EMAIL_REPLY_TO']) delete process.env[k]
+    await new Promise((r) => smtpd.close(r))
+  }
+})
+
+test('shipped email: sent with shipment ID and tracking; one-tap dispatch waits for the tracking; undo stops it', async () => {
+  const { SMTPServer } = await import('smtp-server')
+  const { simpleParser } = await import('mailparser')
+  const wh = 'store@x.test|uid-store'
+  const inbox = []
+  const smtpd = new SMTPServer({
+    disabledCommands: ['STARTTLS'], allowInsecureAuth: true, onAuth: (a, _s, cb) => cb(null, { user: a.username }),
+    onData(stream, session, cb) {
+      simpleParser(stream).then((m) => { inbox.push({ rcpt: session.envelope.rcptTo.map((r) => r.address), m }); cb() }, cb)
+    },
+  })
+  await new Promise((r) => smtpd.listen(0, '127.0.0.1', r))
+  Object.assign(process.env, {
+    SMTP_HOST: '127.0.0.1', SMTP_PORT: String(smtpd.server.address().port), SMTP_REQUIRE_TLS: 'false',
+    SMTP_USER: 'support@chennairice.test', SMTP_PASS: 'x', EMAIL_FROM: 'Chennai Rice <support@chennairice.test>',
+  })
+  // Earlier tests' unsent mail is not part of this test.
+  await db.query(`update email_outbox set status = 'failed', last_error = 'test reset' where status = 'queued'`)
+  const mailFor = (email) => inbox.filter((x) => x.rcpt.includes(email)).map((x) => x.m)
+  const settle = async (email, count) => {
+    for (let i = 0; i < 50 && mailFor(email).filter((m) => /Shipped|Tracking/.test(m.subject)).length < count; i++) {
+      await new Promise((r) => setTimeout(r, 100))
+    }
+    await new Promise((r) => setTimeout(r, 200))
+    return mailFor(email).filter((m) => /Shipped|Tracking/.test(m.subject))
+  }
+  const shipmentOf = async (orderId) =>
+    (await db.query(`select * from shipments where order_id = $1 order by created_at desc limit 1`, [orderId])).rows[0]
+  try {
+    // A: dispatched with the courier and AWB: the email goes out at once.
+    const { session: a } = await buy([{ id: 'rudra', qty: 1 }], buyer({ email: 'ship-a@example.com' }))
+    const shipA = await api('POST', `/api/admin/orders/${a.orderId}/ship`, {
+      token: wh, body: { method: 'courier', carrierName: 'bluedart', trackingNumber: '81234567801' },
+    })
+    assert.equal(shipA.status, 200, JSON.stringify(shipA.body))
+    const [ma] = await settle('ship-a@example.com', 1)
+    assert.equal(ma.subject, `Order Shipped - ${a.orderNumber}`)
+    for (const part of [ma.text, ma.html]) {
+      assert.ok(part.includes(shipA.body.shipment.shipment_number), 'shipment ID')
+      assert.ok(part.includes('Blue Dart') && part.includes('81234567801'), 'partner and AWB')
+      assert.ok(part.includes('https://www.bluedart.com/'), 'partner tracking page')
+    }
+    assert.ok(ma.html.includes('Track on Blue Dart') && ma.html.includes('paste it on the Blue Dart'))
+    assert.ok(!/\{\{|<!-- IF/.test(ma.html), 'every placeholder and condition resolved')
+
+    // B: one-tap dispatch: nothing yet; the tracking sheet then sends one email with the tracking.
+    const { session: b } = await buy([{ id: 'rudra', qty: 1 }], buyer({ email: 'ship-b@example.com' }))
+    await api('POST', `/api/admin/orders/${b.orderId}/dispatched`, { token: wh, body: { on: true } })
+    assert.equal((await settle('ship-b@example.com', 1)).length, 0, 'waits for the tracking')
+    const { rows: [waiting] } = await db.query(`select send_after from email_outbox where order_id = $1 and template = 'order_shipped'`, [b.orderId])
+    assert.ok(waiting.send_after > new Date(), 'held for the courier sheet')
+    const csv = Buffer.from(`${b.orderNumber},D55566677,DTDC\n`)
+    const up = await fetch(`${base}/api/admin/warehouse/tracker?apply=1&filename=agent.csv`, {
+      method: 'POST', headers: { Authorization: 'Bearer ' + wh, 'Content-Type': 'application/octet-stream' }, body: csv,
+    })
+    assert.equal((await up.json()).summary.updated, 1)
+    const mb = await settle('ship-b@example.com', 1)
+    assert.equal(mb.length, 1)
+    assert.equal(mb[0].subject, `Order Shipped - ${b.orderNumber}`)
+    assert.ok(mb[0].html.includes('D55566677') && mb[0].html.includes('DTDC') && mb[0].html.includes('dtdc.com'))
+
+    // C: one-tap then undo before the email went out: never sent.
+    const { session: c } = await buy([{ id: 'rudra', qty: 1 }], buyer({ email: 'ship-c@example.com' }))
+    await api('POST', `/api/admin/orders/${c.orderId}/dispatched`, { token: wh, body: { on: true } })
+    await api('POST', `/api/admin/orders/${c.orderId}/dispatched`, { token: wh, body: { on: false } })
+    const { rows: [stopped] } = await db.query(`select status, last_error from email_outbox where order_id = $1 and template = 'order_shipped'`, [c.orderId])
+    assert.deepEqual([stopped.status, stopped.last_error], ['failed', 'Dispatch undone before the email went out'])
+    assert.equal((await settle('ship-c@example.com', 1)).length, 0)
+
+    // D: one-tap and no tracking within the wait: "on its way", then a tracking email when it is added.
+    const { session: d } = await buy([{ id: 'rudra', qty: 1 }], buyer({ email: 'ship-d@example.com' }))
+    await api('POST', `/api/admin/orders/${d.orderId}/dispatched`, { token: wh, body: { on: true } })
+    await db.query(`update email_outbox set send_after = now() - interval '1 minute' where order_id = $1 and template = 'order_shipped'`, [d.orderId])
+    const { sendQueued } = await import('../lib/sales/email.js')
+    await sendQueued(db)
+    const [first] = await settle('ship-d@example.com', 1)
+    assert.equal(first.subject, `Order Shipped - ${d.orderNumber}`)
+    assert.ok(first.html.includes('To be confirmed') && first.html.includes('tracking details as soon as they are ready'))
+    const shD = await shipmentOf(d.orderId)
+    const details = { method: 'courier', carrierName: 'Trackon', trackingNumber: 'T99887766' }
+    assert.equal((await api('PATCH', `/api/admin/shipments/${shD.id}/details`, { token: wh, body: details })).status, 200)
+    const both = await settle('ship-d@example.com', 2)
+    assert.equal(both.length, 2)
+    assert.equal(both[1].subject, `Tracking details - ${d.orderNumber}`)
+    assert.ok(both[1].html.includes('T99887766') && both[1].html.includes('Trackon Couriers') && both[1].html.includes(shD.shipment_number))
+    // The same details saved again: no third email.
+    await api('PATCH', `/api/admin/shipments/${shD.id}/details`, { token: wh, body: details })
+    assert.equal((await settle('ship-d@example.com', 3)).length, 2)
+  } finally {
+    for (const k of ['SMTP_HOST', 'SMTP_PORT', 'SMTP_REQUIRE_TLS', 'SMTP_USER', 'SMTP_PASS', 'EMAIL_FROM']) delete process.env[k]
+    await new Promise((r) => smtpd.close(r))
+  }
 })

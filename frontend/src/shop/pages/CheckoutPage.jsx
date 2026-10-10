@@ -157,7 +157,6 @@ export default function CheckoutPage() {
       setConfirmed({
         orderId: session.orderId,
         orderNumber: result.orderNumber,
-        shipmentId: result.shipmentId,
         amount: result.amount ?? session.amount,
         paidAt: result.paidAt,
         gatewayLabel: result.gatewayLabel,

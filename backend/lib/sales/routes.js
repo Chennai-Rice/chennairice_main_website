@@ -16,17 +16,20 @@ import { createCheckoutSession, confirmCheckout, quoteCart } from './checkout.js
 import { handleRazorpayWebhook } from './webhooks.js'
 import { runJobs } from './jobs.js'
 import { sendQueued } from './email.js'
-import { staffAuth, permissionsFor, requirePermission, listStaff, createStaff, updateStaff } from './staff.js'
+import { staffAuth, permissionsFor, requirePermission, listStaff, createStaff, updateStaff, can } from './staff.js'
 import {
   listOrders, getOrderDetail, confirmOrder, packOrder, shipOrder, deliverShipment, cancelOrder,
-  returnOrder, addNote, resolveAttention, refundOrder, trackOrder, customerInvoice, setDispatched, setDispatchedMany,
+  returnOrder, addNote, resolveAttention, refundOrder, trackOrder, customerInvoice, setDispatched, setDispatchedMany, setPacking, updateShipmentDetails,
 } from './operations.js'
 import {
   listStock, listMovements, adjustStock, markDamaged, transferStock, listLocations, createLocation,
   recordProduction, listBatches, demandBoard, listCatalogAdmin, updateVariant, createProduct, createVariant,
 } from './inventory.js'
 import { dashboard, getSettingsAdmin, updateSettings, listZones, upsertZone, listEmails } from './admin.js'
-import { listWarehouseOrders, warehouseCsv, assertTab } from './warehouse.js'
+import { listWarehouseOrders, warehouseCsv, assertTab, listWarehouseCustomers, warehouseReport } from './warehouse.js'
+import { listShipments, pickList, pickListCsv, warehouseDashboard } from './deliveries.js'
+import { listIssues, getIssue, createIssue, updateIssue } from './issues.js'
+import { processTrackerUpload, listTrackerUploads, trackerTemplate, courierRedirect } from './tracker.js'
 import { listIssuedIds, issuedIdsCsv, checkRegister } from './idregister.js'
 import { invoiceHtml, packingSlipHtml } from './documents.js'
 import { query } from '../db.js'
@@ -92,7 +95,7 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     const result = await confirmCheckout(req.body)
     res.json(result)
     // Send the "order received" email now rather than waiting for the timer.
-    if (!result.alreadyConfirmed) sendQueued({ query }).catch((err) => console.error('[email]', err.message))
+    if (!result.alreadyConfirmed) sendQueued({ query }, { orderNumber: result.orderNumber }).catch((err) => console.error('[email]', err.message))
   }))
 
   router.post('/api/orders/track', rateLimit({ windowMs: 10 * 60000, max: 15, failuresOnly: true }), wrap(async (req, res) => {
@@ -106,6 +109,15 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.type('html').send(invoiceHtml(detail, { forCustomer: true }))
   }))
 
+  // "Track on <partner>": sends the visitor to the courier's own tracking
+  // page for this order, or to our Track Order page if it has none yet.
+  router.get('/api/orders/track/go', rateLimit({ windowMs: 10 * 60000, max: 60 }), wrap(async (req, res) => {
+    const ref = String(req.query.ref || '').slice(0, 60)
+    const url = await courierRedirect(ref)
+    res.set('Cache-Control', 'no-store')
+    res.redirect(302, url || '/track-order?order=' + encodeURIComponent(ref))
+  }))
+
   router.post('/api/payments/webhook/razorpay', wrap(async (req, res) => {
     // Signed over the exact bytes Razorpay sent, so the raw body is required.
     const rawBody = req.rawBody || Buffer.from(JSON.stringify(req.body || {}))
@@ -115,6 +127,8 @@ export function createSalesRouter({ verifyIdToken } = {}) {
       eventId: req.get('x-razorpay-event-id'),
     })
     res.json({ ok: true, ...result })
+    // A payment completed here (buyer closed the tab) gets its confirmation now too.
+    sendQueued({ query }).catch((err) => console.error('[email]', err.message))
   }))
 
   router.post('/api/jobs/run', wrap(async (req, res) => {
@@ -127,6 +141,17 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   // ---- staff ----------------------------------------------------------------
   const admin = express.Router()
   admin.use(staffAuth({ verifyIdToken }))
+  // A dispatch, tracking upload or delivery queues customer emails: send them
+  // as soon as the change succeeds instead of waiting for the 10-minute timer.
+  // Mail that is waiting for tracking (send_after) stays queued.
+  admin.use((req, res, next) => {
+    if (req.method !== 'GET') {
+      res.on('finish', () => {
+        if (res.statusCode < 400) sendQueued({ query }).catch((err) => console.error('[email]', err.message))
+      })
+    }
+    next()
+  })
   const perm = (p) => (req, _res, next) => {
     try {
       requirePermission(req.staff, p)
@@ -163,10 +188,65 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   }))
 
   // ---- /warehouse page ----
+  admin.get('/warehouse/dashboard', perm('warehouse.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await warehouseDashboard({ money: can(req.staff, 'money.view') }))
+  }))
+  admin.get('/warehouse/shipments', perm('warehouse.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await listShipments(req.query))
+  }))
+  admin.get('/warehouse/pick-list', perm('warehouse.view'), wrap(async (req, res) => {
+    res.json({ lines: await pickList(req.query) })
+  }))
+  admin.get('/warehouse/pick-list.csv', perm('warehouse.view'), wrap(async (req, res) => {
+    const day = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
+    res.set('Content-Disposition', `attachment; filename="pick-list-${day}.csv"`)
+    res.type('text/csv; charset=utf-8').send(await pickListCsv(req.query))
+  }))
+  admin.post('/orders/:id/packing', wrap(async (req, res) => {
+    const order = await setPacking(req.staff, req.params.id, req.body)
+    res.json({ order: { id: order.id, status: order.status } })
+  }))
+  admin.patch('/shipments/:id/details', wrap(async (req, res) => {
+    res.json({ shipment: await updateShipmentDetails(req.staff, req.params.id, req.body) })
+  }))
+  // Product tracker upload. The sheet arrives as the raw file bytes
+  // (application/octet-stream), so the 200 KB JSON limit does not apply.
+  admin.post('/warehouse/tracker', express.raw({ type: () => true, limit: '5mb' }), wrap(async (req, res) => {
+    const body = Buffer.isBuffer(req.body) ? req.body : req.rawBody
+    res.json(await processTrackerUpload(req.staff, body, {
+      filename: String(req.query.filename || 'tracker.xlsx').slice(0, 200),
+      apply: req.query.apply === '1',
+    }))
+  }))
+  admin.get('/warehouse/tracker/uploads', perm('warehouse.view'), wrap(async (_req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json({ uploads: await listTrackerUploads() })
+  }))
+  admin.get('/warehouse/tracker/template.xlsx', perm('warehouse.view'), wrap(async (_req, res) => {
+    res.set('Content-Disposition', 'attachment; filename="product-tracker-template.xlsx"')
+    res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').send(await trackerTemplate())
+  }))
+  admin.get('/warehouse/issues', perm('issues.manage'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await listIssues(req.query))
+  }))
+  admin.get('/warehouse/issues/:id', perm('issues.manage'), wrap(async (req, res) => res.json(await getIssue(req.params.id))))
+  admin.post('/warehouse/issues', wrap(async (req, res) => res.json(await createIssue(req.staff, req.body))))
+  admin.patch('/warehouse/issues/:id', wrap(async (req, res) => res.json(await updateIssue(req.staff, req.params.id, req.body))))
   admin.get('/warehouse/orders', perm('warehouse.view'), wrap(async (req, res) => {
     assertTab(req.query.tab)
     res.set('Cache-Control', 'no-store')
-    res.json(await listWarehouseOrders(req.query))
+    res.json(await listWarehouseOrders(req.query, { money: can(req.staff, 'money.view') }))
+  }))
+  admin.get('/warehouse/customers', perm('warehouse.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await listWarehouseCustomers(req.query))
+  }))
+  admin.get('/warehouse/reports', perm('warehouse.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await warehouseReport(req.query))
   }))
   admin.get('/warehouse/orders.csv', perm('warehouse.view'), wrap(async (req, res) => {
     assertTab(req.query.tab)

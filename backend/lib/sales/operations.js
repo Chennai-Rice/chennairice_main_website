@@ -9,8 +9,9 @@
 import { tx, query } from '../db.js'
 import { createRefund as razorpayRefund } from '../razorpay.js'
 import { moveStock, releaseForOrder } from './stock.js'
-import { queueEmail, templates } from './email.js'
+import { queueEmail, templates, queueShippedEmail, cancelShippedEmails } from './email.js'
 import { audit, requirePermission } from './staff.js'
+import { findCourier, buildTrackingUrl } from './couriers.js'
 import {
   httpError, str, toPaise, toRupees, financialYear, getSettings, recordOrderStatus, phoneKey, shipmentNumberFor, newShipmentId, parseTrackingRef, reserveId,
 } from './util.js'
@@ -237,7 +238,7 @@ export async function setDispatched(staff, id, { on, expect } = {}) {
         shipped_at: now, confirmed_at: order.confirmed_at || now, packed_at: order.packed_at || now,
       })
       await issueInvoice(db, updated)
-      await queueEmail(db, { to: updated.contact_email, ...templates.orderShipped(updated, shipment), orderId: id, dedupeKey: 'shipped:' + shipment.id })
+      await queueShippedEmail(db, updated, shipment, { waitForTracking: true })
       return { id, status: updated.status, shippedAt: updated.shipped_at }
     }
 
@@ -261,6 +262,7 @@ export async function setDispatched(staff, id, { on, expect } = {}) {
         })
       }
       await db.query(`update shipments set status = 'cancelled' where id = $1`, [s.id])
+      await cancelShippedEmails(db, s.id, 'Dispatch undone before the email went out')
       await db.query(`insert into shipment_status_history (shipment_id, from_status, to_status, staff_id, note) values ($1, 'shipped', 'cancelled', $2, 'Dispatch undone on the warehouse page')`,
         [s.id, staff.id])
     }
@@ -313,6 +315,12 @@ function shipmentInput(body) {
   if (input.method === 'own_vehicle' && !input.vehicleNumber) throw httpError('Own vehicle needs the vehicle number.')
   if (input.trackingUrl && !/^https:\/\//i.test(input.trackingUrl)) throw httpError('Tracking link must start with https://')
   if (input.expectedDelivery && !/^\d{4}-\d{2}-\d{2}$/.test(input.expectedDelivery)) throw httpError('Expected delivery must be YYYY-MM-DD.')
+  // A known courier without a link gets its own tracking page, pre-filled where it allows.
+  const courier = input.method === 'courier' ? findCourier(input.carrierName) : null
+  if (courier) {
+    input.carrierName = courier.name
+    if (!input.trackingUrl) input.trackingUrl = buildTrackingUrl(courier, input.trackingNumber)
+  }
   return input
 }
 
@@ -359,19 +367,32 @@ export async function shipOrder(staff, id, body) {
   const input = shipmentInput(body)
   return tx(async (db) => {
     const order = await lockOrder(db, id)
-    expectStatus(order, ['confirmed', 'packed'], 'ship')
+    expectStatus(order, DISPATCHABLE, 'ship')
     if (order.needs_attention) throw httpError('Resolve the flagged problem on this order before shipping it.', { status: 409 })
 
     const { rows: items } = await db.query('select * from order_items where order_id = $1', [id])
-    const { rows: [{ n }] } = await db.query('select count(*)::int as n from shipments where order_id = $1', [id])
-    const { rows: [shipment] } = await db.query(
-      `insert into shipments (order_id, shipment_number, location_id, method, carrier_name, tracking_number, lr_number,
-                              tracking_url, vehicle_number, driver_name, driver_phone, expected_delivery, notes, dispatched_by)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) returning *`,
-      [id, await shipmentNumberForNext(db, order, n + 1), order.fulfilment_location_id, input.method,
-        input.carrierName, input.trackingNumber, input.lrNumber, input.trackingUrl, input.vehicleNumber,
-        input.driverName, input.driverPhone, input.expectedDelivery, input.notes, staff.id]
-    )
+    const details = [input.method, input.carrierName, input.trackingNumber, input.lrNumber, input.trackingUrl,
+      input.vehicleNumber, input.driverName, input.driverPhone, input.expectedDelivery, input.notes, staff.id]
+    // A dispatch switched off earlier left a cancelled shipment: reuse it, so
+    // the order keeps the one shipment ID the customer was given.
+    let { rows: [shipment] } = await db.query(
+      `select * from shipments where order_id = $1 and status = 'cancelled' order by created_at limit 1`, [id])
+    const reused = Boolean(shipment)
+    if (reused) {
+      ;({ rows: [shipment] } = await db.query(
+        `update shipments set method = $2, carrier_name = $3, tracking_number = $4, lr_number = $5, tracking_url = $6,
+                vehicle_number = $7, driver_name = $8, driver_phone = $9, expected_delivery = $10, notes = $11,
+                dispatched_by = $12, status = 'shipped', shipped_at = now(), delivered_at = null
+          where id = $1 returning *`,
+        [shipment.id, ...details]))
+    } else {
+      const { rows: [{ n }] } = await db.query('select count(*)::int as n from shipments where order_id = $1', [id])
+      ;({ rows: [shipment] } = await db.query(
+        `insert into shipments (order_id, shipment_number, location_id, method, carrier_name, tracking_number, lr_number,
+                                tracking_url, vehicle_number, driver_name, driver_phone, expected_delivery, notes, dispatched_by)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) returning *`,
+        [id, await shipmentNumberForNext(db, order, n + 1), order.fulfilment_location_id, ...details]))
+    }
 
     const batches = body?.batches && typeof body.batches === 'object' ? body.batches : {}
     for (const item of items) {
@@ -381,10 +402,14 @@ export async function shipOrder(staff, id, body) {
         const { rowCount } = await db.query('select 1 from production_batches where id = $1 and variant_id = $2', [batchId, item.variant_id])
         if (!rowCount) throw httpError(`Batch does not match ${item.product_name}.`)
       }
-      await db.query(
-        'insert into shipment_items (shipment_id, order_item_id, quantity, batch_id) values ($1, $2, $3, $4)',
-        [shipment.id, item.id, item.quantity, batchId]
-      )
+      if (reused) {
+        await db.query('update shipment_items set batch_id = $3 where shipment_id = $1 and order_item_id = $2', [shipment.id, item.id, batchId])
+      } else {
+        await db.query(
+          'insert into shipment_items (shipment_id, order_item_id, quantity, batch_id) values ($1, $2, $3, $4)',
+          [shipment.id, item.id, item.quantity, batchId]
+        )
+      }
       await moveStock(db, {
         locationId: order.fulfilment_location_id, variantId: item.variant_id, type: 'dispatch',
         onHand: -item.quantity, reserved: -item.quantity, orderId: id, shipmentId: shipment.id, batchId, staffId: staff.id,
@@ -396,8 +421,61 @@ export async function shipOrder(staff, id, body) {
       shipped_at: new Date(), packed_at: order.packed_at || new Date(),
     })
     const invoice = await issueInvoice(db, updated)
-    await queueEmail(db, { to: updated.contact_email, ...templates.orderShipped(updated, shipment), orderId: id, dedupeKey: 'shipped:' + shipment.id })
+    await queueShippedEmail(db, updated, shipment)
     return { order: updated, shipment, invoice }
+  })
+}
+
+/**
+ * The Dispatch page's "Packing" step: an order being packed now (on) or put
+ * back to Ready (off). Only between ready and packing; dispatch comes after.
+ */
+export async function setPacking(staff, id, { on, expect } = {}) {
+  requirePermission(staff, 'order.pack')
+  if (typeof on !== 'boolean') throw httpError('Say whether the order is being packed.')
+  return tx(async (db) => {
+    const order = await lockOrder(db, id)
+    if (expect && order.status !== expect) {
+      throw httpError('Order changed', { status: 409, publicMessage: `Someone else just updated ${order.order_number}. The list has been refreshed.` })
+    }
+    if (on) {
+      expectStatus(order, ['placed', 'confirmed'], 'start packing')
+      if (order.needs_attention) {
+        throw httpError('Flagged', { status: 409, publicMessage: `${order.order_number} is flagged for checking. Ask sales or the owner to clear it first.` })
+      }
+      const now = new Date()
+      return setStatus(db, staff, order, 'packed', { packed_at: now, confirmed_at: order.confirmed_at || now })
+    }
+    expectStatus(order, ['packed'], 'move back to Ready')
+    return setStatus(db, staff, order, 'confirmed', { packed_at: null }, 'Moved back to Ready to dispatch')
+  })
+}
+
+/**
+ * Add or correct how a dispatched shipment is travelling (vehicle, courier,
+ * transport and LR number, expected date) after it has left: for orders
+ * dispatched with the one-tap switch, or a typo fixed later.
+ */
+export async function updateShipmentDetails(staff, shipmentId, body) {
+  requirePermission(staff, 'order.ship')
+  assertId(shipmentId, 'shipment')
+  const input = shipmentInput(body)
+  return tx(async (db) => {
+    const { rows: [s] } = await db.query('select * from shipments where id = $1 for update', [shipmentId])
+    if (!s) throw httpError('No such shipment.', { status: 404 })
+    if (s.status !== 'shipped') throw httpError(`That shipment is ${s.status}.`, { status: 409 })
+    const { rows: [updated] } = await db.query(
+      `update shipments set method = $2, carrier_name = $3, tracking_number = $4, lr_number = $5, tracking_url = $6,
+              vehicle_number = $7, driver_name = $8, driver_phone = $9, expected_delivery = $10, notes = $11
+        where id = $1 returning *`,
+      [s.id, input.method, input.carrierName, input.trackingNumber, input.lrNumber, input.trackingUrl,
+        input.vehicleNumber, input.driverName, input.driverPhone, input.expectedDelivery, input.notes])
+    await db.query(`insert into shipment_status_history (shipment_id, from_status, to_status, staff_id, note) values ($1, 'shipped', 'shipped', $2, 'Shipping details updated')`,
+      [s.id, staff.id])
+    await audit(db, staff, 'shipment.details', 'shipment', s.id, { method: input.method })
+    const { rows: [order] } = await db.query('select * from orders where id = $1', [s.order_id])
+    await queueShippedEmail(db, order, updated)
+    return updated
   })
 }
 
@@ -420,6 +498,7 @@ export async function deliverShipment(staff, shipmentId, body = {}) {
       `insert into shipment_status_history (shipment_id, from_status, to_status, staff_id, note) values ($1, 'shipped', 'delivered', $2, $3)`,
       [shipmentId, staff.id, note]
     )
+    await cancelShippedEmails(db, shipmentId, 'Delivered before the tracking was added', { onlyWaiting: true })
     const order = await lockOrder(db, shipment.order_id)
     const { rows: [{ open }] } = await db.query(
       `select count(*)::int as open from shipments where order_id = $1 and status = 'shipped'`, [order.id])
@@ -623,6 +702,8 @@ export async function trackOrder({ orderNumber, orderId }) {
       shipmentId: s.shipment_number,
       method: s.method, carrier: s.carrier_name, trackingNumber: s.tracking_number, lrNumber: s.lr_number,
       trackingUrl: s.tracking_url, status: s.status, expectedDelivery: s.expected_delivery,
+      // False when the link opens the courier's search page and the number must be pasted in.
+      trackingPrefilled: Boolean(s.tracking_url && s.tracking_number && s.tracking_url.includes(encodeURIComponent(s.tracking_number))),
       shippedAt: s.shipped_at, deliveredAt: s.delivered_at,
     })),
   }

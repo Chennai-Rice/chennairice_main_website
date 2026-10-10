@@ -1,6 +1,6 @@
 import Img from './Img.jsx'
 import SectionHead from './SectionHead.jsx'
-import { ASSETS, CELEBS, CELEB_HEAD } from '../data/content.js'
+import { ASSETS, CELEBS, CELEB_HEAD, ACTIVE_AMBASSADORS } from '../data/content.js'
 import './celebrities.css'
 
 /** The opening quote mark above each testimonial, drawn rather than typed so
@@ -12,6 +12,7 @@ const QuoteMark = () => (
 )
 
 export default function Celebrities() {
+  const shown = CELEBS.filter((c) => ACTIVE_AMBASSADORS.includes(c.name))
   return (
     <section className="celeb">
       <Img className="celeb-decor celeb-decor-left" src={ASSETS.wheatRight} alt="" aria-hidden="true" />
@@ -22,8 +23,15 @@ export default function Celebrities() {
         <p className="celeb-blurb">{CELEB_HEAD.blurb}</p>
       </div>
 
+      {/* One ambassador gets a wide spotlight card (photo beside the quote);
+          several share the four-up grid. */}
+      {shown.length === 1 ? (
+        <div className="container">
+          <Spotlight c={shown[0]} />
+        </div>
+      ) : (
       <div className="container celeb-grid">
-        {CELEBS.map(c => (
+        {shown.map(c => (
           <figure className={`celeb-card is-${c.tone}`} key={c.name}>
             {/* The name sits inside the tinted panel, above the head — hence
                 the stage rather than a plain image wrapper. */}
@@ -48,6 +56,25 @@ export default function Celebrities() {
           </figure>
         ))}
       </div>
+      )}
     </section>
+  )
+}
+
+/** A single ambassador: portrait on its tinted panel beside the name, quote
+ *  and role. Stacks (portrait on top) on phones — see celebrities.css. */
+function Spotlight({ c }) {
+  return (
+    <figure className={`celeb-card celeb-spot is-${c.tone}`}>
+      <div className="celeb-spot-photo">
+        <Img src={c.image} alt={c.name} loading="lazy" />
+      </div>
+      <figcaption className="celeb-spot-body">
+        <h3 className="celeb-spot-name">{c.name}</h3>
+        <QuoteMark />
+        <span className="celeb-rule" aria-hidden="true" />
+        <blockquote className="celeb-spot-quote">{c.quote}</blockquote>
+      </figcaption>
+    </figure>
   )
 }
