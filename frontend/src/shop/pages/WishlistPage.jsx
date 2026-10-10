@@ -79,7 +79,7 @@ export default function WishlistPage() {
                         {product.name}
                       </Link>
                       <p className="wl-card-desc">{product.description}</p>
-                      <div className="wl-card-price">{inr.format(product.price)}</div>
+                      <div className="wl-card-price">{product.price == null ? "Out of stock" : inr.format(product.price)}</div>
 
                       <div className="wl-card-actions">
                         <button type="button" className="btn-maroon wl-add" onClick={() => add(product)}>

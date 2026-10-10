@@ -359,7 +359,8 @@ async function fetchSalesCatalog() {
       const packSizes = row.variants
         // An unpriced pack cannot be ordered, so it is out of stock as far as
         // the shop is concerned.
-        .map((v) => ({ kg: Number(v.packKg), price: Number(v.price) || 0, inStock: v.price != null && v.inStock }))
+        // No price stays null (not 0), so the card says "Out of stock" instead of "₹0".
+        .map((v) => ({ kg: Number(v.packKg), price: v.price == null ? null : Number(v.price), inStock: v.price != null && v.inStock }))
         .sort((a, b) => a.kg - b.kg);
       const tenKg = packSizes.find((s) => s.kg === 10) || packSizes[0];
       return {
