@@ -137,9 +137,11 @@ export default function ProductDetailPage() {
             <div className="pdp-price-hero">
               {showCardPrices ? (
                 <>
-                  <span className="pdp-price">{soldOut ? "Out of stock" : formatRupees(selected.price * qty)}</span>
+                  <span className="pdp-price">
+                    {soldOut && selected.price == null ? "Out of stock" : formatRupees(selected.price * (soldOut ? 1 : qty))}
+                  </span>
                   <span className="pdp-price-note">
-                    {soldOut ? "This pack size is not available right now." : "Inclusive of applicable taxes"}
+                    {soldOut ? "Out of stock right now · Inclusive of applicable taxes" : "Inclusive of applicable taxes"}
                   </span>
                 </>
               ) : (

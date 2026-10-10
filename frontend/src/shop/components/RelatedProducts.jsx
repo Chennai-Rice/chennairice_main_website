@@ -120,7 +120,7 @@ export default function RelatedProducts({ products }) {
               {showCardPrices && soldOut ? (
                 <>
                   <p className="pdp-related-price">
-                    Out of stock <span>/ {defaultSize.kg} kg</span>
+                    {defaultSize.price == null ? "Out of stock" : formatRupees(defaultSize.price)} <span>/ {defaultSize.kg} kg</span>
                   </p>
                   <button className="add-btn add-btn--soldout" type="button" disabled>
                     <span className="add-label">Out of stock</span>

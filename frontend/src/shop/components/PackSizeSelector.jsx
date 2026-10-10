@@ -17,7 +17,8 @@ export default function PackSizeSelector({ sizes, selectedKg, onSelect }) {
           {/* Omitted rather than shown as ₹0 while prices are unpublished. */}
           {showCardPrices && (
             <span className="pdp-pack-price">
-              {size.inStock === false ? "Out of stock" : formatRupees(size.price)}
+              {size.price == null ? "Out of stock" : formatRupees(size.price)}
+              {size.inStock === false && size.price != null && <small className="pdp-pack-stock">Out of stock</small>}
             </span>
           )}
         </button>

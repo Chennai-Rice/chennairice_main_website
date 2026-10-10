@@ -107,10 +107,17 @@ export default function ProductCard({ product }) {
             above still say what exists, and the price and the cart give way to
             a route to the sales team. */}
         <div className={`card-foot${showCardPrices ? "" : " card-foot--enquiry"}`}>
-          {showCardPrices && soldOut ? (
+          {showCardPrices && soldOut && selected.price == null ? (
             <p className="price-enquiry">
               <span className="price-enquiry-label price-soldout">Out of stock</span>
               <span className="price-unit">{selected.kg} kg pack</span>
+            </p>
+          ) : showCardPrices && soldOut ? (
+            // Sold out still shows what the pack costs; the stock is a note.
+            <p className="price">
+              <span className="price-amount">{formatRupees(selected.price)}</span>{" "}
+              <span className="price-unit">/ {selected.kg} kg</span>
+              <span className="price-stock-note">Out of stock</span>
             </p>
           ) : showCardPrices ? (
             <p className="price">

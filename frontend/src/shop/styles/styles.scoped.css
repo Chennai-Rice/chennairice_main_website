@@ -2615,3 +2615,19 @@
   background: var(--maroon-600);
 }
 
+
+/* A sold-out pack still shows its price; the stock is a small note under it. */
+.shop-scope .price-stock-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--maroon-600);
+}
+.shop-scope .pdp-pack-stock {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--maroon-600);
+}
