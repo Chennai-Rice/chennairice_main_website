@@ -105,7 +105,11 @@ export async function signInWithGoogle() {
     }
     if (err?.code === 'auth/popup-blocked') throw new Error('Your browser blocked the sign-in window. Allow pop-ups for this site and try again.')
     if (err?.code === 'auth/unauthorized-domain') throw new Error('Google sign-in is not enabled for this website address yet.')
-    throw new Error('Google sign-in failed. Please try again.')
+    if (err?.code === 'auth/configuration-not-found' || err?.code === 'auth/operation-not-allowed') {
+      throw new Error('Google sign-in is not switched on in Firebase yet (Authentication → Sign-in method → Google).')
+    }
+    // The code (e.g. auth/network-request-failed) tells whoever fixes it where to look.
+    throw new Error(`Google sign-in failed (${err?.code || 'unknown'}). Please try again.`)
   }
   try {
     return await staffJson('/api/admin/me')
