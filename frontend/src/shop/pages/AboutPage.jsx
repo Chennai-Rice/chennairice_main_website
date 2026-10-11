@@ -5,10 +5,12 @@ import Scale from "../sections/about/Scale.jsx";
 import PromiseCta from "../sections/about/PromiseCta.jsx";
 import StatementCard from "../components/StatementCard.jsx";
 import SectionCurve from "../components/SectionCurve.jsx";
-import Timeline from "../components/Timeline.jsx";
+import { LegacyStory, LegacyVision, LegacyEvolution, LegacyClosing } from "../sections/about/Legacy.jsx";
+import { LEGACY } from "../data/legacy.js";
 import { useRevealGroup } from "../hooks/useScrollFx.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import "../styles/about.css";
+import "../styles/legacy.css";
 
 /* warehouse mark that sits in the filled disc beside the "Storage" label */
 const STORAGE_BADGE_ICON = (
@@ -99,7 +101,7 @@ export default function AboutPage() {
 
   usePageMeta(
     "About Us — Chennai Rice Industries",
-    "70+ years of rice industry heritage. Integrated paddy procurement, storage, processing and pan-India distribution, rooted in Tamil Nadu."
+    "Five generations and 75 years of heritage: from rice trading in Salem's Lee Bazaar in 1951 to AI-enabled smart rice milling at SIPCOT, Perundurai."
   );
 
   return (
@@ -133,34 +135,23 @@ export default function AboutPage() {
               <div className="ab-heritage-intro-text reveal reveal--right d1">
                 <p className="eyebrow">Our Heritage</p>
                 <span className="ab-heritage-rule" aria-hidden="true" />
-                <h2 className="ab-heritage-kicker">Since the 1950s</h2>
-                <p className="ab-heritage-tagline">
-                  Seven decades of rice knowledge, running on modern infrastructure.
-                </p>
+                <h2 className="ab-heritage-kicker">Since 1951</h2>
+                <p className="ab-heritage-tagline">{LEGACY.tagline}</p>
                 <div className="ab-heritage-intro-right">
-                  <p>
-                    Chennai Rice Industries India Private Limited, incorporated in 2013 under the
-                    leadership of Mr.&nbsp;M.&nbsp;S.&nbsp;Tamilselvan, brings together deep
-                    agricultural expertise, large-scale paddy procurement, advanced processing
-                    capabilities, extensive storage infrastructure, and a growing pan-India
-                    distribution network.
-                  </p>
-                  <p>
-                    With 70+ years of industry heritage, we combine the knowledge of generations
-                    with modern technology and operational capabilities to move from paddy
-                    procurement to processed rice and market distribution through an integrated
-                    value chain.
-                  </p>
-                  <p>
-                    Today, Chennai Rice Industries is building a stronger, more efficient, and
-                    future-ready presence in India&rsquo;s rice industry.
-                  </p>
+                  <p className="ab-heritage-lede">{LEGACY.lede}</p>
+                  {LEGACY.intro.map((p) => (
+                    <p key={p.slice(0, 40)}>{p}</p>
+                  ))}
                 </div>
               </div>
             </div>
-
-            <Timeline />
           </div>
+        </div>
+
+        <div className="ab-flow-block ab-flow-block--rice">
+          <LegacyStory />
+          <LegacyVision />
+          <LegacyEvolution />
         </div>
 
         <div className="ab-flow-block ab-flow-block--rice">
@@ -234,6 +225,8 @@ export default function AboutPage() {
             </Link>
           </div>
         </div>
+
+        <LegacyClosing />
 
         <div className="ab-flow-block">
           <PromiseCta />

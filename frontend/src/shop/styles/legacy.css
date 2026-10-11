@@ -1,0 +1,207 @@
+/* ============================================================
+   About page: the five-generation story (sections/about/Legacy.jsx).
+   Uses the .about-page palette; maroon for the rail, as the old
+   timeline did, so the story ties back to the shop.
+   ============================================================ */
+
+.about-page .lg-story,
+.about-page .lg-evo {
+  --lg-maroon: #6E1B22;
+  padding-block: clamp(3.5rem, 8vw, 6rem);
+}
+
+.about-page .lg-head { max-width: 44rem; margin-bottom: clamp(2rem, 5vw, 3.5rem); }
+.about-page .lg-head--center { margin-inline: auto; text-align: center; }
+
+/* ---- chapters on a rail ---- */
+.about-page .lg-chapters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+/* the rail */
+.about-page .lg-chapters::before {
+  content: "";
+  position: absolute;
+  top: 0.6rem;
+  bottom: 0.6rem;
+  left: 0.36rem;
+  width: 2px;
+  background: linear-gradient(var(--gold), rgba(110, 27, 34, 0.35) 60%, var(--gold));
+}
+
+.about-page .lg-chapter {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.9rem;
+  padding: 0 0 clamp(2.5rem, 6vw, 4rem) 2.25rem;
+}
+.about-page .lg-chapter:last-child { padding-bottom: 0; }
+
+.about-page .lg-rail-dot {
+  position: absolute;
+  top: 0.5rem;
+  left: 0;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  background: var(--lg-maroon);
+  box-shadow: 0 0 0 5px var(--rice), 0 0 0 6px rgba(110, 27, 34, 0.25);
+}
+.about-page .lg-chapter:first-child .lg-rail-dot,
+.about-page .lg-chapter:last-child .lg-rail-dot { background: var(--gold); }
+
+.about-page .lg-era { display: grid; gap: 0.2rem; align-content: start; }
+.about-page .lg-era-num {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  color: var(--gold);
+}
+.about-page .lg-era-year {
+  font-family: var(--serif);
+  font-size: clamp(2rem, 4.4vw, 3.1rem);
+  line-height: 1;
+  color: var(--lg-maroon);
+}
+.about-page .lg-era-label {
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--earth);
+}
+
+.about-page .lg-copy { max-width: 44rem; }
+.about-page .lg-title {
+  margin: 0 0 0.9rem;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(1.45rem, 2.6vw, 2rem);
+  line-height: 1.2;
+  color: var(--forest);
+  text-wrap: balance;
+}
+.about-page .lg-copy p { margin: 0 0 0.95rem; font-size: 1rem; }
+.about-page .lg-copy p:last-child { margin-bottom: 0; }
+.about-page .lg-copy p.lg-quote {
+  margin-top: 1.4rem;
+  padding-left: 1rem;
+  border-left: 3px solid var(--gold);
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(1.15rem, 2vw, 1.4rem);
+  line-height: 1.4;
+  color: var(--forest);
+}
+
+/* Wide screens: era column on the left, sticky beside a long chapter. */
+@media (min-width: 900px) {
+  .about-page .lg-chapters::before { left: 15.4rem; }
+  .about-page .lg-chapter {
+    grid-template-columns: 14rem 1fr;
+    column-gap: 4rem;
+    padding-left: 0;
+  }
+  .about-page .lg-era {
+    position: sticky;
+    top: 7rem;
+    text-align: right;
+  }
+  .about-page .lg-rail-dot { left: 15.04rem; }
+}
+
+/* ---- vision ---- */
+.about-page .lg-vision {
+  display: flex;
+  justify-content: center;
+  padding-bottom: clamp(1rem, 4vw, 2rem);
+}
+.about-page .lg-vision .sc { max-width: 52rem; }
+
+/* ---- the journey at a glance ---- */
+.about-page .lg-evo-list {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  max-width: 40rem;
+  display: grid;
+  gap: 0;
+}
+.about-page .lg-evo-step {
+  position: relative;
+  display: grid;
+  gap: 0.2rem;
+  justify-items: center;
+  text-align: center;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--cream-deep);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 18px 36px -30px rgba(20, 38, 25, 0.5);
+}
+/* the ↓ between steps */
+.about-page .lg-evo-step + .lg-evo-step { margin-top: 2.1rem; }
+.about-page .lg-evo-step + .lg-evo-step::before {
+  content: "↓";
+  position: absolute;
+  top: -1.85rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--gold);
+}
+.about-page .lg-evo-era {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--lg-maroon);
+}
+.about-page .lg-evo-title {
+  font-family: var(--serif);
+  font-size: clamp(1.15rem, 2vw, 1.35rem);
+  line-height: 1.25;
+  color: var(--forest);
+}
+.about-page .lg-evo-note { font-size: 0.86rem; line-height: 1.5; color: var(--ink-soft); }
+.about-page .lg-evo-step:last-child {
+  border-color: var(--gold);
+  background: linear-gradient(180deg, #fff, rgba(240, 206, 114, 0.18));
+}
+
+/* ---- closing ---- */
+.about-page .lg-close {
+  background: var(--forest-deep);
+  padding-block: clamp(4rem, 9vw, 6.5rem);
+  text-align: center;
+}
+.about-page .lg-close-inner { max-width: 50rem; }
+.about-page .lg-close h2 { color: var(--rice); }
+.about-page .lg-close p { margin: 0 auto 1rem; max-width: 42rem; color: rgba(253, 252, 247, 0.78); }
+.about-page .lg-signoff {
+  margin-top: 2.2rem;
+  padding-top: 1.6rem;
+  border-top: 1px solid rgba(214, 162, 43, 0.4);
+}
+.about-page .lg-signoff p {
+  margin: 0 auto 0.4rem;
+  font-family: var(--serif);
+  font-size: clamp(1.05rem, 2vw, 1.3rem);
+  color: var(--gold-light);
+}
+
+/* the family's opening line, above the intro paragraphs */
+.about-page .ab-heritage-intro-right p.ab-heritage-lede {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(1.15rem, 2vw, 1.35rem);
+  line-height: 1.45;
+  color: var(--forest);
+}
+
+.about-page .lg-era-year--word { font-size: clamp(1.6rem, 3vw, 2.2rem); line-height: 1.1; }

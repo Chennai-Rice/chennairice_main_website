@@ -3,7 +3,7 @@
 export const SCALE = {
   // Written for the scroll reveal: one continuous sentence, no line breaks, so
   // the words uncover in reading order as the section scrolls past.
-  statement: "From Paddy to Perfection, A Legacy in Every Grain",
+  statement: "Our Legacy. Our Evolution. Our Future.",
   // `to` drives the count-up; `suffix`/`prefix` are rendered around it
   figures: [
     { to: 1000, suffix: "+", unit: "Tonnes / day", label: "Paddy processed" },
