@@ -58,6 +58,7 @@ export const LEGACY = {
       era: "2013",
       label: "Chennai Rice Industries India Pvt. Ltd.",
       title: "The Beginning of a New Industrial Era",
+      photo: { src: "/assets/about/chapter-2013.jpg", caption: "Chennai Rice Industries India Pvt. Ltd. · 2013" },
       body: [
         "Driven by a shared ambition to establish a technologically advanced, large-scale rice manufacturing enterprise, Mr. M. S. Tamilselvan partnered with Mr. Rajkumar Rajasekaran, an entrepreneur from a textile business background, to establish Chennai Rice Industries India Private Limited in Gangapuram, Erode.",
         "Combining generations of rice industry knowledge with diverse entrepreneurial expertise, this partnership marked the transformation of a family legacy into a professionally driven industrial enterprise.",

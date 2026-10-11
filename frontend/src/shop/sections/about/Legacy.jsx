@@ -36,6 +36,12 @@ export function LegacyStory() {
             <span className="lg-rail-dot" aria-hidden="true" />
             <div className="lg-copy reveal d1">
               <h3 className="lg-title">{c.title}</h3>
+              {c.photo && (
+                <figure className="lg-photo">
+                  <img src={c.photo.src} alt={c.photo.caption} loading="lazy" />
+                  <figcaption>{c.photo.caption}</figcaption>
+                </figure>
+              )}
               {c.body.map((p) => (
                 <p key={p.slice(0, 40)}>{p}</p>
               ))}
