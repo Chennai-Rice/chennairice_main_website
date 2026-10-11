@@ -268,7 +268,7 @@
   display: grid;
   justify-items: start;
   gap: 1.1rem;
-  margin-top: 2rem;
+  margin-top: 1.6rem;
 }
 .about-page .lg-founder .sc { max-width: 38rem; }
 .about-page .lg-founder .ab-founder-link { margin-left: 0; }

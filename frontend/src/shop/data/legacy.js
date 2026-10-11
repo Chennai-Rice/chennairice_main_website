@@ -50,7 +50,7 @@ export const LEGACY = {
       label: "Shyamalan Modern Rice Industries · 4th Generation",
       title: "A New Vision for Growth",
       portrait: { src: "/assets/about/portrait-tamilselvan.jpg", name: "AMS. Tamilselvan", role: "Fourth generation" },
-      founderQuote: { text: "“Build capabilities today that create scale for tomorrow.”", by: "M. S. Tamilselvan · Founder & Chairman" },
+      founderLink: true,
       body: [
         "With an ambition to take the family business to greater heights, fourth-generation entrepreneur Mr. M. S. Tamilselvan joined hands with his father, the late Mr. AM. Shyamalanathan, to establish Shyamalan Modern Rice Industries in Salem.",
         "This milestone marked a new phase of modernisation, technological advancement and industrial growth, setting the stage for a much larger vision in rice manufacturing.",
