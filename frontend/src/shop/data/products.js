@@ -181,7 +181,7 @@ const FALLBACK_PRODUCTS = [
     name: "Vijaya Nagaram",
     description: "Amman Ponni — HMT Ponni grain, milled for everyday South Indian meals.",
     packKg: 5,
-    image: "/assets/shop/packs/vijaya-nagaram.png",
+    image: "/assets/shop/packs/vijaya-nagaram-v2.png",
     alt: "Vijaya Nagaram — HMT Ponni, 5 kg pack",
   },
   {
@@ -208,7 +208,7 @@ const FALLBACK_PRODUCTS = [
     name: "United",
     description: "The everyday United pack, in a 5 kg family size.",
     packKg: 5,
-    image: "/assets/shop/packs/united-5kg.png",
+    image: "/assets/shop/packs/united-5kg-v2.png",
     alt: "United — Ponni, 5 kg pack",
   },
   {
@@ -217,7 +217,7 @@ const FALLBACK_PRODUCTS = [
     name: "Alibaba",
     description: "Premium Sappadu rice — 100% pure original quality, for full-flavoured meals.",
     packKg: 10,
-    image: "/assets/shop/packs/alibaba.png",
+    image: "/assets/shop/packs/alibaba-v2.png",
     alt: "Alibaba — Sappadu rice, 10 kg pack",
   },
   {
@@ -226,7 +226,7 @@ const FALLBACK_PRODUCTS = [
     name: "Chennai Bullets",
     description: "Rajabhogam Ponni with a rich aroma, in our largest 26 kg trade pack.",
     packKg: 26,
-    image: "/assets/shop/packs/chennai-bullets.png",
+    image: "/assets/shop/packs/chennai-bullets-v2.png",
     alt: "Chennai Bullets — Rajabhogam Ponni, 26 kg pack",
   },
   {

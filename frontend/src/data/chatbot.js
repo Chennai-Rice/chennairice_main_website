@@ -65,7 +65,7 @@ export const CHAT_PRODUCTS = [
     name: "Vijaya Nagaram",
     packSize: "5 KG",
     blurb: "Amman Ponni — HMT Ponni grain, milled for everyday South Indian meals.",
-    image: "/assets/shop/packs/vijaya-nagaram.png",
+    image: "/assets/shop/packs/vijaya-nagaram-v2.png",
     keywords: ["vijaya nagaram","vijaya","nagaram","amman","grain","milled","everyday","south","indian"],
   },
   {
@@ -89,7 +89,7 @@ export const CHAT_PRODUCTS = [
     name: "United",
     packSize: "5 KG",
     blurb: "The everyday United pack, in a 5 kg family size.",
-    image: "/assets/shop/packs/united-5kg.png",
+    image: "/assets/shop/packs/united-5kg-v2.png",
     keywords: ["united","united","green","everyday","family","size"],
   },
   {
@@ -97,7 +97,7 @@ export const CHAT_PRODUCTS = [
     name: "Alibaba",
     packSize: "10 KG",
     blurb: "Premium Sappadu rice — 100% pure original quality, for full-flavoured meals.",
-    image: "/assets/shop/packs/alibaba.png",
+    image: "/assets/shop/packs/alibaba-v2.png",
     keywords: ["alibaba","alibaba","premium","sappadu","pure","original","quality","full","flavoured"],
   },
   {
@@ -105,7 +105,7 @@ export const CHAT_PRODUCTS = [
     name: "Chennai Bullets",
     packSize: "26 KG",
     blurb: "Rajabhogam Ponni with a rich aroma, in our largest 26 kg trade pack.",
-    image: "/assets/shop/packs/chennai-bullets.png",
+    image: "/assets/shop/packs/chennai-bullets-v2.png",
     keywords: ["chennai bullets","chennai","bullets","rajabhogam","rich","aroma","largest","trade"],
   },
   {
