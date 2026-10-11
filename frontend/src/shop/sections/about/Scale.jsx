@@ -25,7 +25,7 @@ export default function Scale() {
     <section className="ab-scale" aria-labelledby="scale-heading">
       {/* the real plant, full-bleed behind the numbers */}
       <div className="ab-scale-media" ref={mediaRef}>
-        <img src="/assets/about/plant.png" alt="Aerial view of the Chennai Rice processing plant and silo farm" />
+        <img src="/assets/about/plant-illustration.jpg" alt="Illustration of the Chennai Rice silo farm and mill, with Chennai Central in the background" />
       </div>
 
       <div className="about-shell">
