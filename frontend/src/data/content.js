@@ -107,7 +107,7 @@ export const PRODUCTS = [
     packSize: '5 / 10 / 26 KG',
     riceType: 'Super Aged Gel Cook Rice',
     idealFor: 'Daily Meals • Variety Rice',
-    image: '/assets/shop/packs/nayara-super-aged.png',
+    image: '/assets/shop/packs/nayara-super-aged-v2.png',
     // Pale teal, from the pack's green and gold.
     tint: '#E8F2EF',
   },

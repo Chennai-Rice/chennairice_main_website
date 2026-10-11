@@ -57,7 +57,7 @@ export const CHAT_PRODUCTS = [
     name: "Nayara Super Aged",
     packSize: "10 KG",
     blurb: "Super-aged gel cook rice that stays separate and firm on the plate.",
-    image: "/assets/shop/packs/nayara-super-aged.png",
+    image: "/assets/shop/packs/nayara-super-aged-v2.png",
     keywords: ["nayara super aged","nayara","super","aged","cook","stays","separate","firm","plate"],
   },
   {

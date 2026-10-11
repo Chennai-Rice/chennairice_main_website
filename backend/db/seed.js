@@ -16,7 +16,7 @@ import { getPool, closePool } from '../lib/db.js'
 export const CATALOG = [
   { slug: 'kitchidi-ponni-rice', name: 'Kitchidi Ponni Rice', tag: '1 Year Aged', packKg: 5, description: "Kitchidi Ponni, aged for a year, in our Chennai Rice premium pack. From Mother's Hands to Your Heart." },
   { slug: 'special-rajabhogam', name: 'Special Rajabhogam', tag: 'Classic Red', packKg: 10, description: 'Kitchidi Ponni rice in our signature red pack, milled and sealed at Erode.' },
-  { slug: 'nayara-super-aged', name: 'Nayara Super Aged', tag: 'Super Aged', packKg: 10, description: 'Super-aged gel cook rice that stays separate and firm on the plate.' },
+  { slug: 'nayara-super-aged', name: 'Nayara Super Aged', tag: 'Super Aged', packKg: 10, description: 'Super-aged gel cook rice that stays separate and firm on the plate.', image: '/assets/shop/packs/nayara-super-aged-v2.png' },
   { slug: 'vijaya-nagaram', name: 'Vijaya Nagaram', tag: 'Amman Ponni', packKg: 5, description: 'Amman Ponni, HMT Ponni grain, milled for everyday South Indian meals.' },
   { slug: 'vintage', name: 'Vintage', tag: 'Black & Gold', packKg: 10, description: 'Our black-and-gold selection, milled and sealed at the Erode facility.' },
   { slug: 'viruchagam', name: 'Viruchagam', tag: 'Poompuhar Ponni', packKg: 10, description: 'Poompuhar Ponni in the blue and gold pack, from SNR RNR paddy.' },
@@ -79,7 +79,7 @@ export async function seed({ pool, demo = false, log = console.log } = {}) {
        values ($1, $2, $3, $4, $5, $6)
        on conflict (slug) do update set slug = excluded.slug
        returning id`,
-      [p.slug, p.name, p.tag, p.description, '/assets/shop/packs/' + p.slug + '.png', i + 1]
+      [p.slug, p.name, p.tag, p.description, p.image || '/assets/shop/packs/' + p.slug + '.png', i + 1]
     )
     await pool.query(
       `insert into product_variants (product_id, sku, pack_kg, tax_rate_bp, reorder_level)

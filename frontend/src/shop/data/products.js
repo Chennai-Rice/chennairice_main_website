@@ -172,7 +172,7 @@ const FALLBACK_PRODUCTS = [
     name: "Nayara Super Aged",
     description: "Super-aged gel cook rice that stays separate and firm on the plate.",
     packKg: 10,
-    image: "/assets/shop/packs/nayara-super-aged.png",
+    image: "/assets/shop/packs/nayara-super-aged-v2.png",
     alt: "Nayara Super Aged — Gel cook rice, 10 kg pack",
   },
   {
