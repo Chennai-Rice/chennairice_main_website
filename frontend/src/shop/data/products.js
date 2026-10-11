@@ -42,7 +42,8 @@ const PRESENTATION = {
     width: 592,
     height: 839,
     tags: ["ponni"],
-    search: "special rajabhogam classic red kitchidi ponni 10kg ponni",
+    search: "special rajabhogam classic red kitchidi ponni 10kg ponni premium",
+    flag: "★ Premium",
   },
   "nayara-super-aged": {
     variant: "gold",
@@ -86,7 +87,6 @@ const PRESENTATION = {
     height: 701,
     tags: ["premium"],
     search: "alibaba premium sappadu sappadu rice 10kg premium",
-    flag: "★ Premium",
   },
   "chennai-bullets": {
     variant: "premium",
@@ -122,7 +122,6 @@ const PRESENTATION = {
     height: 924,
     tags: [],
     search: "special idly rice idli dosa pink pack kalli muthan kar 5kg offer",
-    flag: "★ Offer",
   },
 };
 
