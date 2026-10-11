@@ -23,18 +23,18 @@ export const LEGACY = {
       ],
     },
     {
-      era: "2nd Generation",
-      label: "Ranganadhar Rice Mill",
+      era: "1956",
+      label: "Ranganathar Rice Mill · 2nd Generation",
       title: "From Rice Trading to Rice Milling",
       portrait: { src: "/assets/about/portrait-mahalingam.jpg", name: "Late A. Mahalingam Mudaliyar", role: "Second generation" },
       body: [
-        "Carrying forward his father’s entrepreneurial vision, the late Mr. A. Mahalingam Mudaliyar established Ranganadhar Rice Mill in Salem, marking a defining transition from traditional rice trading to rice milling.",
+        "Carrying forward his father’s entrepreneurial vision, the late Mr. A. Mahalingam Mudaliyar established Ranganathar Rice Mill in Salem, marking a defining transition from traditional rice trading to rice milling.",
         "This pioneering step strengthened the family’s roots in the rice industry and laid the groundwork for generations of expertise in rice processing and manufacturing.",
       ],
     },
     {
-      era: "3rd Generation",
-      label: "AM Modern Rice Mill",
+      era: "1980",
+      label: "AM Modern Rice Mill · 3rd Generation",
       title: "Pioneering the Packaged Rice Revolution",
       portrait: { src: "/assets/about/portrait-shyamalanathan.jpg", name: "Late AM. Shyamalanathan", role: "Third generation" },
       body: [
@@ -46,8 +46,8 @@ export const LEGACY = {
       ],
     },
     {
-      era: "2006",
-      label: "Shyamalan Modern Rice Industries",
+      era: "2005",
+      label: "Shyamalan Modern Rice Industries · 4th Generation",
       title: "A New Vision for Growth",
       portrait: { src: "/assets/about/portrait-tamilselvan.jpg", name: "AMS. Tamilselvan", role: "Fourth generation" },
       body: [
@@ -118,9 +118,9 @@ export const LEGACY = {
     "To build a fully data-driven smart rice mill, where generations of experience meet the power of intelligence and innovation.",
   evolution: [
     { era: "1951", title: "Rice Trading", note: "The foundation of our legacy in Leigh Bazaar, Salem." },
-    { era: "Ranganadhar Rice Mill", title: "Rice Milling", note: "The family’s transition from trading to manufacturing." },
-    { era: "AM Modern Rice Mill", title: "Modern Milling & Packaged Rice", note: "Contributing to the evolution of modern milling and packaged rice." },
-    { era: "2006", title: "Shyamalan Modern Rice Industries", note: "A new generation of technological advancement and industrial growth." },
+    { era: "1956", title: "Ranganathar Rice Mill — Rice Milling", note: "The family’s transition from trading to manufacturing." },
+    { era: "1980", title: "AM Modern Rice Mill — Modern Milling & Packaged Rice", note: "Contributing to the evolution of modern milling and packaged rice." },
+    { era: "2005", title: "Shyamalan Modern Rice Industries", note: "A new generation of technological advancement and industrial growth." },
     { era: "2013", title: "Chennai Rice Industries India Pvt. Ltd.", note: "The establishment of a larger, technology-driven rice manufacturing enterprise." },
     { era: "2021", title: "Advanced Paddy Storage & Chiller Technology", note: "Pioneering temperature-controlled grain preservation in non-basmati rice." },
     { era: "2026", title: "AI-Enabled Smart Rice Milling", note: "A new era of intelligent rice manufacturing." },
