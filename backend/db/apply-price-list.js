@@ -50,7 +50,7 @@ const NEW_PRODUCTS = {
   'special-idly-rice': {
     name: 'Special Idly Rice', tag: 'Idly Rice',
     description: 'Idly rice in our pink pack, for soft, fluffy idlis and crisp dosas.',
-    image: '/assets/shop/packs/special-idly-rice.png',
+    image: '/assets/shop/packs/special-idly-rice-v2.png',
   },
   // The contest pack: listed first in the shop.
   'kitchidi-ponni-rice': {

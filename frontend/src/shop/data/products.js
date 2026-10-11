@@ -262,7 +262,7 @@ const FALLBACK_PRODUCTS = [
     name: "Special Idly Rice",
     description: "Idly rice in our pink pack, for soft, fluffy idlis and crisp dosas.",
     packKg: 5,
-    image: "/assets/shop/packs/special-idly-rice.png",
+    image: "/assets/shop/packs/special-idly-rice-v2.png",
     alt: "Chennai Rice Special Idly Rice — pink pack",
   },
 ].map(({ slug, tag, name, description, packKg, image, alt }) => {
