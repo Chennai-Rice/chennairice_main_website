@@ -71,17 +71,18 @@ export const PRODUCTS = [
     tint: '#F8ECEA',
   },
   {
-    shortName: 'Special Idly Rice',
-    ghost: ['SPECIAL', 'IDLY RICE'],
-    name: 'SPECIAL IDLY RICE',
-    // The pink offer bag.
-    desc: 'Idly rice in our pink pack, for soft, fluffy idlis and crisp dosas.',
-    packSize: '5 KG',
-    riceType: 'Idly Rice',
-    idealFor: 'Idli • Dosa',
-    image: '/assets/shop/packs/special-idly-rice.png',
-    // Pale blush, drawn from the pink pack.
-    tint: '#FBEAF0',
+    shortName: 'Kitchidi Ponni Rice',
+    ghost: ['KITCHIDI', 'PONNI RICE'],
+    name: 'KITCHIDI PONNI RICE',
+    // The maroon-and-peach offer bag. From the pack: 1 year aged,
+    // "Delicious Tastes", "From Mother's Hands to Your Heart".
+    desc: "Kitchidi Ponni, aged for a year, in our Chennai Rice premium pack. From Mother's Hands to Your Heart.",
+    packSize: '5 / 26 KG',
+    riceType: '1 Year Aged Kitchidi Ponni',
+    idealFor: 'Delicious Everyday Meals',
+    image: '/assets/shop/packs/kitchidi-ponni-rice.png',
+    // Warm peach, from the right half of the pack.
+    tint: '#FBEDE6',
   },
   {
     shortName: 'Viruchagam',
