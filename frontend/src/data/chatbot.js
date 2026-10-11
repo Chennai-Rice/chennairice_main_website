@@ -73,7 +73,7 @@ export const CHAT_PRODUCTS = [
     name: "Vintage",
     packSize: "10 KG",
     blurb: "Our black-and-gold selection, milled and sealed at the Erode facility.",
-    image: "/assets/shop/packs/vintage.png",
+    image: "/assets/shop/packs/vintage-v2.png",
     keywords: ["vintage","vintage","black","gold","selection","milled","sealed","erode","facility"],
   },
   {

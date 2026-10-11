@@ -18,7 +18,7 @@ export const CATALOG = [
   { slug: 'special-rajabhogam', name: 'Special Rajabhogam', tag: 'Classic Red', packKg: 10, description: 'Kitchidi Ponni rice in our signature red pack, milled and sealed at Erode.' },
   { slug: 'nayara-super-aged', name: 'Nayara Super Aged', tag: 'Super Aged', packKg: 10, description: 'Super-aged gel cook rice that stays separate and firm on the plate.', image: '/assets/shop/packs/nayara-super-aged-v2.png' },
   { slug: 'vijaya-nagaram', name: 'Vijaya Nagaram', tag: 'Amman Ponni', packKg: 5, description: 'Amman Ponni, HMT Ponni grain, milled for everyday South Indian meals.', image: '/assets/shop/packs/vijaya-nagaram-v2.png' },
-  { slug: 'vintage', name: 'Vintage', tag: 'Black & Gold', packKg: 10, description: 'Our black-and-gold selection, milled and sealed at the Erode facility.' },
+  { slug: 'vintage', name: 'Vintage', tag: 'Black & Gold', packKg: 10, description: 'Our black-and-gold selection, milled and sealed at the Erode facility.', image: '/assets/shop/packs/vintage-v2.png' },
   { slug: 'viruchagam', name: 'Viruchagam', tag: 'Poompuhar Ponni', packKg: 10, description: 'Poompuhar Ponni in the blue and gold pack, from SNR RNR paddy.' },
   { slug: 'united-5kg', name: 'United', tag: 'Green Pack', packKg: 5, description: 'The everyday United pack, in a 5 kg family size.', image: '/assets/shop/packs/united-5kg-v2.png' },
   { slug: 'alibaba', name: 'Alibaba', tag: 'Premium Sappadu', packKg: 10, description: 'Premium Sappadu rice, 100% pure original quality, for full-flavoured meals.', image: '/assets/shop/packs/alibaba-v2.png' },

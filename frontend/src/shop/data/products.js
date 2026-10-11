@@ -190,7 +190,7 @@ const FALLBACK_PRODUCTS = [
     name: "Vintage",
     description: "Our black-and-gold selection, milled and sealed at the Erode facility.",
     packKg: 10,
-    image: "/assets/shop/packs/vintage.png",
+    image: "/assets/shop/packs/vintage-v2.png",
     alt: "Vintage — Ponni, 10 kg pack",
   },
   {
