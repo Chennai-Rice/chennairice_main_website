@@ -36,10 +36,10 @@ export const LEGACY = {
       era: "3rd Generation",
       label: "AM Modern Rice Mill",
       title: "Pioneering the Packaged Rice Revolution",
-      portrait: { src: "/assets/about/portrait-shyamalanathan.jpg", name: "M. Shyamalanathan", role: "Third generation" },
+      portrait: { src: "/assets/about/portrait-shyamalanathan.jpg", name: "Late AM. Shyamalanathan", role: "Third generation" },
       body: [
         "Building upon the foundations established by their forefathers, the third generation played a defining role in transforming the family’s rice business and contributing to the evolution of the rice industry.",
-        "Among them, Mr. M. Shyamalanathan, M.A., alongside his brother, carried forward the family’s entrepreneurial vision through AM Modern Rice Mill in Salem.",
+        "Among them, the late Mr. AM. Shyamalanathan, M.A., alongside his brother, carried forward the family’s entrepreneurial vision through AM Modern Rice Mill in Salem.",
         "They were among the pioneering contributors to the transformation of rice from a traditionally traded, loose commodity into the processed, quality-focused and packaged product that consumers recognise today.",
         "Their forward-thinking approach to modern rice milling, consistent quality and evolving consumer needs helped lay the foundation for the growth of packaged rice in the market.",
         "Their contribution extended beyond building a successful rice mill. They helped shape a new direction for the industry, paving the way for modern rice brands and the packaged rice products that have become an essential part of households today.",
@@ -51,7 +51,7 @@ export const LEGACY = {
       title: "A New Vision for Growth",
       portrait: { src: "/assets/about/portrait-tamilselvan.jpg", name: "AMS. Tamilselvan", role: "Fourth generation" },
       body: [
-        "With an ambition to take the family business to greater heights, fourth-generation entrepreneur Mr. M. S. Tamilselvan joined hands with his father, Mr. M. Shyamalanathan, to establish Shyamalan Modern Rice Industries in Salem.",
+        "With an ambition to take the family business to greater heights, fourth-generation entrepreneur Mr. M. S. Tamilselvan joined hands with his father, the late Mr. AM. Shyamalanathan, to establish Shyamalan Modern Rice Industries in Salem.",
         "This milestone marked a new phase of modernisation, technological advancement and industrial growth, setting the stage for a much larger vision in rice manufacturing.",
         "Building upon generations of knowledge and experience, the company embraced new technologies, enhanced manufacturing capabilities and a forward-looking approach to the evolving rice industry.",
       ],
