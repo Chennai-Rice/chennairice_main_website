@@ -205,3 +205,40 @@
 }
 
 .about-page .lg-era-year--word { font-size: clamp(1.6rem, 3vw, 2.2rem); line-height: 1.1; }
+
+/* ---- generation portraits (pencil sketches) beside their chapter ---- */
+.about-page .lg-portrait {
+  margin: 1.1rem 0 0;
+  width: min(12.5rem, 62vw);
+  justify-self: start;
+}
+.about-page .lg-portrait img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid var(--cream-deep);
+  background: #fff;
+  box-shadow: 0 22px 40px -28px rgba(20, 38, 25, 0.6);
+}
+.about-page .lg-portrait figcaption {
+  display: grid;
+  gap: 0.1rem;
+  margin-top: 0.6rem;
+}
+.about-page .lg-portrait figcaption strong {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 1.05rem;
+  color: var(--forest);
+}
+.about-page .lg-portrait figcaption span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+@media (min-width: 900px) {
+  .about-page .lg-portrait { justify-self: end; width: 12.5rem; }
+}

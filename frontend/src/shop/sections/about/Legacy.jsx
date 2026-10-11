@@ -23,6 +23,15 @@ export function LegacyStory() {
               {/* years in the big numerals; word eras ("2nd Generation") a step smaller */}
               <span className={`lg-era-year${/^\d+$/.test(c.era) ? "" : " lg-era-year--word"}`}>{c.era}</span>
               <span className="lg-era-label">{c.label}</span>
+              {c.portrait && (
+                <figure className="lg-portrait">
+                  <img src={c.portrait.src} alt={`Portrait of ${c.portrait.name}`} loading="lazy" />
+                  <figcaption>
+                    <strong>{c.portrait.name}</strong>
+                    <span>{c.portrait.role}</span>
+                  </figcaption>
+                </figure>
+              )}
             </div>
             <span className="lg-rail-dot" aria-hidden="true" />
             <div className="lg-copy reveal d1">
