@@ -16,7 +16,7 @@ export const LEGACY = {
       label: "The Beginning of a Legacy",
       title: "Where It All Began",
       body: [
-        "In the bustling Lee Bazaar of Salem, Mr. Ardhanari Mudaliar began his entrepreneurial journey in rice trading.",
+        "In the bustling Leigh Bazaar of Salem, Mr. Ardhanari Mudaliar began his entrepreneurial journey in rice trading.",
         "With determination, integrity and a vision for the future, he laid the foundation for a family legacy that would continue to grow and evolve across generations.",
         "What started as a modest trading venture would eventually become the foundation of an enduring presence in the rice industry.",
       ],
@@ -25,8 +25,9 @@ export const LEGACY = {
       era: "2nd Generation",
       label: "Ranganadhar Rice Mill",
       title: "From Rice Trading to Rice Milling",
+      portrait: { src: "/assets/about/portrait-mahalingam.jpg", name: "Late A. Mahalingam Mudaliyar", role: "Second generation" },
       body: [
-        "Carrying forward his father’s entrepreneurial vision, Mr. A. Mahalingam Mudaliyar established Ranganadhar Rice Mill in Salem, marking a defining transition from traditional rice trading to rice milling.",
+        "Carrying forward his father’s entrepreneurial vision, the late Mr. A. Mahalingam Mudaliyar established Ranganadhar Rice Mill in Salem, marking a defining transition from traditional rice trading to rice milling.",
         "This pioneering step strengthened the family’s roots in the rice industry and laid the groundwork for generations of expertise in rice processing and manufacturing.",
       ],
     },
@@ -115,7 +116,7 @@ export const LEGACY = {
   vision:
     "To build a fully data-driven smart rice mill, where generations of experience meet the power of intelligence and innovation.",
   evolution: [
-    { era: "1951", title: "Rice Trading", note: "The foundation of our legacy in Lee Bazaar, Salem." },
+    { era: "1951", title: "Rice Trading", note: "The foundation of our legacy in Leigh Bazaar, Salem." },
     { era: "Ranganadhar Rice Mill", title: "Rice Milling", note: "The family’s transition from trading to manufacturing." },
     { era: "AM Modern Rice Mill", title: "Modern Milling & Packaged Rice", note: "Contributing to the evolution of modern milling and packaged rice." },
     { era: "2006", title: "Shyamalan Modern Rice Industries", note: "A new generation of technological advancement and industrial growth." },
@@ -128,7 +129,7 @@ export const LEGACY = {
   closing: {
     title: "Our Legacy Is Our Foundation. Innovation Is Our Future.",
     body: [
-      "From a modest rice trading business in Salem’s Lee Bazaar to a technology-driven rice manufacturing enterprise in Perundurai, our journey reflects the determination, vision and entrepreneurial spirit of five generations.",
+      "From a modest rice trading business in Salem’s Leigh Bazaar to a technology-driven rice manufacturing enterprise in Perundurai, our journey reflects the determination, vision and entrepreneurial spirit of five generations.",
       "Every generation has contributed to building something greater — transforming challenges into opportunities, traditions into progress and ambitions into achievements.",
       "As we look towards the future, our commitment remains unchanged: to preserve the values that shaped our beginnings while continuously embracing innovation, excellence and growth.",
     ],

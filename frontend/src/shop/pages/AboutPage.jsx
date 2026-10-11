@@ -101,7 +101,7 @@ export default function AboutPage() {
 
   usePageMeta(
     "About Us — Chennai Rice Industries",
-    "Five generations and 75 years of heritage: from rice trading in Salem's Lee Bazaar in 1951 to AI-enabled smart rice milling at SIPCOT, Perundurai."
+    "Five generations and 75 years of heritage: from rice trading in Salem's Leigh Bazaar in 1951 to AI-enabled smart rice milling at SIPCOT, Perundurai."
   );
 
   return (
