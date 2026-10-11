@@ -58,34 +58,30 @@ export const HERO = {
    02, 03, 04. */
 export const PRODUCTS = [
   {
-    shortName: 'Chennai Bullets',
-    ghost: ['CHENNAI', 'BULLETS'],
-    name: 'CHENNAI BULLETS',
-    // Read off the pack: Rajabhogam Ponni, 26 kg, "Rich Aroma" and
-    // "Genuine Taste" — the trade pack, hence the kitchens-and-canteens framing.
-    desc: 'Rajabhogam Ponni with a rich aroma and genuine taste, in our largest 26 kg pack, built for kitchens that cook at scale.',
-    packSize: '26 KG',
-    riceType: 'Rajabhogam Ponni',
-    idealFor: 'Bulk Kitchens • Large Families',
-    image: '/assets/products/chennai-bullets-hero.png',
-    // The existing cool blue already suits this pack — it was chosen for the
-    // slot, and the artwork here is blue and gold, so it stays.
-    tint: '#EBF3F8',
+    shortName: 'Special Rajabhogam',
+    ghost: ['SPECIAL', 'RAJABHOGAM'],
+    name: 'SPECIAL RAJABHOGAM',
+    // Our signature red bag (catalogue: "Classic Red").
+    desc: 'Kitchidi Ponni rice in our signature red pack, milled and sealed at our own Erode facility.',
+    packSize: '5 / 10 / 26 KG',
+    riceType: 'Kitchidi Ponni',
+    idealFor: 'Everyday Family Meals',
+    image: '/assets/shop/packs/special-rajabhogam.png',
+    // Soft rose cream, so the ghost lettering sits behind the red bag.
+    tint: '#F8ECEA',
   },
   {
-    shortName: 'Alibaba',
-    ghost: ['ALIBABA', 'SAPPADU'],
-    name: 'ALIBABA',
-    // Straight off the pack: "100% Pure Genuine Quality", "Hassle Free Cooking",
-    // Premium Sappadu Rice at 10 kg.
-    desc: 'Premium Sappadu rice with 100% pure, genuine quality and hassle-free cooking for the everyday sappadu.',
-    packSize: '10 KG',
-    riceType: 'Premium Sappadu Rice',
-    idealFor: 'Everyday Sappadu • Hassle-Free Cooking',
-    image: '/assets/products/alibaba-hero.png',
-    // Warm cream with a gold cast, drawn from the pack's gold borderwork so the
-    // ghost lettering sits behind the blue and gold rather than clashing.
-    tint: '#FAF3E6',
+    shortName: 'Special Idly Rice',
+    ghost: ['SPECIAL', 'IDLY RICE'],
+    name: 'SPECIAL IDLY RICE',
+    // The pink offer bag.
+    desc: 'Idly rice in our pink pack, for soft, fluffy idlis and crisp dosas.',
+    packSize: '5 KG',
+    riceType: 'Idly Rice',
+    idealFor: 'Idli • Dosa',
+    image: '/assets/shop/packs/special-idly-rice.png',
+    // Pale blush, drawn from the pink pack.
+    tint: '#FBEAF0',
   },
   {
     shortName: 'Viruchagam',
@@ -94,16 +90,25 @@ export const PRODUCTS = [
     // From the pack: SNR RNR Poompuhar Ponni, "Pure Rice", "100% Natural",
     // "Rich Nutrition".
     desc: 'Poompuhar Ponni from SNR RNR paddy. Pure rice, 100% natural and rich in nutrition.',
-    // This artwork prints no net weight, unlike the other three packs. Rather
-    // than invent a figure on the homepage, the slot points at the enquiry
-    // button sitting directly beside it. Replace with the real sizes when known.
-    packSize: 'Enquire for pack size',
+    // Sizes from the 09-10-2026 price list.
+    packSize: '5 / 10 / 26 KG',
     riceType: 'SNR RNR Poompuhar Ponni',
     idealFor: 'Daily Family Dining',
     image: '/assets/products/viruchagam-hero.png',
-    // Cool blue-grey, matching the pack's royal blue rather than the warm
-    // cream the previous orange pack needed.
+    // Cool blue-grey, matching the pack's royal blue.
     tint: '#EAEFF6',
+  },
+  {
+    shortName: 'Nayara Super Aged',
+    ghost: ['NAYARA', 'SUPER AGED'],
+    name: 'NAYARA SUPER AGED',
+    desc: 'Super-aged gel cook rice that stays separate and firm on the plate.',
+    packSize: '5 / 10 / 26 KG',
+    riceType: 'Super Aged Gel Cook Rice',
+    idealFor: 'Daily Meals • Variety Rice',
+    image: '/assets/shop/packs/nayara-super-aged.png',
+    // Pale teal, from the pack's green and gold.
+    tint: '#E8F2EF',
   },
 ].map((product, index) => ({ ...product, num: String(index + 1).padStart(2, '0') }))
 
