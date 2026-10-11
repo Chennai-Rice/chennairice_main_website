@@ -43,52 +43,6 @@ const STORAGE_DECOR_PATHS = [
   "M0 450c84-39 178-47 246-37"
 ];
 
-/* A single ear of paddy, drawn at the same hairline weight as the storage
-   engraving so the two decorations read as one family. Grains are one shape
-   repeated down the spine rather than a dozen hand-drawn paths. */
-const PADDY_STEM_PATHS = [
-  "M70 292V150", // stem
-  "M70 150V44", // spine of the ear
-  "M70 44c-5 8-8 16-8 25", // awn, left
-  "M70 44c5 8 8 16 8 25", // awn, right
-  "M70 238C50 230 37 211 34 188c22 6 34 24 36 50", // blade, left
-  "M70 212c20-8 33-27 36-50-22 6-34 24-36 50" // blade, right
-];
-
-const PADDY_GRAINS = [
-  { x: 62, y: 142 }, { x: 78, y: 142 },
-  { x: 62, y: 124 }, { x: 78, y: 124 },
-  { x: 62, y: 106 }, { x: 78, y: 106 },
-  { x: 63, y: 88 }, { x: 77, y: 88 },
-  { x: 64, y: 70 }, { x: 76, y: 70 },
-  { x: 66, y: 54 }, { x: 74, y: 54 }
-];
-
-function PaddySprig({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 140 300" aria-hidden="true" focusable="false">
-      {PADDY_STEM_PATHS.map((d) => (
-        <path key={d} d={d} fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
-      ))}
-      {PADDY_GRAINS.map((g) => (
-        <ellipse
-          key={`${g.x}-${g.y}`}
-          cx="0"
-          cy="0"
-          rx="9"
-          ry="3.4"
-          /* grains on the left of the spine lean up-left, those on the
-             right lean up-right, so the ear reads as symmetrical */
-          transform={`translate(${g.x} ${g.y}) rotate(${g.x < 70 ? -58 : 58})`}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1"
-        />
-      ))}
-    </svg>
-  );
-}
-
 /**
  * Scale → heritage → statement → statement → close.
  *
@@ -210,21 +164,6 @@ export default function AboutPage() {
           </div>
         </div>
 
-        {/* same ground as the bands either side of it — no cream inset, so
-            no curve is needed to transition into it */}
-        <div className="ab-flow-block ab-flow-block--rice">
-          <div className="ab-founder-card">
-            <PaddySprig className="ab-founder-sprig ab-founder-sprig--left" />
-            <PaddySprig className="ab-founder-sprig ab-founder-sprig--right" />
-            <StatementCard tone="outline" align="left" kicker="Our founder" footnote="M. S. Tamilselvan · Founder &amp; Chairman" bare>
-              “Build capabilities today that create scale for tomorrow.”
-            </StatementCard>
-            <Link className="ab-founder-link" to="/founder">
-              Meet the founder
-              <span aria-hidden="true">&rarr;</span>
-            </Link>
-          </div>
-        </div>
 
         <LegacyClosing />
 

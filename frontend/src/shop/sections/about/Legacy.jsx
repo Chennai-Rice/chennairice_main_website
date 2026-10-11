@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import StatementCard from "../../components/StatementCard.jsx";
 import { LEGACY } from "../../data/legacy.js";
 
@@ -46,6 +47,17 @@ export function LegacyStory() {
                 <p key={p.slice(0, 40)}>{p}</p>
               ))}
               {c.quote && <p className="lg-quote">{c.quote}</p>}
+              {c.founderQuote && (
+                <div className="lg-founder">
+                  <StatementCard tone="outline" align="left" kicker="Our founder" footnote={c.founderQuote.by} bare>
+                    {c.founderQuote.text}
+                  </StatementCard>
+                  <Link className="ab-founder-link" to="/founder">
+                    Meet the founder
+                    <span aria-hidden="true">&rarr;</span>
+                  </Link>
+                </div>
+              )}
             </div>
           </li>
         ))}

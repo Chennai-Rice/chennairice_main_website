@@ -262,3 +262,14 @@
   text-transform: uppercase;
   color: var(--gold);
 }
+
+/* ---- founder quote, in the 2005 chapter beside his portrait ---- */
+.about-page .lg-founder {
+  display: grid;
+  justify-items: start;
+  gap: 1.1rem;
+  margin-top: 2rem;
+}
+.about-page .lg-founder .sc { max-width: 38rem; }
+.about-page .lg-founder .ab-founder-link { margin-left: 0; }
+.about-page .lg-founder .sc-text { font-size: clamp(1.1rem, 1.8vw, 1.4rem); line-height: 1.4; }
