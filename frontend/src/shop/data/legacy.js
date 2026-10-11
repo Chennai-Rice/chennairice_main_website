@@ -15,6 +15,7 @@ export const LEGACY = {
       era: "1951",
       label: "The Beginning of a Legacy",
       title: "Where It All Began",
+      portrait: { src: "/assets/about/chapter-1951.jpg", name: "Leigh Bazaar, Salem", role: "Where it began · 1951" },
       body: [
         "In the bustling Leigh Bazaar of Salem, Mr. Ardhanari Mudaliar began his entrepreneurial journey in rice trading.",
         "With determination, integrity and a vision for the future, he laid the foundation for a family legacy that would continue to grow and evolve across generations.",
