@@ -2631,3 +2631,20 @@
   font-weight: 600;
   color: var(--maroon-600);
 }
+
+/* Offer on cards: the higher price struck through before the online price. */
+.shop-scope .price-mrp {
+  margin-right: 6px;
+  font-size: 0.85em;
+  font-weight: 400;
+  color: var(--ink-400, #8a7766);
+  text-decoration-thickness: 1.5px;
+}
+.shop-scope .price-offer-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #2f7a4b;
+}

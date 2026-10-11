@@ -115,14 +115,17 @@ export default function ProductCard({ product }) {
           ) : showCardPrices && soldOut ? (
             // Sold out still shows what the pack costs; the stock is a note.
             <p className="price">
+              {selected.mrp && <s className="price-mrp" aria-label={`Was ${formatRupees(selected.mrp)}`}>{formatRupees(selected.mrp)}</s>}
               <span className="price-amount">{formatRupees(selected.price)}</span>{" "}
               <span className="price-unit">/ {selected.kg} kg</span>
               <span className="price-stock-note">Out of stock</span>
             </p>
           ) : showCardPrices ? (
             <p className="price">
+              {selected.mrp && <s className="price-mrp" aria-label={`Was ${formatRupees(selected.mrp)}`}>{formatRupees(selected.mrp)}</s>}
               <span className="price-amount">{formatRupees(selected.price)}</span>{" "}
               <span className="price-unit">/ {selected.kg} kg</span>
+              {selected.mrp && <span className="price-offer-note">Online price · save {formatRupees(selected.mrp - selected.price)}</span>}
             </p>
           ) : (
             <p className="price-enquiry">

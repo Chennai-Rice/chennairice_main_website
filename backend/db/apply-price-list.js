@@ -39,6 +39,11 @@ export const PRICE_LIST = {
   // Broken Rice (Jeera Old, 26 kg, ₹1000) is on the list but not sold online.
 }
 
+// Shown struck through next to the online price on the website, as an offer
+// (e.g. ~~₹544~~ ₹444). Stored as the variant's MRP; checkout always charges
+// the list price above.
+export const OFFER_MARKUP_RUPEES = 100
+
 // On the price list and added after the first catalog: created if missing,
 // and shown in the shop with its pack photo.
 const NEW_PRODUCTS = {
@@ -89,11 +94,13 @@ export async function applyPriceList({ pool, stock = 0, log = console.log } = {}
       for (const [kg, rupees] of Object.entries(prices)) {
         const packKg = Number(kg)
         const { rows: [v] } = await client.query(
-          `insert into product_variants (product_id, sku, pack_kg, price_paise, tax_rate_bp, reorder_level, is_active)
-           values ($1, $2, $3, $4, $5, 20, true)
-           on conflict (product_id, pack_kg) do update set price_paise = excluded.price_paise, is_active = true
+          `insert into product_variants (product_id, sku, pack_kg, price_paise, mrp_paise, tax_rate_bp, reorder_level, is_active)
+           values ($1, $2, $3, $4, $5, $6, 20, true)
+           on conflict (product_id, pack_kg) do update
+             set price_paise = excluded.price_paise, mrp_paise = excluded.mrp_paise, is_active = true
            returning id`,
-          [p.id, skuFor(p.slug, packKg), packKg, Math.round(rupees * 100), defaultTaxRateBp(packKg)]
+          [p.id, skuFor(p.slug, packKg), packKg, Math.round(rupees * 100), Math.round((rupees + OFFER_MARKUP_RUPEES) * 100),
+            defaultTaxRateBp(packKg)]
         )
         if (stock && loc) {
           const { rows: [lvl] } = await client.query(

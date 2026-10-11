@@ -129,6 +129,7 @@ export default function RelatedProducts({ products }) {
               ) : showCardPrices ? (
                 <>
                   <p className="pdp-related-price">
+                    {defaultSize.mrp && <s className="price-mrp">{formatRupees(defaultSize.mrp)}</s>}
                     {formatRupees(defaultSize.price)} <span>/ {defaultSize.kg} kg</span>
                   </p>
                   <CardQuantityControl product={cartProduct} />

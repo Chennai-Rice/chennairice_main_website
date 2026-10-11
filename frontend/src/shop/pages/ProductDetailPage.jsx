@@ -137,9 +137,19 @@ export default function ProductDetailPage() {
             <div className="pdp-price-hero">
               {showCardPrices ? (
                 <>
+                  {selected.mrp && (
+                    <s className="pdp-price-mrp" aria-label={`Was ${formatRupees(selected.mrp * (soldOut ? 1 : qty))}`}>
+                      {formatRupees(selected.mrp * (soldOut ? 1 : qty))}
+                    </s>
+                  )}
                   <span className="pdp-price">
                     {soldOut && selected.price == null ? "Out of stock" : formatRupees(selected.price * (soldOut ? 1 : qty))}
                   </span>
+                  {selected.mrp && (
+                    <span className="pdp-price-offer">
+                      Online price · you save {formatRupees((selected.mrp - selected.price) * (soldOut ? 1 : qty))}
+                    </span>
+                  )}
                   <span className="pdp-price-note">
                     {soldOut ? "Out of stock right now · Inclusive of applicable taxes" : "Inclusive of applicable taxes"}
                   </span>

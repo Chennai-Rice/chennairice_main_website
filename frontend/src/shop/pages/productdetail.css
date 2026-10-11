@@ -895,3 +895,18 @@
   cursor: not-allowed;
   transform: none;
 }
+
+/* Offer: the higher price struck through above the online price. */
+.pdp-price-hero .pdp-price-mrp {
+  display: block;
+  font-size: 1.05rem;
+  color: #8a7766;
+  text-decoration-thickness: 1.5px;
+}
+.pdp-price-hero .pdp-price-offer {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #2f7a4b;
+}
