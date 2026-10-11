@@ -124,9 +124,7 @@ export default function ProductCard({ product }) {
             <p className="price">
               {selected.mrp && <s className="price-mrp" aria-label={`Was ${formatRupees(selected.mrp)}`}>{formatRupees(selected.mrp)}</s>}
               <span className="price-amount">{formatRupees(selected.price)}</span>{" "}
-              <span className="price-unit">/ {selected.kg} kg</span>
-              {selected.mrp && <span className="price-offer-note">Online price · save {formatRupees(selected.mrp - selected.price)}</span>}
-            </p>
+              <span className="price-unit">/ {selected.kg} kg</span>            </p>
           ) : (
             <p className="price-enquiry">
               <span className="price-enquiry-label">Price on request</span>
