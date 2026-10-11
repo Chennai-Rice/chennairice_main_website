@@ -81,7 +81,7 @@ export const CHAT_PRODUCTS = [
     name: "Viruchagam",
     packSize: "10 KG",
     blurb: "Poompuhar Ponni in the blue and gold pack, from SNR RNR paddy.",
-    image: "/assets/shop/packs/viruchagam.png",
+    image: "/assets/shop/packs/viruchagam-v2.png",
     keywords: ["viruchagam","viruchagam","poompuhar","blue","gold","paddy"],
   },
   {

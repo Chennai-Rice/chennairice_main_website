@@ -199,7 +199,7 @@ const FALLBACK_PRODUCTS = [
     name: "Viruchagam",
     description: "Poompuhar Ponni in the blue and gold pack, from SNR RNR paddy.",
     packKg: 10,
-    image: "/assets/shop/packs/viruchagam.png",
+    image: "/assets/shop/packs/viruchagam-v2.png",
     alt: "Viruchagam — SNR RNR Poompuhar Ponni, 10 kg pack",
   },
   {
