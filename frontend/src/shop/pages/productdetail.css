@@ -933,3 +933,47 @@
 }
 /* Wide enough for "Add Another", so the label change never resizes it. */
 @media (min-width: 721px) { .pdp-cta-row .pdp-add-btn { min-width: 12rem; justify-content: center; } }
+
+/* How to Cook: preparation, then open / closed pan measures, then a note. */
+.pdp-cook-prep {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1.6rem;
+}
+.pdp-cook-prep p { margin: 0.25rem 0 0; }
+.pdp-cook-label {
+  margin: 0 0 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-600, #b8862b);
+}
+.pdp-cook-methods {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+}
+.pdp-cook-method {
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--cream-300, #e6d9bf);
+  border-radius: 12px;
+  background: #fffdf8;
+}
+.pdp-cook-method strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: var(--maroon-600, #6e1420);
+}
+.pdp-cook-method ul { margin: 0; padding-left: 1.1rem; }
+.pdp-cook-method li { margin: 0.25rem 0; line-height: 1.55; }
+.pdp-cook-note {
+  margin: 1.4rem 0 0;
+  font-style: italic;
+  color: var(--ink-500, #6b5b4e);
+}
+.pdp-cook-method ul { list-style: disc; }
+.pdp-cook-method li::marker { color: var(--gold-500, #c9a24b); }
+.pdp-cook-note { margin-top: 1.4rem !important; }

@@ -81,24 +81,30 @@ function CookingPanel({ cooking }) {
       </div>
     );
   }
-  const steps = [
-    { num: "01", title: "Rinse", text: cooking.rinse },
-    { num: "02", title: "Measure", text: cooking.ratio },
-    { num: "03", title: "Cook", text: cooking.cookTime },
-    { num: "04", title: "Serve", text: cooking.serve },
-  ];
   return (
     <div className="pdp-tab-panel">
       <h3>How to Cook</h3>
-      <div className="pdp-cook-steps">
-        {steps.map((s) => (
-          <div className="pdp-cook-step" key={s.num}>
-            <span className="pdp-cook-num">{s.num}</span>
-            <strong>{s.title}</strong>
-            <span>{s.text}</span>
-          </div>
-        ))}
+      <div className="pdp-cook-prep">
+        <span className="pdp-cook-num">01</span>
+        <div>
+          <strong>Before cooking</strong>
+          <p>{cooking.prep}</p>
+        </div>
       </div>
+
+      <p className="pdp-cook-label">Cooking measures</p>
+      <div className="pdp-cook-methods">
+        <div className="pdp-cook-method">
+          <strong>Open pan</strong>
+          <ul>{cooking.openPan.map((line) => <li key={line}>{line}</li>)}</ul>
+        </div>
+        <div className="pdp-cook-method">
+          <strong>Closed pan</strong>
+          <ul>{cooking.closedPan.map((line) => <li key={line}>{line}</li>)}</ul>
+        </div>
+      </div>
+
+      <p className="pdp-cook-note">{cooking.note}</p>
     </div>
   );
 }

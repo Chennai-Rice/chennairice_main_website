@@ -85,7 +85,17 @@ export const DETAILS_BY_ID = {
   default: {
     aboutBullets: [],
     nutrition: null, // { per: "100g", rows: [{ label, value }] }
-    cooking: null, // { rinse, ratio, soak, cookTime, serve }
+    // From the Chennai Rice "Cooking Tips" card (Oct 2026).
+    cooking: {
+      prep: "Rinse the rice thoroughly and soak in slightly warm water for 60 minutes.",
+      openPan: ["5 cups of water for 1 cup of rice."],
+      closedPan: [
+        "Add 3 cups of water for 1 cup of rice.",
+        "At a hill station, add 2.5 cups of water.",
+        "Add 1 tbsp of butter, olive oil or margarine, and salt to taste.",
+      ],
+      note: "The rice may need slightly more or less water depending on the water where you cook.",
+    },
   },
 };
 
