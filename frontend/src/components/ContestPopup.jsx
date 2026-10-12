@@ -1,18 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import './contestpopup.css'
 
-// The Slogan Contest runs on its own site (Firebase project couponchennairice).
-const CONTEST_URL = 'https://couponchennairice.web.app'
+// The Super Slogan Contest poster. Taking part starts with buying a Kitchidi
+// Ponni pack (the coupon is inside), so the button goes straight to that pack.
+const BUY_PATH = '/products/kitchidi-ponni-rice'
 
 // How long the popup stays away once seen. Closing it is a "not now";
 // opening the contest means they have it, so it stays away longer.
 const HIDE_AFTER_CLOSE_MS = 24 * 60 * 60 * 1000
 const HIDE_AFTER_JOIN_MS = 7 * 24 * 60 * 60 * 1000
-const KEY = 'cr.contestPopup.hiddenUntil'
+const KEY = 'cr.contestPopup.v2.hiddenUntil'
 
 // Never over a purchase in progress or a page the customer came to for a reason.
-const QUIET_PATHS = ['/cart', '/checkout', '/track-order', '/privacy', '/terms']
+const QUIET_PATHS = ['/cart', '/checkout', '/track-order', '/privacy', '/terms', BUY_PATH]
 
 // Shown 8 seconds into the visit, whether or not the cookie banner has been
 // answered (an unanswered banner simply stays underneath).
@@ -35,8 +36,8 @@ function hideFor(ms) {
 }
 
 /**
- * Centred contest poster, 8 seconds into the visit. Closes on ✕, the
- * backdrop, "Maybe later" or Escape.
+ * Centred contest poster, 8 seconds into the visit, with one button to the
+ * Kitchidi Ponni pack. Closes on ✕, the backdrop or Escape.
  */
 export default function ContestPopup() {
   const { pathname } = useLocation()
@@ -96,10 +97,10 @@ export default function ContestPopup() {
   return (
     <div className="contest-pop-backdrop" onClick={() => close()}>
       <div
-        className="contest-pop"
+        className="contest-pop contest-pop--poster"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="contest-pop-title"
+        aria-label="Chennai Rice Super Slogan Contest"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -115,89 +116,24 @@ export default function ContestPopup() {
           </svg>
         </button>
 
-        {/* Artwork: the prizes bursting from a Kitchidi Ponni pack. */}
-        <a
-          className="contest-pop-art"
-          href={CONTEST_URL}
-          target="_blank"
-          rel="noopener"
-          tabIndex={-1}
-          onClick={() => close(HIDE_AFTER_JOIN_MS)}
-        >
+        <Link className="contest-poster-art" to={BUY_PATH} tabIndex={-1} onClick={() => close(HIDE_AFTER_JOIN_MS)}>
           <picture>
-            <source srcSet="/assets/contest-art-v1.webp" type="image/webp" />
+            <source srcSet="/assets/contest-poster-v2.webp" type="image/webp" />
             <img
-              src="/assets/contest-art-v1.jpg"
-              width="745"
-              height="725"
-              alt="A Chennai Rice Kitchidi Ponni pack with prizes around it: a car, a scooter, a phone, a TV, a fridge, a camera, silk sarees and a gas stove."
+              src="/assets/contest-poster-v2.jpg"
+              width="864"
+              height="1080"
+              alt="Chennai Rice Super Slogan Contest: craft the best slogan and bring home the grand prize. Buy a Kitchidi Ponni Rice 5 kg or 26 kg bag, find the coupon, scan and register, and collect your gift. Prizes include a car, a scooter, gold jewellery, a TV, a fridge, a phone, silk sarees and kitchenware. T&C apply."
             />
           </picture>
-        </a>
+        </Link>
 
-        <div className="contest-pop-body">
-          <p className="contest-pop-eyebrow">Chennai Rice presents</p>
-          {/* Drawn as small capitals: a tall first letter, the rest smaller
-              (Bodoni Moda has no small-caps cut of its own). */}
-          <h2 id="contest-pop-title" className="contest-pop-title" aria-label="Slogan Competition">
-            <span className="contest-pop-word" aria-hidden="true"><span>S</span>logan</span>
-            <span className="contest-pop-word" aria-hidden="true"><span>C</span>ompetition</span>
-          </h2>
-          <p className="contest-pop-tagline">Give Rice a Voice. Create a Slogan.</p>
-          <p className="contest-pop-text">
-            Your creativity can bring home amazing prizes! Stand a chance to win exciting rewards and get
-            featured in our next campaign.
-          </p>
-
-          <ul className="contest-pop-perks">
-            <li>
-              <span className="contest-pop-icon" aria-hidden="true">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7c-1.5-3-5-3.5-5-1s3 1 5 1zm0 0c1.5-3 5-3.5 5-1s-3 1-5 1z"
-                    stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-                </svg>
-              </span>
-              Exciting prizes
-            </li>
-            <li>
-              <span className="contest-pop-icon" aria-hidden="true">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8L3.5 9.7l5.9-.9z" />
-                </svg>
-              </span>
-              Get featured in our campaign
-            </li>
-            <li>
-              <span className="contest-pop-icon" aria-hidden="true">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <rect x="4" y="5.5" width="16" height="14.5" rx="2" stroke="currentColor" strokeWidth="1.6" />
-                  <path d="M4 10h16M8.5 3.5v4M15.5 3.5v4M8 13.5h2M11 13.5h2M14 13.5h2M8 16.5h2M11 16.5h2"
-                    stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
-              </span>
-              Submission deadline coming soon
-            </li>
-          </ul>
-
-          <div className="contest-pop-actions">
-            <a
-              data-focus
-              className="contest-pop-cta"
-              href={CONTEST_URL}
-              target="_blank"
-              rel="noopener"
-              onClick={() => close(HIDE_AFTER_JOIN_MS)}
-            >
-              Participate now
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </a>
-            <button data-focus type="button" className="contest-pop-later" onClick={() => close()}>
-              Maybe later
-            </button>
-          </div>
-        </div>
+        <Link data-focus className="contest-poster-cta" to={BUY_PATH} onClick={() => close(HIDE_AFTER_JOIN_MS)}>
+          Buy Kitchidi Ponni Rice
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
       </div>
     </div>
   )
