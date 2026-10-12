@@ -4,6 +4,8 @@ import Ornament from '../../components/Ornament.jsx'
 import { fetchPublishedPosts, formatPostDate } from '../../services/blog.service.js'
 import '../page.css'
 import './blog.css'
+import usePageMeta from '../../shop/hooks/usePageMeta.js'
+import { PAGE_META } from '../../seo.js'
 
 /**
  * /blog — everything published, newest first.
@@ -13,6 +15,7 @@ import './blog.css'
  * are not filtered out of the results, they are never in them.
  */
 export default function BlogListPage() {
+  usePageMeta(PAGE_META.blog.title, PAGE_META.blog.description)
   const [posts, setPosts] = useState(null)
   const [error, setError] = useState('')
 

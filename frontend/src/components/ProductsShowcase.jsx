@@ -116,7 +116,7 @@ function ProductSlide({ product, isFirst }) {
           </div>
           <p className="slide-desc">{product.desc}</p>
           <div className="slide-buttons">
-            <Link className="btn-maroon" to={product.shopPath || '/products'}>
+            <Link className="btn-maroon" to={product.shopPath || '/rice-products'}>
               Buy Now
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
@@ -128,7 +128,7 @@ function ProductSlide({ product, isFirst }) {
                 />
               </svg>
             </Link>
-            <a className="btn-outline" href="/contact">
+            <a className="btn-outline" href="/contact-us">
               Enquire
             </a>
           </div>
@@ -350,7 +350,7 @@ export default function ProductsShowcase() {
             <div className="slide-col slide-center-col">
               <h3 className="showcase-cta-title">{SHOWCASE.ctaTitle}</h3>
               <p className="showcase-cta-text">{SHOWCASE.ctaText}</p>
-              <a className="btn-maroon" href="/products">
+              <a className="btn-maroon" href="/rice-products">
                 {SHOWCASE.ctaButton}
               </a>
             </div>

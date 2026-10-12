@@ -3,6 +3,7 @@ import Ornament from './../components/Ornament.jsx'
 import { FOOTER } from '../data/content.js'
 import './page.css'
 import usePageMeta from '../shop/hooks/usePageMeta.js'
+import { PAGE_META } from '../seo.js'
 
 const EMPTY = { name: '', email: '', phone: '', enquiry: '' }
 
@@ -37,7 +38,7 @@ const Icon = ({ kind }) => (
 )
 
 export default function ContactPage() {
-  usePageMeta('Contact — Chennai Rice Industries', 'Get in touch with Chennai Rice Industries in Erode, Tamil Nadu. Enquiries about our rice varieties, pack sizes and stockists.')
+  usePageMeta(PAGE_META.contact.title, PAGE_META.contact.description)
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
   const [sent, setSent] = useState(false)

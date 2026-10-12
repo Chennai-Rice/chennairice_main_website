@@ -150,7 +150,7 @@ export function matchProduct(text) {
    what went wrong and makes the bot look ignorant rather than offline. */
 export const FALLBACK_MESSAGE = {
   text: "I can't reach my brain right now — sorry about that. Our team can answer this for you in the meantime.",
-  cta: { label: 'Contact Us →', to: '/contact' },
+  cta: { label: 'Contact Us →', to: '/contact-us' },
 }
 
 export const CHAT_ENDPOINT = '/api/chat'

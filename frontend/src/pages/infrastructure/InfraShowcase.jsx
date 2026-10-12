@@ -279,7 +279,7 @@ export default function InfraShowcase() {
             </p>
           </div>
 
-          <Link className="ish-band-cta" to="/products">
+          <Link className="ish-band-cta" to="/rice-products">
             Explore Our Products
             <ArrowRight />
           </Link>

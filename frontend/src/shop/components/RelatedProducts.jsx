@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import CardQuantityControl from "./CardQuantityControl.jsx";
 import { formatRupees } from "../utils/format.js";
 import { showCardPrices } from "../../config.js";
+import { productPath } from "../../seo.js";
 
 // Slow enough to read a row of four before it moves on.
 const AUTO_ADVANCE_MS = 5000;
@@ -107,10 +108,10 @@ export default function RelatedProducts({ products }) {
           };
           return (
             <article className="pdp-related-card" key={product.id}>
-              <Link to={`/products/${product.id}`} className="pdp-related-media">
+              <Link to={productPath(product.id)} className="pdp-related-media">
                 <img src={product.image} alt={product.alt} loading="lazy" />
               </Link>
-              <Link to={`/products/${product.id}`} className="pdp-related-name">
+              <Link to={productPath(product.id)} className="pdp-related-name">
                 {product.name}
               </Link>
               <p className="pdp-related-tag">{product.tag}</p>
@@ -139,7 +140,7 @@ export default function RelatedProducts({ products }) {
                   <p className="pdp-related-price">
                     Price on request <span>/ {defaultSize.kg} kg</span>
                   </p>
-                  <Link className="add-btn contact-sales-btn" to="/contact">
+                  <Link className="add-btn contact-sales-btn" to="/contact-us">
                     Contact sales
                   </Link>
                 </>

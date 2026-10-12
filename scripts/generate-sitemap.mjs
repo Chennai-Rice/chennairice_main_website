@@ -11,7 +11,7 @@
 // placeholder pages to Google invites them to be indexed as low-value.
 import { writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PUBLIC_DIR = join(ROOT, 'frontend', 'public')
@@ -20,10 +20,11 @@ const SITE = process.env.SITE_URL || 'https://chennairiceindustries.com'
 /** Static routes, with the priority each deserves relative to the homepage. */
 const STATIC_ROUTES = [
   ['/', 1.0, 'weekly'],
-  ['/products', 0.9, 'weekly'],
+  ['/rice-products', 0.9, 'weekly'],
   ['/infrastructure', 0.7, 'monthly'],
-  ['/about', 0.7, 'monthly'],
-  ['/contact', 0.7, 'monthly'],
+  ['/about-us', 0.7, 'monthly'],
+  ['/contact-us', 0.7, 'monthly'],
+  ['/track-order', 0.5, 'monthly'],
   ['/bulk-order', 0.7, 'monthly'],
   ['/founder', 0.6, 'yearly'],
   ['/blog', 0.6, 'weekly'],
@@ -82,7 +83,9 @@ const entries = []
 for (const [path, priority, changefreq] of STATIC_ROUTES) {
   entries.push({ loc: SITE + path, priority, changefreq, lastmod: today })
 }
-for (const slug of productSlugs()) {
+const { PRODUCT_SEO } = await import(pathToFileURL(join(ROOT, 'frontend', 'src', 'seo.js')).href)
+const publicSlugs = [...new Set([...productSlugs().map((id) => PRODUCT_SEO[id]?.slug || id), ...Object.values(PRODUCT_SEO).map((p) => p.slug)])]
+for (const slug of publicSlugs) {
   entries.push({ loc: SITE + '/products/' + slug, priority: 0.8, changefreq: 'monthly', lastmod: today })
 }
 for (const post of await blogSlugs()) {

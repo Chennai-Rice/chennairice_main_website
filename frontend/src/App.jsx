@@ -1,3 +1,4 @@
+import { MOVED_PAGES } from './seo.js'
 import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { CartProvider } from './shop/hooks/useCart.jsx'
@@ -129,12 +130,17 @@ export default function App() {
           }
         />
         <Route path="/" element={<HomePage />} />
-        <Route path="/products" element={<ProductsPage />} />
+        <Route path="/rice-products" element={<ProductsPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
-        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/contact-us" element={<ContactPage />} />
         <Route path="/track-order" element={<TrackOrderPage />} />
         <Route path="/bulk-order" element={<BulkOrderPage />} />
-        <Route path="/about" element={<AboutPage />} />
+        <Route path="/about-us" element={<AboutPage />} />
+        {/* Old addresses (and /home) still land on the right page; firebase.json
+            also answers them with a permanent 301 for search engines. */}
+        {Object.entries(MOVED_PAGES).map(([from, to]) => (
+          <Route key={from} path={from} element={<Navigate to={to} replace />} />
+        ))}
         <Route path="/founder" element={<FounderPage />} />
         <Route path="/infrastructure" element={<InfrastructurePage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
@@ -187,8 +193,8 @@ export default function App() {
         />
         <Route path="/wishlist" element={<WishlistPage />} />
         {/* legacy deep links from the product-page repo */}
-        <Route path="/index.html" element={<Navigate to="/products" replace />} />
-        <Route path="/about.html" element={<Navigate to="/about" replace />} />
+        <Route path="/index.html" element={<Navigate to="/rice-products" replace />} />
+        <Route path="/about.html" element={<Navigate to="/about-us" replace />} />
         <Route path="/cart.html" element={<Navigate to="/cart" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

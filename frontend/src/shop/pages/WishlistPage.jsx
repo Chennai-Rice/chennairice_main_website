@@ -6,6 +6,7 @@ import { useWishlist } from "../hooks/useWishlist.jsx";
 import { useCart } from "../hooks/useCart.jsx";
 import usePageMeta from "../hooks/usePageMeta.js";
 import "../styles/wishlist.css";
+import { productPath } from "../../seo.js";
 
 const inr = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -54,7 +55,7 @@ export default function WishlistPage() {
               <p className="wl-empty-text">
                 Nothing saved yet. Tap the heart on any pack to keep it here for later.
               </p>
-              <Link className="btn-maroon" to="/products">
+              <Link className="btn-maroon" to="/rice-products">
                 Browse our rice
               </Link>
             </div>
@@ -63,7 +64,7 @@ export default function WishlistPage() {
               <ul className="wl-grid">
                 {saved.map((product) => (
                   <li className="wl-card" key={product.id}>
-                    <Link className="wl-card-media" to={`/products/${product.id}`}>
+                    <Link className="wl-card-media" to={productPath(product.id)}>
                       <img
                         src={product.image}
                         alt={product.alt || product.name}
@@ -75,7 +76,7 @@ export default function WishlistPage() {
 
                     <div className="wl-card-body">
                       <span className="wl-card-tag">{product.tag}</span>
-                      <Link className="wl-card-name" to={`/products/${product.id}`}>
+                      <Link className="wl-card-name" to={productPath(product.id)}>
                         {product.name}
                       </Link>
                       <p className="wl-card-desc">{product.description}</p>
@@ -100,7 +101,7 @@ export default function WishlistPage() {
               </ul>
 
               <div className="wl-foot">
-                <Link className="wl-continue" to="/products">
+                <Link className="wl-continue" to="/rice-products">
                   &larr; Continue shopping
                 </Link>
                 <button type="button" className="wl-clear" onClick={clear}>

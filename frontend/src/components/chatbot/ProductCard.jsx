@@ -11,7 +11,7 @@ export default function ProductCard({ product }) {
         <div className="sk-product-eyebrow">Chennai Rice</div>
         <div className="sk-product-name">{product.name}</div>
         <div className="sk-product-meta">{product.packSize} · {product.blurb}</div>
-        <Link className="sk-product-link" to="/products">
+        <Link className="sk-product-link" to="/rice-products">
           View Product →
         </Link>
       </div>

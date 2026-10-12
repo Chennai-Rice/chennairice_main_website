@@ -35,11 +35,11 @@ export const ASSETS = {
 
 export const NAV_LINKS = [
   { label: 'Home', to: '/' },
-  { label: 'Products', to: '/products' },
-  { label: 'About Us', to: '/about' },
+  { label: 'Products', to: '/rice-products' },
+  { label: 'About Us', to: '/about-us' },
   { label: 'Infrastructure', to: '/infrastructure' },
   { label: 'Blog', to: '/blog' },
-  { label: 'Contact', to: '/contact' },
+  { label: 'Contact', to: '/contact-us' },
   { label: 'Track Order', to: '/track-order' },
 ]
 
@@ -60,7 +60,7 @@ export const HERO = {
 export const PRODUCTS = [
   {
     shortName: 'Special Rajabhogam',
-    shopPath: '/products/special-rajabhogam',
+    shopPath: '/products/special-rajabhogam-rice',
     ghost: ['SPECIAL', 'RAJABHOGAM'],
     name: 'SPECIAL RAJABHOGAM',
     // Our signature red bag (catalogue: "Classic Red").
@@ -89,7 +89,7 @@ export const PRODUCTS = [
   },
   {
     shortName: 'Viruchagam',
-    shopPath: '/products/viruchagam',
+    shopPath: '/products/viruchagam-ponni-rice',
     ghost: ['VIRUCHAGAM', 'POOMPUHAR'],
     name: 'VIRUCHAGAM',
     // From the pack: SNR RNR Poompuhar Ponni, "Pure Rice", "100% Natural",
@@ -105,7 +105,7 @@ export const PRODUCTS = [
   },
   {
     shortName: 'Nayara Super Aged',
-    shopPath: '/products/nayara-super-aged',
+    shopPath: '/products/nayara-super-aged-rice',
     ghost: ['NAYARA', 'SUPER AGED'],
     name: 'NAYARA SUPER AGED',
     desc: 'Super-aged gel cook rice that stays separate and firm on the plate.',
@@ -291,10 +291,10 @@ export const FOOTER = {
 
   footerLinks: [
     { label: 'Home', to: '/' },
-    { label: 'Products', to: '/products' },
-    { label: 'About Us', to: '/about' },
+    { label: 'Products', to: '/rice-products' },
+    { label: 'About Us', to: '/about-us' },
     { label: 'Infrastructure', to: '/infrastructure' },
-    { label: 'Contact', to: '/contact' },
+    { label: 'Contact', to: '/contact-us' },
     { label: 'Terms & Conditions', to: '/terms' },
     { label: 'Privacy Policy', to: '/privacy' },
   ],
@@ -309,8 +309,8 @@ export const FOOTER = {
     {
       head: 'Company',
       links: [
-        { label: 'About Us', to: '/about' },
-        { label: 'Contact Us', to: '/contact' },
+        { label: 'About Us', to: '/about-us' },
+        { label: 'Contact Us', to: '/contact-us' },
       ],
     },
     {

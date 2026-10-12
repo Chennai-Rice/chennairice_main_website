@@ -5,9 +5,10 @@ import Celebrities from '../components/Celebrities.jsx'
 import Testimonials from '../components/Testimonials.jsx'
 import { showAmbassadors } from '../config.js'
 import usePageMeta from '../shop/hooks/usePageMeta.js'
+import { PAGE_META } from '../seo.js'
 
 export default function HomePage() {
-  usePageMeta('Chennai Rice Industries — Finest Rice, Finest Life', 'Ponni, Sappadu and Rajabhogam rice milled and sealed at our own facility in Erode, Tamil Nadu. Packs from 5 kg to 26 kg.')
+  usePageMeta(PAGE_META.home.title, PAGE_META.home.description)
   return (
     <main>
       <Hero />

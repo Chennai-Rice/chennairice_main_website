@@ -11,6 +11,7 @@ import { useRevealGroup } from "../hooks/useScrollFx.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import "../styles/about.css";
 import "../styles/legacy.css";
+import { PAGE_META } from '../../seo.js'
 
 /* warehouse mark that sits in the filled disc beside the "Storage" label */
 const STORAGE_BADGE_ICON = (
@@ -53,10 +54,7 @@ const STORAGE_DECOR_PATHS = [
 export default function AboutPage() {
   const pageRef = useRevealGroup();
 
-  usePageMeta(
-    "About Us — Chennai Rice Industries",
-    "Five generations and 75 years of heritage: from rice trading in Salem's Leigh Bazaar in 1951 to AI-enabled smart rice milling at SIPCOT, Perundurai."
-  );
+  usePageMeta(PAGE_META.about.title, PAGE_META.about.description);
 
   return (
     <SiteLayout skipTo="about-content-start" skipLabel="Skip to content">

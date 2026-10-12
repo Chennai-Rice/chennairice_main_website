@@ -213,7 +213,7 @@ export const INFRA_FINAL_CTA = {
   title: 'From Our Fields to Your Family',
   text: 'Behind every pack of Chennai Rice is a journey of sourcing, precision, quality and care.',
   cta: 'Discover Our Products',
-  to: '/products',
+  to: '/rice-products',
 }
 
 /* -------------------- showcase: opening section -------------------- */

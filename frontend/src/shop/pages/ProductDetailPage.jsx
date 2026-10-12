@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import SiteLayout from "../layouts/SiteLayout.jsx";
 import Breadcrumb from "../components/Breadcrumb.jsx";
 import ProductGallery from "../components/ProductGallery.jsx";
@@ -19,10 +19,12 @@ import { useRipple } from "../hooks/useRipple.js";
 import { formatRupees } from "../utils/format.js";
 import { showCardPrices } from "../../config.js";
 import usePageMeta from "../hooks/usePageMeta.js";
+import { PRODUCT_SEO, productIdFromSlug, productPath } from "../../seo.js";
 import "./productdetail.css";
 
 export default function ProductDetailPage() {
-  const { id } = useParams();
+  const { id: slug } = useParams();
+  const id = productIdFromSlug(slug);
   const navigate = useNavigate();
   const { add, items } = useCart();
   const wishlist = useWishlist();
@@ -42,9 +44,10 @@ export default function ProductDetailPage() {
   // badge stays in step.
   const wishlisted = wishlist.has(id);
 
+  const seo = PRODUCT_SEO[id];
   usePageMeta(
-    product ? `${product.name} — Chennai Rice Industries` : "Product — Chennai Rice Industries",
-    product ? product.description : undefined
+    seo?.title || (product ? `${product.name} — Chennai Rice Industries` : "Product — Chennai Rice Industries"),
+    seo?.description || (product ? product.description : undefined)
   );
 
   // Pack size defaults to 10 kg once the product has loaded — keep the
@@ -53,6 +56,10 @@ export default function ProductDetailPage() {
     if (defaultSize && selectedKg === undefined) setSelectedKg(defaultSize.kg);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultSize]);
+
+  if (productPath(id) !== `/products/${slug}`) {
+    return <Navigate to={productPath(id)} replace />;
+  }
 
   if (loading) {
     return <SiteLayout skipTo="pdp-main" skipLabel="Skip to content"><main id="pdp-main" className="pdp" /></SiteLayout>;
@@ -64,7 +71,7 @@ export default function ProductDetailPage() {
         <main id="pdp-main" className="pdp-not-found">
           <h1>Product not found</h1>
           <p>We couldn't find that pack. It may have been renamed or removed.</p>
-          <Link className="btn-maroon" to="/products">
+          <Link className="btn-maroon" to="/rice-products">
             Back to Products
           </Link>
         </main>
@@ -107,7 +114,7 @@ export default function ProductDetailPage() {
     <SiteLayout skipTo="pdp-main" skipLabel="Skip to product">
       <main id="pdp-main" className="pdp">
         <div className="pdp-top">
-          <Link className="pdp-back" to="/products">
+          <Link className="pdp-back" to="/rice-products">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M15 5L8 12l7 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -116,8 +123,8 @@ export default function ProductDetailPage() {
           <Breadcrumb
             items={[
               { label: "Home", to: "/" },
-              { label: "Products", to: "/products" },
-              { label: category, to: "/products" },
+              { label: "Products", to: "/rice-products" },
+              { label: category, to: "/rice-products" },
               { label: product.name },
             ]}
           />
@@ -189,7 +196,7 @@ export default function ProductDetailPage() {
                   </button>
                 </>
               ) : (
-                <Link className="btn-maroon pdp-add-btn" to="/contact">
+                <Link className="btn-maroon pdp-add-btn" to="/contact-us">
                   Contact sales
                 </Link>
               )}
@@ -211,7 +218,7 @@ export default function ProductDetailPage() {
               </button>
             </div>
 
-            <Link className="pdp-bulk-link" to="/contact">
+            <Link className="pdp-bulk-link" to="/contact-us">
               Bulk Order Enquiry &rarr;
             </Link>
           </div>

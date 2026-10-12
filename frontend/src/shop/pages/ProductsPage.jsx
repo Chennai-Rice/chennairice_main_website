@@ -7,6 +7,7 @@ import Lineup from "../sections/Lineup.jsx";
 import SearchBar from "../components/SearchBar.jsx";
 import CheckoutBar from "../components/CheckoutBar.jsx";
 import usePageMeta from "../hooks/usePageMeta.js";
+import { PAGE_META } from "../../seo.js";
 
 export default function ProductsPage() {
   // Search and filter live here because the header owns the input and the grid
@@ -14,10 +15,7 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
 
-  usePageMeta(
-    "Our Rice Packs — Chennai Rice Industries",
-    "Ponni, Sappadu and Rajabhogam rice packs from 5 kg to 26 kg, milled and sealed at our own facility in Erode, Tamil Nadu."
-  );
+  usePageMeta(PAGE_META.products.title, PAGE_META.products.description);
 
   return (
     <SiteLayout skipTo="products" skipLabel="Skip to products">

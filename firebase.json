@@ -1,12 +1,21 @@
 {
   "hosting": {
     "public": "dist",
-    "predeploy": ["npm run build"],
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "predeploy": [
+      "npm run build"
+    ],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
     "rewrites": [
       {
         "source": "/api/**",
-        "function": { "functionId": "api", "region": "asia-south1" }
+        "function": {
+          "functionId": "api",
+          "region": "asia-south1"
+        }
       },
       {
         "source": "**",
@@ -17,24 +26,119 @@
       {
         "source": "/assets/**/*.@(js|css)",
         "headers": [
-          { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
         ]
       },
       {
         "source": "/assets/**/*.@(png|jpg|jpeg|webp|avif|svg|gif|ico|mp4|webm|woff|woff2)",
         "headers": [
-          { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=86400, stale-while-revalidate=604800"
+          }
         ]
       },
       {
         "source": "/index.html",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      }
+    ],
+    "redirects": [
+      {
+        "source": "/home",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/products",
+        "destination": "/rice-products",
+        "type": 301
+      },
+      {
+        "source": "/about",
+        "destination": "/about-us",
+        "type": 301
+      },
+      {
+        "source": "/contact",
+        "destination": "/contact-us",
+        "type": 301
+      },
+      {
+        "source": "/products/a1-special-ponni",
+        "destination": "/products/a1-special-ponni-rice",
+        "type": 301
+      },
+      {
+        "source": "/products/alibaba",
+        "destination": "/products/alibaba-sappadu-rice",
+        "type": 301
+      },
+      {
+        "source": "/products/nayara-super-aged",
+        "destination": "/products/nayara-super-aged-rice",
+        "type": 301
+      },
+      {
+        "source": "/products/rudra",
+        "destination": "/products/rudra-ponni-rice",
+        "type": 301
+      },
+      {
+        "source": "/products/special-rajabhogam",
+        "destination": "/products/special-rajabhogam-rice",
+        "type": 301
+      },
+      {
+        "source": "/products/thaaram",
+        "destination": "/products/thaaram-pooni-rice",
+        "type": 301
+      },
+      {
+        "source": "/products/united-5kg",
+        "destination": "/products/united-ponni-rice",
+        "type": 301
+      },
+      {
+        "source": "/products/vijaya-nagaram",
+        "destination": "/products/vijaya-nagaram-rice",
+        "type": 301
+      },
+      {
+        "source": "/products/vintage",
+        "destination": "/products/vintage-ponni-rice",
+        "type": 301
+      },
+      {
+        "source": "/products/viruchagam",
+        "destination": "/products/viruchagam-ponni-rice",
+        "type": 301
+      },
+      {
+        "source": "/products/chennai-bullets",
+        "destination": "/products/chennai-bullets-rice",
+        "type": 301
       }
     ]
   },
   "functions": {
     "source": "functions",
-    "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"],
-    "ignore": ["node_modules", ".git", "src", "*.local"]
+    "predeploy": [
+      "npm --prefix \"$RESOURCE_DIR\" run build"
+    ],
+    "ignore": [
+      "node_modules",
+      ".git",
+      "src",
+      "*.local"
+    ]
   }
 }

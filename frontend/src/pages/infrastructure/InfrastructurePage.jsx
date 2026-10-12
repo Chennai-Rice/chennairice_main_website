@@ -5,6 +5,7 @@ import InfraShowcase from './InfraShowcase.jsx'
 import useGsapContext from '../../hooks/useGsapContext.js'
 import usePageMeta from '../../shop/hooks/usePageMeta.js'
 import './infrastructure.css'
+import { PAGE_META } from '../../seo.js'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -13,7 +14,7 @@ gsap.registerPlugin(ScrollTrigger)
  * capability grid and closing band. All content lives in data/infrastructure.js.
  */
 export default function InfrastructurePage() {
-  usePageMeta('Infrastructure — Chennai Rice Industries', 'Our milling, drying and storage facilities at Nasiyanur and SIPCOT, Erode — 21 silos holding 61,500 MT of paddy under monitored conditions.')
+  usePageMeta(PAGE_META.infrastructure.title, PAGE_META.infrastructure.description)
   const rootRef = useRef(null)
 
   useGsapContext(

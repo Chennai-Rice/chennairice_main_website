@@ -222,7 +222,7 @@ export default function CheckoutPage() {
               </svg>
               Track order
             </Link>
-            <Link className="checkout-btn checkout-btn--link" to="/products">
+            <Link className="checkout-btn checkout-btn--link" to="/rice-products">
               Continue shopping
             </Link>
           </PaymentReceipt>
@@ -241,7 +241,7 @@ export default function CheckoutPage() {
           <div className="cart-empty">
             <p className="cart-empty-title">Your cart is empty</p>
             <p>Add a pack before checking out.</p>
-            <Link className="checkout-btn checkout-btn--link" to="/products">
+            <Link className="checkout-btn checkout-btn--link" to="/rice-products">
               Browse the packs
             </Link>
           </div>

@@ -224,7 +224,7 @@ export default function TrackOrderPage() {
 
               <p className="track-help">
                 Questions about this order? Call <a href="tel:+917066646667">+91 70666 46667</a> or{' '}
-                <Link to="/contact">write to us</Link>, quoting {data.orderNumber}.
+                <Link to="/contact-us">write to us</Link>, quoting {data.orderNumber}.
               </p>
             </section>
           )}

@@ -5,6 +5,7 @@ import { useRipple } from "../hooks/useRipple.js";
 import { useWishlist } from "../hooks/useWishlist.jsx";
 import { formatRupees } from "../utils/format.js";
 import { showCardPrices } from "../../config.js";
+import { productPath } from "../../seo.js";
 
 export default function ProductCard({ product }) {
   const spawnRipple = useRipple();
@@ -77,7 +78,7 @@ export default function ProductCard({ product }) {
 
         {/* The pack photo opens this product's page, like "View more". It is
             left out of the tab order since that button already leads there. */}
-        <Link className="card-media-link" to={`/products/${product.id}`} tabIndex={-1}>
+        <Link className="card-media-link" to={productPath(product.id)} tabIndex={-1}>
           <img
             src={product.image}
             alt={product.alt}
@@ -136,7 +137,7 @@ export default function ProductCard({ product }) {
             </p>
           )}
           <div className="card-actions">
-            <Link className="view-btn" to={`/products/${product.id}`} onClick={spawnRipple}>
+            <Link className="view-btn" to={productPath(product.id)} onClick={spawnRipple}>
               View more
             </Link>
             {showCardPrices && soldOut ? (
@@ -148,7 +149,7 @@ export default function ProductCard({ product }) {
             ) : (
               <Link
                 className="add-btn contact-sales-btn"
-                to="/contact"
+                to="/contact-us"
                 onClick={spawnRipple}
                 aria-label={`Contact sales about ${product.name}`}
               >

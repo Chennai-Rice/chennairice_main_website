@@ -29,7 +29,7 @@ export default function Header({ search = null, onSearchChange = null, cartIsCur
           <NavLink to="/" end>
             Our packs
           </NavLink>
-          <NavLink to="/about">About us</NavLink>
+          <NavLink to="/about-us">About us</NavLink>
         </nav>
 
         <CartButton current={cartIsCurrent} />
