@@ -59,12 +59,7 @@ export default function ShareButton({ title, text }) {
         aria-expanded={open}
         onClick={onShare}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="18" cy="5" r="2.6" stroke="currentColor" strokeWidth="1.6" />
-          <circle cx="6" cy="12" r="2.6" stroke="currentColor" strokeWidth="1.6" />
-          <circle cx="18" cy="19" r="2.6" stroke="currentColor" strokeWidth="1.6" />
-          <path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3" stroke="currentColor" strokeWidth="1.6" />
-        </svg>
+        <svg width="20" height="20" viewBox="3 3 18.5 18.5" fill="none" aria-hidden="true"><path d="M13.5 5.5 20 11l-6.5 5.5v-3.2c-4.2-.2-7.3 1.4-9.3 4.7.3-5.2 3.3-8.8 9.3-9.3V5.5z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" /></svg>
       </button>
 
       {open && (
