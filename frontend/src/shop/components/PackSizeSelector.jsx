@@ -1,6 +1,4 @@
 import React from "react";
-import { formatRupees } from "../utils/format.js";
-import { showCardPrices } from "../../config.js";
 
 export default function PackSizeSelector({ sizes, selectedKg, onSelect }) {
   return (
@@ -14,12 +12,10 @@ export default function PackSizeSelector({ sizes, selectedKg, onSelect }) {
           onClick={() => onSelect(size.kg)}
         >
           <span className="pdp-pack-kg">{size.kg} KG</span>
-          {/* Omitted rather than shown as ₹0 while prices are unpublished. */}
-          {showCardPrices && (
-            <span className="pdp-pack-price">
-              {size.price == null ? "Out of stock" : formatRupees(size.price)}
-              {size.inStock === false && size.price != null && <small className="pdp-pack-stock">Out of stock</small>}
-            </span>
+          {/* Just the size: the price shows once, above (owner, Oct 2026).
+              A sold-out size still says so. */}
+          {(size.price == null || size.inStock === false) && (
+            <small className="pdp-pack-stock">Out of stock</small>
           )}
         </button>
       ))}
