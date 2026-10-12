@@ -77,7 +77,6 @@ export default function Testimonials() {
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
-      <Img className="testi-decor testi-decor-right" src={ASSETS.riceBowl} alt="" aria-hidden="true" />
 
       <div className="section-label testi-label">
         <Ornament />
