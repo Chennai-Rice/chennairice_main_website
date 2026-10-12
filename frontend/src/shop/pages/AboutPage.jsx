@@ -140,7 +140,7 @@ export default function AboutPage() {
                 Storage
               </p>
 
-              <h2 className="ab-storage-title">South India&rsquo;s largest paddy storage facility.</h2>
+              <h2 className="ab-storage-title">India&rsquo;s largest paddy storage facility.</h2>
 
               <span className="ab-storage-rule" aria-hidden="true" />
 
