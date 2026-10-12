@@ -38,9 +38,9 @@ export const NAV_LINKS = [
   { label: 'Products', to: '/products' },
   { label: 'About Us', to: '/about' },
   { label: 'Infrastructure', to: '/infrastructure' },
-  { label: 'Track Order', to: '/track-order' },
   { label: 'Blog', to: '/blog' },
   { label: 'Contact', to: '/contact' },
+  { label: 'Track Order', to: '/track-order' },
 ]
 
 export const NAV_CTA = { label: 'Bulk Order', to: '/bulk-order' }
