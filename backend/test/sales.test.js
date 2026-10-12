@@ -937,28 +937,42 @@ test('shipped email: sent on dispatch with shipment ID and tracking; tracking ad
   }
 })
 
-test('delivery charge: per pack, Tamil Nadu only, with its GST on the invoice', async () => {
-  // As the price list sets it up: per-pack delivery, one Tamil Nadu zone.
+test('delivery charge: by PIN code region, per pack, with its GST on the invoice', async () => {
+  // As the price list sets it up: each pack absorbs ₹111, regions by PIN code.
   const alibaba10 = (await db.query(
     `select v.id from product_variants v join products p on p.id = v.product_id where p.slug = 'alibaba' and v.pack_kg = 10`)).rows[0].id
-  await db.query('update product_variants set delivery_paise = 5400 where id = $1', [alibaba10])
+  await db.query('update product_variants set delivery_absorbed_paise = 11100 where id = $1', [alibaba10])
   await db.query('update stock_levels set on_hand = on_hand + 10 where variant_id = $1', [alibaba10])
-  await db.query(`insert into shipping_zones (code, name, states) values ('TN', 'Tamil Nadu', '{Tamil Nadu}')`)
-  await db.query(`update shipping_zones set is_active = false, is_default = false where code <> 'TN'`)
+  await db.query(`insert into shipping_zones (code, name, pack_delivery_cost_paise) values
+    ('TN', 'Tamil Nadu', 16520), ('SOUTH', 'South India', 26432)`)
+  await db.query(`update shipping_zones set is_active = false, is_default = false where code not in ('TN', 'SOUTH')`)
+  const quote = (pincode, qty = 2) =>
+    api('POST', '/api/checkout/quote', { body: { pincode, items: [{ id: 'alibaba-10kg', qty }] } })
   try {
-    const q = await api('POST', '/api/checkout/quote', { body: { state: 'Tamil Nadu', items: [{ id: 'alibaba-10kg', qty: 2 }] } })
-    assert.equal(q.status, 200, JSON.stringify(q.body))
-    assert.equal(q.body.shipping, 108) // ₹54 × 2 packs
-    assert.equal(q.body.total, q.body.subtotal + 108)
-    assert.equal(q.body.lines[0].delivery, 54)
+    const tn = await quote('641001')
+    assert.equal(tn.status, 200, JSON.stringify(tn.body))
+    assert.equal(tn.body.shipping, 108) // (₹165.20 − ₹111 → ₹54) × 2 packs
+    assert.equal(tn.body.total, tn.body.subtotal + 108)
+    assert.equal(tn.body.region.code, 'TN')
+    assert.equal(tn.body.lines[0].delivery, 54)
 
-    const away = await api('POST', '/api/checkout/quote', { body: { state: 'Kerala', items: [{ id: 'alibaba-10kg', qty: 1 }] } })
-    assert.equal(away.status, 422)
-    assert.match(away.body.error, /only within Tamil Nadu/)
+    const kerala = await quote('682001', 1)
+    assert.equal(kerala.body.shipping, 153) // ₹264.32 − ₹111
+    assert.equal(kerala.body.region.code, 'SOUTH')
+
+    const delhi = await quote('110001', 1) // North: no active zone in this test
+    assert.equal(delhi.status, 422)
+    assert.match(delhi.body.error, /do not deliver to PIN code 110001/)
+    assert.equal((await quote('744101', 1)).status, 422) // Andaman: never
+
+    const noPin = await quote('', 1)
+    assert.equal(noPin.status, 200)
+    assert.equal(noPin.body.shipping, null)
+    assert.equal(noPin.body.total, noPin.body.subtotal)
 
     const { session, verify } = await buy([{ id: 'alibaba-10kg', qty: 2 }])
     assert.equal(verify.status, 200, JSON.stringify(verify.body))
-    assert.equal(session.amount, q.body.total)
+    assert.equal(session.amount, tn.body.total)
     const { rows: [o] } = await db.query('select * from orders where id = $1', [session.orderId])
     assert.equal(Number(o.shipping_paise), 10800)
     assert.equal(o.shipping_tax_rate_bp, 1800)
@@ -973,8 +987,21 @@ test('delivery charge: per pack, Tamil Nadu only, with its GST on the invoice', 
     assert.equal(Number(inv.igst_paise), 0)
     assert.equal(Number(inv.total_paise), Number(o.total_paise))
   } finally {
-    await db.query('update product_variants set delivery_paise = null where id = $1', [alibaba10])
-    await db.query(`delete from shipping_zones where code = 'TN'`)
+    await db.query('update product_variants set delivery_absorbed_paise = null where id = $1', [alibaba10])
+    await db.query(`delete from shipping_zones where code in ('TN', 'SOUTH')`)
     await db.query(`update shipping_zones set is_active = true, is_default = true where code = 'ALL_INDIA'`)
   }
+})
+
+test('PIN code regions', async () => {
+  const { regionForPincode, packDeliveryPaise } = await import('../lib/sales/regions.js')
+  const cases = { '600001': 'TN', '641001': 'TN', '605001': 'TN', '682001': 'SOUTH', '560001': 'SOUTH', '500001': 'SOUTH',
+    '530001': 'SOUTH', '110001': 'NORTH', '400001': 'NORTH', '700001': 'NORTH', '403001': 'NORTH', '781001': 'NE',
+    '795001': 'NE', '737101': 'NE', '744101': null, '900001': null, '12345': null, '012345': null }
+  for (const [pin, region] of Object.entries(cases)) assert.equal(regionForPincode(pin), region, pin)
+  assert.equal(packDeliveryPaise(16520, 11100), 5400)
+  assert.equal(packDeliveryPaise(16520, 8500), 8000)
+  assert.equal(packDeliveryPaise(52864, 11100), 41800)
+  assert.equal(packDeliveryPaise(52864, 8500), 44400)
+  assert.equal(packDeliveryPaise(39648, 8500), 31100)
 })

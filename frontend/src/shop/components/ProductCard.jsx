@@ -36,7 +36,6 @@ export default function ProductCard({ product }) {
       id: `${product.id}-${selected.kg}kg`,
       name: `${product.name} (${selected.kg} kg)`,
       price: selected.price,
-      delivery: selected.delivery,
     }),
     [product, selected]
   );

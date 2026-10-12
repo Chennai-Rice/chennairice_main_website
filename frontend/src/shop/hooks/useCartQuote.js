@@ -1,25 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "./useCart.jsx";
 
-// We deliver within Tamil Nadu only for now; the server refuses other states.
-export const DELIVERY_STATE = "Tamil Nadu";
+const PIN = /^[1-9]\d{5}$/;
 
 /**
- * The server's price for the cart: subtotal, delivery charge and total, for
- * delivery in Tamil Nadu. The same pricing checkout charges, so what the cart
- * shows is what the customer pays. Brings the saved cart's prices up to date
- * and, until the quote arrives (or if the server cannot be reached), falls
- * back to the cart's own arithmetic.
+ * The server's price for the cart: subtotal, and once a PIN code is given,
+ * the delivery charge for that PIN code's region and the total. The same
+ * pricing checkout charges, so what is shown is what the customer pays.
+ * Brings the saved cart's prices up to date. Until the quote arrives (or if
+ * the server cannot be reached) the cart's own subtotal is shown.
  */
-export default function useCartQuote() {
+export default function useCartQuote(pincode = "") {
   const { items, subtotal, syncPrices } = useCart();
   const [quote, setQuote] = useState(null);
   const [error, setError] = useState("");
 
-  const key = useMemo(() => items.map((i) => `${i.id}:${i.qty}`).join(","), [items]);
+  const pin = PIN.test(String(pincode).trim()) ? String(pincode).trim() : "";
+  const key = useMemo(() => items.map((i) => `${i.id}:${i.qty}`).join(",") + "@" + pin, [items, pin]);
 
   useEffect(() => {
-    if (!key) {
+    if (!items.length) {
       setQuote(null);
       setError("");
       return undefined;
@@ -30,7 +30,7 @@ export default function useCartQuote() {
         const res = await fetch("/api/checkout/quote", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: items.map((i) => ({ id: i.id, qty: i.qty })), state: DELIVERY_STATE }),
+          body: JSON.stringify({ items: items.map((i) => ({ id: i.id, qty: i.qty })), pincode: pin }),
           signal: ctrl.signal,
         });
         const data = await res.json().catch(() => null);
@@ -54,18 +54,14 @@ export default function useCartQuote() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  // Before the quote: the packs' own delivery charges, if every pack has one.
-  const localDelivery = items.every((i) => i.delivery != null)
-    ? items.reduce((t, i) => t + i.delivery * i.qty, 0)
-    : null;
-
-  const shipping = quote ? quote.shipping : localDelivery;
   const sub = quote ? quote.subtotal : subtotal;
+  const shipping = quote ? quote.shipping : null; // null = needs a PIN code
   return {
     subtotal: sub,
-    shipping, // null = not known yet
+    shipping,
+    region: quote?.region || null, // { code, name }
     total: sub + (shipping || 0),
+    hasPin: Boolean(pin),
     error,
-    ready: Boolean(quote),
   };
 }

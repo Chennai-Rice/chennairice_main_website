@@ -48,18 +48,21 @@ export function buildGuestCustomer(body) {
 /** Price a cart for display (no order is created, nothing is held). */
 export async function quoteCart(body) {
   const priced = await priceCart({ query }, body?.items, { shipState: str(body?.state) })
-  const shipping = await quoteShipping({ query }, {
-    state: body?.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg, deliveryPaise: priced.deliveryPaise,
+  // The delivery charge needs the PIN code; without one, shipping is null.
+  const ship = await quoteShipping({ query }, {
+    pincode: str(body?.pincode), state: body?.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg,
+    lines: priced.lines,
   })
   return {
-    lines: priced.lines.map((l) => ({
+    lines: priced.lines.map((l, i) => ({
       id: l.slug + '-' + l.packKg + 'kg', name: l.name, packKg: l.packKg, qty: l.quantity,
       unitPrice: toRupees(l.unitPricePaise), lineTotal: toRupees(l.lineTotalPaise),
-      delivery: l.deliveryPaise == null ? null : toRupees(l.deliveryPaise),
+      delivery: ship.lines[i] == null ? null : toRupees(ship.lines[i]),
     })),
     subtotal: toRupees(priced.subtotalPaise),
-    shipping: toRupees(shipping),
-    total: toRupees(priced.subtotalPaise + shipping),
+    shipping: ship.paise == null ? null : toRupees(ship.paise),
+    region: ship.region,
+    total: toRupees(priced.subtotalPaise + (ship.paise || 0)),
     taxIncluded: toRupees(priced.taxPaise),
     currency: 'INR',
   }
@@ -75,9 +78,12 @@ export async function placeOrder(customer, items) {
     if (!loc) throw httpError('No fulfilment location is set up.', { status: 503, publicMessage: 'Ordering is temporarily unavailable.' })
 
     const priced = await priceCart(db, items, { shipState: customer.state })
-    const shipping = await quoteShipping(db, {
-      state: customer.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg, deliveryPaise: priced.deliveryPaise,
+    const ship = await quoteShipping(db, {
+      pincode: customer.pincode, state: customer.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg,
+      lines: priced.lines,
     })
+    if (ship.paise == null) throw httpError('Please add a valid 6-digit PIN code.')
+    const shipping = ship.paise
     // GST inside the delivery charge, kept with the order for its invoice.
     const shippingTaxRateBp = deliveryTaxRateBp(settings)
 

@@ -4,21 +4,23 @@
 //   npm run db:prices -- --stock 100     ALSO sets 100 packs of every priced
 //                                        size in stock (local databases only)
 //
-// "Regional delivered price" sheet (Oct 2026), Tamil Nadu, 5 kg packs only.
-// For every pack the sheet takes the list price (from the price list of
-// 09-10-2026) and:
-//   website price = list price + ₹111, never above MRP   (what the pack costs)
-//   absorbed      = website price − list price
-//   delivery      = TN delivery cost − absorbed, rounded   (shown at checkout)
-// The website shows MRP struck through, the website price, and the delivery
-// charge per pack. Prices include GST.
+// "Regional delivered price" sheets (Oct 2026): Tamil Nadu, South, North and
+// North East, 5 kg packs only. For every pack the sheets take the list price
+// (from the price list of 09-10-2026) and:
+//   absorbed      = ₹111 of the delivery cost, carried in the price
+//                   (less for packs where that would cross MRP)
+//   website price = list price + absorbed                (what the pack costs)
+//   delivery      = region's delivery cost − absorbed, rounded to the rupee
+// The region comes from the customer's PIN code at checkout
+// (lib/sales/regions.js). The website shows MRP struck through, the website
+// price, and the delivery charge per pack. Prices include GST.
 //
 // What it does, and it is safe to re-run:
 //   - creates any pack size on the list that does not exist yet
 //   - sets each listed size's website price, MRP and delivery charge
 //   - pack sizes NOT on the list are switched off (10 kg, 26 kg for now)
 //   - products NOT on the list get no price: shown out of stock, refused at checkout
-//   - delivery is set up for Tamil Nadu only; any other state is refused
+//   - sets up the four delivery regions; PIN codes outside them are refused
 // Changes apply to new orders only; existing orders keep the price they paid.
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -28,13 +30,19 @@ import { defaultTaxRateBp, skuFor } from './seed.js'
 
 export const EFFECTIVE_FROM = '2026-10-13'
 
-// From the sheet: the part of the delivery cost carried in the website price,
-// and the Tamil Nadu delivery cost of one 5 kg pack (₹140 + 18% GST).
+// From the sheets: the part of the delivery cost carried in the website price,
+// and each region's delivery cost for one 5 kg pack (courier cost + 18% GST).
 export const ABSORBED_RUPEES = 111
-export const TN_DELIVERY_RUPEES = 165.2
-export const DELIVERY_STATES = ['Tamil Nadu']
+export const REGION_DELIVERY_RUPEES = {
+  TN: 165.2,     // ₹140 + GST
+  SOUTH: 264.32, // ₹224 + GST
+  NORTH: 396.48, // ₹336 + GST
+  NE: 528.64,    // ₹448 + GST
+}
+const REGION_NAMES = { TN: 'Tamil Nadu', SOUTH: 'South India', NORTH: 'North India', NE: 'North East' }
 
-// slug → { packKg: [list price, MRP] }. Item and variety as on the sheet.
+// slug → { packKg: [list price, MRP, absorbed (optional, else ₹111 capped at
+// MRP)] }. Item and variety as on the sheet.
 export const PRICE_LIST = {
   'vintage': { 5: [471, 619] },             // Vintage Spl Ponni · JSR Kolam
   'special-rajabhogam': { 5: [441, 599] },  // Chennai Rice · Vada Kolam Kitchidi Ponni (red bag)
@@ -45,17 +53,18 @@ export const PRICE_LIST = {
   'a1-special-ponni': { 5: [471, 619] },    // A1 Ponni Rice · Akshaya Amman Ponni
   'chennai-bullets': { 5: [441, 599] },     // Chennai Bullets · TN RNR / Kodad Bapatla / KA KNM
   'alibaba': { 5: [441, 599] },             // Alibaba · TN RNR / Kodad Bapatla / KA KNM
-  'special-idly-rice': { 5: [255, 349] },   // Special Idly Rice (Pink) 5 kg · Kalli Muthan kar
+  'special-idly-rice': { 5: [255, 349, 85] }, // Special Idly Rice (Pink) 5 kg · Kalli Muthan kar (sheet: ₹85 absorbed)
   'kitchidi-ponni-rice': { 5: [444, 599] }, // Chennai Rice Premium Kitchidi Ponni Rice (pink bag)
   // Broken Rice (Jeera Old) is on the sheet but not sold online.
 }
 
-/** Website price, MRP and delivery charge (₹) for one pack on the list. */
-export function packPricing(listPrice, mrp) {
-  const website = Math.min(listPrice + ABSORBED_RUPEES, mrp)
-  const absorbed = website - listPrice
-  const delivery = Math.max(0, Math.round(TN_DELIVERY_RUPEES - absorbed))
-  return { website, mrp, delivery }
+/** Website price, absorbed part and delivery charge per region (₹) for one pack. */
+export function packPricing(listPrice, mrp, absorbed = Math.min(ABSORBED_RUPEES, mrp - listPrice)) {
+  const website = listPrice + absorbed
+  if (website > mrp) throw new Error(`Website price ₹${website} would be above MRP ₹${mrp}.`)
+  const delivery = Object.fromEntries(Object.entries(REGION_DELIVERY_RUPEES)
+    .map(([code, cost]) => [code, Math.max(0, Math.round(cost - absorbed))]))
+  return { website, mrp, absorbed, delivery }
 }
 
 // On the price list and added after the first catalog: created if missing,
@@ -93,16 +102,20 @@ export async function applyPriceList({ pool, stock = 0, log = console.log } = {}
       )
     }
 
-    // Delivery: Tamil Nadu only. Every other zone (the old free "All India"
-    // default) is switched off, so checkout refuses other states.
-    await client.query(
-      `insert into shipping_zones (code, name, states, is_default, is_active)
-       values ('TN', 'Tamil Nadu', $1, false, true)
-       on conflict (code) do update set states = excluded.states, is_active = true`,
-      [DELIVERY_STATES]
-    )
-    await client.query(`update shipping_zones set is_active = false, is_default = false where code <> 'TN'`)
-    log(`  Delivery: ${DELIVERY_STATES.join(', ')} only`)
+    // Delivery regions, chosen by PIN code. Every other zone (the old free
+    // "All India" default) is switched off.
+    for (const [code, rupees] of Object.entries(REGION_DELIVERY_RUPEES)) {
+      await client.query(
+        `insert into shipping_zones (code, name, is_default, is_active, pack_delivery_cost_paise)
+         values ($1, $2, false, true, $3)
+         on conflict (code) do update set name = excluded.name, is_active = true,
+                                          pack_delivery_cost_paise = excluded.pack_delivery_cost_paise`,
+        [code, REGION_NAMES[code], Math.round(rupees * 100)]
+      )
+    }
+    await client.query(`update shipping_zones set is_active = false, is_default = false where not (code = any($1))`,
+      [Object.keys(REGION_DELIVERY_RUPEES)])
+    log(`  Delivery regions: ${Object.entries(REGION_DELIVERY_RUPEES).map(([c, r]) => `${REGION_NAMES[c]} ₹${r}`).join(', ')}`)
 
     const { rows: products } = await client.query('select id, slug, name, is_active from products')
     for (const p of products) {
@@ -117,19 +130,19 @@ export async function applyPriceList({ pool, stock = 0, log = console.log } = {}
       await client.query('update product_variants set is_active = false where product_id = $1 and not (pack_kg = any($2))',
         [p.id, Object.keys(prices).map(Number)])
       const shown = []
-      for (const [kg, [listPrice, mrp]] of Object.entries(prices)) {
+      for (const [kg, [listPrice, mrp, absorbedRupees]] of Object.entries(prices)) {
         const packKg = Number(kg)
-        const { website, delivery } = packPricing(listPrice, mrp)
+        const { website, absorbed, delivery } = packPricing(listPrice, mrp, absorbedRupees)
         const { rows: [v] } = await client.query(
-          `insert into product_variants (product_id, sku, pack_kg, price_paise, mrp_paise, delivery_paise, tax_rate_bp, reorder_level, is_active)
+          `insert into product_variants (product_id, sku, pack_kg, price_paise, mrp_paise, delivery_absorbed_paise, tax_rate_bp, reorder_level, is_active)
            values ($1, $2, $3, $4, $5, $6, $7, 20, true)
            on conflict (product_id, pack_kg) do update
              set price_paise = excluded.price_paise, mrp_paise = excluded.mrp_paise,
-                 delivery_paise = excluded.delivery_paise, is_active = true
+                 delivery_absorbed_paise = excluded.delivery_absorbed_paise, is_active = true
            returning id`,
-          [p.id, skuFor(p.slug, packKg), packKg, website * 100, mrp * 100, delivery * 100, defaultTaxRateBp(packKg)]
+          [p.id, skuFor(p.slug, packKg), packKg, website * 100, mrp * 100, absorbed * 100, defaultTaxRateBp(packKg)]
         )
-        shown.push(`${kg} kg MRP ₹${mrp} → ₹${website} + ₹${delivery} delivery`)
+        shown.push(`${kg} kg MRP ₹${mrp} → ₹${website} + delivery TN ₹${delivery.TN} · South ₹${delivery.SOUTH} · North ₹${delivery.NORTH} · NE ₹${delivery.NE}`)
         if (stock && loc) {
           const { rows: [lvl] } = await client.query(
             'select on_hand, reserved from stock_levels where location_id = $1 and variant_id = $2', [loc.id, v.id])

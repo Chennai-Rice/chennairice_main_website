@@ -11,7 +11,7 @@ import { isCheckoutEnabled } from "../../config.js";
 // Which note appears under the button depends on whether payments are live —
 // promising "you'll pay securely on the next step" while /checkout shows Coming
 // Soon would read as a broken site rather than an unfinished one.
-const CHECKOUT_NOTE = "We deliver within Tamil Nadu. You'll pay securely on the next step.";
+const CHECKOUT_NOTE = "The delivery charge is added at checkout from your PIN code. You'll pay securely on the next step.";
 const COMING_SOON_NOTE = "Online payment is opening shortly — tap through to see where we are.";
 
 export default function CartPage() {
@@ -58,12 +58,12 @@ export default function CartPage() {
                   <dt>Packs</dt>
                   <dd>{count}</dd>
                 </div>
-                <div className="summary-row">
-                  <dt>Delivery charge <span className="summary-sub">(Tamil Nadu)</span></dt>
-                  <dd>{shipping == null ? "—" : formatRupees(shipping)}</dd>
+                <div className="summary-row summary-row--muted">
+                  <dt>Delivery charge</dt>
+                  <dd>{shipping == null ? "At checkout" : formatRupees(shipping)}</dd>
                 </div>
                 <div className="summary-row summary-row--total">
-                  <dt>Total</dt>
+                  <dt>Total {shipping == null && <span className="summary-sub">(before delivery)</span>}</dt>
                   <dd>{formatRupees(total)}</dd>
                 </div>
               </dl>

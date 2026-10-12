@@ -66,7 +66,6 @@ export function CartProvider({ children }) {
           name: product.name,
           tag: product.tag,
           price: product.price,
-          delivery: product.delivery ?? null,
           image: product.image,
           qty: 1
         }
@@ -87,7 +86,7 @@ export function CartProvider({ children }) {
   }, []);
 
   // The server's prices win: a cart saved before a price change is brought up
-  // to date from the checkout quote (unit price, delivery and size per pack).
+  // to date from the checkout quote (unit price and size per pack).
   const syncPrices = useCallback((lines) => {
     const byId = new Map((lines || []).map((l) => [l.id, l]))
     setItems((current) => {
@@ -95,11 +94,10 @@ export function CartProvider({ children }) {
       const next = current.map((item) => {
         const l = byId.get(item.id)
         if (!l) return item
-        const delivery = l.delivery ?? null
         const packKg = item.packKg ?? l.packKg
-        if (l.unitPrice === item.price && delivery === (item.delivery ?? null) && packKg === item.packKg) return item
+        if (l.unitPrice === item.price && packKg === item.packKg) return item
         changed = true
-        return { ...item, price: l.unitPrice, delivery, packKg }
+        return { ...item, price: l.unitPrice, packKg }
       })
       return changed ? next : current
     })

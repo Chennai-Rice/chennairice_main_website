@@ -94,7 +94,6 @@ export default function ProductDetailPage() {
     id: `${product.id}-${selected.kg}kg`,
     name: `${product.name} (${selected.kg} kg)`,
     price: selected.price,
-    delivery: selected.delivery,
     // Carried so the cart can price against the size actually bought. Without
     // it CartRow fell back to a hardcoded "/ 10 kg" for every line, which
     // misstated the basis on the 5 kg, 25 kg and 26 kg packs.
@@ -162,10 +161,10 @@ export default function ProductDetailPage() {
                   <span className="pdp-price">
                     {soldOut && selected.price == null ? "Out of stock" : formatRupees(selected.price * (soldOut ? 1 : qty))}
                   </span>
-                  {selected.delivery != null && selected.price != null && (
+                  {selected.delivery?.TN != null && selected.price != null && (
                     <span className="pdp-price-delivery">
-                      + {formatRupees(selected.delivery * (soldOut ? 1 : qty))} delivery charge
-                      <span className="pdp-price-delivery-note"> · delivery within Tamil Nadu</span>
+                      + delivery charge from {formatRupees(selected.delivery.TN * (soldOut ? 1 : qty))}
+                      <span className="pdp-price-delivery-note"> · worked out from your PIN code at checkout</span>
                     </span>
                   )}
                 </>
