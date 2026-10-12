@@ -910,3 +910,26 @@
   font-weight: 600;
   color: #2f7a4b;
 }
+
+/* The click ripple (useRipple) is a span added inside the button. Without
+   these rules it sat in the button's flow at full size and was never removed,
+   so every press made the button bigger. */
+.pdp-add-btn,
+.pdp-cta-row .btn-outline {
+  position: relative;
+  overflow: hidden;
+}
+.pdp-add-btn .ripple,
+.pdp-cta-row .btn-outline .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(0);
+  animation: pdp-ripple 480ms ease-out forwards;
+  pointer-events: none;
+}
+@keyframes pdp-ripple {
+  to { transform: scale(2.6); opacity: 0; }
+}
+/* Wide enough for "Add Another", so the label change never resizes it. */
+@media (min-width: 721px) { .pdp-cta-row .pdp-add-btn { min-width: 12rem; justify-content: center; } }
