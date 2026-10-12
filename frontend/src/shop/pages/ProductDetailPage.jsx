@@ -12,7 +12,7 @@ import RelatedProducts from "../components/RelatedProducts.jsx";
 import BulkOrderCTA from "../components/BulkOrderCTA.jsx";
 import CheckoutBar from "../components/CheckoutBar.jsx";
 import { useProduct, useProducts } from "../data/products.js";
-import { getDetails, getCategoryLabel, GRAIN_JOURNEY, GALLERY_EXTRAS } from "../data/productDetails.js";
+import { getDetails, getCategoryLabel, GRAIN_JOURNEY } from "../data/productDetails.js";
 import { useCart } from "../hooks/useCart.jsx";
 import { useWishlist } from "../hooks/useWishlist.jsx";
 import { useRipple } from "../hooks/useRipple.js";
@@ -85,7 +85,8 @@ export default function ProductDetailPage() {
   const details = getDetails(product.id);
   const inCart = items.find((item) => item.id === `${product.id}-${selected.kg}kg`);
 
-  const galleryImages = [{ src: product.image, alt: product.alt }, ...GALLERY_EXTRAS];
+  // Just the pack photo: the grain / field / cooked-rice extras were removed (owner, Oct 2026).
+  const galleryImages = [{ src: product.image, alt: product.alt }];
 
   const cartProduct = {
     ...product,

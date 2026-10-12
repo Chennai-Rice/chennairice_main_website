@@ -6,14 +6,6 @@
 // confirmed for any pack, so those fields are left null and the page shows
 // a clearly labelled "coming soon" state instead of inventing numbers.
 
-// Shown after each product's own pack shot in the PDP gallery — the same
-// three story photos for every product (grain, field, cooked bowl), since
-// they illustrate the shared journey rather than one specific pack.
-export const GALLERY_EXTRAS = [
-  { src: "/assets/shop/gallery/grain-macro.jpg", alt: "Close-up of polished rice grains", scene: true },
-  { src: "/assets/about/hero-field.png", alt: "Green paddy fields where the rice is grown", scene: true },
-  { src: "/assets/shop/gallery/rice-bowl-cooked.jpg", alt: "A warm bowl of cooked rice", scene: true },
-];
 
 /* `variant` is a presentation token — it picks the card's colour treatment,
    nothing more — so it cannot carry a claim about what is in the bag. Keying a

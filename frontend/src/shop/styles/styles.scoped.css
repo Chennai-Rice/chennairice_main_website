@@ -2657,3 +2657,63 @@
   place-items: center;
   cursor: pointer;
 }
+
+/* ---------- Phones: two cards per row ----------
+   The flex grid above keeps one 280px card per row on a phone. Below 640px it
+   becomes a strict two-column grid and the card tightens to fit half a screen:
+   smaller pack shot and type, description clipped to three lines, and the two
+   buttons stacked so each keeps a full-width tap target. */
+@media (max-width: 640px) {
+  .shop-scope .product-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .shop-scope .product-grid > li { min-width: 0; max-width: none; }
+  .shop-scope .card:hover,
+  .shop-scope .card:focus-within { transform: none; }
+
+  .shop-scope .card-media { padding: 34px 8px 8px; }
+  .shop-scope .card-media img { height: 9.5rem; }
+  .shop-scope .premium-flag,
+  .shop-scope .stock-flag {
+    top: 8px; left: 8px;
+    padding: 3px 8px;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+  }
+  .shop-scope .card-wishlist { top: 6px; right: 6px; width: 30px; height: 30px; }
+  .shop-scope .card-wishlist svg { width: 15px; height: 15px; }
+
+  .shop-scope .card-body { padding: 10px 10px 12px; gap: 4px; }
+  .shop-scope .card-tag { font-size: 0.6rem; letter-spacing: 0.1em; }
+  .shop-scope .card-title { font-size: 1.05rem; line-height: 1.2; }
+  .shop-scope .card-desc {
+    font-size: 0.78rem;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .shop-scope .pack-size-group { margin-top: 6px; gap: 4px; flex-wrap: wrap; }
+  .shop-scope .pack-size-pill { padding: 5px 2px; font-size: 0.72rem; min-width: 2.6rem; }
+
+  .shop-scope .card-foot { padding-top: 8px; gap: 8px; }
+  .shop-scope .price-mrp { display: block; margin: 0 0 1px; font-size: 0.75rem; }
+  .shop-scope .price-amount { font-size: 1.2rem; }
+  .shop-scope .price-unit { font-size: 0.72rem; }
+  .shop-scope .price-stock-note { font-size: 0.66rem; }
+
+  .shop-scope .card-actions { flex-direction: column; gap: 6px; }
+  .shop-scope .card-actions .view-btn,
+  .shop-scope .card-actions .add-btn,
+  .shop-scope .card-actions .qty--card {
+    width: 100%;
+    min-height: 36px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    text-align: center;
+  }
+}
