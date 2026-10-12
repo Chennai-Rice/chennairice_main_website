@@ -2675,9 +2675,12 @@
 
   .shop-scope .card-media { padding: 34px 8px 8px; }
   .shop-scope .card-media img { height: 9.5rem; }
+  .shop-scope .premium-flag { top: 8px; }
+  /* Out of stock sits at the foot of the photo, as on larger screens. */
+  .shop-scope .stock-flag { top: auto; bottom: 8px; white-space: nowrap; }
   .shop-scope .premium-flag,
   .shop-scope .stock-flag {
-    top: 8px; left: 8px;
+    left: 8px;
     padding: 3px 8px;
     font-size: 0.6rem;
     letter-spacing: 0.08em;
