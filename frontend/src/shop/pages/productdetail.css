@@ -430,6 +430,19 @@
 .pdp-tab-panel {
   position: relative;
 }
+/* "About <name> Rice", above the description tabs. */
+.pdp-about h2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  color: var(--ink-900);
+  margin: 0 0 var(--s-4);
+}
+.pdp-about > p {
+  margin: 0 0 var(--s-6);
+  max-width: 72ch;
+  line-height: 1.7;
+  color: var(--ink-700);
+}
 .pdp-tab-panel h3 {
   font-family: var(--font-display);
   font-size: var(--fs-h3);
@@ -644,7 +657,8 @@
   height: 100%;
   object-fit: cover;
 }
-.pdp-recipe-card h4 {
+.pdp-recipe-card h3 {
+  font-size: 1.15rem;
   margin: var(--s-3) var(--s-4) 4px;
   font-family: var(--font-display);
   color: var(--ink-900);
@@ -800,8 +814,9 @@
   gap: var(--s-6);
   margin-bottom: var(--s-16);
 }
-.pdp-bulk-cta h3 {
+.pdp-bulk-cta h2 {
   font-family: var(--font-display);
+  font-size: var(--fs-h3);
   color: var(--ink-900);
   margin: 0 0 4px;
 }

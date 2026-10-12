@@ -71,11 +71,13 @@ export default function Hero() {
       <div className="hero-overlay" />
 
       <div className={`hero-content${outro ? ' is-outro' : ''}`}>
-        <h1 className="hero-title">
+        {/* The big display line is decorative; the page heading (H1) sits under it. */}
+        <p className="hero-title">
           {HERO.titleLines.map(line => (
             <span key={line}>{line}</span>
           ))}
-        </h1>
+        </p>
+        <h1 className="home-hero-h1">{HERO.h1}</h1>
         <p className="home-hero-sub">{HERO.subtitle}</p>
       </div>
 

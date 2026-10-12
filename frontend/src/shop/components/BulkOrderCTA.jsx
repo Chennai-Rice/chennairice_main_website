@@ -5,7 +5,7 @@ export default function BulkOrderCTA() {
   return (
     <div className="pdp-bulk-cta">
       <div>
-        <h3>Looking for Rice in Bulk?</h3>
+        <h2>Looking for Rice in Bulk?</h2>
         <p>Connect with Chennai Rice for distributor, retailer and institutional requirements.</p>
       </div>
       <div className="pdp-bulk-actions">

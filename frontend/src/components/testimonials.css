@@ -26,6 +26,14 @@
   width: 300px;
 }
 
+.testi-label .testi-heading {
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  white-space: nowrap;
+}
+
 .testi-label {
   position: relative;
   z-index: 1;

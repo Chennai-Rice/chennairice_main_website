@@ -3,6 +3,7 @@ import ProductsShowcase from '../components/ProductsShowcase.jsx'
 import FeatureStrip from '../components/FeatureStrip.jsx'
 import Celebrities from '../components/Celebrities.jsx'
 import Testimonials from '../components/Testimonials.jsx'
+import HomeFaq from '../components/HomeFaq.jsx'
 import { showAmbassadors } from '../config.js'
 import usePageMeta from '../shop/hooks/usePageMeta.js'
 import { PAGE_META } from '../seo.js'
@@ -19,6 +20,7 @@ export default function HomePage() {
           it back is a change of one environment variable. */}
       {showAmbassadors && <Celebrities />}
       <Testimonials />
+      <HomeFaq />
     </main>
   )
 }

@@ -51,69 +51,113 @@ export const PAGE_META = {
   },
 }
 
-/** Shop product ID → its public URL slug, title and description. */
+/**
+ * Shop product ID → its public URL slug, title and description, plus the
+ * on-page headings from "Chennai Rice SEO - Product Page" (Oct 2026): the
+ * heading name (H1, card H3, "About <name> Rice"…), the one-line card text
+ * on the products page and the "Best Dishes to Cook with…" H3s.
+ */
 export const PRODUCT_SEO = {
   'a1-special-ponni': {
+    name: 'A1 Special Ponni',
+    line: 'Soft, fluffy grains for sambar sadam and curd rice.',
+    dishes: ['Sambar Sadam', 'Rasam Rice', 'Curd Rice'],
     slug: 'a1-special-ponni-rice',
     title: 'A1 Special Ponni Rice | Soft Everyday Rice | Chennai Rice',
     description: 'A1 Special Ponni cooks soft and fluffy, ideal for sambar sadam, rasam rice and curd rice. Quality graded for everyday meals. Order online today.',
   },
   'alibaba': {
+    name: 'Alibaba',
+    line: 'Full flavoured rice for a complete Tamil saapadu.',
+    dishes: ['Full Tamil Saapadu', 'Kuzhambu Rice', 'Rasam Rice'],
     slug: 'alibaba-sappadu-rice',
     title: 'Alibaba Premium Sappadu Rice | Chennai Rice',
     description: 'Alibaba is pure, full flavoured rice for a complete Tamil saapadu with kuzhambu, poriyal and kootu. Perfect for daily family lunch. Shop online.',
   },
   'nayara-super-aged': {
+    name: 'Nayara Super Aged',
+    line: 'Cooks separate and firm, perfect for lemon rice and lunch boxes.',
+    dishes: ['Lemon Rice', 'Tamarind Rice', 'Lunch Boxes'],
     slug: 'nayara-super-aged-rice',
     title: 'Nayara Super Aged Rice | Separate Grains | Chennai Rice',
     description: 'Nayara Super Aged rice cooks separate and firm, never sticky. Perfect for lemon rice, tamarind rice, coconut rice and lunch boxes. Order online now.',
   },
   'rudra': {
+    name: 'Rudra',
+    line: 'Original taste and rich aroma for everyday family meals.',
+    dishes: ['Sambar Rice', 'Kara Kuzhambu Rice', 'Mor Kuzhambu Rice'],
     slug: 'rudra-ponni-rice',
     title: 'Rudra Rice | Aromatic Rice for Daily Meals | Chennai Rice',
     description: 'Rudra rice brings original taste and a rich aroma to every meal. Ideal for sambar, kara kuzhambu and rasam with the whole family. Order online today.',
   },
   'special-rajabhogam': {
+    name: 'Special Rajabhogam',
+    line: 'Everyday rice in our signature red pack for comforting home meals.',
+    dishes: ['Sambar Rice', 'Vathal Kuzhambu Rice', 'Rasam Rice'],
     slug: 'special-rajabhogam-rice',
     title: 'Special Rajabhogam Rice | Red Pack | Chennai Rice',
     description: 'Special Rajabhogam in our signature red pack, sealed at Erode for clean grains. Everyday rice for lunch and dinner at home. Shop online today.',
   },
   'thaaram': {
+    name: 'Thaaram Nei Kitchadi',
+    line: 'Strong grains that hold shape in nei kitchadi and pongal.',
+    dishes: ['Nei Kitchadi', 'Ven Pongal', 'Sakkarai Pongal'],
     slug: 'thaaram-pooni-rice',
     title: 'Thaaram Nei Kitchadi Rice | Kitchadi & Pongal | Chennai Rice',
     description: 'Make perfect nei kitchadi and ven pongal with Thaaram: strong grains that hold shape, superior taste and rich aroma. Ideal for festive mornings.',
   },
   'united-5kg': {
+    name: 'United',
+    line: 'Clean, consistent rice for small families and daily meals.',
+    dishes: ['Daily Rice Meals', 'Curd Rice', 'Lunch Boxes'],
     slug: 'united-ponni-rice',
     title: 'United Rice | Everyday Rice for Daily Meals | Chennai Rice',
     description: 'United is clean, consistent everyday rice for couples, small families and students cooking at home. Great for daily meals and lunch boxes. Order online.',
   },
   'vijaya-nagaram': {
+    name: 'Vijaya Nagaram',
+    line: 'Familiar taste for sambar, rasam, kootu and curd rice.',
+    dishes: ['Sambar Rice', 'Rasam Rice', 'Curd Rice'],
     slug: 'vijaya-nagaram-rice',
     title: 'Vijaya Nagaram Rice | South Indian Meals | Chennai Rice',
     description: 'Vijaya Nagaram brings familiar taste to everyday South Indian meals with sambar, rasam, kootu and curd rice. Shop online today.',
   },
   'vintage': {
+    name: 'Vintage',
+    line: 'Our premium choice for festival lunches and family gatherings.',
+    dishes: ['Festival Lunches', 'Banana Leaf Feasts', 'Family Gatherings'],
     slug: 'vintage-ponni-rice',
     title: 'Vintage Rice | Premium Rice for Festivals | Chennai Rice',
     description: 'Vintage in the black and gold pack is our premium rice for festival lunches, family gatherings and special meals at home. Order online today.',
   },
   'viruchagam': {
+    name: 'Viruchagam',
+    line: 'Everyday rice for traditional Tamil lunch and dinner.',
+    dishes: ['Kuzhambu Rice', 'Rasam Rice', 'Curd Rice'],
     slug: 'viruchagam-ponni-rice',
     title: 'Viruchagam Rice | Traditional Tamil Meals | Chennai Rice',
     description: 'Viruchagam in the blue and gold pack is everyday rice for traditional Tamil lunch and dinner with kuzhambu, rasam and poriyal. Shop online.',
   },
   'chennai-bullets': {
+    name: 'Chennai Bullets',
+    line: 'Rich aroma for joint families, poojas and home functions.',
+    dishes: ['Poojas and Home Functions', 'Joint Family Meals', 'Festival Feasts'],
     slug: 'chennai-bullets-rice',
     title: 'Chennai Bullets Rice | Rich Aroma Rice | Chennai Rice',
     description: 'Chennai Bullets brings rich aroma to every meal. Ideal for joint families, home functions, poojas and festival feasts. Order online today.',
   },
   'kitchidi-ponni-rice': {
+    name: 'Kitchidi Ponni',
+    line: 'Everyday rice for real veettu saapadu, lunch and dinner.',
+    dishes: ['Veettu Saapadu', 'Sambar Rice', 'Curd Rice'],
     slug: 'kitchidi-ponni-rice',
     title: 'Kitchidi Ponni Rice | Everyday Home Meal Rice | Chennai Rice',
     description: 'Celebrate every special meal with Kitchidi Ponni Rice. Perfect for festive feasts, family gatherings, and everyday home cooking with authentic taste and aroma.',
   },
   'special-idly-rice': {
+    name: 'Special Idly Rice',
+    line: 'For soft, fluffy idlis and crisp golden dosas.',
+    dishes: ['Soft Idlis', 'Crisp Dosas', 'Uthappam'],
     slug: 'special-idly-rice',
     title: 'Special Idly Rice | Soft Idli & Crisp Dosa | Chennai Rice',
     description: 'Special Idly Rice for soft, fluffy idlis and crisp dosas. Grind fresh batter at home for breakfast and tiffin. Buy idli rice online today.',

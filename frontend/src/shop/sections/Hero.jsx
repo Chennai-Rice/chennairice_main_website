@@ -19,10 +19,10 @@ export default function Hero() {
           used to read "Kitchidi Ponni Rice" — one pack out of thirteen — which
           both misdescribed the page and made it compete with the Kitchidi Ponni
           product page for the same search. */}
-      <h1 id="hero-heading">Our Rice Packs</h1>
+      <h1 id="hero-heading">Chennai Rice: Quality Ponni Rice for Every Home, Every Meal</h1>
       <p className="hero-sub">
-        Ponni, Sappadu and Rajabhogam varieties, milled and sealed at our own Erode facility and packed from
-        5&nbsp;kg to 26&nbsp;kg.
+        Rice for every meal, milled and sealed at our own Erode facility. From everyday lunch and dinner to idli
+        batter, variety rice and festival feasts, find the right rice for your home.
       </p>
     </section>
   );

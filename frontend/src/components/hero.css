@@ -113,8 +113,29 @@
   }
 }
 
+/* The page heading, set small under the display line. */
+.home-hero-h1 {
+  margin: 22px auto 0;
+  max-width: 760px;
+  font-family: var(--sans);
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.5);
+}
+@media (max-width: 600px) {
+  .home-hero-h1 {
+    margin-top: 14px;
+    font-size: 12.5px;
+    letter-spacing: 0.12em;
+  }
+}
+
 .home-hero-sub {
-  margin-top: 26px;
+  margin-top: 18px;
   font-size: 16px;
   font-weight: 400;
   color: #e6dac0;

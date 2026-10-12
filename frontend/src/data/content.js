@@ -49,6 +49,7 @@ export const HERO = {
   // Curly quotes rather than the straight " character: this is display
   // typography, and a straight quote reads as an inch mark at 4rem.
   titleLines: ['“RICE”', 'The White Gold', 'Among Foods.'],
+  h1: 'Chennai Rice: Authentic Ponni Rice for Every Tamil Kitchen',
   subtitle: 'The simplicity of cooking rice is the most culturally satisfying experience.',
   estd: "1950's",
 }
@@ -62,9 +63,9 @@ export const PRODUCTS = [
     shortName: 'Special Rajabhogam',
     shopPath: '/products/special-rajabhogam-rice',
     ghost: ['SPECIAL', 'RAJABHOGAM'],
-    name: 'SPECIAL RAJABHOGAM',
+    name: 'Special Rajabhogam',
     // Our signature red bag (catalogue: "Classic Red").
-    desc: 'Kitchidi Ponni rice in our signature red pack, milled and sealed at our own Erode facility.',
+    desc: 'Everyday rice in our signature red pack, for comforting lunch and dinner at home.',
     packSize: '5 / 10 / 26 KG',
     riceType: 'Kitchidi Ponni',
     idealFor: 'Everyday Family Meals',
@@ -76,10 +77,10 @@ export const PRODUCTS = [
     shortName: 'Kitchidi Ponni Rice',
     shopPath: '/products/kitchidi-ponni-rice',
     ghost: ['KITCHIDI', 'PONNI RICE'],
-    name: 'KITCHIDI PONNI RICE',
+    name: 'Kitchidi Ponni Rice',
     // The maroon-and-peach offer bag. From the pack: 1 year aged,
     // "Delicious Tastes", "From Mother's Hands to Your Heart".
-    desc: "Kitchidi Ponni, aged for a year, in our Chennai Rice premium pack. From Mother's Hands to Your Heart.",
+    desc: 'Made for real veettu saapadu, with clean grains for every daily meal.',
     packSize: '5 / 26 KG',
     riceType: '1 Year Aged Kitchidi Ponni',
     idealFor: 'Delicious Everyday Meals',
@@ -91,10 +92,10 @@ export const PRODUCTS = [
     shortName: 'Viruchagam',
     shopPath: '/products/viruchagam-ponni-rice',
     ghost: ['VIRUCHAGAM', 'POOMPUHAR'],
-    name: 'VIRUCHAGAM',
+    name: 'Viruchagam',
     // From the pack: SNR RNR Poompuhar Ponni, "Pure Rice", "100% Natural",
     // "Rich Nutrition".
-    desc: 'Poompuhar Ponni from SNR RNR paddy. Pure rice, 100% natural and rich in nutrition.',
+    desc: 'Everyday rice in the blue and gold pack, for traditional Tamil meals.',
     // Sizes from the 09-10-2026 price list.
     packSize: '5 / 10 / 26 KG',
     riceType: 'SNR RNR Poompuhar Ponni',
@@ -107,8 +108,8 @@ export const PRODUCTS = [
     shortName: 'Nayara Super Aged',
     shopPath: '/products/nayara-super-aged-rice',
     ghost: ['NAYARA', 'SUPER AGED'],
-    name: 'NAYARA SUPER AGED',
-    desc: 'Super-aged gel cook rice that stays separate and firm on the plate.',
+    name: 'Nayara Super Aged',
+    desc: 'Cooks separate and firm, perfect for lemon rice, tamarind rice and lunch boxes.',
     packSize: '5 / 10 / 26 KG',
     riceType: 'Super Aged Gel Cook Rice',
     idealFor: 'Daily Meals • Variety Rice',
@@ -134,13 +135,15 @@ export const SHOWCASE = {
   ctaButton: 'View All Products',
 }
 
+export const FEATURES_TITLE = 'Why Tamil Homes Trust Chennai Rice ?'
+
 export const FEATURES = [
-  { icon: 'sourced', label: ['Carefully', 'Sourced'] },
-  { icon: 'processed', label: ['Hygienically', 'Processed'] },
-  { icon: 'quality', label: ['Premium', 'Quality'] },
-  { icon: 'grains', label: ['Uniform', 'Grains'] },
-  { icon: 'polish', label: ['No Artificial', 'Polish'] },
-  { icon: 'aroma', label: ['Rich in Taste', '& Aroma'] },
+  { icon: 'sourced', label: ['Carefully', 'Sourced'], text: 'Paddy procured from five states and kept separate and traceable from purchase to storage.' },
+  { icon: 'processed', label: ['Hygienically', 'Processed'], text: 'Fully automated milling at our Erode facility, untouched by hand from paddy to pack.' },
+  { icon: 'quality', label: ['Premium', 'Quality'], text: 'Moisture, purity and grain condition checked at intake, during processing and before dispatch.' },
+  { icon: 'grains', label: ['Uniform', 'Grains'], text: 'Graded and colour sorted so every grain looks and cooks the same.' },
+  { icon: 'polish', label: ['No Artificial', 'Polish'], text: 'Rice the way it should be, with nothing added to make it shine.' },
+  { icon: 'aroma', label: ['Rich in Taste', '& Aroma'], text: 'Stored with care in monitored silos so every meal keeps its natural taste and aroma.' },
 ]
 
 // Ratings run 3 to 5 rather than a wall of fives. The quote and the score
@@ -267,6 +270,7 @@ export const CELEBS = [
   },
   {
     name: 'Prabhu',
+    heading: 'Actor Prabhu, Brand Ambassador of Chennai Rice',
     role: 'Actor',
     quote: 'Good food begins with good rice. Chennai Rice has earned its place at our family table.',
     image: '/assets/celebs/prabhu.png',
@@ -367,3 +371,28 @@ export const FOOTER = {
   copyright: 'Chennai Rice Industries India Private Limited',
 }
 
+
+/* Home page FAQs (Chennai Rice SEO - Homepage, Oct 2026). Also published as
+   FAQPage structured data by HomeFaq. */
+export const HOME_FAQS = [
+  {
+    q: 'What is Ponni rice?',
+    a: 'Ponni rice is a medium grain white rice widely grown and eaten across Tamil Nadu. It cooks soft and light, absorbs the flavour of sambar, rasam and kuzhambu well, and is the most popular choice for everyday South Indian meals, curd rice and lunch boxes.',
+  },
+  {
+    q: 'What is the difference between raw rice and boiled rice?',
+    a: 'Raw rice (pachai arisi) is milled directly from dried paddy and cooks soft and slightly sticky, which suits pongal, payasam and sweet dishes. Boiled rice (puzhungal arisi) is made from paddy that is soaked, steamed and dried before milling. It cooks firmer, with grains that stay separate, and is commonly used for daily meals.',
+  },
+  {
+    q: 'What is parboiled rice?',
+    a: 'Parboiled rice is rice that has been partially boiled in its husk before milling. The process of soaking, steaming and drying moves some nutrients from the bran into the grain, makes the grain harder and helps it cook into firm, separate grains. In Tamil Nadu it is widely known as boiled rice or puzhungal arisi.',
+  },
+  {
+    q: 'What is aged rice and why does it cook better?',
+    a: 'Aged rice is stored for several months after harvest before it is sold. During ageing the grain loses moisture and firms up, so it absorbs more water, swells more and cooks into fluffy, separate grains instead of turning sticky.',
+  },
+  {
+    q: 'How do I identify good quality rice?',
+    a: 'Good quality rice has grains of uniform size and colour, very few broken grains, and no stones, husk or dust. It should smell fresh and natural, with no musty odour. Rice that is graded and colour sorted during milling, like Chennai Rice, meets these standards consistently.',
+  },
+]

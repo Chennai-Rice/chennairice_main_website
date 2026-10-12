@@ -56,14 +56,14 @@ export default function Lineup() {
 
   return (
     <section className="lineup" aria-labelledby="lineup-heading">
-      <p className="lineup-eyebrow">The complete range</p>
+      <p className="lineup-eyebrow">The complete range &middot; {lineup.length} packs</p>
       {/* Counted from the catalogue rather than written in. The previous copy
           said "Four packs" long after the range had grown to thirteen, because
           the number lived in the markup and nothing tied it to the data. */}
       <h2 id="lineup-heading" className="lineup-title">
-        {lineup.length} packs.
+        One Standard of Quality{" "}
         <br />
-        One standard.
+        Across Every Pack
       </h2>
       <p className="lineup-sub">
         From the 5&nbsp;kg Kitchidi Ponni to the 26&nbsp;kg Chennai Bullets &mdash; every pack milled, graded and

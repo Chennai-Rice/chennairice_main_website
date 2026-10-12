@@ -5,7 +5,7 @@ import Breadcrumb from "../components/Breadcrumb.jsx";
 import ProductGallery from "../components/ProductGallery.jsx";
 import PackSizeSelector from "../components/PackSizeSelector.jsx";
 import QuantitySelector from "../components/QuantitySelector.jsx";
-import ProductTabs from "../components/ProductTabs.jsx";
+import ProductTabs, { ProductAbout } from "../components/ProductTabs.jsx";
 import JourneyTimeline from "../components/JourneyTimeline.jsx";
 import RecipeTeaser from "../components/RecipeTeaser.jsx";
 import RelatedProducts from "../components/RelatedProducts.jsx";
@@ -112,6 +112,12 @@ export default function ProductDetailPage() {
 
   const related = allProducts.filter((p) => p.id !== product.id);
 
+  // Headings follow "Chennai Rice SEO - Product Page": the H1 is the product's
+  // heading name and the sections say "<name> Rice" ("Special Idly Rice"
+  // already ends in Rice).
+  const headName = seo?.name || product.name;
+  const riceName = /rice$/i.test(headName) ? headName : `${headName} Rice`;
+
   return (
     <SiteLayout skipTo="pdp-main" skipLabel="Skip to product">
       <main id="pdp-main" className="pdp">
@@ -137,9 +143,9 @@ export default function ProductDetailPage() {
 
           <div className="pdp-info">
             <span className="pdp-badge">Premium Quality</span>
-            <h1 className="pdp-title">{product.name}</h1>
+            <h1 className="pdp-title">{headName}</h1>
             <p className="pdp-subtitle">{category}</p>
-            <p className="pdp-desc">{product.description}</p>
+            <p className="pdp-desc">{seo?.line || product.description}</p>
 
             {/* While prices are unpublished this reads "Price on request" and
                 points at the sales team, rather than showing the ₹0 that every
@@ -228,22 +234,29 @@ export default function ProductDetailPage() {
         </section>
 
         <section className="pdp-section">
-          <ProductTabs product={product} details={details} />
+          <ProductAbout product={product} details={details} riceName={riceName} />
+        </section>
+
+        <section className="pdp-section">
+          <div className="pdp-section-head">
+            <h2>{riceName} Product Description</h2>
+          </div>
+          <ProductTabs product={product} details={details} riceName={riceName} />
         </section>
 
         <section className="pdp-section pdp-journey-section">
           <div className="pdp-section-head">
             <span className="pdp-section-eyebrow">From Field to Family</span>
-            <h2>The Journey of Every Grain</h2>
+            <h2>From Paddy to Pack: How Rice Is Made</h2>
           </div>
           <JourneyTimeline steps={GRAIN_JOURNEY} />
         </section>
 
         <section className="pdp-section">
           <div className="pdp-section-head">
-            <h2>Made for Your Everyday Table</h2>
+            <h2>Best Dishes to Cook with {riceName}</h2>
           </div>
-          <RecipeTeaser />
+          <RecipeTeaser dishes={seo?.dishes} />
         </section>
 
         {related.length > 0 && (

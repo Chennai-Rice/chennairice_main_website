@@ -34,7 +34,7 @@ export default function ProductGrid({ search, activeFilter, onFilterChange }) {
       <div className="products-head">
         <div className="products-head-top">
           {/* Not "10 kg packs" any more — the range now runs 5 kg to 26 kg. */}
-          <h2 id="products-heading">Our Rice Packs</h2>
+          <h2 id="products-heading">Explore Our Rice Range</h2>
           <div className="products-head-note-group">
             <p className="results-note" aria-live="polite">
               {note}

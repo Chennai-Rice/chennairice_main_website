@@ -1,4 +1,4 @@
-import { FEATURES, PRODUCTS } from '../data/content.js'
+import { FEATURES, FEATURES_TITLE, PRODUCTS } from '../data/content.js'
 import { showAmbassadors } from '../config.js'
 import './featurestrip.css'
 
@@ -87,6 +87,8 @@ export default function FeatureStrip() {
           </defs>
         </svg>
 
+        <h2 className="feat-title">{FEATURES_TITLE}</h2>
+
         <div className="container feat-row">
           {FEATURES.map(f => (
             <div className="feat-cell" key={f.icon}>
@@ -104,11 +106,12 @@ export default function FeatureStrip() {
               >
                 {ICONS[f.icon]}
               </svg>
-              <div className="feat-label">
-                {f.label.map(line => (
-                  <span key={line}>{line}</span>
+              <h3 className="feat-label">
+                {f.label.map((line, i) => (
+                  <span key={line}>{i > 0 && ' '}{line}</span>
                 ))}
-              </div>
+              </h3>
+              <p className="feat-text">{f.text}</p>
             </div>
           ))}
         </div>

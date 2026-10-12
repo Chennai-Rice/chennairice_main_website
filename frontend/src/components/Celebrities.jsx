@@ -70,7 +70,7 @@ function Spotlight({ c }) {
         <Img src={c.image} alt={c.name} loading="lazy" />
       </div>
       <figcaption className="celeb-spot-body">
-        <h3 className="celeb-spot-name">{c.name}</h3>
+        <h3 className={`celeb-spot-name${c.heading ? ' is-long' : ''}`}>{c.heading || c.name}</h3>
         <QuoteMark />
         <span className="celeb-rule" aria-hidden="true" />
         <blockquote className="celeb-spot-quote">{c.quote}</blockquote>

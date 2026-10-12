@@ -80,7 +80,7 @@ export default function Testimonials() {
 
       <div className="section-label testi-label">
         <Ornament />
-        <span>What Our Customers Say</span>
+        <h2 className="testi-heading">What Our Customers Say</h2>
         <Ornament flip />
       </div>
 

@@ -265,6 +265,11 @@
   margin-bottom: 6px;
 }
 
+.celeb-spot-name.is-long {
+  font-size: clamp(1.5rem, 2.3vw, 2rem);
+  line-height: 1.2;
+}
+
 .celeb-spot .celeb-mark {
   width: 34px;
   height: 24px;
@@ -305,5 +310,6 @@
     gap: 12px;
   }
   .celeb-spot-name { font-size: 2rem; }
+  .celeb-spot-name.is-long { font-size: 1.45rem; }
   .celeb-spot-quote { font-size: 15.5px; margin: 4px 0 0; }
 }

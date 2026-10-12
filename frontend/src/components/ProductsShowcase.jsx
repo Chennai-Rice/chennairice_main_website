@@ -128,9 +128,9 @@ function ProductSlide({ product, isFirst }) {
                 />
               </svg>
             </Link>
-            <a className="btn-outline" href="/contact-us">
-              Enquire
-            </a>
+            <Link className="btn-outline" to="/rice-products">
+              View Products
+            </Link>
           </div>
         </div>
 
@@ -324,7 +324,7 @@ export default function ProductsShowcase() {
         {/* Heading rides inside the pinned frame, so it stays above the
             products the whole way through the carousel. */}
         <div className="showcase-header">
-          <SectionHead label="Our Best Sellers" title="Finest Rice, Finest Life" />
+          <SectionHead label="Finest Rice, Finest Life" title="Our Bestselling Rice" />
         </div>
 
         {SHOW_INTRO_AND_CTA_SLIDES && (

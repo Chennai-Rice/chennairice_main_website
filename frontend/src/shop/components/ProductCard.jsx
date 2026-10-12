@@ -5,7 +5,7 @@ import { useRipple } from "../hooks/useRipple.js";
 import { useWishlist } from "../hooks/useWishlist.jsx";
 import { formatRupees } from "../utils/format.js";
 import { showCardPrices } from "../../config.js";
-import { productPath } from "../../seo.js";
+import { PRODUCT_SEO, productPath } from "../../seo.js";
 
 export default function ProductCard({ product }) {
   const spawnRipple = useRipple();
@@ -90,8 +90,8 @@ export default function ProductCard({ product }) {
       </figure>
       <div className="card-body">
         <p className="card-tag">{product.tag}</p>
-        <h3 className="card-title">{product.name}</h3>
-        <p className="card-desc">{product.description}</p>
+        <h3 className="card-title">{PRODUCT_SEO[product.id]?.name || product.name}</h3>
+        <p className="card-desc">{PRODUCT_SEO[product.id]?.line || product.description}</p>
 
         <div className="pack-size-group" role="group" aria-label={`Pack size for ${product.name}`}>
           {sizes.map((size) => (

@@ -1,0 +1,98 @@
+.home-faq {
+  background: var(--cream-soft);
+  padding-block: 80px 96px;
+}
+
+.home-faq-inner {
+  max-width: 860px;
+}
+
+.home-faq-list {
+  margin-top: 40px;
+  border-top: 1px solid rgba(74, 44, 34, 0.16);
+}
+
+.home-faq-item {
+  border-bottom: 1px solid rgba(74, 44, 34, 0.16);
+}
+
+.home-faq-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 4px;
+  cursor: pointer;
+  list-style: none;
+}
+.home-faq-item summary::-webkit-details-marker {
+  display: none;
+}
+.home-faq-item summary:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.home-faq-q {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 1.35;
+  color: var(--heading);
+}
+
+/* A plus that turns into a minus when the answer is open. */
+.home-faq-icon {
+  position: relative;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+}
+.home-faq-icon::before,
+.home-faq-icon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 11px;
+  height: 1.5px;
+  background: var(--gold-deep);
+  transform: translate(-50%, -50%);
+  transition: transform 0.25s ease;
+}
+.home-faq-icon::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+.home-faq-item[open] .home-faq-icon::after {
+  transform: translate(-50%, -50%) rotate(0deg);
+}
+
+.home-faq-a {
+  margin: 0;
+  padding: 0 52px 24px 4px;
+  font-size: 15.5px;
+  line-height: 1.75;
+  color: var(--ink);
+}
+
+@media (max-width: 600px) {
+  .home-faq {
+    padding-block: 56px 64px;
+  }
+  .home-faq-list {
+    margin-top: 28px;
+  }
+  .home-faq-item summary {
+    padding: 18px 0;
+  }
+  .home-faq-q {
+    font-size: 17px;
+  }
+  .home-faq-a {
+    padding: 0 0 20px;
+    font-size: 14.5px;
+  }
+}
