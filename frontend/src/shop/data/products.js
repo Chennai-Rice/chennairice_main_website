@@ -364,6 +364,8 @@ async function fetchSalesCatalog() {
           price: v.price == null ? null : Number(v.price),
           // Struck through beside the price as the offer, only when it is higher.
           mrp: v.mrp != null && v.price != null && Number(v.mrp) > Number(v.price) ? Number(v.mrp) : null,
+          // Delivery charge for this pack (Tamil Nadu), added at checkout.
+          delivery: v.delivery == null ? null : Number(v.delivery),
           inStock: v.price != null && v.inStock,
         }))
         .sort((a, b) => a.kg - b.kg);

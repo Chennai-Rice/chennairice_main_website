@@ -66,6 +66,7 @@ export function CartProvider({ children }) {
           name: product.name,
           tag: product.tag,
           price: product.price,
+          delivery: product.delivery ?? null,
           image: product.image,
           qty: 1
         }
@@ -85,6 +86,25 @@ export function CartProvider({ children }) {
     setItems((current) => current.filter((item) => item.id !== id));
   }, []);
 
+  // The server's prices win: a cart saved before a price change is brought up
+  // to date from the checkout quote (unit price, delivery and size per pack).
+  const syncPrices = useCallback((lines) => {
+    const byId = new Map((lines || []).map((l) => [l.id, l]))
+    setItems((current) => {
+      let changed = false
+      const next = current.map((item) => {
+        const l = byId.get(item.id)
+        if (!l) return item
+        const delivery = l.delivery ?? null
+        const packKg = item.packKg ?? l.packKg
+        if (l.unitPrice === item.price && delivery === (item.delivery ?? null) && packKg === item.packKg) return item
+        changed = true
+        return { ...item, price: l.unitPrice, delivery, packKg }
+      })
+      return changed ? next : current
+    })
+  }, []);
+
   // Emptied once an order is paid for — leaving the packs in the cart after
   // checkout invites the customer to buy them a second time.
   const clear = useCallback(() => setItems([]), []);
@@ -92,8 +112,8 @@ export function CartProvider({ children }) {
   const value = useMemo(() => {
     const count = items.reduce((total, item) => total + item.qty, 0);
     const subtotal = items.reduce((total, item) => total + item.price * item.qty, 0);
-    return { items, count, subtotal, add, setQty, remove, clear };
-  }, [items, add, setQty, remove, clear]);
+    return { items, count, subtotal, add, setQty, remove, clear, syncPrices };
+  }, [items, add, setQty, remove, clear, syncPrices]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

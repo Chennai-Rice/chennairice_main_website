@@ -936,3 +936,45 @@ test('shipped email: sent on dispatch with shipment ID and tracking; tracking ad
     await new Promise((r) => smtpd.close(r))
   }
 })
+
+test('delivery charge: per pack, Tamil Nadu only, with its GST on the invoice', async () => {
+  // As the price list sets it up: per-pack delivery, one Tamil Nadu zone.
+  const alibaba10 = (await db.query(
+    `select v.id from product_variants v join products p on p.id = v.product_id where p.slug = 'alibaba' and v.pack_kg = 10`)).rows[0].id
+  await db.query('update product_variants set delivery_paise = 5400 where id = $1', [alibaba10])
+  await db.query('update stock_levels set on_hand = on_hand + 10 where variant_id = $1', [alibaba10])
+  await db.query(`insert into shipping_zones (code, name, states) values ('TN', 'Tamil Nadu', '{Tamil Nadu}')`)
+  await db.query(`update shipping_zones set is_active = false, is_default = false where code <> 'TN'`)
+  try {
+    const q = await api('POST', '/api/checkout/quote', { body: { state: 'Tamil Nadu', items: [{ id: 'alibaba-10kg', qty: 2 }] } })
+    assert.equal(q.status, 200, JSON.stringify(q.body))
+    assert.equal(q.body.shipping, 108) // ₹54 × 2 packs
+    assert.equal(q.body.total, q.body.subtotal + 108)
+    assert.equal(q.body.lines[0].delivery, 54)
+
+    const away = await api('POST', '/api/checkout/quote', { body: { state: 'Kerala', items: [{ id: 'alibaba-10kg', qty: 1 }] } })
+    assert.equal(away.status, 422)
+    assert.match(away.body.error, /only within Tamil Nadu/)
+
+    const { session, verify } = await buy([{ id: 'alibaba-10kg', qty: 2 }])
+    assert.equal(verify.status, 200, JSON.stringify(verify.body))
+    assert.equal(session.amount, q.body.total)
+    const { rows: [o] } = await db.query('select * from orders where id = $1', [session.orderId])
+    assert.equal(Number(o.shipping_paise), 10800)
+    assert.equal(o.shipping_tax_rate_bp, 1800)
+
+    const { issueInvoice } = await import('../lib/sales/operations.js')
+    const inv = await issueInvoice(db, o)
+    const { rows: [t] } = await db.query(
+      'select sum(taxable_paise)::int as taxable, sum(cgst_paise + sgst_paise)::int as tax from order_items where order_id = $1', [o.id])
+    // ₹108 incl. 18% GST = ₹91.53 taxable + ₹16.47 GST (CGST + SGST within Tamil Nadu).
+    assert.equal(Number(inv.taxable_paise), t.taxable + 9153)
+    assert.equal(Number(inv.cgst_paise) + Number(inv.sgst_paise), t.tax + 1647)
+    assert.equal(Number(inv.igst_paise), 0)
+    assert.equal(Number(inv.total_paise), Number(o.total_paise))
+  } finally {
+    await db.query('update product_variants set delivery_paise = null where id = $1', [alibaba10])
+    await db.query(`delete from shipping_zones where code = 'TN'`)
+    await db.query(`update shipping_zones set is_active = true, is_default = true where code = 'ALL_INDIA'`)
+  }
+})

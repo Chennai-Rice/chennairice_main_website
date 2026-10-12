@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import SiteLayout from "../layouts/SiteLayout.jsx";
 import { useCart } from "../hooks/useCart.jsx";
+import useCartQuote, { DELIVERY_STATE } from "../hooks/useCartQuote.js";
 import { formatRupees } from "../utils/format.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
@@ -55,7 +56,8 @@ function validate(form) {
 }
 
 export default function CheckoutPage() {
-  const { items, count, subtotal, clear } = useCart();
+  const { items, count, clear } = useCart();
+  const { subtotal, shipping, total, error: quoteError } = useCartQuote();
   const navigate = useNavigate();
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
@@ -109,6 +111,7 @@ export default function CheckoutPage() {
       try {
         session = await initiatePayment({
           ...form,
+          state: DELIVERY_STATE,
           items: items.map((item) => ({ id: item.id, qty: item.qty })),
           ...(orderId ? { orderId } : {}),
           ...(excludeGateway.length ? { excludeGateway } : {}),
@@ -341,16 +344,16 @@ export default function CheckoutPage() {
 
                 <label className="field">
                   <span className="field-label">State</span>
+                  {/* We deliver within Tamil Nadu only for now. */}
                   <input
                     type="text"
-                    value={form.state}
-                    onChange={set("state")}
-                    placeholder="Tamil Nadu"
+                    value={DELIVERY_STATE}
+                    readOnly
                     autoComplete="address-level1"
-                    aria-invalid={!!errors.state}
+                    aria-describedby="state-hint"
                     disabled={busy}
                   />
-                  {errors.state && <span className="field-error">{errors.state}</span>}
+                  <span id="state-hint" className="field-hint">We currently deliver within Tamil Nadu only.</span>
                 </label>
 
                 <label className="field">
@@ -369,9 +372,9 @@ export default function CheckoutPage() {
                 </label>
               </div>
 
-              {failure && (
+              {(failure || quoteError) && (
                 <p className="field-error checkout-failure" role="alert">
-                  {failure}
+                  {failure || quoteError}
                 </p>
               )}
             </form>
@@ -400,18 +403,18 @@ export default function CheckoutPage() {
                   <dt>Packs</dt>
                   <dd>{count}</dd>
                 </div>
-                <div className="summary-row summary-row--muted">
-                  <dt>Delivery</dt>
-                  <dd>Free</dd>
+                <div className="summary-row">
+                  <dt>Delivery charge <span className="summary-sub">(Tamil Nadu)</span></dt>
+                  <dd>{shipping == null ? "—" : formatRupees(shipping)}</dd>
                 </div>
                 <div className="summary-row summary-row--total">
                   <dt>Total</dt>
-                  <dd>{formatRupees(subtotal)}</dd>
+                  <dd>{formatRupees(total)}</dd>
                 </div>
               </dl>
 
               <button className="checkout-btn" type="submit" form="checkout-form" disabled={busy}>
-                <strong>{busy ? "Opening payment…" : "Pay " + formatRupees(subtotal)}</strong>
+                <strong>{busy ? "Opening payment…" : "Pay " + formatRupees(total)}</strong>
               </button>
 
               {/* Which gateway handles the payment is the server's call, and

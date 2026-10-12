@@ -14,6 +14,7 @@
 import { tx, query } from '../db.js'
 import { createSessionWithFailover, getGateway } from '../gateways.js'
 import { priceCart, quoteShipping } from './catalog.js'
+import { deliveryTaxRateBp } from './tax.js'
 import { moveStock, releaseForOrder } from './stock.js'
 import { queueEmail, staffInbox, templates } from './email.js'
 import {
@@ -47,11 +48,14 @@ export function buildGuestCustomer(body) {
 /** Price a cart for display (no order is created, nothing is held). */
 export async function quoteCart(body) {
   const priced = await priceCart({ query }, body?.items, { shipState: str(body?.state) })
-  const shipping = await quoteShipping({ query }, { state: body?.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg })
+  const shipping = await quoteShipping({ query }, {
+    state: body?.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg, deliveryPaise: priced.deliveryPaise,
+  })
   return {
     lines: priced.lines.map((l) => ({
       id: l.slug + '-' + l.packKg + 'kg', name: l.name, packKg: l.packKg, qty: l.quantity,
       unitPrice: toRupees(l.unitPricePaise), lineTotal: toRupees(l.lineTotalPaise),
+      delivery: l.deliveryPaise == null ? null : toRupees(l.deliveryPaise),
     })),
     subtotal: toRupees(priced.subtotalPaise),
     shipping: toRupees(shipping),
@@ -71,7 +75,11 @@ export async function placeOrder(customer, items) {
     if (!loc) throw httpError('No fulfilment location is set up.', { status: 503, publicMessage: 'Ordering is temporarily unavailable.' })
 
     const priced = await priceCart(db, items, { shipState: customer.state })
-    const shipping = await quoteShipping(db, { state: customer.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg })
+    const shipping = await quoteShipping(db, {
+      state: customer.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg, deliveryPaise: priced.deliveryPaise,
+    })
+    // GST inside the delivery charge, kept with the order for its invoice.
+    const shippingTaxRateBp = deliveryTaxRateBp(settings)
 
     const { rows: [cust] } = await db.query(
       `insert into customers (email, name, phone) values ($1, $2, $3)
@@ -87,12 +95,13 @@ export async function placeOrder(customer, items) {
     const { rows: [order] } = await db.query(
       `insert into orders (order_number, customer_id, contact_name, contact_email, contact_phone,
                            shipping_address, ship_state, fulfilment_location_id,
-                           subtotal_paise, shipping_paise, total_paise, tax_paise, reservation_expires_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now() + make_interval(mins => $13))
+                           subtotal_paise, shipping_paise, total_paise, tax_paise, reservation_expires_at,
+                           shipping_tax_rate_bp)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now() + make_interval(mins => $13), $14)
        returning *`,
       [await reserveId(db, 'order', newOrderNumber), cust.id, customer.name, customer.email, customer.phone,
         address, customer.state, loc.id, priced.subtotalPaise, shipping,
-        priced.subtotalPaise + shipping, priced.taxPaise, holdMinutes]
+        priced.subtotalPaise + shipping, priced.taxPaise, holdMinutes, shipping ? shippingTaxRateBp : 0]
     )
     await linkId(db, order.order_number, order.id)
 

@@ -2,6 +2,7 @@
 // Same figures and layout as invoiceHtml() in documents.js. Built with the
 // PDF standard Helvetica, which has no ₹ glyph, so amounts read "Rs.".
 import PDFDocument from 'pdfkit'
+import { shippingTax } from './tax.js'
 
 const MAROON = '#6e1420'
 const MUTED = '#666666'
@@ -118,7 +119,15 @@ export function invoicePdf({ order, items, invoice, shipments }) {
       amount(i.line_total_paise),
     ])
   })
-  if (Number(order.shipping_paise)) drawWide('Delivery charge', amount(order.shipping_paise))
+  // Delivery charge as a taxed line of its own (older orders: a plain row).
+  const ship = shippingTax(order)
+  if (Number(order.shipping_paise) && ship.rateBp) {
+    drawRow([
+      '', 'Delivery charge', '', 1, amount(order.shipping_paise), amount(ship.taxable), `${ship.rateBp / 100}%`,
+      ...(intra ? [amount(ship.cgst), amount(ship.sgst)] : [amount(ship.igst)]),
+      amount(order.shipping_paise),
+    ])
+  } else if (Number(order.shipping_paise)) drawWide('Delivery charge', amount(order.shipping_paise))
   if (Number(order.discount_paise)) drawWide('Discount', '-' + amount(order.discount_paise))
   drawWide(
     `Total (taxable ${rs(invoice.taxable_paise)} + ` +

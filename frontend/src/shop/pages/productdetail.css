@@ -1195,3 +1195,15 @@ ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
   .pdp-share-menu { right: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .pdp-share-menu { animation: none; } }
+
+/* "+ ₹54 delivery charge" under the price (Tamil Nadu delivery). */
+.pdp-price-hero .pdp-price-delivery {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.95rem;
+  color: var(--ink-700);
+}
+.pdp-price-delivery-note {
+  color: var(--ink-500);
+  font-size: 0.85rem;
+}

@@ -4,16 +4,21 @@
 //   npm run db:prices -- --stock 100     ALSO sets 100 packs of every priced
 //                                        size in stock (local databases only)
 //
-// Price list "New Price List Effect From 09-10-2026" (CRIIPL). Prices are the
-// customer price per pack, in rupees; the list notes GST is included on the
-// 5 kg and 10 kg packs. Sizes a product no longer has on the list (e.g. the
-// Idly Rice 10/26 kg) are switched off, not deleted.
+// "Regional delivered price" sheet (Oct 2026), Tamil Nadu, 5 kg packs only.
+// For every pack the sheet takes the list price (from the price list of
+// 09-10-2026) and:
+//   website price = list price + ₹111, never above MRP   (what the pack costs)
+//   absorbed      = website price − list price
+//   delivery      = TN delivery cost − absorbed, rounded   (shown at checkout)
+// The website shows MRP struck through, the website price, and the delivery
+// charge per pack. Prices include GST.
 //
 // What it does, and it is safe to re-run:
 //   - creates any pack size on the list that does not exist yet
-//   - sets each listed size's price
-//   - packs NOT on the list get no price, so the shop shows them out of stock
-//     and checkout refuses them
+//   - sets each listed size's website price, MRP and delivery charge
+//   - pack sizes NOT on the list are switched off (10 kg, 26 kg for now)
+//   - products NOT on the list get no price: shown out of stock, refused at checkout
+//   - delivery is set up for Tamil Nadu only; any other state is refused
 // Changes apply to new orders only; existing orders keep the price they paid.
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -21,28 +26,37 @@ import { getPool, closePool } from '../lib/db.js'
 import { moveStock } from '../lib/sales/stock.js'
 import { defaultTaxRateBp, skuFor } from './seed.js'
 
-export const EFFECTIVE_FROM = '2026-10-09'
+export const EFFECTIVE_FROM = '2026-10-13'
 
-// slug → { packKg: price }. Item and variety as on the price list in comments.
+// From the sheet: the part of the delivery cost carried in the website price,
+// and the Tamil Nadu delivery cost of one 5 kg pack (₹140 + 18% GST).
+export const ABSORBED_RUPEES = 111
+export const TN_DELIVERY_RUPEES = 165.2
+export const DELIVERY_STATES = ['Tamil Nadu']
+
+// slug → { packKg: [list price, MRP] }. Item and variety as on the sheet.
 export const PRICE_LIST = {
-  'vintage': { 5: 471, 10: 930, 26: 2249 },            // Vintage Spl Ponni · JSR Kolam
-  'special-rajabhogam': { 5: 441, 10: 870, 26: 2099 }, // Chennai Rice · Vada Kolam Kitchidi Ponni
-  'vijaya-nagaram': { 5: 471, 10: 930, 26: 2249 },     // Vijayanagaram · Shikaripura Amaan Ponni
-  'united-5kg': { 5: 471, 10: 930, 26: 2249 },         // United · Shikaripura Amaan Ponni
-  'viruchagam': { 5: 471, 10: 930, 26: 2249 },         // Viruchagam · Shikaripura Amaan Ponni
-  'nayara-super-aged': { 5: 471, 10: 930, 26: 2249 },  // Nayara · Akshaya Amman Ponni
-  'a1-special-ponni': { 5: 471, 10: 930, 26: 2249 },   // A1 Ponni Rice · Akshaya Amman Ponni
-  'chennai-bullets': { 5: 441, 10: 870, 26: 2099 },    // Chennai Bullets · TN RNR / Kodad Bapatla / KA KNM
-  'alibaba': { 5: 441, 10: 870, 26: 2099 },            // Alibaba · TN RNR / Kodad Bapatla / KA KNM
-  'special-idly-rice': { 5: 255 },                     // OFFER: Special Idly Rice (Pink) 5 kg · Kalli Muthan kar
-  'kitchidi-ponni-rice': { 5: 444, 26: 2099 },         // OFFER: Chennai Rice Premium Kitchidi Ponni Rice
-  // Broken Rice (Jeera Old, 26 kg, ₹1000) is on the list but not sold online.
+  'vintage': { 5: [471, 619] },             // Vintage Spl Ponni · JSR Kolam
+  'special-rajabhogam': { 5: [441, 599] },  // Chennai Rice · Vada Kolam Kitchidi Ponni (red bag)
+  'vijaya-nagaram': { 5: [471, 619] },      // Vijayanagaram · Shikaripura Amaan Ponni
+  'united-5kg': { 5: [471, 619] },          // United · Shikaripura Amaan Ponni
+  'viruchagam': { 5: [471, 619] },          // Viruchagam · Shikaripura Amaan Ponni
+  'nayara-super-aged': { 5: [471, 619] },   // Nayara · Akshaya Amman Ponni
+  'a1-special-ponni': { 5: [471, 619] },    // A1 Ponni Rice · Akshaya Amman Ponni
+  'chennai-bullets': { 5: [441, 599] },     // Chennai Bullets · TN RNR / Kodad Bapatla / KA KNM
+  'alibaba': { 5: [441, 599] },             // Alibaba · TN RNR / Kodad Bapatla / KA KNM
+  'special-idly-rice': { 5: [255, 349] },   // Special Idly Rice (Pink) 5 kg · Kalli Muthan kar
+  'kitchidi-ponni-rice': { 5: [444, 599] }, // Chennai Rice Premium Kitchidi Ponni Rice (pink bag)
+  // Broken Rice (Jeera Old) is on the sheet but not sold online.
 }
 
-// Shown struck through next to the online price on the website, as an offer
-// (e.g. ~~₹544~~ ₹444). Stored as the variant's MRP; checkout always charges
-// the list price above.
-export const OFFER_MARKUP_RUPEES = 100
+/** Website price, MRP and delivery charge (₹) for one pack on the list. */
+export function packPricing(listPrice, mrp) {
+  const website = Math.min(listPrice + ABSORBED_RUPEES, mrp)
+  const absorbed = website - listPrice
+  const delivery = Math.max(0, Math.round(TN_DELIVERY_RUPEES - absorbed))
+  return { website, mrp, delivery }
+}
 
 // On the price list and added after the first catalog: created if missing,
 // and shown in the shop with its pack photo.
@@ -79,6 +93,17 @@ export async function applyPriceList({ pool, stock = 0, log = console.log } = {}
       )
     }
 
+    // Delivery: Tamil Nadu only. Every other zone (the old free "All India"
+    // default) is switched off, so checkout refuses other states.
+    await client.query(
+      `insert into shipping_zones (code, name, states, is_default, is_active)
+       values ('TN', 'Tamil Nadu', $1, false, true)
+       on conflict (code) do update set states = excluded.states, is_active = true`,
+      [DELIVERY_STATES]
+    )
+    await client.query(`update shipping_zones set is_active = false, is_default = false where code <> 'TN'`)
+    log(`  Delivery: ${DELIVERY_STATES.join(', ')} only`)
+
     const { rows: products } = await client.query('select id, slug, name, is_active from products')
     for (const p of products) {
       const prices = PRICE_LIST[p.slug]
@@ -91,17 +116,20 @@ export async function applyPriceList({ pool, stock = 0, log = console.log } = {}
       // because past orders still point at them.
       await client.query('update product_variants set is_active = false where product_id = $1 and not (pack_kg = any($2))',
         [p.id, Object.keys(prices).map(Number)])
-      for (const [kg, rupees] of Object.entries(prices)) {
+      const shown = []
+      for (const [kg, [listPrice, mrp]] of Object.entries(prices)) {
         const packKg = Number(kg)
+        const { website, delivery } = packPricing(listPrice, mrp)
         const { rows: [v] } = await client.query(
-          `insert into product_variants (product_id, sku, pack_kg, price_paise, mrp_paise, tax_rate_bp, reorder_level, is_active)
-           values ($1, $2, $3, $4, $5, $6, 20, true)
+          `insert into product_variants (product_id, sku, pack_kg, price_paise, mrp_paise, delivery_paise, tax_rate_bp, reorder_level, is_active)
+           values ($1, $2, $3, $4, $5, $6, $7, 20, true)
            on conflict (product_id, pack_kg) do update
-             set price_paise = excluded.price_paise, mrp_paise = excluded.mrp_paise, is_active = true
+             set price_paise = excluded.price_paise, mrp_paise = excluded.mrp_paise,
+                 delivery_paise = excluded.delivery_paise, is_active = true
            returning id`,
-          [p.id, skuFor(p.slug, packKg), packKg, Math.round(rupees * 100), Math.round((rupees + OFFER_MARKUP_RUPEES) * 100),
-            defaultTaxRateBp(packKg)]
+          [p.id, skuFor(p.slug, packKg), packKg, website * 100, mrp * 100, delivery * 100, defaultTaxRateBp(packKg)]
         )
+        shown.push(`${kg} kg MRP ₹${mrp} → ₹${website} + ₹${delivery} delivery`)
         if (stock && loc) {
           const { rows: [lvl] } = await client.query(
             'select on_hand, reserved from stock_levels where location_id = $1 and variant_id = $2', [loc.id, v.id])
@@ -111,7 +139,7 @@ export async function applyPriceList({ pool, stock = 0, log = console.log } = {}
           }
         }
       }
-      log(`  ${p.name}: ${Object.entries(prices).map(([kg, r]) => `${kg} kg ₹${r}`).join(', ')}${p.is_active ? '' : '  (hidden: no pack photo yet)'}`)
+      log(`  ${p.name}: ${shown.join(', ')}${p.is_active ? '' : '  (hidden: no pack photo yet)'}`)
     }
     await client.query('commit')
   } catch (err) {

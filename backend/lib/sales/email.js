@@ -94,6 +94,7 @@ function orderConfirmationVars(order, payment) {
     'Customer Name': order.contact_name,
     'Order ID': order.order_number,
     'Order Date': placedDate(order),
+    'Delivery Charge': Number(order.shipping_paise) ? formatInr(order.shipping_paise) : '',
     'Total Amount': formatInr(order.total_paise),
     'Payment Method': paymentMethod(payment),
     'Payment Status': PAYMENT_STATUS[order.payment_status] || order.payment_status,
@@ -157,7 +158,9 @@ export const templates = {
         `Dear ${order.contact_name},\n\nThank you for your order. We have received your payment and your order is confirmed. ` +
         `Your GST invoice is attached to this email.\n\n` +
         `Order ID: ${order.order_number}\nPlaced:   ${placedDate(order)}\n\n` +
-        `${itemsText(items)}\n\nTotal paid: ${formatInr(order.total_paise)} (incl. GST)\n\n` +
+        `${itemsText(items)}\n` +
+        (Number(order.shipping_paise) ? `  Delivery charge  ${formatInr(order.shipping_paise)}\n` : '') +
+        `\nTotal paid: ${formatInr(order.total_paise)} (incl. GST)\n\n` +
         `Delivering to:\n${[order.contact_name, ...addressLines(order.shipping_address), order.contact_phone].join('\n')}\n\n` +
         `${trackLine(order)}\nDownload your invoice: ${invoiceUrl(order)}\n\n` +
         `Chennai Rice Industries\n+91 70666 46667`,

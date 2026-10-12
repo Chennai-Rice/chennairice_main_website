@@ -2,6 +2,7 @@
 //   invoiceHtml      GST tax invoice (exists once the order has shipped)
 //   packingSlipHtml  for the packing table — items, quantities, no prices
 import { formatInr } from './util.js'
+import { shippingTax } from './tax.js'
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
 
@@ -56,6 +57,16 @@ export function invoiceHtml({ order, items, invoice, shipments }, { forCustomer 
               : `<td class="n">${formatInr(i.igst_paise)}</td>`}
       <td class="n">${formatInr(i.line_total_paise)}</td></tr>`).join('')
   const span = intra ? 10 : 9
+  // Delivery charge as a taxed line of its own (older orders: a plain row).
+  const ship = shippingTax(order)
+  const shipRow = !order.shipping_paise ? ''
+    : ship.rateBp
+      ? `<tr><td></td><td>Delivery charge</td><td></td><td class="n">1</td><td class="n">${formatInr(order.shipping_paise)}</td>
+          <td class="n">${formatInr(ship.taxable)}</td><td class="n">${ship.rateBp / 100}%</td>
+          ${intra ? `<td class="n">${formatInr(ship.cgst)}</td><td class="n">${formatInr(ship.sgst)}</td>`
+                  : `<td class="n">${formatInr(ship.igst)}</td>`}
+          <td class="n">${formatInr(order.shipping_paise)}</td></tr>`
+      : `<tr><td colspan="${span - 1}">Delivery charge</td><td class="n">${formatInr(order.shipping_paise)}</td></tr>`
   return `<!doctype html><html><head><meta charset="utf-8"><title>Invoice ${esc(invoice.invoice_number.replaceAll('/', '-'))}</title><style>${STYLE}${forCustomer ? TOOLBAR_STYLE : ''}</style></head><body>
   ${forCustomer ? TOOLBAR : ''}
   <h1>Tax Invoice</h1>
@@ -71,7 +82,7 @@ export function invoiceHtml({ order, items, invoice, shipments }, { forCustomer 
     <th class="n">Taxable value</th><th class="n">GST</th>${intra ? '<th class="n">CGST</th><th class="n">SGST</th>' : '<th class="n">IGST</th>'}
     <th class="n">Amount</th></tr></thead>
   <tbody>${rows}
-    ${order.shipping_paise ? `<tr><td colspan="${span - 1}">Delivery charge</td><td class="n">${formatInr(order.shipping_paise)}</td></tr>` : ''}
+    ${shipRow}
     ${order.discount_paise ? `<tr><td colspan="${span - 1}">Discount</td><td class="n">−${formatInr(order.discount_paise)}</td></tr>` : ''}
     <tr class="total"><td colspan="${span - 1}">Total (taxable ${formatInr(invoice.taxable_paise)} +
       ${intra ? `CGST ${formatInr(invoice.cgst_paise)} + SGST ${formatInr(invoice.sgst_paise)}` : `IGST ${formatInr(invoice.igst_paise)}`})</td>

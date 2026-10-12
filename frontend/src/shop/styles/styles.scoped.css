@@ -2720,3 +2720,7 @@
     text-align: center;
   }
 }
+
+/* "(Tamil Nadu)" beside "Delivery charge" in the order summary. */
+.shop-scope .summary-sub { font-weight: 400; font-size: 0.85em; opacity: 0.7; }
+.shop-scope .field-hint { display: block; margin-top: 4px; font-size: 0.8rem; opacity: 0.75; }

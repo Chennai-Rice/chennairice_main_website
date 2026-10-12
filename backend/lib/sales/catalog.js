@@ -23,7 +23,7 @@ export function parseCartLineId(id) {
 export async function listCatalog(db) {
   const { rows } = await db.query(
     `select p.id, p.slug, p.name, p.tag, p.description, p.image_url, p.display_order,
-            v.id as variant_id, v.sku, v.pack_kg, v.price_paise, v.mrp_paise,
+            v.id as variant_id, v.sku, v.pack_kg, v.price_paise, v.mrp_paise, v.delivery_paise,
             coalesce(s.on_hand - s.reserved, 0) as available
        from products p
        join product_variants v on v.product_id = p.id and v.is_active
@@ -45,6 +45,7 @@ export async function listCatalog(db) {
       packKg: r.pack_kg,
       price: r.price_paise == null ? null : toRupees(r.price_paise),
       mrp: r.mrp_paise == null ? null : toRupees(r.mrp_paise),
+      delivery: r.delivery_paise == null ? null : toRupees(r.delivery_paise),
       inStock: r.price_paise != null && r.available > 0,
     })
   }
@@ -72,7 +73,7 @@ export async function priceCart(db, items, { shipState } = {}) {
   const slugs = [...new Set(wanted.map((w) => w.slug))]
   const { rows } = await db.query(
     `select p.slug, p.name, p.is_active as product_active,
-            v.id, v.sku, v.pack_kg, v.price_paise, v.hsn_code, v.tax_rate_bp, v.is_active,
+            v.id, v.sku, v.pack_kg, v.price_paise, v.delivery_paise, v.hsn_code, v.tax_rate_bp, v.is_active,
             coalesce(s.on_hand - s.reserved, 0) as available
        from products p
        join product_variants v on v.product_id = p.id
@@ -110,6 +111,8 @@ export async function priceCart(db, items, { shipState } = {}) {
   let subtotal = 0
   let tax = 0
   let totalKg = 0
+  // Per-pack delivery charges; null as soon as one pack has none set.
+  let deliveryPaise = 0
   for (const { variant: v, qty } of lines.values()) {
     if (v.price_paise == null) {
       throw httpError(v.name + ' (' + v.pack_kg + ' kg) is not available to order online yet.', { status: 409 })
@@ -127,6 +130,7 @@ export async function priceCart(db, items, { shipState } = {}) {
     subtotal += lineTotal
     tax += split.tax
     totalKg += v.pack_kg * qty
+    deliveryPaise = deliveryPaise == null || v.delivery_paise == null ? null : deliveryPaise + Number(v.delivery_paise) * qty
     priced.push({
       variantId: v.id,
       slug: v.slug,
@@ -136,25 +140,45 @@ export async function priceCart(db, items, { shipState } = {}) {
       hsnCode: v.hsn_code,
       taxRateBp: v.tax_rate_bp,
       unitPricePaise: v.price_paise,
+      deliveryPaise: v.delivery_paise == null ? null : Number(v.delivery_paise),
       quantity: qty,
       lineTotalPaise: lineTotal,
       ...split,
     })
   }
 
-  return { lines: priced, subtotalPaise: subtotal, taxPaise: tax, totalKg, intraState }
+  return { lines: priced, subtotalPaise: subtotal, taxPaise: tax, totalKg, deliveryPaise, intraState }
 }
 
-/** Delivery charge for a state and basket. Zones are seeded free (₹0). */
-export async function quoteShipping(db, { state, subtotalPaise, totalKg }) {
+/**
+ * Delivery charge for a state and basket. The state must be in an active
+ * zone (or there must be a default zone); otherwise we do not deliver there
+ * and the order is refused. When every pack carries its own delivery charge
+ * (deliveryPaise, from the price list) that is the charge; otherwise the
+ * zone's rate applies.
+ */
+export async function quoteShipping(db, { state, subtotalPaise, totalKg, deliveryPaise = null }) {
   const { rows } = await db.query(
-    `select * from shipping_zones where is_active
-      order by (lower($1) = any(select lower(x) from unnest(states) x)) desc, is_default desc
+    `select *, (lower($1) = any(select lower(x) from unnest(states) x)) as matches
+       from shipping_zones where is_active
+      order by matches desc, is_default desc
       limit 1`,
     [str(state)]
   )
   const zone = rows[0]
+  if (zone && !zone.matches && !zone.is_default) {
+    const { rows: served } = await db.query(
+      `select distinct unnest(states) as state from shipping_zones where is_active order by 1`)
+    const list = served.map((r) => r.state)
+    throw httpError(`Delivery is not available to ${str(state) || 'that state'}.`, {
+      status: 422,
+      publicMessage: list.length
+        ? `Sorry, we deliver only within ${list.join(', ')} for now.`
+        : 'Sorry, we cannot deliver to that address yet.',
+    })
+  }
   if (!zone) return 0
   if (zone.free_above_paise != null && subtotalPaise >= zone.free_above_paise) return 0
+  if (deliveryPaise != null) return deliveryPaise
   return Math.max(zone.min_fee_paise, Math.round(zone.rate_per_kg_paise * totalKg))
 }

@@ -12,6 +12,7 @@ import { moveStock, releaseForOrder } from './stock.js'
 import { queueEmail, templates, queueShippedEmail, cancelShippedEmails } from './email.js'
 import { audit, requirePermission } from './staff.js'
 import { findCourier, buildTrackingUrl } from './couriers.js'
+import { shippingTax } from './tax.js'
 import {
   httpError, str, toPaise, toRupees, financialYear, getSettings, recordOrderStatus, phoneKey, shipmentNumberFor, newShipmentId, parseTrackingRef, reserveId,
 } from './util.js'
@@ -345,6 +346,9 @@ export async function issueInvoice(db, order) {
        from order_items where order_id = $1`,
     [order.id]
   )
+  // The delivery charge carries its own GST, added to the invoice totals.
+  const ship = shippingTax(order)
+  const sum = (a, b) => Number(a || 0) + b
   const seller = {
     name: settings.seller_legal_name, address: settings.seller_address, gstin: settings.seller_gstin || null,
     state: settings.seller_state, stateCode: settings.seller_state_code, phone: settings.seller_phone, email: settings.seller_email,
@@ -354,7 +358,8 @@ export async function issueInvoice(db, order) {
     `insert into invoices (order_id, invoice_number, financial_year, seller, buyer, place_of_supply,
                            taxable_paise, cgst_paise, sgst_paise, igst_paise, total_paise)
      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) returning *`,
-    [order.id, number, fy, seller, buyer, order.ship_state, t.taxable, t.cgst, t.sgst, t.igst, order.total_paise]
+    [order.id, number, fy, seller, buyer, order.ship_state, sum(t.taxable, ship.taxable), sum(t.cgst, ship.cgst),
+      sum(t.sgst, ship.sgst), sum(t.igst, ship.igst), order.total_paise]
   )
   return invoice
 }
