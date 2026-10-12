@@ -1071,3 +1071,68 @@ ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
 .pdp-journey-wrap { position: relative; }
 @media (min-width: 721px) { .pdp-journey-wrap { margin-top: 6.5rem; } }
 @media (max-width: 720px) { .pdp-journey-wrap { margin-top: 3.5rem; } }
+
+/* ---- Journey, interactive: travelling grain, filling line, done steps ---- */
+/* The JS rail replaces the static line when the steps sit on one row. */
+.pdp-journey-wrap.has-line .pdp-journey-line { display: none; }
+.pdp-journey-rail {
+  position: absolute;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--gold-300);
+  pointer-events: none;
+  z-index: 0;
+}
+.pdp-journey-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, var(--gold-500, #c9a24b), var(--maroon-600));
+  transition: width 0.9s cubic-bezier(0.22, 0.8, 0.25, 1);
+}
+.pdp-journey-grain {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  transition: left 0.9s cubic-bezier(0.22, 0.8, 0.25, 1), transform 0.35s ease;
+  filter: drop-shadow(0 2px 3px rgba(110, 20, 32, 0.45));
+}
+.pdp-journey-grain svg { display: block; fill: #e9c46a; stroke: #b8862b; stroke-width: 1.2; }
+.pdp-journey-grain.is-on { transform: translate(-50%, -50%) scale(1); }
+.pdp-journey-step .pdp-journey-figure { position: relative; z-index: 1; }
+
+/* Steps already passed. */
+.pdp-journey-step.is-done .pdp-journey-figure { border-color: var(--gold-500, #c9a24b); }
+.pdp-journey-step.is-done .pdp-journey-num { background: var(--gold-500, #c9a24b); color: #fff; }
+.pdp-journey-step.is-active .pdp-journey-figure {
+  transform: translateY(-3px) scale(1.08);
+  border-color: var(--maroon-600);
+  box-shadow: 0 0 0 5px rgba(110, 20, 32, 0.12), 0 12px 24px -10px rgba(110, 20, 32, 0.55);
+}
+.pdp-journey-step.is-active .pdp-journey-title { color: var(--maroon-600); }
+/* A soft pulse on the circle the grain is at, while it tours. */
+.is-touring .pdp-journey-step.is-active .pdp-journey-figure { animation: journey-pulse 1.1s ease-out; }
+@keyframes journey-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(201, 162, 75, 0.7), 0 12px 24px -10px rgba(110, 20, 32, 0.55); }
+  100% { box-shadow: 0 0 0 16px rgba(201, 162, 75, 0), 0 12px 24px -10px rgba(110, 20, 32, 0.55); }
+}
+.pdp-journey-tip strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #f2d48a;
+}
+/* Bubbles follow the active / open state, not plain hover. */
+.pdp-journey-step:hover:not(.is-open) .pdp-journey-tip { opacity: 0; visibility: hidden; }
+.pdp-journey-hint {
+  margin: 1.6rem 0 0;
+  text-align: center;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--ink-500);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pdp-journey-fill, .pdp-journey-grain { transition: none; }
+  .is-touring .pdp-journey-step.is-active .pdp-journey-figure { animation: none; }
+}
