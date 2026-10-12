@@ -1,5 +1,4 @@
-import Img from './Img.jsx'
-import { ASSETS, FEATURES, PRODUCTS } from '../data/content.js'
+import { FEATURES, PRODUCTS } from '../data/content.js'
 import { showAmbassadors } from '../config.js'
 import './featurestrip.css'
 
@@ -87,8 +86,6 @@ export default function FeatureStrip() {
             </linearGradient>
           </defs>
         </svg>
-
-        <Img className="feat-bowl" src={ASSETS.riceBowl} alt="" aria-hidden="true" />
 
         <div className="container feat-row">
           {FEATURES.map(f => (
