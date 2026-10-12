@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from "react";
 export default function ShareButton({ title, text }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [igCopied, setIgCopied] = useState(false);
   const ref = useRef(null);
   const url = typeof window !== "undefined" ? window.location.href.split("#")[0] : "";
 
@@ -32,7 +33,7 @@ export default function ShareButton({ title, text }) {
     setOpen((v) => !v);
   }
 
-  async function copy() {
+  async function copyLink() {
     try {
       await navigator.clipboard.writeText(url);
     } catch {
@@ -43,8 +44,21 @@ export default function ShareButton({ title, text }) {
       document.execCommand("copy");
       input.remove();
     }
+  }
+
+  async function copy() {
+    await copyLink();
     setCopied(true);
     window.setTimeout(() => { setCopied(false); setOpen(false); }, 1400);
+  }
+
+  // Instagram has no web share link: copy the product link, then open
+  // Instagram so it can be pasted into a message or story.
+  async function instagram() {
+    await copyLink();
+    setIgCopied(true);
+    window.open("https://www.instagram.com/direct/inbox/", "_blank", "noopener");
+    window.setTimeout(() => { setIgCopied(false); setOpen(false); }, 2500);
   }
 
   const message = encodeURIComponent(`${text} ${url}`);
@@ -72,6 +86,16 @@ export default function ShareButton({ title, text }) {
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#1877F2" /><path fill="#fff" d="M13.4 21.9v-7h2.3l.4-2.8h-2.7v-1.8c0-.8.2-1.3 1.4-1.3h1.4V6.5a19 19 0 0 0-2.1-.1c-2.1 0-3.5 1.3-3.5 3.6v2.1H8.3v2.8h2.3v7z" /></svg>
             Facebook
           </a>
+          <button type="button" role="menuitem" onClick={instagram}>
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+              <defs><radialGradient id="ig-grad" cx="30%" cy="107%" r="150%"><stop offset="0" stopColor="#fdf497" /><stop offset=".05" stopColor="#fdf497" /><stop offset=".45" stopColor="#fd5949" /><stop offset=".6" stopColor="#d6249f" /><stop offset=".9" stopColor="#285AEB" /></radialGradient></defs>
+              <rect x="2" y="2" width="20" height="20" rx="6" fill="url(#ig-grad)" />
+              <rect x="6.5" y="6.5" width="11" height="11" rx="3.5" fill="none" stroke="#fff" strokeWidth="1.8" />
+              <circle cx="12" cy="12" r="2.6" fill="none" stroke="#fff" strokeWidth="1.8" />
+              <circle cx="16.6" cy="7.4" r="1.1" fill="#fff" />
+            </svg>
+            {igCopied ? "Link copied — paste it in Instagram" : "Instagram"}
+          </button>
           <button type="button" role="menuitem" onClick={copy}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.6" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" strokeWidth="1.6" /></svg>
             {copied ? "Link copied ✓" : "Copy link"}
