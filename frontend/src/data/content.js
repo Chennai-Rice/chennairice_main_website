@@ -60,6 +60,7 @@ export const HERO = {
 export const PRODUCTS = [
   {
     shortName: 'Special Rajabhogam',
+    shopPath: '/products/special-rajabhogam',
     ghost: ['SPECIAL', 'RAJABHOGAM'],
     name: 'SPECIAL RAJABHOGAM',
     // Our signature red bag (catalogue: "Classic Red").
@@ -73,6 +74,7 @@ export const PRODUCTS = [
   },
   {
     shortName: 'Kitchidi Ponni Rice',
+    shopPath: '/products/kitchidi-ponni-rice',
     ghost: ['KITCHIDI', 'PONNI RICE'],
     name: 'KITCHIDI PONNI RICE',
     // The maroon-and-peach offer bag. From the pack: 1 year aged,
@@ -87,6 +89,7 @@ export const PRODUCTS = [
   },
   {
     shortName: 'Viruchagam',
+    shopPath: '/products/viruchagam',
     ghost: ['VIRUCHAGAM', 'POOMPUHAR'],
     name: 'VIRUCHAGAM',
     // From the pack: SNR RNR Poompuhar Ponni, "Pure Rice", "100% Natural",
@@ -102,6 +105,7 @@ export const PRODUCTS = [
   },
   {
     shortName: 'Nayara Super Aged',
+    shopPath: '/products/nayara-super-aged',
     ghost: ['NAYARA', 'SUPER AGED'],
     name: 'NAYARA SUPER AGED',
     desc: 'Super-aged gel cook rice that stays separate and firm on the plate.',

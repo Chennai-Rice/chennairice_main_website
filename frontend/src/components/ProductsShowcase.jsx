@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import useGsapContext from '../hooks/useGsapContext.js'
@@ -115,8 +116,8 @@ function ProductSlide({ product, isFirst }) {
           </div>
           <p className="slide-desc">{product.desc}</p>
           <div className="slide-buttons">
-            <a className="btn-maroon" href="/products">
-              View More Products
+            <Link className="btn-maroon" to={product.shopPath || '/products'}>
+              Buy Now
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
                   d="M4 12h15m0 0l-6-6m6 6l-6 6"
@@ -126,7 +127,7 @@ function ProductSlide({ product, isFirst }) {
                   strokeLinejoin="round"
                 />
               </svg>
-            </a>
+            </Link>
             <a className="btn-outline" href="/contact">
               Enquire
             </a>
