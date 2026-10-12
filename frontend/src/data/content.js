@@ -99,7 +99,7 @@ export const PRODUCTS = [
     packSize: '5 / 10 / 26 KG',
     riceType: 'SNR RNR Poompuhar Ponni',
     idealFor: 'Daily Family Dining',
-    image: '/assets/products/viruchagam-hero.png',
+    image: '/assets/shop/packs/viruchagam-v2.png',
     // Cool blue-grey, matching the pack's royal blue.
     tint: '#EAEFF6',
   },
