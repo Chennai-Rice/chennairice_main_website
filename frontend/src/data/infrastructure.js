@@ -54,7 +54,7 @@ export const STORAGE_CAPACITY = {
 }
 
 export const SILO_COUNT = {
-  value: '21',
+  value: '27',
   unit: 'SILOS',
   label: 'Silos',
   status: 'Current',
@@ -195,7 +195,7 @@ export const INFRA_NUMBERS = [
   { value: '1950s', unit: '', label: 'Heritage', status: 'Reported' },
   { value: '2,44,000', unit: 'MTPA', label: 'Current Capacity', status: 'Current' },
   { value: '61,500', unit: 'MT', label: 'Storage', status: 'Current' },
-  { value: '21', unit: '', label: 'Silos', status: 'Current' },
+  { value: '27', unit: '', label: 'Silos', status: 'Current' },
   { value: '420,480', unit: 'MTPA', label: 'Planned Capacity', status: 'Planned' },
 ]
 
@@ -234,7 +234,7 @@ export const SHOWCASE_SLIDES = [
     image: 'facilityAerial',
     alt: 'Paddy storage silos at the Chennai Rice facility',
     titleLines: ['Stored with Care.', 'Milled with Precision.'],
-    text: '21 silos across Nasiyanur and SIPCOT hold 61,500 MT of paddy under monitored conditions before it enters the milling line.',
+    text: '27 silos across Nasiyanur and SIPCOT hold 61,500 MT of paddy under monitored conditions before it enters the milling line.',
   },
   {
     id: 'quality',
@@ -248,7 +248,7 @@ export const SHOWCASE_SLIDES = [
 export const SHOWCASE_STATS = [
   { icon: 'capacity', value: '2,44,000', label: 'MTPA Capacity' },
   { icon: 'storage', value: '61,500', label: 'MT Paddy Storage' },
-  { icon: 'silos', value: '21', label: 'Storage Silos' },
+  { icon: 'silos', value: '27', label: 'Storage Silos' },
   { icon: 'stages', value: '10', label: 'Processing Stages' },
   { icon: 'people', value: '1000+', label: 'Across Value Chain' },
 ]
@@ -266,7 +266,7 @@ export const SHOWCASE_CARDS = [
     image: 'siloYard',
     alt: 'Paddy storage silo yard',
     title: 'Controlled Silo Storage',
-    text: '21 silos across Nasiyanur and SIPCOT holding 61,500 MT of paddy under monitored conditions.',
+    text: '27 silos across Nasiyanur and SIPCOT holding 61,500 MT of paddy under monitored conditions.',
   },
   {
     icon: 'quality',
