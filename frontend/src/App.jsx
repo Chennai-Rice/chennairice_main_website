@@ -56,17 +56,24 @@ const PLACEHOLDER_PAGES = [
   { path: '/recipes', title: 'Recipes', blurb: 'Family recipes for biryani, pongal, idli and more are being collected and will be shared here.' },
   { path: '/csr', title: 'CSR', blurb: 'Our work with farming families and the community around Erode is being written up for this page.' },
   { path: '/downloads', title: 'Downloads', blurb: 'Product sheets, certifications and trade catalogues will be available to download here.' },
-  { path: '/faqs', title: 'FAQs', blurb: 'Answers to the questions we are asked most about storage, cooking and ordering are being compiled.' },
   { path: '/shipping', title: 'Shipping & Delivery', blurb: 'Dispatch timelines, delivery areas and freight terms are on their way to this page.' },
   { path: '/refund', title: 'Refund Policy', blurb: 'Our returns and refund process is being documented and will be published here shortly.' },
 ]
 
-/** Client routing keeps scroll position between pages; always open at the top. */
+/** Client routing keeps scroll position between pages; always open at the top,
+ *  or at the section a link names (/#faqs). The home page's pinned sections
+ *  settle their height after load, so the jump is repeated once they have. */
 function ScrollToTop() {
-  const { pathname } = useLocation()
+  const { pathname, hash } = useLocation()
   useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [pathname])
+    if (!hash) {
+      window.scrollTo(0, 0)
+      return undefined
+    }
+    const go = () => document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView({ block: 'start' })
+    const timers = [60, 600, 1400].map((ms) => window.setTimeout(go, ms))
+    return () => timers.forEach(window.clearTimeout)
+  }, [pathname, hash])
   return null
 }
 
@@ -130,6 +137,8 @@ export default function App() {
           }
         />
         <Route path="/" element={<HomePage />} />
+        {/* The FAQs live on the home page. */}
+        <Route path="/faqs" element={<Navigate to="/#faqs" replace />} />
         <Route path="/rice-products" element={<ProductsPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/contact-us" element={<ContactPage />} />

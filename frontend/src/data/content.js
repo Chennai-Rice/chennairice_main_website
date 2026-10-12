@@ -327,7 +327,7 @@ export const FOOTER = {
     {
       head: 'Support',
       links: [
-        { label: 'FAQs', to: '/faqs' },
+        { label: 'FAQs', to: '/#faqs' },
         { label: 'Track Order', to: '/track-order' },
         { label: 'Shipping & Delivery', to: '/shipping' },
         { label: 'Terms & Conditions', to: '/terms' },
