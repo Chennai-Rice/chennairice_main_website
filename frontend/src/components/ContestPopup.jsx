@@ -10,7 +10,7 @@ const BUY_PATH = '/products/kitchidi-ponni-rice'
 // opening the contest means they have it, so it stays away longer.
 const HIDE_AFTER_CLOSE_MS = 24 * 60 * 60 * 1000
 const HIDE_AFTER_JOIN_MS = 7 * 24 * 60 * 60 * 1000
-const KEY = 'cr.contestPopup.v2.hiddenUntil'
+const KEY = 'cr.contestPopup.v3.hiddenUntil'
 
 // Never over a purchase in progress or a page the customer came to for a reason.
 const QUIET_PATHS = ['/cart', '/checkout', '/track-order', '/privacy', '/terms', BUY_PATH]
@@ -118,17 +118,17 @@ export default function ContestPopup() {
 
         <Link className="contest-poster-art" to={BUY_PATH} tabIndex={-1} onClick={() => close(HIDE_AFTER_JOIN_MS)}>
           <picture>
-            <source srcSet="/assets/contest-poster-v2.webp" type="image/webp" />
+            <source srcSet="/assets/contest-poster-v3.webp" type="image/webp" />
             <img
-              src="/assets/contest-poster-v2.jpg"
-              width="864"
-              height="1080"
+              src="/assets/contest-poster-v3.jpg"
+              width="800"
+              height="1200"
               alt="Chennai Rice Super Slogan Contest: craft the best slogan and bring home the grand prize. Buy a Kitchidi Ponni Rice 5 kg or 26 kg bag, find the coupon, scan and register, and collect your gift. Prizes include a car, a scooter, gold jewellery, a TV, a fridge, a phone, silk sarees and kitchenware. T&C apply."
             />
           </picture>
         </Link>
 
-        <Link data-focus className="contest-poster-cta" to={BUY_PATH} onClick={() => close(HIDE_AFTER_JOIN_MS)}>
+        <Link data-focus className="contest-poster-cta contest-poster-cta--on-art" to={BUY_PATH} onClick={() => close(HIDE_AFTER_JOIN_MS)}>
           Buy Kitchidi Ponni Rice
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />

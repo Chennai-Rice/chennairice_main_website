@@ -384,3 +384,22 @@
 }
 .contest-poster-cta:hover { transform: translateY(-2px); }
 .contest-poster-cta:focus-visible { outline: 3px solid #d9b866; outline-offset: 3px; }
+
+/* v3 poster (2:3) has an empty maroon band at its foot: the button sits there. */
+.contest-pop.contest-pop--poster:has(.contest-poster-cta--on-art) {
+  width: min(calc((100dvh - 40px) * 0.6667), 520px, 100%);
+}
+.contest-poster-cta.contest-poster-cta--on-art {
+  position: absolute;
+  left: 50%;
+  bottom: 7%;
+  transform: translateX(-50%);
+  width: auto;
+  min-width: 62%;
+  color: #5e0f17;
+  background: linear-gradient(180deg, #f6d98a, #d9a93f);
+  box-shadow: 0 0 0 1.5px #fff2c8, 0 14px 30px -10px rgba(0, 0, 0, 0.6);
+}
+.contest-poster-cta.contest-poster-cta--on-art:hover { transform: translateX(-50%) translateY(-2px); }
+.contest-poster-cta.contest-poster-cta--on-art { white-space: nowrap; }
+@media (max-width: 480px) { .contest-poster-cta.contest-poster-cta--on-art { font-size: 0.95rem; min-height: 46px; padding: 0 20px; bottom: 8%; } }
