@@ -307,6 +307,12 @@ export default function ProductsShowcase() {
       style={{ backgroundColor: PRODUCTS[0]?.tint }}
     >
       <div className="showcase-pin-container">
+        <Img
+          className="showcase-paddy showcase-paddy-a"
+          src={ASSETS.wheatRight}
+          alt=""
+          aria-hidden="true"
+        />
 
         {/* Heading rides inside the pinned frame, so it stays above the
             products the whole way through the carousel. */}

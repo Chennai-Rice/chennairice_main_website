@@ -15,6 +15,8 @@ export default function Celebrities() {
   const shown = CELEBS.filter((c) => ACTIVE_AMBASSADORS.includes(c.name))
   return (
     <section className="celeb">
+      <Img className="celeb-decor celeb-decor-left" src={ASSETS.wheatRight} alt="" aria-hidden="true" />
+      <Img className="celeb-decor celeb-decor-right" src={ASSETS.wheatRight} alt="" aria-hidden="true" />
 
       <div className="container celeb-head">
         <SectionHead label={CELEB_HEAD.label} title={CELEB_HEAD.title} />
