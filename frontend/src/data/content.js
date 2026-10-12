@@ -69,7 +69,7 @@ export const PRODUCTS = [
     packSize: '5 / 10 / 26 KG',
     riceType: 'Kitchidi Ponni',
     idealFor: 'Everyday Family Meals',
-    image: '/assets/shop/packs/special-rajabhogam.png',
+    image: '/assets/shop/packs/special-rajabhogam-v2.png',
     // Soft rose cream, so the ghost lettering sits behind the red bag.
     tint: '#F8ECEA',
   },

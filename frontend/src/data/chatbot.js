@@ -49,7 +49,7 @@ export const CHAT_PRODUCTS = [
     name: "Special Rajabhogam",
     packSize: "10 KG",
     blurb: "Kitchidi Ponni rice in our signature red pack, milled and sealed at Erode.",
-    image: "/assets/shop/packs/special-rajabhogam.png",
+    image: "/assets/shop/packs/special-rajabhogam-v2.png",
     keywords: ["special rajabhogam","special","rajabhogam","classic","kitchidi","signature","milled","sealed","erode"],
   },
   {

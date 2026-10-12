@@ -162,7 +162,7 @@ const FALLBACK_PRODUCTS = [
     name: "Special Rajabhogam",
     description: "Kitchidi Ponni rice in our signature red pack, milled and sealed at Erode.",
     packKg: 10,
-    image: "/assets/shop/packs/special-rajabhogam.png",
+    image: "/assets/shop/packs/special-rajabhogam-v2.png",
     alt: "Special Rajabhogam — Kitchidi Ponni, 10 kg pack",
   },
   {
