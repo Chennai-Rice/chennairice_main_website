@@ -75,13 +75,17 @@ export default function ProductCard({ product }) {
           </svg>
         </button>
 
-        <img
-          src={product.image}
-          alt={product.alt}
-          width={product.width}
-          height={product.height}
-          loading="lazy"
-        />
+        {/* The pack photo opens this product's page, like "View more". It is
+            left out of the tab order since that button already leads there. */}
+        <Link className="card-media-link" to={`/products/${product.id}`} tabIndex={-1}>
+          <img
+            src={product.image}
+            alt={product.alt}
+            width={product.width}
+            height={product.height}
+            loading="lazy"
+          />
+        </Link>
       </figure>
       <div className="card-body">
         <p className="card-tag">{product.tag}</p>

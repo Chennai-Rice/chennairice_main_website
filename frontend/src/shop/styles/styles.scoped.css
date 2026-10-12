@@ -2648,3 +2648,12 @@
   letter-spacing: 0.02em;
   color: #2f7a4b;
 }
+
+/* The pack photo links to the product page; centred like the bare image was. */
+.shop-scope .card-media-link {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
