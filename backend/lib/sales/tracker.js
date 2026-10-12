@@ -157,9 +157,15 @@ export function resolveTracking({ tracking, awb, partner }) {
   let link = null
   let note = null
   if (courier) {
-    // A known partner always gets its own tracking page, whatever link the sheet has.
-    link = buildTrackingUrl(courier, number)
-    if (url && !isCourierHost(courier, url.hostname)) note = `Link was not on ${courier.name}'s website, so ${courier.name}'s own tracking page is used.`
+    // The parcel's own link from the sheet is used when it is an https link on
+    // the courier's own website. Anything else gets the courier's tracking page
+    // (the customer pastes the AWB there), so a wrong or fake link never
+    // reaches a customer.
+    if (url && url.protocol === 'https:' && isCourierHost(courier, url.hostname)) link = url.toString()
+    else {
+      link = buildTrackingUrl(courier, number)
+      if (url) note = `Link was not a secure (https) link on ${courier.name}'s website, so ${courier.name}'s own tracking page is used.`
+    }
   } else if (url && url.protocol === 'https:') {
     link = url.toString() // unknown partner: keep its https link as given
   }
@@ -168,7 +174,7 @@ export function resolveTracking({ tracking, awb, partner }) {
     carrierName: courier ? courier.name : str(partner).replace(/\s+/g, ' ').slice(0, 80),
     trackingNumber: number || null,
     trackingUrl: link,
-    deepLink: Boolean(link && number && link.includes(encodeURIComponent(number))),
+    deepLink: Boolean(link && number && (link.includes(encodeURIComponent(number)) || link.includes(number))),
     note,
   }
 }
@@ -203,7 +209,7 @@ async function buildPreview(rows) {
     if (lastRowFor.get(key) !== r.rowNo) return skip(`Listed again in row ${lastRowFor.get(key)}; that row is used.`)
     const o = r.parsed.orderNumber ? byNumber.get(r.parsed.orderNumber) : byShipment.get(r.parsed.shipmentId)
     if (!o || o.status === 'pending_payment') return skip('No paid order with this ID.')
-    if (!r.partner && !r.tracking) return skip('No delivery partner or tracking given.')
+    if (!r.partner && !r.tracking && !r.awb) return skip('Not shipped yet (courier and AWB are empty), so left as it is.')
     const t = resolveTracking(r)
     const out = {
       ...base,
@@ -361,4 +367,101 @@ export async function courierRedirect(ref) {
     [parsed.orderNumber || null, parsed.shipmentId || null]
   )
   return s?.tracking_url || null
+}
+
+/* ------------------------------------------------------ dispatch batch */
+
+const BATCH_COURIERS = ['DTDC', 'Blue Dart', 'Trackon']
+const BATCH_LABEL = { morning: 'Morning', evening: 'Evening' }
+
+/** Today's date in India, as YYYY-MM-DD. */
+const istDay = () => new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
+
+/**
+ * The morning or evening dispatch sheet: every paid order still waiting to
+ * go out, with the customer's address and packs, and empty Courier / AWB /
+ * Tracking Link columns. The plant fills those in from the agency's list and
+ * uploads the same file back as the product tracker. No prices on it.
+ */
+export async function dispatchBatchSheet(batch = 'morning') {
+  const label = BATCH_LABEL[batch] || BATCH_LABEL.morning
+  const { rows: orders } = await query(
+    `select o.order_number, o.placed_at, o.contact_name, o.contact_phone, o.shipping_address, o.needs_attention,
+            (select string_agg(i.product_name || ' ' || trim(to_char(i.pack_kg, 'FM999.##')) || ' kg × ' || i.quantity, '; '
+                               order by i.product_name, i.pack_kg)
+               from order_items i where i.order_id = o.id) as packs,
+            (select sum(i.quantity)::int from order_items i where i.order_id = o.id) as bags,
+            (select sum(i.quantity * i.pack_kg) from order_items i where i.order_id = o.id) as kg
+       from orders o
+      where o.status = any($1)
+      order by o.placed_at nulls last, o.order_number`,
+    [DISPATCHABLE]
+  )
+
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet(`${label} batch`)
+  ws.columns = [
+    { header: 'Order ID', key: 'ref', width: 22 },
+    { header: 'Order Date', key: 'placed', width: 18 },
+    { header: 'Customer Name', key: 'name', width: 24 },
+    { header: 'Phone', key: 'phone', width: 15 },
+    { header: 'Address', key: 'address', width: 46 },
+    { header: 'City', key: 'city', width: 16 },
+    { header: 'State', key: 'state', width: 14 },
+    { header: 'Pincode', key: 'pincode', width: 10 },
+    { header: 'Packs & Quantity', key: 'packs', width: 40 },
+    { header: 'Bags', key: 'bags', width: 7 },
+    { header: 'Total kg', key: 'kg', width: 9 },
+    { header: 'Note', key: 'note', width: 26 },
+    { header: 'Courier', key: 'partner', width: 14 },
+    { header: 'AWB Number', key: 'awb', width: 20 },
+    { header: 'Tracking Link', key: 'link', width: 48 },
+  ]
+  for (const o of orders) {
+    const a = o.shipping_address || {}
+    ws.addRow({
+      ref: o.order_number,
+      placed: o.placed_at
+        ? new Date(o.placed_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: 'numeric', minute: '2-digit' })
+        : '',
+      name: o.contact_name,
+      phone: o.contact_phone,
+      address: [a.line1, a.line2, a.landmark].filter((l) => l && String(l).trim()).join(', '),
+      city: a.city || '',
+      state: a.state || '',
+      pincode: a.pincode || '',
+      packs: o.packs || '',
+      bags: o.bags || 0,
+      kg: Number(o.kg || 0),
+      note: o.needs_attention ? 'ON HOLD – do not ship, ask sales' : '',
+    })
+  }
+
+  // Headings bold; the three columns the plant fills in are shaded yellow.
+  const head = ws.getRow(1)
+  head.font = { bold: true }
+  head.alignment = { vertical: 'middle', wrapText: true }
+  const fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2B3' } }
+  const last = Math.max(orders.length + 1, 200)
+  for (const col of ['M', 'N', 'O']) {
+    ws.getCell(`${col}1`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFD966' } }
+    for (let r = 2; r <= orders.length + 1; r++) ws.getCell(`${col}${r}`).fill = fill
+  }
+  for (let r = 2; r <= last; r++) {
+    ws.getCell(`M${r}`).dataValidation = {
+      type: 'list', allowBlank: true, formulae: [`"${BATCH_COURIERS.join(',')}"`],
+      showErrorMessage: false,
+    }
+    ws.getCell(`N${r}`).numFmt = '@' // keep long AWB numbers as text, not 1.23E+10
+  }
+  for (let r = 2; r <= orders.length + 1; r++) {
+    if (ws.getCell(`L${r}`).value) ws.getRow(r).font = { color: { argb: 'FFC00000' } }
+  }
+  ws.views = [{ state: 'frozen', xSplit: 1, ySplit: 1 }]
+
+  return {
+    filename: `dispatch-${batch === 'evening' ? 'evening' : 'morning'}-${istDay()}.xlsx`,
+    count: orders.length,
+    buffer: Buffer.from(await wb.xlsx.writeBuffer()),
+  }
 }

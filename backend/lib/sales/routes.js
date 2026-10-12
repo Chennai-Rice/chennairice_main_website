@@ -29,7 +29,7 @@ import { dashboard, getSettingsAdmin, updateSettings, listZones, upsertZone, lis
 import { listWarehouseOrders, warehouseCsv, assertTab, listWarehouseCustomers, warehouseReport } from './warehouse.js'
 import { listShipments, pickList, pickListCsv, warehouseDashboard } from './deliveries.js'
 import { listIssues, getIssue, createIssue, updateIssue } from './issues.js'
-import { processTrackerUpload, listTrackerUploads, trackerTemplate, courierRedirect } from './tracker.js'
+import { processTrackerUpload, listTrackerUploads, trackerTemplate, courierRedirect, dispatchBatchSheet } from './tracker.js'
 import { listIssuedIds, issuedIdsCsv, checkRegister } from './idregister.js'
 import { invoiceHtml, packingSlipHtml } from './documents.js'
 import { query } from '../db.js'
@@ -223,6 +223,15 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/warehouse/tracker/uploads', perm('warehouse.view'), wrap(async (_req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json({ uploads: await listTrackerUploads() })
+  }))
+  // Morning / evening dispatch sheet: orders waiting to go out, with empty
+  // Courier, AWB and Tracking Link columns to fill in and upload back.
+  admin.get('/warehouse/dispatch-batch.xlsx', perm('warehouse.view'), wrap(async (req, res) => {
+    const sheet = await dispatchBatchSheet(req.query.batch === 'evening' ? 'evening' : 'morning')
+    res.set('Cache-Control', 'no-store')
+    res.set('Content-Disposition', `attachment; filename="${sheet.filename}"`)
+    res.set('X-Order-Count', String(sheet.count))
+    res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').send(sheet.buffer)
   }))
   admin.get('/warehouse/tracker/template.xlsx', perm('warehouse.view'), wrap(async (_req, res) => {
     res.set('Content-Disposition', 'attachment; filename="product-tracker-template.xlsx"')

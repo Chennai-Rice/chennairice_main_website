@@ -77,18 +77,25 @@ export default function TrackerView({ say, onAuthError }) {
     }
   }
 
-  async function template() {
+  async function download(path, fallbackName) {
     try {
-      const res = await staffFetch('/api/admin/warehouse/tracker/template.xlsx')
+      const res = await staffFetch(path)
+      const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || fallbackName
+      const count = res.headers.get('X-Order-Count')
       const a = document.createElement('a')
       a.href = URL.createObjectURL(await res.blob())
-      a.download = 'product-tracker-template.xlsx'
+      a.download = name
       a.click()
       window.setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+      if (count != null) say(count === '0' ? 'No orders are waiting to be shipped right now.' : `${count} ${count === '1' ? 'order' : 'orders'} in the sheet.`)
     } catch (err) {
       if (!onAuthError(err)) say(err.message, 'error')
     }
   }
+  const template = () => download('/api/admin/warehouse/tracker/template.xlsx', 'product-tracker-template.xlsx')
+  const batch = (which) => download(`/api/admin/warehouse/dispatch-batch.xlsx?batch=${which}`, `dispatch-${which}.xlsx`)
+  // Before 2 pm (India time) the morning batch is the one being packed.
+  const morning = new Date(Date.now() + 330 * 60000).getUTCHours() < 14
 
   const rows = (result?.rows || []).filter((r) =>
     filter === 'all' ? true : filter === 'skip' ? r.action === 'skip' : ['dispatch', 'update'].includes(r.action))
@@ -100,11 +107,20 @@ export default function TrackerView({ say, onAuthError }) {
       <div className="wh-page-head wh-page-head--row">
         <div>
           <h2>Product Tracker Upload</h2>
-          <p className="wh-muted">Upload the delivery partner's sheet: order ID, tracking link or AWB, and partner name</p>
+          <p className="wh-muted">
+            1. Download the morning or evening batch · 2. Fill in Courier, AWB Number and Tracking Link from the agency's
+            list · 3. Upload the same sheet here. Each customer is emailed their tracking link.
+          </p>
         </div>
-        <button type="button" className="wh-btn wh-btn--outline" onClick={template}>
-          <Icon name="download" size={18} /> Download template
-        </button>
+        <div className="wh-batch-actions">
+          <button type="button" className={`wh-btn ${morning ? 'wh-btn--primary' : 'wh-btn--outline'}`} onClick={() => batch('morning')}>
+            <Icon name="download" size={18} /> Morning batch
+          </button>
+          <button type="button" className={`wh-btn ${morning ? 'wh-btn--outline' : 'wh-btn--primary'}`} onClick={() => batch('evening')}>
+            <Icon name="download" size={18} /> Evening batch
+          </button>
+          <button type="button" className="wh-link-btn wh-small" onClick={template}>Blank template</button>
+        </div>
       </div>
 
       <section className="wh-panel">
@@ -249,7 +265,7 @@ export default function TrackerView({ say, onAuthError }) {
       {confirm && (
         <Confirm
           title={`Apply ${changes} ${changes === 1 ? 'change' : 'changes'}?`}
-          body={`${s.dispatch} orders will be marked dispatched and ${s.update} will get new tracking. Customers see the partner's tracking link on their Track Order page straight away. Skipped rows are left unchanged.`}
+          body={`${s.dispatch} orders will be marked dispatched and ${s.update} will get new tracking. Each customer is emailed the courier, AWB and tracking link, and sees them on the Track Order page straight away. Skipped rows are left unchanged.`}
           confirmLabel="Apply"
           busy={busy}
           onConfirm={apply}

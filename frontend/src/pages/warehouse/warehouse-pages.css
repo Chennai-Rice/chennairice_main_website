@@ -296,3 +296,11 @@
   .wh-team-actions { width: 100%; justify-content: space-between; }
 }
 .wh-settings .wh-panel--team { grid-column: 1 / -1; }
+
+/* Tracker: morning / evening batch downloads. */
+.wh-batch-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.wh-link-btn {
+  background: none; border: 0; padding: 4px 2px; cursor: pointer;
+  color: inherit; opacity: 0.75; text-decoration: underline; text-underline-offset: 3px;
+}
+.wh-link-btn:hover { opacity: 1; }
