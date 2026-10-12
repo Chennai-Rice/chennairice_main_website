@@ -11,6 +11,7 @@ import RecipeTeaser from "../components/RecipeTeaser.jsx";
 import RelatedProducts from "../components/RelatedProducts.jsx";
 import BulkOrderCTA from "../components/BulkOrderCTA.jsx";
 import CheckoutBar from "../components/CheckoutBar.jsx";
+import ShareButton from "../components/ShareButton.jsx";
 import { useProduct, useProducts } from "../data/products.js";
 import { getDetails, getCategoryLabel, GRAIN_JOURNEY } from "../data/productDetails.js";
 import { useCart } from "../hooks/useCart.jsx";
@@ -217,6 +218,7 @@ export default function ProductDetailPage() {
                   />
                 </svg>
               </button>
+              <ShareButton title={`${product.name} | Chennai Rice`} text={`${product.name} from Chennai Rice`} />
             </div>
 
             <Link className="pdp-bulk-link" to="/contact-us">

@@ -1136,3 +1136,47 @@ ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
   .pdp-journey-fill, .pdp-journey-grain { transition: none; }
   .is-touring .pdp-journey-step.is-active .pdp-journey-figure { animation: none; }
 }
+
+/* Share: a circle like the wishlist heart, with a small menu on desktop. */
+.pdp-share { position: relative; flex: 0 0 auto; }
+.pdp-share-menu {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  z-index: 10;
+  display: grid;
+  min-width: 11rem;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--cream-50, #fffaf0);
+  border: 1px solid var(--cream-300);
+  box-shadow: 0 18px 40px -16px rgba(43, 27, 22, 0.45);
+  animation: share-in 0.18s ease-out;
+}
+@keyframes share-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.pdp-share-menu a,
+.pdp-share-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink-900);
+  text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+}
+.pdp-share-menu a:hover,
+.pdp-share-menu button:hover,
+.pdp-share-menu a:focus-visible,
+.pdp-share-menu button:focus-visible { background: var(--cream-200); outline: none; }
+@media (max-width: 720px) {
+  .pdp-share-menu { right: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .pdp-share-menu { animation: none; } }
