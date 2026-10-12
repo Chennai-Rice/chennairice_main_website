@@ -10,6 +10,7 @@ import JourneyTimeline from "../components/JourneyTimeline.jsx";
 import RecipeTeaser from "../components/RecipeTeaser.jsx";
 import RelatedProducts from "../components/RelatedProducts.jsx";
 import BulkOrderCTA from "../components/BulkOrderCTA.jsx";
+import CheckoutBar from "../components/CheckoutBar.jsx";
 import { useProduct, useProducts } from "../data/products.js";
 import { getDetails, getCategoryLabel, GRAIN_JOURNEY, GALLERY_EXTRAS } from "../data/productDetails.js";
 import { useCart } from "../hooks/useCart.jsx";
@@ -145,14 +146,6 @@ export default function ProductDetailPage() {
                   <span className="pdp-price">
                     {soldOut && selected.price == null ? "Out of stock" : formatRupees(selected.price * (soldOut ? 1 : qty))}
                   </span>
-                  {selected.mrp && (
-                    <span className="pdp-price-offer">
-                      Online price · you save {formatRupees((selected.mrp - selected.price) * (soldOut ? 1 : qty))}
-                    </span>
-                  )}
-                  <span className="pdp-price-note">
-                    {soldOut ? "Out of stock right now · Inclusive of applicable taxes" : "Inclusive of applicable taxes"}
-                  </span>
                 </>
               ) : (
                 <>
@@ -256,6 +249,7 @@ export default function ProductDetailPage() {
           <BulkOrderCTA />
         </section>
       </main>
+      {showCardPrices && <CheckoutBar />}
     </SiteLayout>
   );
 }
