@@ -313,6 +313,12 @@ export default function ProductsShowcase() {
           alt=""
           aria-hidden="true"
         />
+        <Img
+          className="showcase-paddy showcase-paddy-b"
+          src={ASSETS.wheatLeft}
+          alt=""
+          aria-hidden="true"
+        />
 
         {/* Heading rides inside the pinned frame, so it stays above the
             products the whole way through the carousel. */}
