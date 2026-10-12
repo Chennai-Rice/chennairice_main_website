@@ -977,3 +977,97 @@
 .pdp-cook-method ul { list-style: disc; }
 .pdp-cook-method li::marker { color: var(--gold-500, #c9a24b); }
 .pdp-cook-note { margin-top: 1.4rem !important; }
+
+/* ---- Journey: titles under the circles, details in a bubble above on hover ---- */
+ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
+.pdp-journey-step { position: relative; }
+.pdp-journey-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.pdp-journey-trigger .pdp-journey-figure { transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; }
+.pdp-journey-step:hover .pdp-journey-figure,
+.pdp-journey-step.is-open .pdp-journey-figure,
+.pdp-journey-trigger:focus-visible .pdp-journey-figure {
+  transform: translateY(-3px) scale(1.06);
+  border-color: var(--maroon-600);
+  box-shadow: 0 10px 22px -10px rgba(110, 20, 32, 0.55);
+}
+.pdp-journey-trigger:focus-visible { outline: none; }
+.pdp-journey-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ink-900);
+  text-align: center;
+}
+.pdp-journey-step:hover .pdp-journey-title,
+.pdp-journey-step.is-open .pdp-journey-title { color: var(--maroon-600); }
+
+.pdp-journey-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 12px);
+  z-index: 5;
+  width: max-content;
+  max-width: 15rem;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--maroon-700, #5e0f17);
+  color: #fdf6e7;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  text-align: center;
+  box-shadow: 0 14px 30px -12px rgba(43, 10, 14, 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 6px);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  pointer-events: none;
+}
+.pdp-journey-tip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  margin-left: -7px;
+  border: 7px solid transparent;
+  border-top-color: var(--maroon-700, #5e0f17);
+}
+.pdp-journey-step:hover .pdp-journey-tip,
+.pdp-journey-step.is-open .pdp-journey-tip,
+.pdp-journey-trigger:focus-visible + .pdp-journey-tip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+/* The end steps keep their bubble inside the card. */
+.pdp-journey-step:first-child .pdp-journey-tip { left: 0; transform: translate(0, 6px); }
+.pdp-journey-step:first-child:hover .pdp-journey-tip,
+.pdp-journey-step:first-child.is-open .pdp-journey-tip { transform: none; }
+.pdp-journey-step:first-child .pdp-journey-tip::after { left: 40px; }
+.pdp-journey-step:last-child .pdp-journey-tip { left: auto; right: 0; transform: translate(0, 6px); }
+.pdp-journey-step:last-child:hover .pdp-journey-tip,
+.pdp-journey-step:last-child.is-open .pdp-journey-tip { transform: none; }
+.pdp-journey-step:last-child .pdp-journey-tip::after { left: auto; right: 33px; }
+@media (max-width: 720px) {
+  .pdp-journey-tip { max-width: 11rem; font-size: 0.75rem; }
+  .pdp-journey-step:nth-child(odd) .pdp-journey-tip { left: 0; transform: translate(0, 6px); }
+  .pdp-journey-step:nth-child(even) .pdp-journey-tip { left: auto; right: 0; transform: translate(0, 6px); }
+  .pdp-journey-step:nth-child(odd).is-open .pdp-journey-tip,
+  .pdp-journey-step:nth-child(even).is-open .pdp-journey-tip { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pdp-journey-tip, .pdp-journey-trigger .pdp-journey-figure { transition: none; }
+}
+.pdp-journey-wrap { position: relative; }
+@media (min-width: 721px) { .pdp-journey-wrap { margin-top: 6.5rem; } }
+@media (max-width: 720px) { .pdp-journey-wrap { margin-top: 3.5rem; } }
