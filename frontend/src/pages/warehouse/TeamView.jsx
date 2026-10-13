@@ -11,6 +11,7 @@ const ROLES = [
   { key: 'inventory', label: 'Inventory', note: 'Stock, products and prices.' },
   { key: 'plant', label: 'Plant', note: 'Production batches (no warehouse panel).' },
   { key: 'admin', label: 'Warehouse Admin', note: 'Everything, including money and the team.' },
+  { key: 'it', label: 'IT Team', note: 'Everything an admin can do, plus company settings.' },
   { key: 'owner', label: 'Owner', note: 'Everything. Only an owner can add another owner.' },
 ]
 const LABEL = Object.fromEntries(ROLES.map((r) => [r.key, r.label]))

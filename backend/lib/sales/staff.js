@@ -13,7 +13,8 @@ import { query } from '../db.js'
 import { httpError, str } from './util.js'
 
 // warehouse: the team at the mill who confirm and pack orders on /warehouse.
-export const ROLES = ['owner', 'admin', 'sales', 'inventory', 'plant', 'dispatch', 'warehouse']
+// 'it' is the IT Team: Admin's access plus company settings.
+export const ROLES = ['owner', 'admin', 'it', 'sales', 'inventory', 'plant', 'dispatch', 'warehouse']
 const ALL = ROLES
 // Everyone except warehouse: these views carry prices and revenue, which the
 // warehouse team does not need to pack an order.
@@ -24,30 +25,30 @@ const PERMISSIONS = {
   'dashboard.view': OFFICE,
   'order.view': OFFICE,
   'order.note': ALL,
-  'order.confirm': ['owner', 'admin', 'sales', 'warehouse'],
-  'order.pack': ['owner', 'admin', 'dispatch', 'inventory', 'warehouse'],
+  'order.confirm': ['owner', 'admin', 'it', 'sales', 'warehouse'],
+  'order.pack': ['owner', 'admin', 'it', 'dispatch', 'inventory', 'warehouse'],
   // The /warehouse page and its CSV export. Prices are never sent to it.
-  'warehouse.view': ['owner', 'admin', 'sales', 'dispatch', 'inventory', 'warehouse'],
-  'order.ship': ['owner', 'admin', 'dispatch', 'warehouse'],
-  'order.deliver': ['owner', 'admin', 'dispatch', 'warehouse'],
-  'order.cancel': ['owner', 'admin', 'sales'],
-  'order.return': ['owner', 'admin', 'sales'],
-  'order.resolve': ['owner', 'admin', 'sales'],
-  'refund.create': ['owner', 'admin'],
+  'warehouse.view': ['owner', 'admin', 'it', 'sales', 'dispatch', 'inventory', 'warehouse'],
+  'order.ship': ['owner', 'admin', 'it', 'dispatch', 'warehouse'],
+  'order.deliver': ['owner', 'admin', 'it', 'dispatch', 'warehouse'],
+  'order.cancel': ['owner', 'admin', 'it', 'sales'],
+  'order.return': ['owner', 'admin', 'it', 'sales'],
+  'order.resolve': ['owner', 'admin', 'it', 'sales'],
+  'refund.create': ['owner', 'admin', 'it'],
   // Returns & Issues: anyone on the panel may log and work an issue.
-  'issues.manage': ['owner', 'admin', 'sales', 'dispatch', 'inventory', 'warehouse'],
+  'issues.manage': ['owner', 'admin', 'it', 'sales', 'dispatch', 'inventory', 'warehouse'],
   // Money in the panel (order amounts, sales figures): owner and admin only.
-  'money.view': ['owner', 'admin'],
+  'money.view': ['owner', 'admin', 'it'],
   'inventory.view': ALL,
-  'inventory.adjust': ['owner', 'admin', 'inventory', 'warehouse'],
-  'production.create': ['owner', 'admin', 'plant', 'inventory', 'warehouse'],
-  'catalog.edit': ['owner', 'admin'],
-  'staff.manage': ['owner', 'admin'],
-  'settings.manage': ['owner'],
-  'shipping.manage': ['owner', 'admin'],
-  'emails.view': ['owner', 'admin'],
+  'inventory.adjust': ['owner', 'admin', 'it', 'inventory', 'warehouse'],
+  'production.create': ['owner', 'admin', 'it', 'plant', 'inventory', 'warehouse'],
+  'catalog.edit': ['owner', 'admin', 'it'],
+  'staff.manage': ['owner', 'admin', 'it'],
+  'settings.manage': ['owner', 'it'],
+  'shipping.manage': ['owner', 'admin', 'it'],
+  'emails.view': ['owner', 'admin', 'it'],
   // The register of every Order ID / Shipment ID issued, with Razorpay refs.
-  'ids.view': ['owner', 'admin'],
+  'ids.view': ['owner', 'admin', 'it'],
 }
 
 export function can(staff, permission) {

@@ -16,7 +16,7 @@ import { CustomersView, ReportsView, SettingsView } from './OtherViews.jsx'
 import './warehouse.css'
 import './warehouse-pages.css'
 
-const ALLOWED_ROLES = ['owner', 'admin', 'sales', 'dispatch', 'inventory', 'warehouse']
+const ALLOWED_ROLES = ['owner', 'admin', 'it', 'sales', 'dispatch', 'inventory', 'warehouse']
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'reports' },
@@ -39,7 +39,7 @@ const TITLES = {
 const initials = (name) =>
   String(name || '?').replace(/[^\p{L}\s]/gu, ' ').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '?'
 const ROLE_LABEL = {
-  owner: 'Owner', admin: 'Warehouse Admin', warehouse: 'Warehouse staff', sales: 'Sales', dispatch: 'Dispatch', inventory: 'Inventory',
+  owner: 'Owner', admin: 'Warehouse Admin', it: 'IT Team', warehouse: 'Warehouse staff', sales: 'Sales', dispatch: 'Dispatch', inventory: 'Inventory',
 }
 const SEEN_KEY = 'cr.wh.lastSeenOrder'
 

@@ -58,7 +58,7 @@ Razorpay Dashboard → switch to **Live mode** (needs KYC approved):
 ## 7. After deploy
 
 1. Open `https://chennairiceindustries.com/warehouse` → Sign in with Google
-   (ashleyjosco@ is the first owner).
+   (arun@ is the owner since 13 Oct 2026; ashleyjosco@ was the first owner).
 2. Settings → Team: add the warehouse staff.
 3. Products & Inventory: enter the **real opening stock** for every pack. Until
    then every product shows as sold out.
