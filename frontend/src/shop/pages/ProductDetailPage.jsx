@@ -17,7 +17,7 @@ import { getDetails, getCategoryLabel, GRAIN_JOURNEY } from "../data/productDeta
 import { useCart } from "../hooks/useCart.jsx";
 import { useWishlist } from "../hooks/useWishlist.jsx";
 import { useRipple } from "../hooks/useRipple.js";
-import { formatRupees, formatPerKg } from "../utils/format.js";
+import { formatRupees } from "../utils/format.js";
 import { showCardPrices } from "../../config.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import { PRODUCT_SEO, productIdFromSlug, productPath } from "../../seo.js";
@@ -161,9 +161,6 @@ export default function ProductDetailPage() {
                   <span className="pdp-price">
                     {soldOut && selected.price == null ? "Out of stock" : formatRupees(selected.price * (soldOut ? 1 : qty))}
                   </span>
-                  {selected.price != null && (
-                    <span className="pdp-price-per-kg">{formatPerKg(selected.price, selected.kg)} per kg</span>
-                  )}
                 </>
               ) : (
                 <>

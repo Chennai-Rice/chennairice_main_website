@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import CardQuantityControl from "./CardQuantityControl.jsx";
 import { useRipple } from "../hooks/useRipple.js";
 import { useWishlist } from "../hooks/useWishlist.jsx";
-import { formatRupees, formatPerKg } from "../utils/format.js";
+import { formatRupees } from "../utils/format.js";
 import { showCardPrices } from "../../config.js";
 import { PRODUCT_SEO, productPath } from "../../seo.js";
 
@@ -123,7 +123,6 @@ export default function ProductCard({ product }) {
               {selected.mrp && <s className="price-mrp" aria-label={`Was ${formatRupees(selected.mrp)}`}>{formatRupees(selected.mrp)}</s>}
               <span className="price-amount">{formatRupees(selected.price)}</span>{" "}
               <span className="price-unit">/ {selected.kg} kg</span>
-              <span className="price-per-kg">{formatPerKg(selected.price, selected.kg)} / kg</span>
               <span className="price-stock-note">Out of stock</span>
             </p>
           ) : showCardPrices ? (
@@ -131,7 +130,6 @@ export default function ProductCard({ product }) {
               {selected.mrp && <s className="price-mrp" aria-label={`Was ${formatRupees(selected.mrp)}`}>{formatRupees(selected.mrp)}</s>}
               <span className="price-amount">{formatRupees(selected.price)}</span>{" "}
               <span className="price-unit">/ {selected.kg} kg</span>
-              <span className="price-per-kg">{formatPerKg(selected.price, selected.kg)} / kg</span>
             </p>
           ) : (
             <p className="price-enquiry">

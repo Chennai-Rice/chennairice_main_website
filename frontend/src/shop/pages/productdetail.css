@@ -1196,10 +1196,3 @@ ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .pdp-share-menu { animation: none; } }
 
-/* "₹116.40 per kg" under the price. */
-.pdp-price-hero .pdp-price-per-kg {
-  display: block;
-  margin-top: 6px;
-  font-size: 0.95rem;
-  color: var(--ink-500);
-}
