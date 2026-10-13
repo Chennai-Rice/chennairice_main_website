@@ -9,18 +9,18 @@ const TABS = [
 ];
 
 /** "About <name> Rice": its own H2 section above the tabs. */
-export function ProductAbout({ product, details, riceName }) {
+export function ProductAbout({ product, details, riceName, about }) {
   return (
     <div className="pdp-about">
       <h2>About {riceName}</h2>
-      <p>{product.description}</p>
+      <p>{about || product.description}</p>
       {details.aboutBullets.length > 0 ? (
         <ul className="pdp-bullets">
           {details.aboutBullets.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
-      ) : (
+      ) : about ? null : (
         <ComingSoonNote>
           Detailed product notes for this pack are being finalised and will appear here shortly.
         </ComingSoonNote>

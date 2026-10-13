@@ -240,7 +240,7 @@ export default function ProductDetailPage() {
         </section>
 
         <section className="pdp-section">
-          <ProductAbout product={product} details={details} riceName={riceName} />
+          <ProductAbout product={product} details={details} riceName={riceName} about={seo?.about} />
         </section>
 
         <section className="pdp-section">
