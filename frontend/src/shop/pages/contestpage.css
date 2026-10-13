@@ -1,0 +1,181 @@
+/* The Kitchidi Ponni (Super Slogan Contest) product page: the site's own
+   look, dressed for a carnival. The contest plaque large at the top, fireworks bursting in the
+   background and petals drifting down. Decorative layers ignore the mouse. */
+
+.pdp-contest-page {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(900px 420px at 50% 0, rgba(253, 230, 138, 0.45), transparent 70%),
+    radial-gradient(700px 500px at 100% 35%, rgba(242, 165, 133, 0.22), transparent 70%),
+    radial-gradient(700px 500px at 0 65%, rgba(163, 32, 43, 0.10), transparent 70%),
+    #fffaf4;
+}
+.pdp-contest-page > .pdp { position: relative; z-index: 1; }
+
+/* --- Top: big plaque ---------------------------------------------------- */
+.contest-page-top {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+.contest-page-plaque {
+  display: flex;
+  justify-content: center;
+  margin: 28px 16px 0;
+}
+/* The card's plaque, here in the flow and much larger. */
+.shop-scope .contest-plaque.contest-plaque--hero {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  width: min(560px, 100%);
+  height: 112px;
+  animation: contest-plaque-float 3.6s ease-in-out infinite alternate;
+}
+.shop-scope .contest-plaque--hero .contest-plaque-small { font-size: 1rem; letter-spacing: 0.4em; margin-bottom: 6px; }
+.shop-scope .contest-plaque--hero .contest-plaque-main { font-size: 2.15rem; letter-spacing: 0.08em; }
+.shop-scope .contest-plaque--hero .contest-plaque-rule { margin-top: 9px; }
+.shop-scope .contest-plaque--hero .contest-plaque-rule::after { width: 8px; height: 8px; }
+@keyframes contest-plaque-float {
+  from { translate: 0 0; }
+  to { translate: 0 -6px; }
+}
+
+/* --- The product hero sits on a soft card ----------------------------- */
+.pdp-contest-page .pdp-hero {
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 28% 45%, rgba(242, 165, 133, 0.35), transparent 55%),
+    rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(226, 182, 80, 0.45);
+  box-shadow: 0 22px 46px -28px rgba(110, 20, 32, 0.45);
+  padding: clamp(16px, 2.5vw, 32px);
+}
+.pdp-contest-page .pdp-journey-section,
+.pdp-contest-page .pdp-tabs-block,
+.pdp-contest-page .pdp-bulk-cta {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* --- Fireworks ------------------------------------------------------------ */
+.contest-fireworks {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.contest-burst {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+/* The rocket's trail rising to the burst point. */
+.contest-trail {
+  position: absolute;
+  left: -1px;
+  top: 0;
+  width: 3px;
+  height: 110px;
+  background: linear-gradient(180deg, var(--c), transparent);
+  opacity: 0;
+  animation: contest-rise 4.6s ease-out infinite;
+}
+@keyframes contest-rise {
+  0% { opacity: 0; transform: translateY(160px) scaleY(0.4); }
+  8% { opacity: 0.9; }
+  16% { opacity: 0; transform: translateY(0) scaleY(1); }
+  100% { opacity: 0; }
+}
+/* Each spark flies out along its own angle and fades. */
+.contest-spark-ray {
+  position: absolute;
+  left: -2.5px;
+  top: -9px;
+  width: 5px;
+  height: 18px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #fff7d6, var(--c));
+  box-shadow: 0 0 10px 2px var(--c);
+  opacity: 0;
+  transform: rotate(var(--a)) translateY(0);
+  animation: contest-spark 4.6s cubic-bezier(.15, .7, .3, 1) infinite;
+}
+@keyframes contest-spark {
+  0%, 15% { opacity: 0; transform: rotate(var(--a)) translateY(0) scale(1); }
+  17% { opacity: 1; }
+  40% { opacity: 0.95; transform: rotate(var(--a)) translateY(-96px) scale(0.9); }
+  60% { opacity: 0; transform: rotate(var(--a)) translateY(-118px) scale(0.4); }
+  100% { opacity: 0; transform: rotate(var(--a)) translateY(-118px) scale(0.4); }
+}
+
+/* --- Petals ------------------------------------------------------------- */
+.contest-petals {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.contest-petal {
+  position: absolute;
+  top: -24px;
+  width: 12px;
+  height: 16px;
+  border-radius: 80% 0 80% 0;
+  opacity: 0;
+  animation: contest-fall linear infinite;
+}
+.contest-petal--0 { background: #f59e0b; }
+.contest-petal--1 { background: #f97316; width: 10px; height: 13px; }
+.contest-petal--2 { background: #db2777; width: 9px; height: 12px; }
+.contest-petal--3 { background: #e2b650; width: 8px; height: 8px; border-radius: 2px; }
+@keyframes contest-fall {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  8% { opacity: 0.85; }
+  100% { transform: translate3d(70px, 1400px, 0) rotate(620deg); opacity: 0; }
+}
+
+@media (max-width: 640px) {
+  .shop-scope .contest-plaque.contest-plaque--hero { height: 76px; width: 100%; }
+  .shop-scope .contest-plaque--hero .contest-plaque-small { font-size: 0.62rem; letter-spacing: 0.3em; margin-bottom: 3px; }
+  .shop-scope .contest-plaque--hero .contest-plaque-main { font-size: 1.3rem; }
+  .shop-scope .contest-plaque--hero .contest-plaque-rule { margin-top: 6px; }
+  .contest-burst:nth-child(n+7) { display: none; }
+  .contest-burst { scale: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-scope .contest-plaque.contest-plaque--hero,
+  .contest-trail,
+  .contest-spark-ray,
+  .contest-petal { animation: none; }
+  .contest-fireworks,
+  .contest-petals { display: none; }
+}
+
+/* Flower, bead and bell garland hanging in the top right corner. */
+.contest-corner-garland {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 3;
+  width: clamp(150px, 22vw, 320px);
+  height: auto;
+  pointer-events: none;
+  transform-origin: 100% 0;
+  filter: drop-shadow(0 8px 12px rgba(90, 15, 22, 0.25));
+  animation: contest-sway 5s ease-in-out infinite alternate;
+}
+@keyframes contest-sway {
+  from { rotate: -1.2deg; }
+  to { rotate: 1.2deg; }
+}
+@media (max-width: 640px) {
+  .contest-corner-garland { width: 120px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .contest-corner-garland { animation: none; }
+}

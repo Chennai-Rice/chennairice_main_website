@@ -1,11 +1,15 @@
-import React, { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import CardQuantityControl from "./CardQuantityControl.jsx";
 import { useRipple } from "../hooks/useRipple.js";
 import { useWishlist } from "../hooks/useWishlist.jsx";
 import { formatRupees } from "../utils/format.js";
 import { showCardPrices } from "../../config.js";
 import { PRODUCT_SEO, productPath } from "../../seo.js";
+import { playContestIntro, preloadContestLogo } from "./ContestIntro.jsx";
+import { CONTEST_PRODUCTS, ContestPlaque } from "./ContestDecor.jsx";
+
+
 
 export default function ProductCard({ product }) {
   const spawnRipple = useRipple();
@@ -40,10 +44,22 @@ export default function ProductCard({ product }) {
     [product, selected]
   );
 
-  return (
-    <article className={`card card--${product.variant}`}>
+  // The Super Slogan Contest pack gets its own card (bag colours, badge, hover).
+  const contest = CONTEST_PRODUCTS.includes(product.id);
+
+  // The contest card opens its product page through the contest logo screen.
+  const navigate = useNavigate();
+  useEffect(() => { if (contest) preloadContestLogo(); }, [contest]);
+  const openContest = (event) => {
+    if (!contest || event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
+    event.preventDefault();
+    playContestIntro(navigate, productPath(product.id));
+  };
+
+  const card = (
+    <article className={`card card--${product.variant}${contest ? " card--contest" : ""}`}>
       <figure className="card-media">
-        {product.flag && <span className="premium-flag">{product.flag}</span>}
+        {product.flag && !contest && <span className="premium-flag">{product.flag}</span>}
         {allSoldOut && <span className="stock-flag">Out of stock</span>}
 
         {/* Pinned opposite the premium flag so the two never collide. The
@@ -78,7 +94,7 @@ export default function ProductCard({ product }) {
 
         {/* The pack photo opens this product's page, like "View more". It is
             left out of the tab order since that button already leads there. */}
-        <Link className="card-media-link" to={productPath(product.id)} tabIndex={-1}>
+        <Link className="card-media-link" to={productPath(product.id)} tabIndex={-1} onClick={openContest}>
           <img
             src={product.image}
             alt={product.alt}
@@ -138,7 +154,7 @@ export default function ProductCard({ product }) {
             </p>
           )}
           <div className="card-actions">
-            <Link className="view-btn" to={productPath(product.id)} onClick={spawnRipple}>
+            <Link className="view-btn" to={productPath(product.id)} onClick={(e) => { spawnRipple(e); openContest(e); }}>
               View more
             </Link>
             {showCardPrices && soldOut ? (
@@ -161,5 +177,13 @@ export default function ProductCard({ product }) {
         </div>
       </div>
     </article>
+  );
+
+  if (!contest) return card;
+  return (
+    <div className="card-contest-wrap">
+      <ContestPlaque />
+      {card}
+    </div>
   );
 }

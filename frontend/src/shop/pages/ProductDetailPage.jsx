@@ -22,6 +22,8 @@ import { showCardPrices } from "../../config.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import { PRODUCT_SEO, productIdFromSlug, productPath } from "../../seo.js";
 import "./productdetail.css";
+import "./contestpage.css";
+import { CONTEST_PRODUCTS, ContestPageBackdrop, ContestPageTop } from "../components/ContestDecor.jsx";
 
 export default function ProductDetailPage() {
   const { id: slug } = useParams();
@@ -117,9 +119,10 @@ export default function ProductDetailPage() {
   // already ends in Rice).
   const headName = seo?.name || product.name;
   const riceName = /rice$/i.test(headName) ? headName : `${headName} Rice`;
+  // The Super Slogan Contest pack gets a carnival-dressed page.
+  const contest = CONTEST_PRODUCTS.includes(product.id);
 
-  return (
-    <SiteLayout skipTo="pdp-main" skipLabel="Skip to product">
+  const page = (
       <main id="pdp-main" className="pdp">
         <div className="pdp-top">
           <Link className="pdp-back" to="/rice-products">
@@ -272,6 +275,17 @@ export default function ProductDetailPage() {
           <BulkOrderCTA />
         </section>
       </main>
+  );
+
+  return (
+    <SiteLayout skipTo="pdp-main" skipLabel="Skip to product">
+      {contest ? (
+        <div className="pdp-contest-page">
+          <ContestPageBackdrop />
+          <ContestPageTop />
+          {page}
+        </div>
+      ) : page}
       {showCardPrices && <CheckoutBar />}
     </SiteLayout>
   );
