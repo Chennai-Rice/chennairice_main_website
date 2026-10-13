@@ -6,7 +6,7 @@
 // <noscript> image is left out on purpose: without JavaScript there is no
 // cookie banner, so there is no consent to track on.
 
-export const META_PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID || '2085003885614657'
+export const META_PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID || '1648623053646936'
 
 let loaded = false
 
