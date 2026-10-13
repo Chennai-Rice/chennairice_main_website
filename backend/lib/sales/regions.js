@@ -35,10 +35,3 @@ export function regionForPincode(pincode) {
   if (two >= 11 && two <= 85) return 'NORTH'
   return null
 }
-
-/** Delivery charge of one pack in paise: the region's cost less what the
- *  pack's price absorbs, rounded to the rupee as on the sheet. */
-export function packDeliveryPaise(regionCostPaise, absorbedPaise) {
-  const rupees = Math.round((Number(regionCostPaise) - Number(absorbedPaise || 0)) / 100)
-  return Math.max(0, rupees) * 100
-}

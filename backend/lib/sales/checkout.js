@@ -47,22 +47,21 @@ export function buildGuestCustomer(body) {
 
 /** Price a cart for display (no order is created, nothing is held). */
 export async function quoteCart(body) {
-  const priced = await priceCart({ query }, body?.items, { shipState: str(body?.state) })
-  // The delivery charge needs the PIN code; without one, shipping is null.
-  const ship = await quoteShipping({ query }, {
-    pincode: str(body?.pincode), state: body?.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg,
-    lines: priced.lines,
-  })
+  const priced = await priceCart({ query }, body?.items, { shipState: str(body?.state), pincode: str(body?.pincode) })
+  // Regional pricing needs the PIN code for the delivery charge; without one, shipping is null.
+  const shipping = priced.regional
+    ? priced.deliveryPaise
+    : await quoteShipping({ query }, { state: body?.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg })
   return {
-    lines: priced.lines.map((l, i) => ({
+    lines: priced.lines.map((l) => ({
       id: l.slug + '-' + l.packKg + 'kg', name: l.name, packKg: l.packKg, qty: l.quantity,
       unitPrice: toRupees(l.unitPricePaise), lineTotal: toRupees(l.lineTotalPaise),
-      delivery: ship.lines[i] == null ? null : toRupees(ship.lines[i]),
+      delivery: l.deliveryPaise == null ? null : toRupees(l.deliveryPaise),
     })),
     subtotal: toRupees(priced.subtotalPaise),
-    shipping: ship.paise == null ? null : toRupees(ship.paise),
-    region: ship.region,
-    total: toRupees(priced.subtotalPaise + (ship.paise || 0)),
+    shipping: shipping == null ? null : toRupees(shipping),
+    region: priced.region,
+    total: toRupees(priced.subtotalPaise + (shipping || 0)),
     taxIncluded: toRupees(priced.taxPaise),
     currency: 'INR',
   }
@@ -77,13 +76,11 @@ export async function placeOrder(customer, items) {
     const { rows: [loc] } = await db.query('select id from stock_locations where is_fulfilment and is_active')
     if (!loc) throw httpError('No fulfilment location is set up.', { status: 503, publicMessage: 'Ordering is temporarily unavailable.' })
 
-    const priced = await priceCart(db, items, { shipState: customer.state })
-    const ship = await quoteShipping(db, {
-      pincode: customer.pincode, state: customer.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg,
-      lines: priced.lines,
-    })
-    if (ship.paise == null) throw httpError('Please add a valid 6-digit PIN code.')
-    const shipping = ship.paise
+    const priced = await priceCart(db, items, { shipState: customer.state, pincode: customer.pincode })
+    const shipping = priced.regional
+      ? priced.deliveryPaise
+      : await quoteShipping(db, { state: customer.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg })
+    if (shipping == null) throw httpError('Please add a valid 6-digit PIN code.')
     // GST inside the delivery charge, kept with the order for its invoice.
     const shippingTaxRateBp = deliveryTaxRateBp(settings)
 

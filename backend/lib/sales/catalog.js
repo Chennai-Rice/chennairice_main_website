@@ -4,7 +4,7 @@
 // how many"; every paisa is looked up here from product_variants.
 import { httpError, str, isSameState, getSettings, toRupees } from './util.js'
 import { splitInclusive } from './tax.js'
-import { REGIONS, regionForPincode, packDeliveryPaise } from './regions.js'
+import { REGIONS, regionForPincode } from './regions.js'
 
 export const MAX_QTY_PER_LINE = 50
 export const MAX_LINES = 20
@@ -24,7 +24,7 @@ export function parseCartLineId(id) {
 export async function listCatalog(db) {
   const { rows } = await db.query(
     `select p.id, p.slug, p.name, p.tag, p.description, p.image_url, p.display_order,
-            v.id as variant_id, v.sku, v.pack_kg, v.price_paise, v.mrp_paise, v.delivery_absorbed_paise,
+            v.id as variant_id, v.sku, v.pack_kg, v.price_paise, v.mrp_paise,
             coalesce(s.on_hand - s.reserved, 0) as available
        from products p
        join product_variants v on v.product_id = p.id and v.is_active
@@ -33,12 +33,16 @@ export async function listCatalog(db) {
       where p.is_active
       order by p.display_order, p.name, v.pack_kg`
   )
-  // Each pack's delivery charge in every region that has a per-pack cost.
-  const { rows: zones } = await db.query(
-    `select code, pack_delivery_cost_paise from shipping_zones where is_active and pack_delivery_cost_paise is not null`)
-  const deliveryFor = (absorbed) =>
-    absorbed == null || !zones.length ? null
-      : Object.fromEntries(zones.map((z) => [z.code, toRupees(packDeliveryPaise(z.pack_delivery_cost_paise, absorbed))]))
+  // Each pack's price and delivery charge in every active delivery region.
+  const { rows: regional } = await db.query(
+    `select rp.variant_id, rp.region, rp.price_paise, rp.delivery_paise
+       from variant_region_prices rp join shipping_zones z on z.code = rp.region and z.is_active`)
+  const byVariant = new Map()
+  for (const r of regional) {
+    if (!byVariant.has(r.variant_id)) byVariant.set(r.variant_id, { prices: {}, delivery: {} })
+    byVariant.get(r.variant_id).prices[r.region] = toRupees(r.price_paise)
+    byVariant.get(r.variant_id).delivery[r.region] = toRupees(r.delivery_paise)
+  }
   const bySlug = new Map()
   for (const r of rows) {
     if (!bySlug.has(r.slug)) {
@@ -52,7 +56,9 @@ export async function listCatalog(db) {
       packKg: r.pack_kg,
       price: r.price_paise == null ? null : toRupees(r.price_paise),
       mrp: r.mrp_paise == null ? null : toRupees(r.mrp_paise),
-      delivery: deliveryFor(r.delivery_absorbed_paise), // { TN: 54, SOUTH: 153, … } or null
+      // By region, from the PIN code at checkout: { TN: 54, SOUTH: 153, … } or null.
+      delivery: byVariant.get(r.variant_id)?.delivery || null,
+      regionPrices: byVariant.get(r.variant_id)?.prices || null,
       inStock: r.price_paise != null && r.available > 0,
     })
   }
@@ -64,7 +70,7 @@ export async function listCatalog(db) {
  * short of stock fails the whole cart: a customer must never pay for a basket
  * different from the one they reviewed.
  */
-export async function priceCart(db, items, { shipState } = {}) {
+export async function priceCart(db, items, { shipState, pincode } = {}) {
   if (!Array.isArray(items) || items.length === 0) throw httpError('Your cart is empty.')
   if (items.length > MAX_LINES) throw httpError('That is more different packs than we can take in one order.')
 
@@ -80,7 +86,7 @@ export async function priceCart(db, items, { shipState } = {}) {
   const slugs = [...new Set(wanted.map((w) => w.slug))]
   const { rows } = await db.query(
     `select p.slug, p.name, p.is_active as product_active,
-            v.id, v.sku, v.pack_kg, v.price_paise, v.delivery_absorbed_paise, v.hsn_code, v.tax_rate_bp, v.is_active,
+            v.id, v.sku, v.pack_kg, v.price_paise, v.hsn_code, v.tax_rate_bp, v.is_active,
             coalesce(s.on_hand - s.reserved, 0) as available
        from products p
        join product_variants v on v.product_id = p.id
@@ -113,6 +119,7 @@ export async function priceCart(db, items, { shipState } = {}) {
 
   const settings = await getSettings(db)
   const intraState = shipState ? isSameState(shipState, settings.seller_state || 'Tamil Nadu') : true
+  const regional = await regionalPrices(db, [...lines.keys()], pincode)
 
   const priced = []
   let subtotal = 0
@@ -122,6 +129,12 @@ export async function priceCart(db, items, { shipState } = {}) {
     if (v.price_paise == null) {
       throw httpError(v.name + ' (' + v.pack_kg + ' kg) is not available to order online yet.', { status: 409 })
     }
+    // With regional pricing and a PIN code: that region's price and delivery.
+    const rp = regional.region ? regional.byVariant.get(v.id) : null
+    if (regional.region && !rp) {
+      throw httpError(`${v.name} (${v.pack_kg} kg) cannot be delivered to PIN code ${str(pincode)}.`, { status: 422 })
+    }
+    const unitPrice = rp ? Number(rp.price_paise) : v.price_paise
     if (v.available < qty) {
       throw httpError(
         v.available > 0
@@ -130,7 +143,7 @@ export async function priceCart(db, items, { shipState } = {}) {
         { status: 409 }
       )
     }
-    const lineTotal = v.price_paise * qty
+    const lineTotal = unitPrice * qty
     const split = splitInclusive(lineTotal, v.tax_rate_bp, intraState)
     subtotal += lineTotal
     tax += split.tax
@@ -143,59 +156,69 @@ export async function priceCart(db, items, { shipState } = {}) {
       packKg: v.pack_kg,
       hsnCode: v.hsn_code,
       taxRateBp: v.tax_rate_bp,
-      unitPricePaise: v.price_paise,
-      absorbedPaise: v.delivery_absorbed_paise == null ? null : Number(v.delivery_absorbed_paise),
+      unitPricePaise: unitPrice,
+      deliveryPaise: rp ? Number(rp.delivery_paise) : null, // per pack
       quantity: qty,
       lineTotalPaise: lineTotal,
       ...split,
     })
   }
 
-  return { lines: priced, subtotalPaise: subtotal, taxPaise: tax, totalKg, intraState }
+  // Delivery: known once the region is (null = PIN code still needed).
+  const deliveryPaise = regional.region ? priced.reduce((t, l) => t + l.deliveryPaise * l.quantity, 0) : null
+  return {
+    lines: priced, subtotalPaise: subtotal, taxPaise: tax, totalKg, intraState,
+    regional: regional.inUse, region: regional.region, deliveryPaise,
+  }
 }
 
 /**
- * Delivery charge for a basket, from the PIN code's region (regions.js).
- *
- * Regional pricing (a zone per region with pack_delivery_cost_paise): every
- * pack pays its region's cost less what its price absorbs, rounded to the
- * rupee. A PIN code outside every active region is refused. Returns
- * { paise, region, lines } where lines[i] is that pack's charge per unit.
- *
- * Without regional zones (or without a PIN code) the older zone rules by
- * state apply: the matching or default zone's rate per kg.
+ * Regional pricing for these packs. inUse when the price list has set
+ * per-region prices; then with a PIN code the region is looked up (and must
+ * be one we deliver to) and each pack's row for it returned.
  */
-export async function quoteShipping(db, { pincode, state, subtotalPaise, totalKg, lines = [] }) {
-  const { rows: regional } = await db.query(
-    `select * from shipping_zones where is_active and pack_delivery_cost_paise is not null`)
-  if (regional.length && pincode) {
-    const code = regionForPincode(pincode)
-    const zone = regional.find((z) => z.code === code)
-    if (!zone) {
-      throw httpError(`No delivery to PIN code ${str(pincode)}.`, {
-        status: 422,
-        publicMessage: `Sorry, we do not deliver to PIN code ${str(pincode)} yet.`,
-      })
-    }
-    const perLine = lines.map((l) => packDeliveryPaise(zone.pack_delivery_cost_paise, l.absorbedPaise))
-    const paise = lines.reduce((t, l, i) => t + perLine[i] * l.quantity, 0)
-    return { paise, region: { code: zone.code, name: REGIONS[zone.code] || zone.name }, lines: perLine }
+async function regionalPrices(db, variantIds, pincode) {
+  const { rows: [{ n }] } = await db.query('select count(*)::int as n from variant_region_prices')
+  if (!n) return { inUse: false, region: null, byVariant: new Map() }
+  if (!str(pincode)) return { inUse: true, region: null, byVariant: new Map() }
+  const code = regionForPincode(pincode)
+  const { rows: [zone] } = code
+    ? await db.query('select code, name from shipping_zones where code = $1 and is_active', [code])
+    : { rows: [] }
+  if (!zone) {
+    throw httpError(`No delivery to PIN code ${str(pincode)}.`, {
+      status: 422,
+      publicMessage: `Sorry, we do not deliver to PIN code ${str(pincode)} yet.`,
+    })
   }
+  const { rows } = await db.query(
+    'select variant_id, price_paise, delivery_paise from variant_region_prices where region = $1 and variant_id = any($2)',
+    [code, variantIds])
+  return {
+    inUse: true,
+    region: { code, name: REGIONS[code] || zone.name },
+    byVariant: new Map(rows.map((r) => [r.variant_id, r])),
+  }
+}
 
+/**
+ * Delivery charge by state, for catalogs without regional prices: the
+ * matching (or default) shipping zone's rate per kg. Regional pricing works
+ * out its own delivery in priceCart.
+ */
+export async function quoteShipping(db, { state, subtotalPaise, totalKg }) {
   const { rows } = await db.query(
     `select *, (lower($1) = any(select lower(x) from unnest(states) x)) as matches
-       from shipping_zones where is_active and pack_delivery_cost_paise is null
+       from shipping_zones where is_active
       order by matches desc, is_default desc
       limit 1`,
     [str(state)]
   )
   const zone = rows[0]
-  const flat = (paise) => ({ paise, region: null, lines: lines.map(() => null) })
-  if (!zone || (!zone.matches && !zone.is_default)) {
-    if (regional.length) return { ...flat(null), pending: true } // regional pricing, PIN code still to come
-    if (zone) throw httpError(`Delivery is not available to ${str(state) || 'that state'}.`, { status: 422 })
-    return flat(0)
+  if (!zone) return 0
+  if (!zone.matches && !zone.is_default) {
+    throw httpError(`Delivery is not available to ${str(state) || 'that state'}.`, { status: 422 })
   }
-  if (zone.free_above_paise != null && subtotalPaise >= zone.free_above_paise) return flat(0)
-  return flat(Math.max(zone.min_fee_paise, Math.round(zone.rate_per_kg_paise * totalKg)))
+  if (zone.free_above_paise != null && subtotalPaise >= zone.free_above_paise) return 0
+  return Math.max(zone.min_fee_paise, Math.round(zone.rate_per_kg_paise * totalKg))
 }

@@ -938,26 +938,27 @@ test('shipped email: sent on dispatch with shipment ID and tracking; tracking ad
 })
 
 test('delivery charge: by PIN code region, per pack, with its GST on the invoice', async () => {
-  // As the price list sets it up: each pack absorbs ₹111, regions by PIN code.
-  const alibaba10 = (await db.query(
-    `select v.id from product_variants v join products p on p.id = v.product_id where p.slug = 'alibaba' and v.pack_kg = 10`)).rows[0].id
-  await db.query('update product_variants set delivery_absorbed_paise = 11100 where id = $1', [alibaba10])
-  await db.query('update stock_levels set on_hand = on_hand + 10 where variant_id = $1', [alibaba10])
-  await db.query(`insert into shipping_zones (code, name, pack_delivery_cost_paise) values
-    ('TN', 'Tamil Nadu', 16520), ('SOUTH', 'South India', 26432)`)
+  // As the price list sets it up: a price and delivery charge per region.
+  const { rows: [v] } = await db.query(
+    `select v.id, v.price_paise from product_variants v join products p on p.id = v.product_id
+      where p.slug = 'alibaba' and v.pack_kg = 10`)
+  await db.query('update stock_levels set on_hand = on_hand + 10 where variant_id = $1', [v.id])
+  await db.query(`insert into shipping_zones (code, name) values ('TN', 'Tamil Nadu'), ('SOUTH', 'South India')`)
   await db.query(`update shipping_zones set is_active = false, is_default = false where code not in ('TN', 'SOUTH')`)
+  await db.query(`insert into variant_region_prices (variant_id, region, price_paise, delivery_paise) values
+    ($1, 'TN', $2, 21000), ($1, 'SOUTH', $2, 40900)`, [v.id, v.price_paise])
   const quote = (pincode, qty = 2) =>
     api('POST', '/api/checkout/quote', { body: { pincode, items: [{ id: 'alibaba-10kg', qty }] } })
   try {
     const tn = await quote('641001')
     assert.equal(tn.status, 200, JSON.stringify(tn.body))
-    assert.equal(tn.body.shipping, 108) // (₹165.20 − ₹111 → ₹54) × 2 packs
-    assert.equal(tn.body.total, tn.body.subtotal + 108)
+    assert.equal(tn.body.shipping, 420) // ₹210 × 2 packs
+    assert.equal(tn.body.total, tn.body.subtotal + 420)
     assert.equal(tn.body.region.code, 'TN')
-    assert.equal(tn.body.lines[0].delivery, 54)
+    assert.equal(tn.body.lines[0].delivery, 210)
 
     const kerala = await quote('682001', 1)
-    assert.equal(kerala.body.shipping, 153) // ₹264.32 − ₹111
+    assert.equal(kerala.body.shipping, 409)
     assert.equal(kerala.body.region.code, 'SOUTH')
 
     const delhi = await quote('110001', 1) // North: no active zone in this test
@@ -974,34 +975,45 @@ test('delivery charge: by PIN code region, per pack, with its GST on the invoice
     assert.equal(verify.status, 200, JSON.stringify(verify.body))
     assert.equal(session.amount, tn.body.total)
     const { rows: [o] } = await db.query('select * from orders where id = $1', [session.orderId])
-    assert.equal(Number(o.shipping_paise), 10800)
+    assert.equal(Number(o.shipping_paise), 42000)
     assert.equal(o.shipping_tax_rate_bp, 1800)
 
     const { issueInvoice } = await import('../lib/sales/operations.js')
     const inv = await issueInvoice(db, o)
     const { rows: [t] } = await db.query(
       'select sum(taxable_paise)::int as taxable, sum(cgst_paise + sgst_paise)::int as tax from order_items where order_id = $1', [o.id])
-    // ₹108 incl. 18% GST = ₹91.53 taxable + ₹16.47 GST (CGST + SGST within Tamil Nadu).
-    assert.equal(Number(inv.taxable_paise), t.taxable + 9153)
-    assert.equal(Number(inv.cgst_paise) + Number(inv.sgst_paise), t.tax + 1647)
+    // ₹420 incl. 18% GST = ₹355.93 taxable + ₹64.07 GST (CGST + SGST within Tamil Nadu).
+    assert.equal(Number(inv.taxable_paise), t.taxable + 35593)
+    assert.equal(Number(inv.cgst_paise) + Number(inv.sgst_paise), t.tax + 6407)
     assert.equal(Number(inv.igst_paise), 0)
     assert.equal(Number(inv.total_paise), Number(o.total_paise))
   } finally {
-    await db.query('update product_variants set delivery_absorbed_paise = null where id = $1', [alibaba10])
+    await db.query('delete from variant_region_prices where variant_id = $1', [v.id])
     await db.query(`delete from shipping_zones where code in ('TN', 'SOUTH')`)
     await db.query(`update shipping_zones set is_active = true, is_default = true where code = 'ALL_INDIA'`)
   }
 })
 
-test('PIN code regions', async () => {
-  const { regionForPincode, packDeliveryPaise } = await import('../lib/sales/regions.js')
+test('PIN code regions and the delivered-price sheets', async () => {
+  const { regionForPincode } = await import('../lib/sales/regions.js')
   const cases = { '600001': 'TN', '641001': 'TN', '605001': 'TN', '682001': 'SOUTH', '560001': 'SOUTH', '500001': 'SOUTH',
     '530001': 'SOUTH', '110001': 'NORTH', '400001': 'NORTH', '700001': 'NORTH', '403001': 'NORTH', '781001': 'NE',
     '795001': 'NE', '737101': 'NE', '744101': null, '900001': null, '12345': null, '012345': null }
   for (const [pin, region] of Object.entries(cases)) assert.equal(regionForPincode(pin), region, pin)
-  assert.equal(packDeliveryPaise(16520, 11100), 5400)
-  assert.equal(packDeliveryPaise(16520, 8500), 8000)
-  assert.equal(packDeliveryPaise(52864, 11100), 41800)
-  assert.equal(packDeliveryPaise(52864, 8500), 44400)
-  assert.equal(packDeliveryPaise(39648, 8500), 31100)
+
+  // Website price and delivery per region, exactly as on the sheets.
+  const { packPricing } = await import('../db/apply-price-list.js')
+  const sheet = [
+    [5, 471, 619, undefined, 582, { TN: 54, SOUTH: 153, NORTH: 285, NE: 418 }],
+    [5, 255, 349, 85, 340, { TN: 80, SOUTH: 179, NORTH: 311, NE: 444 }],
+    [10, 930, 1209, undefined, 1050, { TN: 210, SOUTH: 409, NORTH: 673, NE: 937 }],
+    [10, 566, 739, undefined, 686, { TN: 210, SOUTH: 409, NORTH: 673, NE: 937 }],
+    [26, 2249, 2899, undefined, 2499, { TN: 437, SOUTH: 1124, NORTH: 1812, NE: 2843 }],
+    [26, 1350, 1749, undefined, 1600, { TN: 437, SOUTH: 1124, NORTH: 1812, NE: 2843 }],
+  ]
+  for (const [kg, list, mrp, absorbed, website, delivery] of sheet) {
+    const p = packPricing(kg, list, mrp, absorbed)
+    assert.equal(p.website, website, `${kg} kg ₹${list}`)
+    assert.deepEqual(p.delivery, delivery, `${kg} kg ₹${list}`)
+  }
 })
