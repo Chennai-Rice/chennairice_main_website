@@ -78,27 +78,28 @@
   .sk-launcher-hello { animation: none; }
 }
 
-/* The avatar fills the button, so the burgundy disc behind it is only a
-   backstop while the image loads. */
+/* Soru Kutty waving "Hi": the artwork has its own round frame and speech
+   bubble, so it is shown whole, with no disc behind it. */
 .sk-launcher-avatar {
   position: relative;
   z-index: 1;
   width: 100%;
   height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  filter: drop-shadow(0 8px 14px rgba(74, 16, 26, 0.35));
 }
 
 .sk-launcher-btn {
   position: relative;
-  width: 62px;
-  height: 62px;
+  width: 88px;
+  height: 80px;
+  padding: 0;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: radial-gradient(120% 120% at 30% 25%, #7a1c2b 0%, var(--sk-burgundy) 45%, var(--sk-burgundy-deep) 100%);
-  box-shadow: 0 12px 30px rgba(74, 16, 26, 0.35), 0 0 0 1px rgba(196, 154, 58, 0.25) inset;
+  background: none;
+  border: 0;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
 }
 .sk-launcher-btn::before {
@@ -115,8 +116,7 @@
 }
 .sk-launcher-btn:hover,
 .sk-launcher-btn:focus-visible {
-  transform: scale(1.06);
-  box-shadow: 0 16px 36px rgba(74, 16, 26, 0.42), 0 0 0 1px rgba(196, 154, 58, 0.4) inset;
+  transform: scale(1.06) rotate(-3deg);
 }
 .sk-launcher-btn:focus-visible {
   outline: 2px solid var(--sk-gold);
@@ -700,4 +700,9 @@
   .sk-launcher-hello {
     display: none;
   }
+}
+
+/* Phones: the waving mascot a little smaller, so it covers less of the page. */
+@media (max-width: 560px) {
+  .sk-launcher-btn { width: 72px; height: 66px; }
 }

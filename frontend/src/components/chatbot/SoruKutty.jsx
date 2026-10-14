@@ -54,13 +54,16 @@ export default function SoruKutty() {
             aria-label={`Open ${SORU_KUTTY.name} chat`}
             onClick={open}
           >
-            <img
-              className="sk-launcher-avatar"
-              src="/assets/soru-kutty.png"
-              alt=""
-              width="62"
-              height="62"
-            />
+            <picture>
+              <source srcSet="/assets/soru-kutty-hi.webp" type="image/webp" />
+              <img
+                className="sk-launcher-avatar"
+                src="/assets/soru-kutty-hi.png"
+                alt=""
+                width="256"
+                height="230"
+              />
+            </picture>
           </button>
         </div>
       )}
