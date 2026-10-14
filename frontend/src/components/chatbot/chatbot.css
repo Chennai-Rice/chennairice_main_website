@@ -92,8 +92,8 @@
 
 .sk-launcher-btn {
   position: relative;
-  width: 124px;
-  height: 105px;
+  width: 84px;
+  height: 71px;
   padding: 0;
   border-radius: 50%;
   display: grid;
@@ -704,7 +704,7 @@
 
 /* Phones: the waving mascot a little smaller, so it covers less of the page. */
 @media (max-width: 560px) {
-  .sk-launcher-btn { width: 100px; height: 85px; }
+  .sk-launcher-btn { width: 70px; height: 59px; }
   /* Out of the way while the cookie banner is up, so it never covers the
      banner's buttons; it comes back once the visitor has answered. */
   body:has(.cookie-card-wrap) .sk-launcher { display: none; }
