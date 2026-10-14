@@ -39,7 +39,7 @@ export const PAGE_META = {
   },
   infrastructure: {
     title: 'Rice Mill & Paddy Storage Infrastructure | Chennai Rice',
-    description: 'Explore Chennai Rice’s Erode infrastructure: 2,44,000 MTPA milling capacity, 27 silos storing 61,500 MT of paddy and a 10 stage quality process.',
+    description: 'Explore Chennai Rice’s Erode infrastructure: 2,44,000 MTPA milling capacity, 31 silos storing 61,500 MT of paddy and a 10 stage quality process.',
   },
   contact: {
     title: 'Contact Chennai Rice | Erode, Tamil Nadu',
