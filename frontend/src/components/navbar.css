@@ -80,18 +80,18 @@
   flex: none;
 }
 .nav-contest img {
-  height: 66px;
+  height: 50px;
   width: auto;
   object-fit: contain;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
   transition: height 0.35s ease, transform 0.25s ease;
 }
 .nav-solid .nav-contest img {
-  height: 58px;
+  height: 44px;
 }
 .nav-contest:hover img,
 .nav-contest:focus-visible img {
-  transform: scale(1.07);
+  transform: scale(1.04);
 }
 /* Phones: shown beside the menu button (the desktop links are hidden). */
 .nav-contest-mobile {
@@ -225,7 +225,7 @@
     margin-left: auto;
   }
   .nav-contest-mobile img {
-    height: 60px;
+    height: 46px;
   }
   .nav-inner {
     height: 78px;
