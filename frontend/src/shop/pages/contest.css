@@ -226,9 +226,7 @@
   display: block;
   width: clamp(200px, 24vw, 340px);
   height: auto;
-  /* Two stacked shadows: a tight one that grounds the edges and a wide soft
-     one that lifts the whole figure off the page. */
-  filter: drop-shadow(0 6px 6px rgba(60, 5, 12, 0.38)) drop-shadow(0 22px 22px rgba(60, 5, 12, 0.34));
+  /* No drop shadow: the artwork already carries its own reflection. */
   animation: kb-mascot-in 0.9s cubic-bezier(0.2, 1.2, 0.3, 1) 0.4s both;
 }
 /* The introduction is set out like a coupon sheet: a paper ticket with
