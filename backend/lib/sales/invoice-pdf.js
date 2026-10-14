@@ -1,43 +1,20 @@
-// The GST tax invoice as a PDF, for the order confirmation email.
-// Same figures and layout as invoiceHtml() in documents.js. Built with the
-// PDF standard Helvetica, which has no ₹ glyph, so amounts read "Rs.".
+// The invoice as a PDF, for the order confirmation email. Same figures and
+// layout as invoiceHtml() in documents.js, both from invoiceModel(): laid out
+// after the company's own Tax Invoice / Bill of Supply. Built with the PDF
+// standard Helvetica, which has no ₹ glyph, so the total reads "Rs.".
 import PDFDocument from 'pdfkit'
-import { shippingTax } from './tax.js'
+import { invoiceModel } from './invoice-model.js'
 
-const MAROON = '#6e1420'
-const MUTED = '#666666'
-const LINE = '#bbbbbb'
-const METHOD = { own_vehicle: 'Own vehicle', courier: 'Courier', transport: 'Transport', pickup: 'Pickup from mill' }
-
-const amount = (paise) =>
+const money = (paise) =>
   (Number(paise) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const rs = (paise) => 'Rs. ' + amount(paise)
-const day = (d) => new Date(d).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' })
-
-function addressLines(a = {}) {
-  return [a.line1, a.line2, a.landmark && 'Landmark: ' + a.landmark, `${a.city || ''}, ${a.state || ''} ${a.pincode || ''}`.trim()]
-    .filter(Boolean)
-}
-
-// How it travels, once shipped. The shipment ID is not shown on the invoice.
-function shipmentLines(all = []) {
-  const shipments = all.filter((s) => s.status !== 'cancelled')
-  if (!shipments.length) return ['To be dispatched']
-  return shipments.flatMap((s) => {
-    const ref = s.tracking_number ? 'Tracking no. ' + s.tracking_number
-      : s.lr_number ? 'LR no. ' + s.lr_number
-      : s.vehicle_number ? 'Vehicle ' + s.vehicle_number : null
-    return [(METHOD[s.method] || 'Dispatched') + (s.carrier_name ? ' · ' + s.carrier_name : ''), ref].filter(Boolean)
-  })
-}
 
 /** Resolves to the invoice PDF as a Buffer. */
-export function invoicePdf({ order, items, invoice, shipments }) {
-  const s = invoice.seller
-  const intra = Number(invoice.igst_paise) === 0
+export function invoicePdf(detail) {
+  const m = invoiceModel(detail)
+  const s = m.seller
   const doc = new PDFDocument({
-    size: 'A4', margin: 40,
-    info: { Title: `Invoice ${invoice.invoice_number}`, Author: s.name, Subject: `Order ${order.order_number}` },
+    size: 'A4', margin: 28,
+    info: { Title: `Invoice ${m.meta.invoiceNo}`, Author: s.name, Subject: `Order ${m.meta.orderNo}` },
   })
   const chunks = []
   doc.on('data', (c) => chunks.push(c))
@@ -46,96 +23,200 @@ export function invoicePdf({ order, items, invoice, shipments }) {
     doc.on('error', reject)
   })
 
-  const left = doc.page.margins.left
-  const width = doc.page.width - left - doc.page.margins.right
+  const L = doc.page.margins.left
+  const W = doc.page.width - L - doc.page.margins.right
+  const half = W / 2
+  doc.lineWidth(0.6).strokeColor('#000').fillColor('#000')
 
-  // Heading
-  doc.fillColor(MAROON).font('Helvetica-Bold').fontSize(18).text('Tax Invoice', left, 40)
-  doc.fillColor(MUTED).font('Helvetica').fontSize(9)
-    .text(`Invoice ${invoice.invoice_number}  ·  ${day(invoice.issued_at)}  ·  Order ${order.order_number}`)
-  doc.moveDown(1)
+  const font = (bold, size, italic = false) =>
+    doc.font(bold ? (italic ? 'Helvetica-BoldOblique' : 'Helvetica-Bold') : italic ? 'Helvetica-Oblique' : 'Helvetica').fontSize(size)
+  const box = (x, y, w, h) => doc.rect(x, y, w, h).stroke()
+  const hline = (x1, x2, y) => doc.moveTo(x1, y).lineTo(x2, y).stroke()
+  const vline = (x, y1, y2) => doc.moveTo(x, y1).lineTo(x, y2).stroke()
 
-  // Three blocks: seller, buyer, shipment
-  const top = doc.y
-  const colW = (width - 24) / 3
-  const block = (x, title, bold, lines) => {
-    doc.fillColor(MAROON).font('Helvetica-Bold').fontSize(10).text(title, x, top, { width: colW })
-    doc.moveDown(0.3)
-    doc.fillColor('#222222').font('Helvetica-Bold').fontSize(9).text(bold, { width: colW })
-    doc.font('Helvetica').fontSize(8.5)
-    for (const l of lines) doc.text(l, { width: colW })
-    return doc.y
-  }
-  const bottoms = [
-    block(left, 'Sold by', s.name, [s.address, `GSTIN: ${s.gstin || '— not yet set —'}`, `State: ${s.state} (${s.stateCode})`, [s.phone, s.email].filter(Boolean).join(' · ')]),
-    block(left + colW + 12, 'Bill / ship to', order.contact_name, [...addressLines(order.shipping_address), order.contact_phone, `Place of supply: ${invoice.place_of_supply}`]),
-    block(left + (colW + 12) * 2, 'Delivery', '', shipmentLines(shipments)),
-  ]
-  let y = Math.max(...bottoms) + 16
+  // Title
+  font(true, 11).text(m.title, L, 24, { width: W, align: 'center' })
+  const top = 40
 
-  // Items table
-  const cols = intra
-    ? [['#', 18], ['Item', 0], ['HSN', 42], ['Qty', 26], ['Rate', 56], ['Taxable', 56], ['GST', 28], ['CGST', 48], ['SGST', 48], ['Amount', 60]]
-    : [['#', 18], ['Item', 0], ['HSN', 42], ['Qty', 26], ['Rate', 56], ['Taxable', 56], ['GST', 28], ['IGST', 56], ['Amount', 60]]
-  const fixed = cols.reduce((t, [, w]) => t + w, 0)
-  cols[1][1] = width - fixed
-  const xs = []
-  cols.reduce((x, [, w]) => { xs.push(x); return x + w }, left)
-  const numeric = (i) => i >= 3
-
-  const drawRow = (cells, { head = false, fill = null } = {}) => {
-    doc.font(head ? 'Helvetica-Bold' : 'Helvetica').fontSize(8)
-    const h = Math.max(...cells.map((c, i) => doc.heightOfString(String(c ?? ''), { width: cols[i][1] - 8 }))) + 8
-    if (y + h > doc.page.height - doc.page.margins.bottom - 40) {
-      doc.addPage()
-      y = doc.page.margins.top
+  // --- Header: seller / consignee / buyer on the left, details on the right
+  const pad = 4
+  const lw = half - pad * 2
+  const block = (y, parts) => {
+    let yy = y + pad
+    for (const [text, bold, size = 7.5] of parts) {
+      font(bold, size).text(text, L + pad, yy, { width: lw })
+      yy = doc.y
     }
-    if (fill) doc.rect(left, y, width, h).fill(fill)
-    doc.fillColor('#222222')
-    cells.forEach((c, i) => {
-      doc.text(String(c ?? ''), xs[i] + 4, y + 4, { width: cols[i][1] - 8, align: numeric(i) ? 'right' : 'left' })
-    })
-    doc.lineWidth(0.5).strokeColor(LINE).rect(left, y, width, h).stroke()
-    xs.slice(1).forEach((x) => doc.moveTo(x, y).lineTo(x, y + h).stroke())
-    y += h
+    return yy + pad
   }
-  const drawWide = (label, value, { bold = false } = {}) => {
-    doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(8)
-    const lastX = xs[xs.length - 1]
-    const h = doc.heightOfString(label, { width: lastX - left - 8 }) + 8
-    doc.fillColor('#222222').text(label, left + 4, y + 4, { width: lastX - left - 8 })
-    doc.text(value, lastX + 4, y + 4, { width: cols[cols.length - 1][1] - 8, align: 'right' })
-    doc.lineWidth(0.5).strokeColor(LINE).rect(left, y, width, h).stroke()
-    doc.moveTo(lastX, y).lineTo(lastX, y + h).stroke()
-    y += h
-  }
-
-  drawRow(cols.map(([label]) => label), { head: true, fill: '#f3eee2' })
-  items.forEach((i, n) => {
-    drawRow([
-      n + 1, `${i.product_name} (${Number(i.pack_kg)} kg)\n${i.sku || ''}`.trim(), i.hsn_code, i.quantity,
-      amount(i.unit_price_paise), amount(i.taxable_paise), `${i.tax_rate_bp / 100}%`,
-      ...(intra ? [amount(i.cgst_paise), amount(i.sgst_paise)] : [amount(i.igst_paise)]),
-      amount(i.line_total_paise),
-    ])
+  const partyParts = (title, p) => [
+    [title, false, 7], [p.name, true, 8], ...p.lines.map((l) => [l]),
+    [`State Name : ${p.state || ''}${p.stateCode ? ', Code : ' + p.stateCode : ''}`], [`Contact : ${p.phone || ''}`],
+  ]
+  let y = block(top, [
+    [s.name, true, 9],
+    ...(s.formerName ? [[`Formerly : ${s.formerName}`]] : []),
+    [s.address],
+    ...(s.fssai ? [[`FSSAI No. ${s.fssai}`]] : []),
+    [`GSTIN/UIN: ${s.gstin || ''}`],
+    [`State Name : ${s.state}, Code : ${s.stateCode}`],
+    [`Contact : ${s.phone}`],
+    [`E-Mail : ${s.email}`],
+  ])
+  const sep1 = y
+  y = block(y, partyParts('Consignee (Ship to)', m.shipTo))
+  const sep2 = y
+  y = block(y, partyParts('Buyer (Bill to)', m.billTo))
+  const metaRows = [
+    ['Invoice No.', m.meta.invoiceNo, 'Dated', m.meta.date],
+    ['Delivery Note', '', 'Mode/Terms of Payment', m.meta.terms],
+    ['Reference No. & Date.', `${m.meta.invoiceNo} dt. ${m.meta.date}`, 'Other References', ''],
+    ['Buyer’s Order No.', m.meta.orderNo, 'Dated', m.meta.orderDate],
+    ['Dispatch Doc No.', '', 'Delivery Note Date', ''],
+    ['Dispatched through', m.meta.dispatchedThrough, 'Destination', m.meta.destination],
+    ['Bill of Lading/LR-RR No.', m.meta.lrNo ? `${m.meta.lrNo}${m.meta.lrDate ? ' dt. ' + m.meta.lrDate : ''}` : '', 'Motor Vehicle No.', m.meta.vehicleNo],
+  ]
+  const rowH = 24
+  const headBottom = Math.max(y, top + rowH * metaRows.length + 30)
+  box(L, top, W, headBottom - top)
+  vline(L + half, top, headBottom)
+  hline(L, L + half, sep1)
+  hline(L, L + half, sep2)
+  const mx = L + half
+  const cw = half / 2
+  metaRows.forEach((r, i) => {
+    const ry = top + i * rowH
+    hline(mx, L + W, ry + rowH)
+    vline(mx + cw, ry, ry + rowH)
+    for (const [k, cx] of [[0, mx], [2, mx + cw]]) {
+      font(false, 6.5).text(r[k], cx + pad, ry + 3, { width: cw - pad * 2, lineBreak: false })
+      font(true, 7.5).text(r[k + 1] || '', cx + pad, ry + 12, { width: cw - pad * 2, height: 10, ellipsis: true })
+    }
   })
-  // Delivery charge as a taxed line of its own (older orders: a plain row).
-  const ship = shippingTax(order)
-  if (Number(order.shipping_paise) && ship.rateBp) {
-    drawRow([
-      '', 'Delivery charge', '', 1, amount(order.shipping_paise), amount(ship.taxable), `${ship.rateBp / 100}%`,
-      ...(intra ? [amount(ship.cgst), amount(ship.sgst)] : [amount(ship.igst)]),
-      amount(order.shipping_paise),
-    ])
-  } else if (Number(order.shipping_paise)) drawWide('Delivery charge', amount(order.shipping_paise))
-  if (Number(order.discount_paise)) drawWide('Discount', '-' + amount(order.discount_paise))
-  drawWide(
-    `Total (taxable ${rs(invoice.taxable_paise)} + ` +
-      (intra ? `CGST ${rs(invoice.cgst_paise)} + SGST ${rs(invoice.sgst_paise)})` : `IGST ${rs(invoice.igst_paise)})`),
-    rs(invoice.total_paise), { bold: true })
+  font(false, 6.5).text('Terms of Delivery', mx + pad, top + rowH * metaRows.length + 3)
 
-  doc.fillColor(MUTED).font('Helvetica').fontSize(8)
-    .text('Amounts in Indian Rupees. Rate is per pack, inclusive of GST. This is a computer-generated invoice.', left, y + 10, { width })
+  // --- Items
+  const cols = [['Sl\nNo.', 22], ['Description of Goods', 0], ['HSN/SAC', 52], ['Quantity', 66], ['Rate', 56], ['per', 28], ['Disc. %', 32], ['Amount', 70]]
+  cols[1][1] = W - cols.reduce((t, [, w]) => t + w, 0)
+  const xs = []
+  cols.reduce((x, [, w]) => { xs.push(x); return x + w }, L)
+  y = headBottom
+  const tableTop = y
+  const headH = 18
+  cols.forEach(([label, w], i) => font(false, 7).text(label, xs[i] + 2, y + 3, { width: w - 4, align: 'center' }))
+  hline(L, L + W, y + headH)
+  y += headH + 3
+  const cell = (i, text, { bold = false, italic = false, size = 7.5, align = 'right' } = {}) => {
+    font(bold, size, italic).text(text, xs[i] + 3, y, { width: cols[i][1] - 6, align })
+  }
+  for (const l of m.lines) {
+    const rowTop = y
+    cell(0, String(l.sl), { align: 'center' })
+    font(true, 7.5).text(l.description, xs[1] + 3, rowTop, { width: cols[1][1] - 6 })
+    let rowBottom = doc.y
+    y = rowTop
+    cell(2, l.hsn || '', { align: 'left' })
+    if (l.bags != null) {
+      cell(3, `${l.bags}.0 Bags`, { bold: true })
+      y = rowTop + 10
+      cell(3, `(${l.kgs.toFixed(3)} Kgs)`, { italic: true, size: 6.5 })
+      rowBottom = Math.max(rowBottom, rowTop + 19)
+      y = rowTop
+      cell(4, money(l.rate))
+      cell(5, 'Bags', { align: 'left' })
+    }
+    cell(7, money(l.amount), { bold: true })
+    y = rowBottom + 5
+  }
+  if (m.taxRows.length || m.discount) {
+    hline(xs[7], L + W, y - 2)
+    cell(7, money(m.taxable))
+    y += 12
+  }
+  const sideRow = (label, pct, amount) => {
+    cell(1, label, { bold: true, italic: true })
+    if (pct != null) { cell(4, pct.toFixed(2), { italic: true }); cell(5, '%', { italic: true, align: 'left' }) }
+    cell(7, amount, { bold: true })
+    y += 11
+  }
+  for (const t of m.taxRows) sideRow(t.label, t.pct, money(t.amount))
+  if (m.discount) sideRow('Less : Discount', null, '(-)' + money(m.discount))
+  if (m.roundOff) sideRow('Rounded Off', null, money(m.roundOff))
+  y = Math.max(y + 6, tableTop + 230)
+  const totalTop = y
+  hline(L, L + W, totalTop)
+  y += 4
+  cell(1, 'Total', { bold: false })
+  cell(3, `${m.bags}.0 Bags`, { bold: true })
+  cell(7, `Rs. ${money(m.total)}`, { bold: true, size: 8.5 })
+  const itemsBottom = totalTop + 16
+  box(L, tableTop, W, itemsBottom - tableTop)
+  xs.slice(1).forEach((x) => vline(x, tableTop, itemsBottom))
+
+  // --- Amount in words
+  y = itemsBottom
+  font(false, 6.5).text('Amount Chargeable (in words)', L + pad, y + 3)
+  font(false, 7, true).text('E. & O.E', L, y + 3, { width: W - pad, align: 'right' })
+  font(true, 8).text(m.totalWords, L + pad, y + 12, { width: W - pad * 2 })
+  y = doc.y + 4
+  box(L, itemsBottom, W, y - itemsBottom)
+
+  // --- HSN summary
+  const hcols = !m.taxed
+    ? [['HSN/SAC', 0], ['Taxable Value', 110]]
+    : m.intra
+      ? [['HSN/SAC', 0], ['Taxable Value', 80], ['CGST Rate', 46], ['CGST Amount', 66], ['SGST Rate', 46], ['SGST Amount', 66], ['Total Tax Amount', 76]]
+      : [['HSN/SAC', 0], ['Taxable Value', 90], ['IGST Rate', 56], ['IGST Amount', 80], ['Total Tax Amount', 90]]
+  hcols[0][1] = W - hcols.reduce((t, [, w]) => t + w, 0)
+  const hx = []
+  hcols.reduce((x, [, w]) => { hx.push(x); return x + w }, L)
+  const hTop = y
+  const hrow = (cells, { bold = false } = {}) => {
+    const ry = y
+    cells.forEach((c, i) => font(bold, 7).text(c, hx[i] + 3, ry + 3, { width: hcols[i][1] - 6, align: i === 0 ? 'left' : 'right' }))
+    y = ry + 13
+    hline(L, L + W, y)
+  }
+  hrow(hcols.map(([h]) => h))
+  const pct = (bp, div) => `${(bp / div).toFixed(2)}%`
+  for (const h of m.hsnRows) {
+    hrow(!m.taxed ? [h.hsn, money(h.taxable)]
+      : m.intra ? [h.hsn, money(h.taxable), pct(h.rateBp, 200), money(h.cgst), pct(h.rateBp, 200), money(h.sgst), money(h.cgst + h.sgst)]
+        : [h.hsn, money(h.taxable), pct(h.rateBp, 100), money(h.igst), money(h.igst)])
+  }
+  const sum = (k) => m.hsnRows.reduce((t, h) => t + h[k], 0)
+  hrow(!m.taxed ? ['Total', money(m.taxable)]
+    : m.intra ? ['Total', money(m.taxable), '', money(sum('cgst')), '', money(sum('sgst')), money(m.tax)]
+      : ['Total', money(m.taxable), '', money(sum('igst')), money(m.tax)], { bold: true })
+  box(L, hTop, W, y - hTop)
+  hx.slice(1).forEach((x) => vline(x, hTop, y))
+
+  // --- Tax in words, declaration, bank, signatures
+  const fTop = y
+  font(false, 7.5).text('Tax Amount (in words) :  ', L + pad, y + 4, { continued: true })
+  font(true, 7.5).text(m.taxWords)
+  y = doc.y + 6
+  font(false, 7).text('Declaration', L + pad, y + 40, { underline: true })
+  font(false, 7).text('We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.',
+    L + pad, doc.y, { width: half - pad * 2 })
+  const bx = L + half + pad
+  font(false, 7).text('Company’s Bank Details', bx, y)
+  for (const [k, v] of [['Bank Name', s.bank.name], ['A/c No.', s.bank.account], ['Branch & IFS Code', s.bank.branchIfsc]]) {
+    const ry = doc.y
+    font(false, 7).text(k, bx, ry, { width: 70 })
+    font(true, 7).text(`: ${v}`, bx + 70, ry, { width: half - 80 })
+  }
+  font(true, 7.5).text(`for ${s.name}`, L + half, doc.y + 4, { width: half, align: 'center' })
+  const signY = doc.y + 22
+  font(false, 7)
+  doc.text('Prepared by', L + half + pad, signY)
+  doc.text('Verified by', L + half + half / 3, signY, { width: half / 3, align: 'center' })
+  doc.text('Authorised Signatory', L + half, signY, { width: half - pad, align: 'right' })
+  const fBottom = signY + 12
+  box(L, fTop, W, fBottom - fTop)
+  vline(L + half, y - 2, fBottom)
+  font(false, 7).text('This is a Computer Generated Invoice', L, fBottom + 8, { width: W, align: 'center' })
+
   doc.end()
   return done
 }
