@@ -5,7 +5,7 @@
 // src/hooks/useGoogleAnalytics.js), and told to stop collecting the moment
 // that consent is withdrawn. With no Measurement ID set it does nothing.
 
-export const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || ''
+export const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-SWQD75DWP6'
 
 let loaded = false
 
