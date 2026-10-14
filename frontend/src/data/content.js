@@ -41,9 +41,16 @@ export const NAV_LINKS = [
   { label: 'Blog', to: '/blog' },
   { label: 'Contact', to: '/contact-us' },
   { label: 'Track Order', to: '/track-order' },
-  // Highlighted in the bar: opens the Super Slogan Contest page.
-  { label: 'Contest', to: '/contest', accent: true },
 ]
+
+// The Super Slogan Contest logo in the bar (after the links on desktop,
+// beside the menu button on phones): opens the contest page.
+export const NAV_CONTEST = {
+  to: '/contest',
+  label: 'Super Slogan Contest',
+  logo: '/assets/contest-nav-logo.webp',
+  fallback: '/assets/contest-nav-logo.png',
+}
 
 export const NAV_CTA = { label: 'Bulk Order', to: '/bulk-order' }
 

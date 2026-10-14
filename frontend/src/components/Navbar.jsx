@@ -3,7 +3,7 @@ import { NavLink, Link, useLocation } from 'react-router-dom'
 import Img from './Img.jsx'
 import { useCart } from '../shop/hooks/useCart.jsx'
 import { useWishlist } from '../shop/hooks/useWishlist.jsx'
-import { ASSETS, NAV_LINKS, NAV_CTA } from '../data/content.js'
+import { ASSETS, NAV_LINKS, NAV_CONTEST, NAV_CTA } from '../data/content.js'
 import './navbar.css'
 
 /* Counts above 9 would burst the badge circle, so they cap at 9+. */
@@ -43,13 +43,14 @@ export default function Navbar() {
               key={link.label}
               to={link.to}
               end={link.to === '/'}
-              className={({ isActive }) =>
-                `nav-link${link.accent ? ' nav-link-accent' : ''}${isActive ? ' nav-active' : ''}`
-              }
+              className={({ isActive }) => (isActive ? 'nav-link nav-active' : 'nav-link')}
             >
               {link.label}
             </NavLink>
           ))}
+          <Link className="nav-contest" to={NAV_CONTEST.to} aria-label={NAV_CONTEST.label}>
+            <Img src={NAV_CONTEST.logo} fallback={NAV_CONTEST.fallback} alt={NAV_CONTEST.label} />
+          </Link>
         </nav>
 
         <div className="nav-actions">
@@ -93,6 +94,10 @@ export default function Navbar() {
           {NAV_CTA.label}
         </Link>
 
+        <Link className="nav-contest nav-contest-mobile" to={NAV_CONTEST.to} aria-label={NAV_CONTEST.label}>
+          <Img src={NAV_CONTEST.logo} fallback={NAV_CONTEST.fallback} alt={NAV_CONTEST.label} />
+        </Link>
+
         <button
           className="nav-burger"
           aria-label="Toggle menu"
@@ -108,7 +113,7 @@ export default function Navbar() {
       {open && (
         <div className="nav-mobile">
           {NAV_LINKS.map(link => (
-            <Link key={link.label} to={link.to} className={link.accent ? 'nav-mobile-accent' : undefined} onClick={() => setOpen(false)}>
+            <Link key={link.label} to={link.to} onClick={() => setOpen(false)}>
               {link.label}
             </Link>
           ))}
