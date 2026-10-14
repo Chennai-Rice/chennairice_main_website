@@ -12,7 +12,7 @@
 // plus the campaign and ad names from the link. A Meta click ID alone is not
 // proof of an ad (Facebook adds it to ordinary post links too), so a Meta
 // visit counts as an ad when the link says utm_medium=paid (or cpc, ads…).
-import { str } from './util.js'
+import { httpError, str } from './util.js'
 
 export const SOURCES = {
   meta_ads_facebook: 'Meta ad · Facebook',
@@ -190,4 +190,52 @@ export async function sourceOrders(db, { days = 30, source, campaign = '', ad = 
     [span, str(source), str(campaign), str(ad), PAID_STATUSES, str(product)]
   )
   return rows.map((r) => ({ ...r, total: Number(r.total_paise) / 100 }))
+}
+
+// ---- Super Slogan Contest sign-ups (the popup form shown to ad visitors) ----
+
+const NAME = /^[\p{L}][\p{L} .'-]{1,79}$/u
+const EMAIL = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/
+
+/** Indian mobile number as 10 digits, or '' if it is not one. */
+export function cleanMobile(raw) {
+  let d = String(raw ?? '').replace(/\D/g, '')
+  if (d.length === 12 && d.startsWith('91')) d = d.slice(2)
+  if (d.length === 11 && d.startsWith('0')) d = d.slice(1)
+  return /^[6-9]\d{9}$/.test(d) ? d : ''
+}
+
+/** Saves a sign-up; the same mobile number again updates its row. */
+export async function saveContestLead(db, body) {
+  const name = str(body?.name).replace(/\s+/g, ' ')
+  const phone = cleanMobile(body?.phone)
+  const email = str(body?.email).toLowerCase()
+  if (!NAME.test(name)) throw httpError('Bad name', { publicMessage: 'Please enter your name.' })
+  if (!phone) throw httpError('Bad phone', { publicMessage: 'Please enter a valid 10-digit mobile number.' })
+  if (email.length > 120 || !EMAIL.test(email)) throw httpError('Bad email', { publicMessage: 'Please enter a valid email address.' })
+  const a = cleanAttribution(body?.attribution)
+  const { source, campaign, ad } = classify(a)
+  await db.query(
+    `insert into contest_leads (name, phone, email, source, campaign, ad, landing, attribution)
+     values ($1, $2, $3, $4, $5, $6, $7, $8)
+     on conflict (phone) do update set name = excluded.name, email = excluded.email,
+       source = excluded.source, campaign = excluded.campaign, ad = excluded.ad,
+       landing = excluded.landing, attribution = excluded.attribution,
+       submissions = contest_leads.submissions + 1, updated_at = now()`,
+    [name, phone, email, source, campaign, ad, clip(body?.page || a?.landing, 200) || null, a]
+  )
+  return { ok: true }
+}
+
+/** Sign-ups in the last `days` days, newest first. */
+export async function contestLeads(db, { days = 30 } = {}) {
+  const span = Math.min(366, Math.max(1, Number(days) || 30))
+  const { rows } = await db.query(
+    `select name, phone, email, source, campaign, ad, landing, submissions, created_at, updated_at
+       from contest_leads
+      where (updated_at at time zone 'Asia/Kolkata')::date >= (now() at time zone 'Asia/Kolkata')::date - ($1::int - 1)
+      order by updated_at desc limit 2000`,
+    [span]
+  )
+  return rows.map((r) => ({ ...r, sourceLabel: SOURCES[r.source] || r.source }))
 }

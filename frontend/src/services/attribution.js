@@ -13,8 +13,37 @@
 
 const KEY = 'cr.attribution'
 const COUNTED = 'cr.attribution.counted'
+const FROM_AD = 'cr.attribution.fromAd'
 const KEEP_DAYS = 30
 const PARAMS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']
+
+// Same rules as classify() in backend/lib/sales/attribution.js: a Google Ads
+// click (gclid, or a Google source with a paid medium), or a Meta ad
+// (Facebook / Instagram / Meta link or referrer with a paid medium).
+const PAID = /^(paid|cpc|ppc|ads?|paid[_-]?social|paidsocial|paid[_-]?search|display|sponsored)$/i
+function isPaidAd(a) {
+  const s = (a.utm_source || '').toLowerCase()
+  const paid = PAID.test(a.utm_medium || '')
+  if (a.gclid) return true
+  if (!paid) return false
+  let host = ''
+  try { host = a.referrer ? new URL(a.referrer).hostname : '' } catch { /* none */ }
+  return (
+    /^(google|adwords|googleads|google_ads)$/.test(s) ||
+    /^(ig|instagram|fb|facebook|meta)$/.test(s) ||
+    /(^|\.)(instagram\.com|facebook\.com|fb\.com|fb\.me)$/.test(host) ||
+    Boolean(a.fbclid)
+  )
+}
+
+/** Did this browsing session start from a Meta or Google ad? */
+export function isAdVisit() {
+  try {
+    return window.sessionStorage.getItem(FROM_AD) === '1'
+  } catch {
+    return false
+  }
+}
 
 function readStored() {
   try {
@@ -43,6 +72,11 @@ export function captureAttribution() {
     if (r && r.hostname !== window.location.hostname) ref = r.origin + '/'
   } catch { /* no usable referrer */ }
   if (ref) a.referrer = ref
+  // This visit came from a paid ad: remembered for this browsing session
+  // (the contest popup is shown only to these visitors).
+  if (isPaidAd(a)) {
+    try { window.sessionStorage.setItem(FROM_AD, '1') } catch { /* popup stays off */ }
+  }
   if (!Object.keys(a).length) return // a direct visit keeps any earlier ad visit
   a.landing = url.pathname
   a.at = new Date().toISOString()

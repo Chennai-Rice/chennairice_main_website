@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { staffJson } from '../../services/staffAuth.js'
+import { staffFetch, staffJson } from '../../services/staffAuth.js'
 import { dayLabel } from './shared.jsx'
 
 // Sales by where the buyer came from: Meta ads (Facebook / Instagram), Google
@@ -66,6 +66,7 @@ export default function SourcesReport({ say, onAuthError }) {
   const totalRevenue = (data?.sources || []).reduce((t, s) => t + s.revenue, 0)
 
   return (
+    <>
     <section className="wh-panel wh-src">
       <header className="wh-src-head">
         <div>
@@ -157,6 +158,68 @@ export default function SourcesReport({ say, onAuthError }) {
             </div>
           )}
         </>
+      )}
+    </section>
+    <ContestLeads days={days} say={say} onAuthError={onAuthError} />
+    </>
+  )
+}
+
+/** Sign-ups from the contest popup form shown to Meta and Google ad visitors. */
+function ContestLeads({ days, say, onAuthError }) {
+  const [leads, setLeads] = useState(null)
+
+  useEffect(() => {
+    let live = true
+    setLeads(null)
+    staffJson(`/api/admin/warehouse/contest-leads?days=${days}`)
+      .then((d) => live && setLeads(d.leads))
+      .catch((err) => { if (!onAuthError(err)) say(err.message, 'error') })
+    return () => { live = false }
+  }, [days, say, onAuthError])
+
+  async function downloadCsv() {
+    try {
+      const res = await staffFetch(`/api/admin/warehouse/contest-leads.csv?days=${days}`)
+      const url = URL.createObjectURL(await res.blob())
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'contest-signups.csv'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (err) {
+      if (!onAuthError(err)) say(err.message, 'error')
+    }
+  }
+
+  return (
+    <section className="wh-panel wh-src">
+      <header className="wh-src-head">
+        <div>
+          <h2 className="wh-panel-title">Contest sign-ups from ads</h2>
+          <p className="wh-muted wh-small">
+            Name, mobile and email from the Super Slogan Contest form, shown to visitors who came from a Meta or Google ad
+            {leads ? ` · ${leads.length} in this period` : ''}.
+          </p>
+        </div>
+        <button type="button" className="wh-btn wh-btn--outline" onClick={downloadCsv} disabled={!leads?.length}>Download CSV</button>
+      </header>
+      {!leads ? <p className="wh-empty">Loading…</p> : !leads.length ? (
+        <p className="wh-empty">No sign-ups in this period yet.</p>
+      ) : (
+        <ul className="wh-src-orders wh-src-leads">
+          {leads.map((l) => (
+            <li key={l.phone}>
+              <strong>{l.name}</strong>
+              <a className="wh-mono" href={`tel:+91${l.phone}`}>{l.phone}</a>
+              <a href={`mailto:${l.email}`}>{l.email}</a>
+              <span><i className="wh-src-dot" style={{ background: TONE[l.source] || '#8a7766' }} />{l.sourceLabel}{l.campaign ? ` · ${l.campaign}` : ''}{l.ad ? ` · ${l.ad}` : ''}</span>
+              <span className="wh-muted wh-small">{dayLabel(l.updated_at).text}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   )

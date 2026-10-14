@@ -403,3 +403,89 @@
 .contest-poster-cta.contest-poster-cta--on-art:hover { transform: translateX(-50%) translateY(-2px); }
 .contest-poster-cta.contest-poster-cta--on-art { white-space: nowrap; }
 @media (max-width: 480px) { .contest-poster-cta.contest-poster-cta--on-art { font-size: 0.95rem; min-height: 46px; padding: 0 20px; bottom: 8%; } }
+
+/* ---- Sign-up form version (visitors from a Meta or Google ad) ---- */
+.contest-pop.contest-pop--form {
+  grid-template-columns: 0.82fr 1fr;
+  width: min(900px, 100%);
+}
+.contest-pop--form .contest-pop-art img { object-position: 50% 30%; }
+.contest-pop--form .contest-pop-body {
+  justify-content: center;
+  padding: 40px 36px 30px 22px;
+  gap: 12px;
+}
+.contest-form-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(1.7rem, 3vw, 2.3rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--cp-maroon);
+}
+.contest-pop--form .contest-pop-text { font-size: 14.5px; line-height: 1.6; }
+.contest-form {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  max-width: 400px;
+  text-align: left;
+}
+.contest-form-field {
+  display: grid;
+  gap: 5px;
+}
+.contest-form-field span {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cp-maroon);
+}
+.contest-form-field input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 16px; /* 16px keeps phones from zooming in on focus */
+  color: #2b1b16;
+  background: #fffdf8;
+  border: 1.5px solid #e2c98f;
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.contest-form-field input:focus {
+  border-color: var(--cp-gold);
+  box-shadow: 0 0 0 3px rgba(217, 184, 102, 0.35);
+}
+.contest-form-submit {
+  width: 100%;
+  margin-top: 4px;
+  min-height: 52px;
+  border: 0;
+  text-decoration: none;
+}
+.contest-form-submit:disabled { opacity: 0.7; cursor: progress; }
+.contest-form-error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #8e1a22;
+  background: #fde8e6;
+}
+.contest-form-note {
+  margin: 0;
+  font-size: 12.5px;
+  text-align: center;
+  color: #6b5248;
+}
+.contest-form-note a { color: var(--cp-maroon); text-decoration: underline; }
+@media (max-width: 720px) {
+  .contest-pop.contest-pop--form { width: min(460px, 100%); }
+  .contest-pop--form .contest-pop-art { aspect-ratio: 16 / 9; }
+  .contest-pop--form .contest-pop-art img { object-position: 50% 4%; }
+  .contest-pop--form .contest-pop-body { padding: 4px 18px 20px; }
+  .contest-form { max-width: none; }
+}

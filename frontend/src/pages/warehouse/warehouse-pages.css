@@ -334,3 +334,9 @@
 .wh-table--src .wh-tr > span:first-child { display: flex; align-items: center; }
 .wh-src-orders li .wh-mono { white-space: nowrap; }
 .wh-src-orders li { grid-template-columns: 170px minmax(0, 1fr) minmax(0, 1.4fr) 90px 80px; }
+/* Contest sign-ups list under the sources report. */
+.wh-src + .wh-src { margin-top: 16px; }
+.wh-src-orders.wh-src-leads li { grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1.2fr) minmax(0, 1.4fr) 90px; }
+.wh-src-leads a { color: inherit; overflow-wrap: anywhere; }
+.wh-src-leads span { display: flex; align-items: center; }
+@media (max-width: 900px) { .wh-src-orders.wh-src-leads li { grid-template-columns: 1fr; padding: 6px 0; border-bottom: 1px solid rgba(0, 0, 0, 0.06); } }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { currentAttribution, isAdVisit } from '../services/attribution.js'
 import './contestpopup.css'
 
 // The Super Slogan Contest poster. Taking part starts with buying a Kitchidi
@@ -38,6 +39,10 @@ function hideFor(ms) {
 /**
  * Centred contest poster, 8 seconds into the visit, with one button to the
  * Kitchidi Ponni pack. Closes on ✕, the backdrop or Escape.
+ *
+ * Visitors who arrived from a Meta (Facebook / Instagram) or Google ad in this
+ * browsing session get the sign-up form instead (name, mobile, email), saved
+ * with the ad they came from (see AdSignup below).
  */
 export default function ContestPopup() {
   const { pathname } = useLocation()
@@ -45,6 +50,7 @@ export default function ContestPopup() {
   const closeRef = useRef(null)
   const lastFocus = useRef(null)
   const quiet = QUIET_PATHS.some((p) => pathname.startsWith(p))
+  const [fromAd] = useState(isAdVisit)
 
   // The clock starts when the visitor arrives and keeps running as they move
   // between pages; it only waits while they are on a quiet page.
@@ -94,6 +100,8 @@ export default function ContestPopup() {
 
   if (!open) return null
 
+  if (fromAd) return <AdSignup closeRef={closeRef} close={close} />
+
   return (
     <div className="contest-pop-backdrop" onClick={() => close()}>
       <div
@@ -134,6 +142,106 @@ export default function ContestPopup() {
             <path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </Link>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The popup for visitors from a Meta or Google ad: the contest artwork and a
+ * short sign-up form (name, mobile, email). Saved with the ad they came from.
+ */
+function AdSignup({ closeRef, close }) {
+  const [form, setForm] = useState({ name: '', phone: '', email: '' })
+  const [state, setState] = useState('form') // form | sending | done
+  const [error, setError] = useState('')
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+
+  async function submit(e) {
+    e.preventDefault()
+    setError('')
+    setState('sending')
+    try {
+      const res = await fetch('/api/contest/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, attribution: currentAttribution(), page: window.location.pathname }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not register you just now. Please try again.')
+      hideFor(HIDE_AFTER_JOIN_MS) // registered: no popup for a week
+      setState('done')
+    } catch (err) {
+      setError(err.message || 'Could not register you just now. Please try again.')
+      setState('form')
+    }
+  }
+
+  return (
+    <div className="contest-pop-backdrop" onClick={() => close()}>
+      <div
+        className="contest-pop contest-pop--form"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="contest-form-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button ref={closeRef} data-focus type="button" className="contest-pop-close" aria-label="Close" onClick={() => close()}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        <div className="contest-pop-art" aria-hidden="true">
+          <picture>
+            <source srcSet="/assets/contest-poster-v3.webp" type="image/webp" />
+            <img src="/assets/contest-poster-v3.jpg" width="800" height="1200" alt="" />
+          </picture>
+        </div>
+
+        <div className="contest-pop-body">
+          <p className="contest-pop-eyebrow">Super Slogan Contest</p>
+          {state === 'done' ? (
+            <>
+              <h2 id="contest-form-title" className="contest-form-title">Thank you, {form.name.split(' ')[0]}!</h2>
+              <p className="contest-pop-text">
+                You are registered. We will send the contest details to your mobile and email. Buy a Kitchidi Ponni
+                5&nbsp;kg or 26&nbsp;kg bag to find your coupon inside.
+              </p>
+              <Link data-focus className="contest-pop-cta contest-form-submit" to={BUY_PATH} onClick={() => close(HIDE_AFTER_JOIN_MS)}>
+                Buy Kitchidi Ponni Rice
+              </Link>
+            </>
+          ) : (
+            <>
+              <h2 id="contest-form-title" className="contest-form-title">Register &amp; win big prizes</h2>
+              <p className="contest-pop-text">
+                Car, scooter, gold and more. Leave your details and we will send you everything you need to take part.
+              </p>
+              <form className="contest-form" onSubmit={submit} noValidate>
+                <label className="contest-form-field">
+                  <span>Name</span>
+                  <input data-focus required autoComplete="name" maxLength={80} value={form.name} onChange={set('name')} />
+                </label>
+                <label className="contest-form-field">
+                  <span>Mobile number</span>
+                  <input data-focus required type="tel" inputMode="numeric" autoComplete="tel" maxLength={16} placeholder="10-digit mobile" value={form.phone} onChange={set('phone')} />
+                </label>
+                <label className="contest-form-field">
+                  <span>Email</span>
+                  <input data-focus required type="email" autoComplete="email" maxLength={120} value={form.email} onChange={set('email')} />
+                </label>
+                {error && <p className="contest-form-error" role="alert">{error}</p>}
+                <button data-focus type="submit" className="contest-pop-cta contest-form-submit" disabled={state === 'sending'}>
+                  {state === 'sending' ? 'Registering…' : 'Register now'}
+                </button>
+                <p className="contest-form-note">
+                  We use these details only for the contest. <Link to="/privacy" onClick={() => close()}>Privacy policy</Link>
+                </p>
+              </form>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

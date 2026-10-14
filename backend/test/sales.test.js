@@ -1073,3 +1073,27 @@ test('sales by source: ad links and referrers become a source, orders and visits
   assert.equal(list.body.orders.length, 1)
   assert.equal(list.body.orders[0].order_number, session.orderNumber)
 })
+
+test('contest sign-up form: saved with the ad it came from, one row per mobile, owner-only list and CSV', async () => {
+  const ad = { utm_source: 'ig', utm_medium: 'paid', utm_campaign: 'Kitchidi Offer', utm_content: 'Reel 1', fbclid: true, landing: '/' }
+  const bad = await api('POST', '/api/contest/lead', { body: { name: 'Priya', phone: '12345', email: 'priya@example.com' } })
+  assert.equal(bad.status, 400)
+  assert.match(bad.body.error, /mobile/)
+  assert.equal((await api('POST', '/api/contest/lead', { body: { name: 'Priya', phone: '98765 43210', email: 'not-an-email' } })).status, 400)
+  const ok = await api('POST', '/api/contest/lead', { body: { name: 'Priya S', phone: '+91 98765 43210', email: 'Priya@Example.com', attribution: ad, page: '/rice-products' } })
+  assert.equal(ok.status, 200, JSON.stringify(ok.body))
+  // Same mobile again: updated, not duplicated.
+  await api('POST', '/api/contest/lead', { body: { name: 'Priya Sundar', phone: '9876543210', email: 'priya@example.com', attribution: { gclid: true } } })
+  assert.equal((await api('GET', '/api/admin/warehouse/contest-leads', { token: tokens.sales })).status, 403)
+  const list = await api('GET', '/api/admin/warehouse/contest-leads', { token: OWNER })
+  assert.equal(list.body.leads.length, 1)
+  const lead = list.body.leads[0]
+  assert.equal(lead.name, 'Priya Sundar')
+  assert.equal(lead.phone, '9876543210')
+  assert.equal(lead.email, 'priya@example.com')
+  assert.equal(lead.source, 'google_ads')
+  assert.equal(lead.submissions, 2)
+  const csv = await api('GET', '/api/admin/warehouse/contest-leads.csv', { token: OWNER })
+  assert.match(csv.body, /Priya Sundar/)
+  assert.match(csv.body, /Google Ads/)
+})

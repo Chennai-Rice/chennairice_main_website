@@ -32,7 +32,7 @@ import { listIssues, getIssue, createIssue, updateIssue } from './issues.js'
 import { processTrackerUpload, listTrackerUploads, trackerTemplate, courierRedirect, dispatchBatchSheet } from './tracker.js'
 import { listIssuedIds, issuedIdsCsv, checkRegister } from './idregister.js'
 import { invoiceHtml, packingSlipHtml } from './documents.js'
-import { recordVisit, sourcesReport, sourceOrders } from './attribution.js'
+import { recordVisit, sourcesReport, sourceOrders, saveContestLead, contestLeads } from './attribution.js'
 import { query } from '../db.js'
 import { httpError, safeEqual } from './util.js'
 
@@ -89,6 +89,11 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   // One landing from an ad link or another site (counts only, no visitor data).
   router.post('/api/traffic/visit', rateLimit({ windowMs: 60000, max: 30 }), wrap(async (req, res) => {
     res.json(await recordVisit({ query }, req.body))
+  }))
+
+  // Super Slogan Contest sign-up from the popup shown to ad visitors.
+  router.post('/api/contest/lead', rateLimit({ windowMs: 10 * 60000, max: 10 }), wrap(async (req, res) => {
+    res.json(await saveContestLead({ query }, req.body))
   }))
 
   router.post('/api/checkout/quote', wrap(async (req, res) => res.json(await quoteCart(req.body))))
@@ -267,6 +272,22 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/warehouse/sources/orders', perm('money.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json({ orders: await sourceOrders({ query }, req.query) })
+  }))
+  admin.get('/warehouse/contest-leads', perm('money.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json({ leads: await contestLeads({ query }, req.query) })
+  }))
+  admin.get('/warehouse/contest-leads.csv', perm('money.view'), wrap(async (req, res) => {
+    const leads = await contestLeads({ query }, req.query)
+    const cell = (v) => {
+      let t = String(v ?? '')
+      if (/^[=+\-@]/.test(t)) t = "'" + t // never a spreadsheet formula
+      return '"' + t.replace(/"/g, '""') + '"'
+    }
+    const lines = [['Signed up', 'Name', 'Mobile', 'Email', 'Came from', 'Campaign', 'Ad', 'Page', 'Times signed up']]
+      .concat(leads.map((l) => [new Date(l.updated_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }), l.name, l.phone, l.email, l.sourceLabel, l.campaign, l.ad, l.landing, l.submissions]))
+    res.set('Cache-Control', 'no-store')
+    res.type('text/csv').attachment('contest-signups.csv').send('\ufeff' + lines.map((r) => r.map(cell).join(',')).join('\r\n'))
   }))
   admin.get('/warehouse/reports', perm('warehouse.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
