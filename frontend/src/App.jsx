@@ -7,6 +7,7 @@ import { CookieConsentProvider } from './hooks/useCookieConsent.jsx'
 import { useVisitorTracking } from './hooks/useVisitorTracking.jsx'
 import { useMetaPixel } from './hooks/useMetaPixel.js'
 import { useGoogleAnalytics } from './hooks/useGoogleAnalytics.js'
+import { useTagManagerConsent } from './hooks/useTagManagerConsent.js'
 import './shop/styles/styles.scoped.css'
 import './styles/shop-bridge.css'
 
@@ -93,6 +94,7 @@ function MetaPixel() {
 /** Google Analytics — only after the visitor accepts analytics cookies. */
 function GoogleAnalytics() {
   useGoogleAnalytics()
+  useTagManagerConsent()
   return null
 }
 
