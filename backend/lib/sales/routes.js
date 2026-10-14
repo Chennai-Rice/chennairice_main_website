@@ -32,6 +32,7 @@ import { listIssues, getIssue, createIssue, updateIssue } from './issues.js'
 import { processTrackerUpload, listTrackerUploads, trackerTemplate, courierRedirect, dispatchBatchSheet } from './tracker.js'
 import { listIssuedIds, issuedIdsCsv, checkRegister } from './idregister.js'
 import { invoiceHtml, packingSlipHtml } from './documents.js'
+import { recordVisit, sourcesReport, sourceOrders } from './attribution.js'
 import { query } from '../db.js'
 import { httpError, safeEqual } from './util.js'
 
@@ -83,6 +84,11 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   router.get('/api/catalog', wrap(async (_req, res) => {
     res.set('Cache-Control', 'public, max-age=60')
     res.json({ products: await listCatalog({ query }) })
+  }))
+
+  // One landing from an ad link or another site (counts only, no visitor data).
+  router.post('/api/traffic/visit', rateLimit({ windowMs: 60000, max: 30 }), wrap(async (req, res) => {
+    res.json(await recordVisit({ query }, req.body))
   }))
 
   router.post('/api/checkout/quote', wrap(async (req, res) => res.json(await quoteCart(req.body))))
@@ -252,6 +258,15 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/warehouse/customers', perm('warehouse.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await listWarehouseCustomers(req.query))
+  }))
+  // Sales by source, campaign and ad (money: owner, admin, IT team).
+  admin.get('/warehouse/sources', perm('money.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await sourcesReport({ query }, req.query))
+  }))
+  admin.get('/warehouse/sources/orders', perm('money.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json({ orders: await sourceOrders({ query }, req.query) })
   }))
   admin.get('/warehouse/reports', perm('warehouse.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')

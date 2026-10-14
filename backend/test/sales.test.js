@@ -1024,3 +1024,52 @@ test('PIN code regions and the delivered-price sheets', async () => {
     assert.deepEqual(p.delivery, delivery, `${kg} kg ₹${list}`)
   }
 })
+
+test('sales by source: ad links and referrers become a source, orders and visits roll up by campaign and ad', async () => {
+  const { classify } = await import('../lib/sales/attribution.js')
+  const c = (a) => classify(a).source
+  assert.equal(c(null), 'direct')
+  assert.equal(c({ utm_source: 'ig', utm_medium: 'paid', utm_campaign: 'Kitchidi Offer' }), 'meta_ads_instagram')
+  assert.equal(c({ utm_source: 'fb', utm_medium: 'paid' }), 'meta_ads_facebook')
+  assert.equal(c({ utm_source: 'facebook', utm_medium: 'cpc' }), 'meta_ads_facebook')
+  assert.equal(c({ fbclid: true, utm_medium: 'paid', referrer: 'https://l.instagram.com/' }), 'meta_ads_instagram')
+  assert.equal(c({ fbclid: true, referrer: 'https://lm.facebook.com/' }), 'facebook') // a post link, not an ad
+  assert.equal(c({ referrer: 'https://www.instagram.com/' }), 'instagram')
+  assert.equal(c({ gclid: true }), 'google_ads')
+  assert.equal(c({ utm_source: 'google', utm_medium: 'cpc' }), 'google_ads')
+  assert.equal(c({ referrer: 'https://www.google.co.in/' }), 'google_search')
+  assert.equal(c({ referrer: 'https://web.whatsapp.com/' }), 'whatsapp')
+  assert.equal(c({ referrer: 'https://example.org/' }), 'other_website')
+
+  const ig = { utm_source: 'ig', utm_medium: 'paid', utm_campaign: 'Kitchidi Offer', utm_content: 'Reel 1', fbclid: true }
+  for (let i = 0; i < 3; i += 1) {
+    assert.equal((await api('POST', '/api/traffic/visit', { body: ig })).body.source, 'meta_ads_instagram')
+  }
+  await api('POST', '/api/traffic/visit', { body: { gclid: true, utm_campaign: '123' } })
+
+  const before = await api('GET', '/api/admin/warehouse/sources?days=7', { token: OWNER })
+  assert.equal(before.status, 200, JSON.stringify(before.body))
+  const beforeIg = before.body.campaigns.find((r) => r.source === 'meta_ads_instagram' && r.ad === 'Reel 1')
+  assert.equal(beforeIg.visits, 3)
+  assert.equal(beforeIg.orders, 0)
+
+  const { rows: [v] } = await db.query(
+    `select v.id from product_variants v join products p on p.id = v.product_id where p.slug = 'alibaba' and v.pack_kg = 10`)
+  await db.query('update stock_levels set on_hand = on_hand + 5 where variant_id = $1', [v.id])
+  const { session, verify } = await buy([{ id: 'alibaba-10kg', qty: 1 }], buyer({ attribution: ig }))
+  assert.equal(verify.status, 200, JSON.stringify(verify.body))
+  const { rows: [o] } = await db.query('select traffic_source, traffic_campaign, traffic_ad from orders where id = $1', [session.orderId])
+  assert.deepEqual(o, { traffic_source: 'meta_ads_instagram', traffic_campaign: 'Kitchidi Offer', traffic_ad: 'Reel 1' })
+  await buy([{ id: 'alibaba-10kg', qty: 1 }]) // no ad: direct
+
+  const after = await api('GET', '/api/admin/warehouse/sources?days=7&product=alibaba', { token: OWNER })
+  const row = after.body.campaigns.find((r) => r.source === 'meta_ads_instagram' && r.ad === 'Reel 1')
+  assert.equal(row.orders, 1)
+  assert.equal(row.packs, 1)
+  assert.ok(row.revenue > 0)
+  assert.ok(after.body.sources.find((s) => s.source === 'direct').orders >= 1)
+
+  const list = await api('GET', `/api/admin/warehouse/sources/orders?days=7&source=meta_ads_instagram&campaign=${encodeURIComponent('Kitchidi Offer')}&ad=${encodeURIComponent('Reel 1')}`, { token: OWNER })
+  assert.equal(list.body.orders.length, 1)
+  assert.equal(list.body.orders[0].order_number, session.orderNumber)
+})

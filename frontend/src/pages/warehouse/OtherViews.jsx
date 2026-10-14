@@ -1,4 +1,5 @@
 import TeamView from './TeamView.jsx'
+import SourcesReport from './SourcesReport.jsx'
 import { useEffect, useMemo, useState } from 'react'
 import { staffJson } from '../../services/staffAuth.js'
 import { Icon, Pagination, dayLabel, telHref, writePrefs } from './shared.jsx'
@@ -239,7 +240,7 @@ function DispatchChart({ perDay, days }) {
   )
 }
 
-export function ReportsView({ say, onAuthError }) {
+export function ReportsView({ say, onAuthError, money = false }) {
   const [days, setDays] = useState(30)
   const { data, loading } = useLoad(`/api/admin/warehouse/reports?days=${days}`, say, onAuthError)
   const mix = data?.statusMix || {}
@@ -292,6 +293,8 @@ export function ReportsView({ say, onAuthError }) {
           {data && !data.perProduct.length && <p className="wh-empty">No orders in this period.</p>}
         </section>
       </div>
+
+      {money && <SourcesReport say={say} onAuthError={onAuthError} />}
     </>
   )
 }

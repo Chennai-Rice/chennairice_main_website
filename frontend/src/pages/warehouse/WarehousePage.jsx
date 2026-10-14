@@ -359,7 +359,7 @@ export default function WarehousePage() {
             <InventoryView say={say} onAuthError={onAuthError} permissions={me.permissions || []} initialTab={sub || undefined} />
           )}
           {view === 'customers' && <CustomersView say={say} onAuthError={onAuthError} onOpenOrders={openOrders} />}
-          {view === 'reports' && <ReportsView say={say} onAuthError={onAuthError} />}
+          {view === 'reports' && <ReportsView say={say} onAuthError={onAuthError} money={money} />}
           {view === 'settings' && (
             <SettingsView me={me} prefs={prefs} setPrefs={setPrefs} location={fulfilment?.name} onSignOut={signOut} />
           )}
