@@ -70,7 +70,7 @@ export function invoicePdf(detail) {
   const metaRows = [
     ['Invoice No.', m.meta.invoiceNo, 'Dated', m.meta.date],
     ['Delivery Note', '', 'Mode/Terms of Payment', m.meta.terms],
-    ['Reference No. & Date.', `${m.meta.invoiceNo} dt. ${m.meta.date}`, 'Other References', ''],
+    ['Reference No. & Date.', `${m.meta.invoiceNo} dt. ${m.meta.date}`, 'Razorpay Payment ID', m.meta.paymentId],
     ['Buyer’s Order No.', m.meta.orderNo, 'Dated', m.meta.orderDate],
     ['Dispatch Doc No.', '', 'Delivery Note Date', ''],
     ['Dispatched through', m.meta.dispatchedThrough, 'Destination', m.meta.destination],

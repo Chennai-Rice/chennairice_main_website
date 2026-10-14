@@ -160,7 +160,9 @@ export function invoiceModel({ order, items, invoice, shipments = [], payments =
     meta: {
       invoiceNo: invoice.invoice_number,
       date: day(invoice.issued_at),
-      terms: paid ? `Paid online${PAYMENT_METHOD[paid.method] ? ' - ' + PAYMENT_METHOD[paid.method] : ''}` : 'Paid online',
+      terms: paid ? `Paid online via Razorpay${PAYMENT_METHOD[paid.method] ? ' - ' + PAYMENT_METHOD[paid.method] : ''}` : 'Paid online',
+      // The Razorpay payment ID (pay_…), in place of "Other References".
+      paymentId: paid?.gateway_payment_id || '',
       orderNo: order.order_number,
       orderDate: day(order.placed_at || order.created_at),
       dispatchedThrough: shipment ? [shipment.carrier_name || ({ own_vehicle: 'Own vehicle', pickup: 'Pickup' })[shipment.method] || ''].join('') : '',

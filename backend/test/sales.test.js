@@ -288,6 +288,11 @@ test('dispatch flow: confirm → pack → ship → deliver, with roles, stock, i
   const invoice = await api('GET', `/api/admin/orders/${id}/invoice`, { token: tokens.sales })
   assert.match(invoice.body, /Tax Invoice/)
   assert.match(invoice.body, /IGST/)
+  // The Razorpay payment ID and method, in place of "Other References".
+  assert.match(invoice.body, /Razorpay Payment ID/)
+  assert.match(invoice.body, /pay_[A-Za-z0-9]+/)
+  assert.match(invoice.body, /Paid online via Razorpay/)
+  assert.doesNotMatch(invoice.body, /Other References/)
 
   const track = await api('POST', '/api/orders/track', { body: { orderNumber: session.orderNumber.toLowerCase(), phone: '+91 91234 56780' } })
   assert.equal(track.status, 200, JSON.stringify(track.body))

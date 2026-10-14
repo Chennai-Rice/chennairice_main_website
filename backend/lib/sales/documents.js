@@ -125,7 +125,7 @@ export function invoiceHtml(detail, { forCustomer = false } = {}) {
       <div class="meta">
         ${metaCell('Invoice No.', m.meta.invoiceNo)}${metaCell('Dated', m.meta.date)}
         ${metaCell('Delivery Note', '')}${metaCell('Mode/Terms of Payment', m.meta.terms)}
-        ${metaCell('Reference No. &amp; Date.', `${m.meta.invoiceNo} dt. ${m.meta.date}`)}${metaCell('Other References', '')}
+        ${metaCell('Reference No. &amp; Date.', `${m.meta.invoiceNo} dt. ${m.meta.date}`)}${metaCell('Razorpay Payment ID', m.meta.paymentId)}
         ${metaCell('Buyer’s Order No.', m.meta.orderNo)}${metaCell('Dated', m.meta.orderDate)}
         ${metaCell('Dispatch Doc No.', '')}${metaCell('Delivery Note Date', '')}
         ${metaCell('Dispatched through', m.meta.dispatchedThrough)}${metaCell('Destination', m.meta.destination)}
