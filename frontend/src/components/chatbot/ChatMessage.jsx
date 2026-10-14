@@ -10,7 +10,7 @@ export default function ChatMessage({ message }) {
       <div className={`sk-msg-row ${isUser ? 'is-user' : 'is-assistant'}`}>
         {!isUser && (
           <div className="sk-msg-avatar" aria-hidden="true">
-            <img src="/assets/soru-kutty.png" alt="" width="28" height="28" />
+            <img src="/assets/soru-kutty-face.webp" alt="" width="28" height="28" />
           </div>
         )}
         <div className="sk-msg-bubble">
