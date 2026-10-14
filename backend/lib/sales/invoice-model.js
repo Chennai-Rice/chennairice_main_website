@@ -23,8 +23,7 @@ export const COMPANY = {
   state: 'Tamil Nadu',
   stateCode: '33',
   phone: '04242555556, 8012501262, 8012501251',
-  email: 'cgriceindustries@gmail.com',
-  bank: { name: 'Bank of Maharashtra, CC A/c', account: '60440715045', branchIfsc: 'Tirupur & MAHB0002448' },
+  email: 'support@chennairiceindustries.com',
 }
 
 const STATE_CODES = {
@@ -83,7 +82,6 @@ export function invoiceModel({ order, items, invoice, shipments = [], payments =
   const seller = {
     ...COMPANY,
     ...Object.fromEntries(Object.entries(s).filter(([, v]) => v)),
-    bank: { ...COMPANY.bank, ...Object.fromEntries(Object.entries(s.bank || {}).filter(([, v]) => v)) },
   }
   const intra = isSameState(order.ship_state, seller.state || 'Tamil Nadu')
   const a = order.shipping_address || {}

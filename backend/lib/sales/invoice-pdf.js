@@ -191,7 +191,7 @@ export function invoicePdf(detail) {
   box(L, hTop, W, y - hTop)
   hx.slice(1).forEach((x) => vline(x, hTop, y))
 
-  // --- Tax in words, declaration, bank, signatures
+  // --- Tax in words, declaration, signatures
   const fTop = y
   font(false, 7.5).text('Tax Amount (in words) :  ', L + pad, y + 4, { continued: true })
   font(true, 7.5).text(m.taxWords)
@@ -199,15 +199,7 @@ export function invoicePdf(detail) {
   font(false, 7).text('Declaration', L + pad, y + 40, { underline: true })
   font(false, 7).text('We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.',
     L + pad, doc.y, { width: half - pad * 2 })
-  const bx = L + half + pad
-  font(false, 7).text('Company’s Bank Details', bx, y)
-  for (const [k, v] of [['Bank Name', s.bank.name], ['A/c No.', s.bank.account], ['Branch & IFS Code', s.bank.branchIfsc]]) {
-    const ry = doc.y
-    font(false, 7).text(k, bx, ry, { width: 70 })
-    font(true, 7).text(`: ${v}`, bx + 70, ry, { width: half - 80 })
-  }
-  font(true, 7.5).text(`for ${s.name}`, L + half, doc.y + 4, { width: half, align: 'center' })
-  const signY = doc.y + 22
+  const signY = Math.max(doc.y, y + 52)
   font(false, 7)
   doc.text('Prepared by', L + half + pad, signY)
   doc.text('Verified by', L + half + half / 3, signY, { width: half / 3, align: 'center' })

@@ -46,7 +46,7 @@ export async function dashboard() {
 const EDITABLE_SETTINGS = [
   'seller_legal_name', 'seller_address', 'seller_state', 'seller_state_code', 'seller_gstin',
   'seller_phone', 'seller_email', 'invoice_prefix', 'reservation_minutes', 'low_stock_alerts',
-  'seller_former_name', 'seller_fssai', 'bank_name', 'bank_account', 'bank_branch_ifsc', 'delivery_tax_rate_bp',
+  'seller_former_name', 'seller_fssai', 'delivery_tax_rate_bp',
 ]
 
 export async function getSettingsAdmin() {

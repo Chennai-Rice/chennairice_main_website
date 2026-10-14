@@ -353,7 +353,6 @@ export async function issueInvoice(db, order) {
     name: settings.seller_legal_name, address: settings.seller_address, gstin: settings.seller_gstin || null,
     state: settings.seller_state, stateCode: settings.seller_state_code, phone: settings.seller_phone, email: settings.seller_email,
     formerName: settings.seller_former_name || null, fssai: settings.seller_fssai || null,
-    bank: { name: settings.bank_name || null, account: settings.bank_account || null, branchIfsc: settings.bank_branch_ifsc || null },
   }
   const buyer = { name: order.contact_name, phone: order.contact_phone, email: order.contact_email, address: order.shipping_address }
   const { rows: [invoice] } = await db.query(

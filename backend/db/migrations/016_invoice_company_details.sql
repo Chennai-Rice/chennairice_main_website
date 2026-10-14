@@ -9,8 +9,5 @@ insert into company_settings (key, value) values
   ('seller_state', 'Tamil Nadu'),
   ('seller_state_code', '33'),
   ('seller_phone', '04242555556, 8012501262, 8012501251'),
-  ('seller_email', 'cgriceindustries@gmail.com'),
-  ('bank_name', 'Bank of Maharashtra, CC A/c'),
-  ('bank_account', '60440715045'),
-  ('bank_branch_ifsc', 'Tirupur & MAHB0002448')
+  ('seller_email', 'support@chennairiceindustries.com')
 on conflict (key) do update set value = excluded.value, updated_at = now();
