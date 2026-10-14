@@ -78,7 +78,7 @@
   .sk-launcher-hello { animation: none; }
 }
 
-/* Soru Kutty waving "Hi": the artwork has its own round frame and speech
+/* Soru Kutty waving, saying "I'm Soru Kutty here": the artwork has its own round frame and speech
    bubble, so it is shown whole, with no disc behind it. */
 .sk-launcher-avatar {
   position: relative;
@@ -92,8 +92,8 @@
 
 .sk-launcher-btn {
   position: relative;
-  width: 88px;
-  height: 80px;
+  width: 124px;
+  height: 105px;
   padding: 0;
   border-radius: 50%;
   display: grid;
@@ -704,5 +704,8 @@
 
 /* Phones: the waving mascot a little smaller, so it covers less of the page. */
 @media (max-width: 560px) {
-  .sk-launcher-btn { width: 72px; height: 66px; }
+  .sk-launcher-btn { width: 100px; height: 85px; }
+  /* Out of the way while the cookie banner is up, so it never covers the
+     banner's buttons; it comes back once the visitor has answered. */
+  body:has(.cookie-card-wrap) .sk-launcher { display: none; }
 }

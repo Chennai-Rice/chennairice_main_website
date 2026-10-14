@@ -40,14 +40,6 @@ export default function SoruKutty() {
 
       {!isOpen && (
         <div className="sk-launcher">
-          {/* Always-visible bubble above the orb. The hover tooltip beside it
-              stays for the longer line; this one is the standing invitation,
-              so a visitor knows what the orb is without hovering. It is
-              aria-hidden because the button's own label already says it. */}
-          <div className="sk-launcher-hello" aria-hidden="true">
-            I&apos;m {SORU_KUTTY.name} here
-          </div>
-
           <button
             type="button"
             className="sk-launcher-btn"
@@ -55,13 +47,13 @@ export default function SoruKutty() {
             onClick={open}
           >
             <picture>
-              <source srcSet="/assets/soru-kutty-hi.webp" type="image/webp" />
+              <source srcSet="/assets/soru-kutty-hello.webp" type="image/webp" />
               <img
                 className="sk-launcher-avatar"
-                src="/assets/soru-kutty-hi.png"
+                src="/assets/soru-kutty-hello.png"
                 alt=""
-                width="256"
-                height="230"
+                width="320"
+                height="271"
               />
             </picture>
           </button>
