@@ -17,6 +17,7 @@ import {
   signOut,
 } from '../../services/admin.service.js'
 import JournalPanel from '../blog/JournalPanel.jsx'
+import CampaignsPanel from './CampaignsPanel.jsx'
 import { LoadingRegion } from './components/ui.jsx'
 import {
   BehaviourView,
@@ -55,6 +56,7 @@ const ANALYTICS_NAV = [
   { id: 'heatmap', label: 'Heatmap', subtitle: 'Where visitors click on a page', icon: 'target' },
   { id: 'scroll', label: 'Scroll depth', subtitle: 'How far down pages are read', icon: 'depth' },
   { id: 'realtime', label: 'Realtime', subtitle: 'Who is on the site now', icon: 'pulse' },
+  { id: 'campaigns', label: 'Ad campaigns', subtitle: 'Orders from Meta ads, Google Ads and direct visits', icon: 'target' },
 ]
 
 /* Section that needs a row in blog_authors. */
@@ -440,7 +442,7 @@ function Dashboard({ session, access, onSignOut }) {
           </div>
 
           <div className="ad-topbar-actions">
-            {view !== 'realtime' && view !== 'journal' && (
+            {view !== 'realtime' && view !== 'journal' && view !== 'campaigns' && (
               <label className="ad-select-wrap">
                 <span className="ad-sr">Date range</span>
                 <select className="ad-select" value={rangeId} onChange={(e) => setRangeId(e.target.value)}>
@@ -450,7 +452,7 @@ function Dashboard({ session, access, onSignOut }) {
                 </select>
               </label>
             )}
-            {view !== 'journal' && (
+            {view !== 'journal' && view !== 'campaigns' && (
               <button type="button" className="ad-btn ad-btn-quiet" onClick={refresh} disabled={loading}>
                 {loading ? 'Refreshing…' : 'Refresh'}
               </button>
@@ -464,6 +466,8 @@ function Dashboard({ session, access, onSignOut }) {
               it shares nothing with the analytics queries. */}
           {view === 'journal' ? (
             <JournalPanel author={access.author} />
+          ) : view === 'campaigns' ? (
+            <CampaignsPanel />
           ) : needsInteractions ? (
             <>
               {view === 'behaviour' && (

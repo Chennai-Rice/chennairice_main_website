@@ -3,7 +3,8 @@
    1024px the sidebar becomes a drawer behind a menu button. */
 
 .wh-app,
-.wh-signin {
+.wh-signin,
+.wh-embed {
   --wh-maroon: #6e1420;
   --wh-maroon-2: #4a0b14;
   --wh-maroon-ink: #5a0f1a;
