@@ -42,13 +42,18 @@ export function skuFor(slug, packKg) {
 }
 
 const SETTINGS = {
-  seller_legal_name: 'Chennai Rice Industries India Private Limited',
-  seller_address: 'SF No. 116/1,2,4-B, N. Thayirpalayam Village, Nasiyanur, Gangapuram Post, Erode, Tamil Nadu 638102',
+  seller_legal_name: 'CHENNAI RICE INDUSTRIES INDIA (P) LTD.,',
+  seller_former_name: 'Chennai Gate Rice Industries (P) Ltd.',
+  seller_address: '116/1/2,4B, N.Thayirpalayam Village, Chittode Via, Gangapuram Post, Erode-638102.',
+  seller_fssai: '12415007000253',
   seller_state: 'Tamil Nadu',
   seller_state_code: '33',
-  seller_gstin: '',           // fill in before the first invoice is issued
-  seller_phone: '+91 70666 46667',
-  seller_email: 'support@chennairiceindustries.com',
+  seller_gstin: '33AAFCC1691K1ZM',
+  seller_phone: '04242555556, 8012501262, 8012501251',
+  seller_email: 'cgriceindustries@gmail.com',
+  bank_name: 'Bank of Maharashtra, CC A/c',
+  bank_account: '60440715045',
+  bank_branch_ifsc: 'Tirupur & MAHB0002448',
   invoice_prefix: 'CRI',
   reservation_minutes: '30',
   low_stock_alerts: 'on',
