@@ -12,6 +12,10 @@
   --bag-peach: #f2a184;
   --bag-peach-soft: #fbe2d6;
   position: relative;
+  /* The ribbon's height. It lies over the top of the pack area, which gives
+     up the same height, so this card stays exactly as tall as the others in
+     its row (no empty band above their prices). */
+  --rib: 72px;
   border: 0;
   /* Gold frame: a gradient border painted under a cream fill. */
   background:
@@ -27,13 +31,18 @@
 
 /* ---- ribbon ---- */
 .shop-scope .card-contest-ribbon {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--rib);
+  box-sizing: border-box;
   z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 10px 14px 11px;
+  padding: 0 14px 3px;
   text-decoration: none;
   text-align: center;
   background: linear-gradient(180deg, #a3232c 0%, var(--bag-red) 55%, var(--bag-red-deep) 100%);
@@ -101,6 +110,19 @@
     linear-gradient(135deg, #e98a6c 0%, var(--bag-peach) 45%, #f6b79c 100%);
 }
 
+/* Room for the ribbon: the pack sits below it and is drawn smaller by the
+   same amount, so the pack area keeps the height it has on the other cards. */
+.shop-scope .card--contest .card-media {
+  padding-top: calc(var(--rib) + var(--s-2));
+}
+.shop-scope .card--contest .card-media img {
+  height: calc(clamp(13rem, 20vw, 16.5rem) + var(--s-6) - var(--rib) - var(--s-2));
+}
+.shop-scope .card--contest .premium-flag,
+.shop-scope .card--contest .card-wishlist {
+  top: calc(var(--rib) + var(--s-3));
+}
+
 /* Text in the card body: the bag's deep red. */
 .shop-scope .card--contest .card-tag {
   color: var(--bag-red);
@@ -133,9 +155,14 @@
 }
 
 /* Two-column phone grid: smaller ribbon type so it stays on two lines. */
-@media (max-width: 539px) {
-  .shop-scope .card-contest-ribbon { gap: 6px; padding: 7px 8px 8px; }
-  .shop-scope .card-contest-title { font-size: 1rem; }
-  .shop-scope .card-contest-sub { font-size: 0.56rem; letter-spacing: 0.14em; }
+@media (max-width: 640px) {
+  .shop-scope .card--contest { --rib: 46px; }
+  .shop-scope .card-contest-ribbon { gap: 6px; padding: 0 8px 2px; }
+  .shop-scope .card--contest .card-media { padding-top: calc(var(--rib) + 8px); }
+  .shop-scope .card--contest .card-media img { height: calc(9.5rem + 34px - var(--rib) - 8px); }
+  .shop-scope .card--contest .premium-flag { top: calc(var(--rib) + 8px); }
+  .shop-scope .card--contest .card-wishlist { top: calc(var(--rib) + 6px); }
+  .shop-scope .card-contest-title { font-size: 0.86rem; white-space: nowrap; }
+  .shop-scope .card-contest-sub { font-size: 0.52rem; letter-spacing: 0.14em; white-space: nowrap; }
   .shop-scope .card-contest-orn { display: none; }
 }
