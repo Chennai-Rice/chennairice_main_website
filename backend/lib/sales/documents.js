@@ -149,12 +149,8 @@ export function invoiceHtml(detail, { forCustomer = false } = {}) {
     <div class="foot">
       <div style="border-left:0;border-bottom:0"><span style="text-decoration:underline">Declaration</span><br>
         We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</div>
-      <div style="border-right:0;border-bottom:0">Company’s Bank Details<br>
-        Bank Name &nbsp;&nbsp;&nbsp;&nbsp;: <span class="b">${esc(s.bank.name)}</span><br>
-        A/c No. &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <span class="b">${esc(s.bank.account)}</span><br>
-        Branch &amp; IFS Code : <span class="b">${esc(s.bank.branchIfsc)}</span>
-        <div class="c b" style="margin-top:6px">for ${esc(s.name)}</div>
-        <div class="sign"><span>Prepared by</span><span>Verified by</span><span>Authorised Signatory</span></div></div>
+      <div style="border-right:0;border-bottom:0;display:flex;align-items:flex-end">
+        <div class="sign" style="flex:1"><span>Prepared by</span><span>Verified by</span><span>Authorised Signatory</span></div></div>
     </div>
   </div>
   <p class="center">This is a Computer Generated Invoice</p>

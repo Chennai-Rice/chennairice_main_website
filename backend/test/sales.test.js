@@ -807,9 +807,12 @@ test('order confirmation email: sent over SMTP once payment verifies, with the o
     const invoicePage = await api('GET', `/api/orders/${session.orderId}/invoice?n=${session.orderNumber}`)
     assert.equal(invoicePage.status, 200)
     assert.ok(!invoicePage.body.includes(shipmentId), 'no shipment ID on the invoice')
-    // The company's own layout: Tax Invoice, GSTIN, HSN summary, amount in words, bank details.
-    for (const text of ['Tax Invoice', '33AAFCC1691K1ZM', 'HSN/SAC', 'Amount Chargeable (in words)', 'Bank of Maharashtra', 'This is a Computer Generated Invoice']) {
+    // The company's own layout: Tax Invoice, GSTIN, HSN summary, amount in words; support email; no bank details.
+    for (const text of ['Tax Invoice', '33AAFCC1691K1ZM', 'HSN/SAC', 'Amount Chargeable (in words)', 'support@chennairiceindustries.com', 'This is a Computer Generated Invoice']) {
       assert.ok(invoicePage.body.includes(text), 'invoice shows ' + text)
+    }
+    for (const text of ['Bank of Maharashtra', '60440715045', 'cgriceindustries@gmail.com']) {
+      assert.ok(!invoicePage.body.includes(text), 'invoice leaves out ' + text)
     }
     assert.ok(m.text.includes(`/api/orders/${session.orderId}/invoice?n=${session.orderNumber}`), 'invoice link')
     // The HTML template: every placeholder filled, one product row per item, payment details.
