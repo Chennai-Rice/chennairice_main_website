@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import SiteLayout from "../layouts/SiteLayout.jsx";
 import { useCart } from "../hooks/useCart.jsx";
 import useCartQuote from "../hooks/useCartQuote.js";
+import { currentAttribution } from "../../services/attribution.js";
 import { formatRupees } from "../utils/format.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
@@ -112,6 +113,7 @@ export default function CheckoutPage() {
         session = await initiatePayment({
           ...form,
           items: items.map((item) => ({ id: item.id, qty: item.qty })),
+          attribution: currentAttribution(),
           ...(orderId ? { orderId } : {}),
           ...(excludeGateway.length ? { excludeGateway } : {}),
         });

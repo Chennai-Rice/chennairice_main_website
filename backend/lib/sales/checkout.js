@@ -15,6 +15,7 @@ import { tx, query } from '../db.js'
 import { createSessionWithFailover, getGateway } from '../gateways.js'
 import { priceCart, quoteShipping } from './catalog.js'
 import { deliveryTaxRateBp } from './tax.js'
+import { cleanAttribution, classify } from './attribution.js'
 import { moveStock, releaseForOrder } from './stock.js'
 import { queueEmail, staffInbox, templates } from './email.js'
 import {
@@ -68,7 +69,7 @@ export async function quoteCart(body) {
 }
 
 /** Create the order and hold its stock, all or nothing. */
-export async function placeOrder(customer, items) {
+export async function placeOrder(customer, items, rawAttribution = null) {
   return tx(async (db) => {
     const settings = await getSettings(db)
     const holdMinutes = Number(settings.reservation_minutes) || 30
@@ -95,16 +96,21 @@ export async function placeOrder(customer, items) {
       line1: customer.addressLine1, line2: customer.addressLine2 || null, landmark: customer.landmark || null,
       city: customer.city, state: customer.state, pincode: customer.pincode,
     }
+    // Where the buyer came from (ad, search, direct…), kept with the order.
+    const attribution = cleanAttribution(rawAttribution)
+    const traffic = classify(attribution)
     const { rows: [order] } = await db.query(
       `insert into orders (order_number, customer_id, contact_name, contact_email, contact_phone,
                            shipping_address, ship_state, fulfilment_location_id,
                            subtotal_paise, shipping_paise, total_paise, tax_paise, reservation_expires_at,
-                           shipping_tax_rate_bp)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now() + make_interval(mins => $13), $14)
+                           shipping_tax_rate_bp, attribution, traffic_source, traffic_campaign, traffic_ad)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now() + make_interval(mins => $13), $14,
+               $15, $16, $17, $18)
        returning *`,
       [await reserveId(db, 'order', newOrderNumber), cust.id, customer.name, customer.email, customer.phone,
         address, customer.state, loc.id, priced.subtotalPaise, shipping,
-        priced.subtotalPaise + shipping, priced.taxPaise, holdMinutes, shipping ? shippingTaxRateBp : 0]
+        priced.subtotalPaise + shipping, priced.taxPaise, holdMinutes, shipping ? shippingTaxRateBp : 0,
+        attribution, traffic.source, traffic.campaign || null, traffic.ad || null]
     )
     await linkId(db, order.order_number, order.id)
 
@@ -160,7 +166,7 @@ export async function createCheckoutSession(body) {
 
   const resumeId = str(body?.orderId)
   if (resumeId && invalidUuid(resumeId)) throw httpError('That order does not exist.', { status: 404 })
-  const order = resumeId ? await loadResumable(resumeId, customer.email) : await placeOrder(customer, body?.items)
+  const order = resumeId ? await loadResumable(resumeId, customer.email) : await placeOrder(customer, body?.items, body?.attribution)
 
   const exclude = [].concat(body?.excludeGateway || []).map((g) => str(g).toLowerCase()).filter(Boolean)
   // If no gateway answers, the order stays pending with its stock held until
