@@ -6,6 +6,7 @@ import { WishlistProvider } from './shop/hooks/useWishlist.jsx'
 import { CookieConsentProvider } from './hooks/useCookieConsent.jsx'
 import { useVisitorTracking } from './hooks/useVisitorTracking.jsx'
 import { useMetaPixel } from './hooks/useMetaPixel.js'
+import { useGoogleAnalytics } from './hooks/useGoogleAnalytics.js'
 import './shop/styles/styles.scoped.css'
 import './styles/shop-bridge.css'
 
@@ -89,6 +90,12 @@ function MetaPixel() {
   return null
 }
 
+/** Google Analytics — only after the visitor accepts analytics cookies. */
+function GoogleAnalytics() {
+  useGoogleAnalytics()
+  return null
+}
+
 /* The heatmap panel in /admin loads the real site into an iframe so click
    positions can be drawn on top of the layout they were recorded against.
    That embedded copy must not be counted as a visit — the dashboard would
@@ -116,6 +123,7 @@ export default function App() {
       <ScrollToTop />
       {isStorefront && <VisitorTracking />}
       {isStorefront && <MetaPixel />}
+      {isStorefront && <GoogleAnalytics />}
       {!isTool && <Navbar />}
       <Routes>
         {/* Must be declared before the "*" catch-all below, which would
