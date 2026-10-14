@@ -23,6 +23,7 @@ const STATIC_ROUTES = [
   ['/rice-products', 0.9, 'weekly'],
   ['/infrastructure', 0.7, 'monthly'],
   ['/about-us', 0.7, 'monthly'],
+  ['/contest', 0.6, 'monthly'],
   ['/contact-us', 0.7, 'monthly'],
   ['/track-order', 0.5, 'monthly'],
   ['/bulk-order', 0.7, 'monthly'],

@@ -41,6 +41,8 @@ export const NAV_LINKS = [
   { label: 'Blog', to: '/blog' },
   { label: 'Contact', to: '/contact-us' },
   { label: 'Track Order', to: '/track-order' },
+  // Highlighted in the bar: opens the Super Slogan Contest page.
+  { label: 'Contest', to: '/contest', accent: true },
 ]
 
 export const NAV_CTA = { label: 'Bulk Order', to: '/bulk-order' }

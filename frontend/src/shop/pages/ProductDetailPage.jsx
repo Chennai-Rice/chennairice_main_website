@@ -115,12 +115,21 @@ export default function ProductDetailPage() {
   // Headings follow "Chennai Rice SEO - Product Page": the H1 is the product's
   // heading name and the sections say "<name> Rice" ("Special Idly Rice"
   // already ends in Rice).
+  const festive = id === "kitchidi-ponni-rice";
   const headName = seo?.name || product.name;
   const riceName = /rice$/i.test(headName) ? headName : `${headName} Rice`;
 
   return (
     <SiteLayout skipTo="pdp-main" skipLabel="Skip to product">
-      <main id="pdp-main" className="pdp">
+      <main id="pdp-main" className={`pdp${festive ? " pdp-festive" : ""}`}>
+        {/* The Kitchidi Ponni pack carries the festive garland in both top
+            corners: one artwork, the left copy mirrored in CSS. */}
+        {festive && (
+          <>
+            <img className="pdp-garland pdp-garland-right" src="/image.png" alt="" aria-hidden="true" />
+            <img className="pdp-garland pdp-garland-left" src="/image.png" alt="" aria-hidden="true" />
+          </>
+        )}
         <div className="pdp-top">
           <Link className="pdp-back" to="/rice-products">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -139,9 +148,21 @@ export default function ProductDetailPage() {
         </div>
 
         <section className="pdp-hero">
-          <ProductGallery images={galleryImages} alt={product.alt} />
+          <ProductGallery images={galleryImages} alt={product.alt} peek={festive} />
 
           <div className="pdp-info">
+            {/* The Kitchidi Ponni pack carries the contest coupon, so its page
+                opens with the contest title, linking to the full contest page. */}
+            {festive && (
+              <Link className="pdp-contest" to="/contest">
+                <span className="pdp-contest-rule" aria-hidden="true"><i /><b /><i /></span>
+                <span className="pdp-contest-title">Super Slogan Contest</span>
+                <span className="pdp-contest-sub">
+                  Coupon inside every 5&nbsp;kg &amp; 26&nbsp;kg bag
+                </span>
+                <span className="pdp-contest-rule" aria-hidden="true"><i /><b /><i /></span>
+              </Link>
+            )}
             <span className="pdp-badge">Premium Quality</span>
             <h1 className="pdp-title">{headName}</h1>
             <p className="pdp-subtitle">{category}</p>
@@ -174,12 +195,18 @@ export default function ProductDetailPage() {
 
             <div className="pdp-divider" />
 
-            <div className="pdp-section-label">Select Pack Size</div>
-            <PackSizeSelector sizes={sizes} selectedKg={selectedKg} onSelect={(kg) => setSelectedKg(kg)} />
+            {/* Pack size and quantity. Stacked by default; the Kitchidi Ponni
+                page sets them side by side to keep its first screen compact. */}
+            <div className="pdp-options">
+              <div className="pdp-option-size">
+                <div className="pdp-section-label">Select Pack Size</div>
+                <PackSizeSelector sizes={sizes} selectedKg={selectedKg} onSelect={(kg) => setSelectedKg(kg)} />
+              </div>
 
-            <div className="pdp-qty-row">
-              <span className="pdp-section-label">Quantity</span>
-              <QuantitySelector qty={qty} onChange={setQty} />
+              <div className="pdp-qty-row">
+                <span className="pdp-section-label">Quantity</span>
+                <QuantitySelector qty={qty} onChange={setQty} />
+              </div>
             </div>
 
             <div className="pdp-cta-row">

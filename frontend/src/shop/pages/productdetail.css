@@ -13,6 +13,42 @@
   padding-bottom: var(--s-16);
 }
 
+/* ---------- festive garland (Kitchidi Ponni pack) ---------- */
+/* Hangs from both top corners, just under the solid 68px navbar (the shared
+   84px offset would leave a cream gap above it). The page's own padding is
+   widened to the garland's width so the back link, breadcrumb and product
+   never sit on the hanging strands. */
+.shop-scope:has(main.pdp-festive) {
+  padding-top: 68px;
+}
+.shop-scope main.pdp-festive {
+  position: relative;
+  --pdp-garland: clamp(100px, 14vw, 260px);
+}
+.pdp-garland {
+  position: absolute;
+  top: 0;
+  width: var(--pdp-garland);
+  height: auto;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+}
+.pdp-garland-right {
+  right: 0;
+}
+.pdp-garland-left {
+  left: 0;
+  transform: scaleX(-1);
+}
+.pdp-festive .pdp-top,
+.pdp-festive .pdp-hero {
+  position: relative;
+  z-index: 1;
+  padding-left: max(var(--s-6), calc(var(--pdp-garland) * 0.34));
+  padding-right: max(var(--s-6), calc(var(--pdp-garland) * 0.34));
+}
+
 /* Smaller kolam on this page so it frames the product instead of crowding it.
    `--mandala` has to be set on the wrapper that actually paints it — custom
    properties inherit downward, so setting it on .pdp would never reach. */
@@ -132,6 +168,132 @@
   transform: scale(1.04);
 }
 
+/* ---------- hover the pack: the mascot peeks out ---------- */
+/* The pack becomes a button filling the frame, so the image keeps the same
+   centred size it has everywhere else. Overflow stays visible (the frame is
+   transparent, with no scene photo to clip) so the mascot can lean out past
+   the frame edge. */
+.pdp-gallery-main.is-peekable {
+  position: relative;
+  overflow: visible;
+}
+.pdp-bag-btn {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.pdp-bag-btn:focus-visible {
+  outline: 3px solid #d9a63c;
+  outline-offset: -6px;
+  border-radius: var(--radius-md);
+}
+/* Mascot + bubble, behind the pack (lower z-index). At rest it is tucked
+   behind the bag's left half; when the pack is hovered (or tapped, or focused
+   from the keyboard) it slides out past the bag's left edge, leaning outward. */
+.pdp-peek {
+  position: absolute;
+  z-index: 0;
+  right: 60%;
+  top: 26%;
+  width: 40%;
+  pointer-events: none;
+  transform-origin: 85% 90%;
+  transform: translateX(75%) rotate(0deg);
+  opacity: 0;
+  transition: transform 0.55s cubic-bezier(0.2, 1.3, 0.35, 1), opacity 0.25s ease;
+}
+.pdp-gallery-main.is-peekable .pdp-peek-mascot {
+  display: block;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  height: auto;
+  filter: drop-shadow(0 6px 8px rgba(60, 5, 12, 0.3));
+  transform: none;
+  transition: none;
+  /* The artwork is cut at the waist. Fading its lower edge out means no hard
+     line shows below him, whatever the lean or screen width. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 92%);
+  mask-image: linear-gradient(to bottom, #000 62%, transparent 92%);
+}
+.pdp-gallery-main.is-peeking .pdp-peek,
+.pdp-gallery-main.is-peekable:has(.pdp-bag-btn:focus-visible) .pdp-peek {
+  transform: translateX(0) rotate(-15deg);
+  opacity: 1;
+}
+@media (hover: hover) {
+  .pdp-gallery-main.is-peekable:hover .pdp-peek {
+    transform: translateX(0) rotate(-15deg);
+    opacity: 1;
+  }
+}
+/* Bubble just above his hat. It is a separate layer above the pack (the
+   mascot's own layer sits behind it), positioned in the same frame
+   percentages as the mascot so it tracks him at every width. */
+.pdp-peek-bubble {
+  position: absolute;
+  z-index: 2;
+  bottom: 75%;
+  left: -4%;
+  width: max-content;
+  max-width: min(170px, 40%);
+  padding: 9px 13px;
+  border: 1.5px solid #d9a63c;
+  border-radius: 14px;
+  background: #fffaf0;
+  color: #8a0c18;
+  font-family: var(--font-display);
+  font-size: clamp(13px, 1.25vw, 16px);
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  box-shadow: 0 8px 18px rgba(94, 7, 16, 0.2);
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  transform: translateY(8px) scale(0.6);
+  opacity: 0;
+  transition: opacity 0.2s ease 0.2s, transform 0.4s cubic-bezier(0.2, 1.3, 0.35, 1) 0.2s;
+}
+/* Tail pointing down at his head. */
+.pdp-peek-bubble::after {
+  content: "";
+  position: absolute;
+  left: 46%;
+  bottom: -8px;
+  width: 13px;
+  height: 13px;
+  background: #fffaf0;
+  border-right: 1.5px solid #d9a63c;
+  border-bottom: 1.5px solid #d9a63c;
+  transform: rotate(45deg);
+}
+.pdp-gallery-main.is-peeking .pdp-peek-bubble,
+.pdp-gallery-main.is-peekable:has(.pdp-bag-btn:focus-visible) .pdp-peek-bubble {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+@media (hover: hover) {
+  .pdp-gallery-main.is-peekable:hover .pdp-peek-bubble {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pdp-peek,
+  .pdp-peek-bubble {
+    transition: none;
+  }
+}
+
 /* Four thumbnails always fit, so they share the card width as a fixed grid
    and need no scroll arrows. */
 .pdp-gallery-thumbs {
@@ -186,6 +348,82 @@
   padding: 5px 12px;
   border-radius: var(--radius-pill);
   margin-bottom: var(--s-3);
+}
+
+/* ---------- Super Slogan Contest title (Kitchidi Ponni page) ---------- */
+/* Same maroon-and-gold language as the contest page: gold rules with a
+   diamond, a maroon serif title with a gold sheen passing over it. */
+.pdp-contest {
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: var(--s-5, 1.25rem);
+  text-decoration: none;
+  color: inherit;
+}
+.pdp-contest-rule {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: min(100%, 340px);
+}
+.pdp-contest-rule i {
+  flex: 1;
+  height: 1.5px;
+  background: linear-gradient(90deg, #c8922a, rgba(200, 146, 42, 0.15));
+}
+.pdp-contest-rule i:first-child {
+  flex: 0 0 22px;
+  background: #c8922a;
+}
+.pdp-contest-rule b {
+  width: 7px;
+  height: 7px;
+  background: #c8922a;
+  transform: rotate(45deg);
+}
+.pdp-contest-title {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 2.6vw, 34px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  /* Room below the baseline so the "g" isn't clipped by the text gradient. */
+  padding: 0.04em 0.04em 0.22em 0;
+  margin-bottom: -0.18em;
+  background:
+    linear-gradient(105deg, transparent 42%, rgba(255, 232, 150, 0.95) 50%, transparent 58%) 0% 0 / 250% 100% no-repeat,
+    linear-gradient(180deg, #b3121f 0%, #7a0d19 60%, #4f060f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(217, 166, 60, 0.55));
+  animation: pdp-contest-shine 5.5s ease-in-out 1.5s infinite;
+}
+.pdp-contest-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-600, #8a5a0c);
+}
+.pdp-contest:focus-visible {
+  outline: 2px solid #d9a63c;
+  outline-offset: 6px;
+  border-radius: 6px;
+}
+@keyframes pdp-contest-shine {
+  0%, 55% { background-position: 0% 0, 0 0; }
+  100%    { background-position: 100% 0, 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pdp-contest-title { animation: none; }
 }
 
 .pdp-title {
@@ -442,6 +680,58 @@
   max-width: 72ch;
   line-height: 1.7;
   color: var(--ink-700);
+}
+/* Kitchidi Ponni, wide screens: tighter spacing, with pack size and quantity
+   on one row, so the buying controls fit in the first screen beside the pack. */
+@media (min-width: 900px) {
+  .pdp-festive .pdp-contest {
+    gap: 4px;
+    margin-bottom: var(--s-4);
+  }
+  .pdp-festive .pdp-badge {
+    margin-bottom: var(--s-2);
+  }
+  .pdp-festive .pdp-subtitle {
+    margin-bottom: var(--s-2);
+  }
+  .pdp-festive .pdp-desc,
+  .pdp-festive .pdp-price-hero {
+    margin-bottom: var(--s-4);
+  }
+  .pdp-festive .pdp-divider {
+    margin-bottom: var(--s-4);
+  }
+  .pdp-festive .pdp-options {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--s-4) var(--s-10, 2.5rem);
+    margin-bottom: var(--s-5, 1.25rem);
+  }
+  .pdp-festive .pdp-options .pdp-qty-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    margin-bottom: 0;
+  }
+  .pdp-festive .pdp-options .pdp-pack-sizes {
+    margin-bottom: 0;
+  }
+  /* Same label spacing in both columns, so the labels and controls line up. */
+  .pdp-festive .pdp-options .pdp-section-label {
+    margin-bottom: var(--s-2);
+  }
+  .pdp-festive .pdp-bulk-link {
+    margin-bottom: 0;
+  }
+}
+
+/* Kitchidi Ponni: the About heading and paragraph sit centred on the page. */
+.pdp-festive .pdp-about h2,
+.pdp-festive .pdp-about > p {
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
 }
 .pdp-tab-panel h3 {
   font-family: var(--font-display);

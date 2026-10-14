@@ -13,7 +13,7 @@ const HIDE_AFTER_JOIN_MS = 7 * 24 * 60 * 60 * 1000
 const KEY = 'cr.contestPopup.v3.hiddenUntil'
 
 // Never over a purchase in progress or a page the customer came to for a reason.
-const QUIET_PATHS = ['/cart', '/checkout', '/track-order', '/privacy', '/terms', BUY_PATH]
+const QUIET_PATHS = ['/cart', '/checkout', '/track-order', '/privacy', '/terms', '/contest', BUY_PATH]
 
 // Shown 8 seconds into the visit, whether or not the cookie banner has been
 // answered (an unanswered banner simply stays underneath).

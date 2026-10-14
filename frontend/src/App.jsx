@@ -26,6 +26,7 @@ import TermsPage from './pages/TermsPage.jsx'
 import ProductsPage from './shop/pages/ProductsPage.jsx'
 import ProductDetailPage from './shop/pages/ProductDetailPage.jsx'
 import AboutPage from './shop/pages/AboutPage.jsx'
+import ContestPage from './shop/pages/ContestPage.jsx'
 import FounderPage from './shop/pages/FounderPage.jsx'
 import CartPage from './shop/pages/CartPage.jsx'
 import CheckoutPage from './shop/pages/CheckoutPage.jsx'
@@ -148,6 +149,8 @@ export default function App() {
         <Route path="/faqs" element={<Navigate to="/#faqs" replace />} />
         <Route path="/rice-products" element={<ProductsPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
+        {/* The Super Slogan Contest page, opened from the nav's Contest button. */}
+        <Route path="/contest" element={<ContestPage />} />
         <Route path="/contact-us" element={<ContactPage />} />
         <Route path="/track-order" element={<TrackOrderPage />} />
         <Route path="/bulk-order" element={<BulkOrderPage />} />

@@ -6,6 +6,11 @@ import { useWishlist } from "../hooks/useWishlist.jsx";
 import { formatRupees } from "../utils/format.js";
 import { showCardPrices } from "../../config.js";
 import { PRODUCT_SEO, productPath } from "../../seo.js";
+import "./productcard-contest.css";
+
+// The pack that carries the Super Slogan Contest coupon gets its own card
+// treatment: a contest ribbon, a gold frame and a glow behind the pack.
+const CONTEST_ID = "kitchidi-ponni-rice";
 
 export default function ProductCard({ product }) {
   const spawnRipple = useRipple();
@@ -15,6 +20,7 @@ export default function ProductCard({ product }) {
   // pack, not one particular size of it. That also keeps the card, the
   // product page and the header count showing the same thing.
   const saved = wishlist.has(product.id);
+  const contest = product.id === CONTEST_ID;
 
   const sizes = product.packSizes || [{ kg: 10, price: product.price }];
   // Open on the 10 kg pack when it can be bought, else the first size that
@@ -41,7 +47,17 @@ export default function ProductCard({ product }) {
   );
 
   return (
-    <article className={`card card--${product.variant}`}>
+    <article className={`card card--${product.variant}${contest ? " card--contest" : ""}`}>
+      {contest && (
+        <Link className="card-contest-ribbon" to="/contest" tabIndex={-1}>
+          <span className="card-contest-orn" aria-hidden="true">&#10022;</span>
+          <span className="card-contest-text">
+            <span className="card-contest-title">Super Slogan Contest</span>
+            <span className="card-contest-sub">Coupon inside</span>
+          </span>
+          <span className="card-contest-orn" aria-hidden="true">&#10022;</span>
+        </Link>
+      )}
       <figure className="card-media">
         {product.flag && <span className="premium-flag">{product.flag}</span>}
         {allSoldOut && <span className="stock-flag">Out of stock</span>}

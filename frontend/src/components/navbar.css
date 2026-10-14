@@ -71,6 +71,28 @@
 .nav-active {
   color: var(--gold-soft);
 }
+
+/* "Contest": a gold-outlined pill so it reads as a button, not a plain link. */
+.nav-link-accent {
+  padding: 6px 16px;
+  border: 1.5px solid var(--gold-soft);
+  border-radius: 999px;
+  color: var(--gold-soft);
+  font-weight: 600;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+.nav-link-accent:hover,
+.nav-link-accent.nav-active {
+  background: var(--gold-soft);
+  color: #4a0a12;
+}
+.nav-link-accent.nav-active::after {
+  display: none;
+}
+.nav-mobile-accent {
+  color: var(--gold-soft);
+  font-weight: 700;
+}
 .nav-active::after {
   content: '';
   position: absolute;

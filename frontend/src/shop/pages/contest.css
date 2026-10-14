@@ -1,0 +1,660 @@
+/* ============================================================
+   Super Slogan Contest page. Scoped under .shop-scope (see SiteLayout),
+   so it inherits the maroon/gold/cream tokens from styles.scoped.css.
+   Reached from the "Contest" button in the navigation.
+   ============================================================ */
+
+/* The layout nests this page's <main> inside a wrapper <main>, and
+   `.shop-scope main` paints the corner mandalas on BOTH; kept transparent here
+   so only the wrapper draws them. */
+.shop-scope main.contest-page {
+  position: relative;
+  background: transparent;
+  color: var(--ink-700);
+  padding-bottom: var(--s-12);
+}
+
+/* This page always runs under the solid 68px navbar (the shared 84px offset is
+   sized for the taller home-page bar), so the garland hangs from its edge. */
+.shop-scope:has(main.contest-page) {
+  padding-top: 68px;
+}
+
+.shop-scope main:has(main.contest-page) {
+  --mandala: min(16rem, 30vw);
+}
+
+/* Decorative garland in both top corners of the contest page. It is
+   anchored to the top corners of the page body, below the navbar, so the whole
+   piece shows uncropped, and kept narrow enough that the strands clear the
+   breadcrumb. */
+.contest-page {
+  --contest-garland: clamp(110px, 17vw, 320px);
+}
+.contest-garland {
+  position: absolute;
+  top: 0;
+  width: var(--contest-garland);
+  height: auto;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+}
+.contest-garland-right {
+  right: 0;
+}
+.contest-garland-left {
+  left: 0;
+  transform: scaleX(-1);
+}
+
+/* ---------- Kitchidi Ponni decorative title ---------- */
+.kb-wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: var(--s-6) var(--s-6) 0;
+}
+.contest-page .kb-wrap {
+  padding-left: max(var(--s-6), calc(var(--contest-garland) * 0.34));
+  padding-right: max(var(--s-6), calc(var(--contest-garland) * 0.34));
+}
+.kb {
+  position: relative;
+  padding: 0 clamp(60px, 11.5vw, 160px);
+  text-align: center;
+}
+.kb-flourish {
+  position: absolute;
+  top: 50%;
+  width: clamp(56px, 11vw, 150px);
+  height: auto;
+  transform: translateY(-50%);
+}
+.kb-fl-l { left: 0; }
+.kb-fl-r { right: 0; transform: translateY(-50%) scaleX(-1); }
+.kb-text {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(4px, 0.8vw, 10px);
+}
+.kb-title {
+  font-family: var(--font-display);
+  font-size: clamp(26px, 5vw, 60px);
+  font-weight: 700;
+  line-height: 1.05;
+  /* The gradient only paints inside the element's box, so the tail of the
+     "g" was being cut off at the line box. Padding below the baseline gives
+     it room; the negative margin hands the space back to the layout. */
+  padding: 0.04em 0.05em 0.28em;
+  margin-bottom: -0.2em;
+  letter-spacing: 0.01em;
+  /* Top layer is a narrow gold highlight that sweeps across the lettering;
+     the maroon gradient underneath gives it its depth. */
+  background:
+    linear-gradient(105deg, transparent 42%, rgba(255, 232, 150, 0.95) 50%, transparent 58%) 0% 0 / 250% 100% no-repeat,
+    linear-gradient(180deg, #b3121f 0%, #7a0d19 60%, #4f060f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 rgba(217, 166, 60, 0.55));
+  animation:
+    kb-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both,
+    kb-shine 5.5s ease-in-out 1.2s infinite;
+}
+.kb-sub {
+  font-size: clamp(10px, 1.3vw, 15px);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #8a5a0c;
+}
+.kb-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(100%, 420px);
+}
+.kb-divider i {
+  flex: 1;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, #c8922a);
+}
+.kb-divider i:last-child {
+  background: linear-gradient(270deg, transparent, #c8922a);
+}
+.kb-divider b {
+  width: 8px;
+  height: 8px;
+  background: #c8922a;
+  transform: rotate(45deg);
+}
+
+/* Little entrance and shimmer for the title: it rises in, the dividers draw
+   out from the centre, the flourishes ease in from the sides, then a gold
+   highlight passes over the lettering every few seconds. */
+@keyframes kb-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes kb-shine {
+  0%, 55% { background-position: 0% 0, 0 0; }
+  100%    { background-position: 100% 0, 0 0; }
+}
+@keyframes kb-draw {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+@keyframes kb-twinkle {
+  0%, 100% { transform: rotate(45deg) scale(1); }
+  50%      { transform: rotate(45deg) scale(1.5); }
+}
+@keyframes kb-in-left {
+  from { opacity: 0; transform: translate(-24px, -50%); }
+  to   { opacity: 1; transform: translate(0, -50%); }
+}
+@keyframes kb-in-right {
+  from { opacity: 0; transform: translate(24px, -50%) scaleX(-1); }
+  to   { opacity: 1; transform: translate(0, -50%) scaleX(-1); }
+}
+.kb-divider {
+  animation: kb-draw 0.9s ease-out 0.15s both;
+}
+.kb-divider b {
+  animation: kb-twinkle 2.8s ease-in-out 1s infinite;
+}
+.kb-fl-l { animation: kb-in-left 0.9s ease-out 0.25s both; }
+.kb-fl-r { animation: kb-in-right 0.9s ease-out 0.25s both; }
+
+/* ---------- party paper ---------- */
+/* Confined to the contest section: the layer fills .kb-wrap and clips what
+   falls out of it, and it sits behind the title and ticket. Heights are in container units so a piece travels the
+   section's own height whatever it is. */
+.kb-confetti {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  container-type: size;
+}
+/* The title and intro sit above the paper, so it never lands on the text. */
+.kb,
+.kb-intro {
+  position: relative;
+  z-index: 1;
+}
+.kb-conf {
+  position: absolute;
+  top: -24px;
+  display: block;
+  opacity: 0.92;
+  animation-name: kb-conf-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+.kb-conf-dot { border-radius: 50%; }
+.kb-conf-strip { border-radius: 2px; }
+.kb-conf-rect { border-radius: 1px; }
+@keyframes kb-conf-fall {
+  0%   { transform: translate3d(0, -24px, 0) rotate3d(1, 0.6, 0.3, 0deg); }
+  25%  { transform: translate3d(var(--sway), 25cqh, 0) rotate3d(1, 0.6, 0.3, calc(var(--spin) * 0.25)); }
+  50%  { transform: translate3d(calc(var(--sway) * -0.7), 50cqh, 0) rotate3d(1, 0.6, 0.3, calc(var(--spin) * 0.5)); }
+  75%  { transform: translate3d(calc(var(--sway) * 0.9), 75cqh, 0) rotate3d(1, 0.6, 0.3, calc(var(--spin) * 0.75)); }
+  100% { transform: translate3d(0, 105cqh, 0) rotate3d(1, 0.6, 0.3, var(--spin)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kb-confetti { display: none; }
+}
+
+/* ---------- mascot intro ---------- */
+.kb-intro {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(20px, 3.2vw, 48px);
+  max-width: 1060px;
+  margin: var(--s-6) auto 0;
+}
+/* The mascot is a cut-out with a transparent background, so it stands
+   straight on the page — no card, frame or backdrop. */
+.kb-mascot {
+  flex: none;
+  display: block;
+  width: clamp(200px, 24vw, 340px);
+  height: auto;
+  /* Two stacked shadows: a tight one that grounds the edges and a wide soft
+     one that lifts the whole figure off the page. */
+  filter: drop-shadow(0 6px 6px rgba(60, 5, 12, 0.38)) drop-shadow(0 22px 22px rgba(60, 5, 12, 0.34));
+  animation: kb-mascot-in 0.9s cubic-bezier(0.2, 1.2, 0.3, 1) 0.4s both;
+}
+/* The introduction is set out like a coupon sheet: a paper ticket with
+   notches cut into both sides, a dashed inner border, a tear-off line and a
+   stub. The shadow sits on the wrapper because the mask on the ticket would
+   clip its own. */
+.kb-copy {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 620px;
+  color: var(--ink-700);
+  font-size: clamp(15px, 1.3vw, 17.5px);
+  line-height: 1.7;
+  filter: drop-shadow(0 8px 14px rgba(94, 7, 16, 0.18));
+  animation: kb-copy-in 0.7s ease-out 1s both;
+}
+.kb-ticket {
+  display: flex;
+  align-items: stretch;
+  background: linear-gradient(135deg, #fffaf0 0%, #fbf0d6 100%);
+  border-radius: 14px;
+  /* Half-circle notches at the middle of each side edge. */
+  -webkit-mask:
+    radial-gradient(circle 13px at 0 50%, #0000 97%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 13px at 100% 50%, #0000 97%, #000) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle 13px at 0 50%, #0000 97%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 13px at 100% 50%, #0000 97%, #000) right / 51% 100% no-repeat;
+}
+.kb-ticket-main {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 10px 0 10px 10px;
+  padding: clamp(14px, 1.8vw, 22px) clamp(16px, 2vw, 26px);
+  border: 1.5px dashed #c8922a;
+  border-radius: 10px;
+}
+.kb-ticket-main p {
+  margin: 0;
+}
+.kb-copy-hello {
+  font-family: var(--font-display);
+  font-size: 1.6em;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #8a0c18;
+  margin-bottom: 0.25em !important;
+}
+/* Stub: separated by a perforated line, carrying the contest name sideways. */
+.kb-ticket-stub {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(44px, 5vw, 58px);
+  margin: 10px 10px 10px 0;
+  border-left: 2px dotted #c8922a;
+  background: linear-gradient(180deg, #8a0c18 0%, #5e0710 100%);
+  border-radius: 0 10px 10px 0;
+  margin-left: 14px;
+}
+.kb-ticket-stub span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #f6dc9a;
+}
+@keyframes kb-mascot-in {
+  from { opacity: 0; transform: translateX(-60px) scale(0.9); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes kb-copy-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 560px) {
+  .kb-intro {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .kb-mascot {
+    width: clamp(210px, 64vw, 280px);
+  }
+  .kb-copy {
+    text-align: left;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kb-title,
+  .kb-divider,
+  .kb-divider b,
+  .kb-fl-l,
+  .kb-fl-r {
+    animation: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .kb-flourish { display: none; }
+  .kb { padding: 0; }
+}
+
+/* ---------- call to action under the ticket ---------- */
+.kb-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: var(--s-5, 1.25rem);
+  padding: 14px 26px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #a50f1d 0%, #6d0a14 100%);
+  color: #f6dc9a;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  box-shadow: 0 8px 18px rgba(94, 7, 16, 0.28), inset 0 0 0 1.5px rgba(240, 200, 100, 0.7);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.kb-cta:hover,
+.kb-cta:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 22px rgba(94, 7, 16, 0.34), inset 0 0 0 1.5px rgba(255, 230, 150, 0.9);
+}
+@media (max-width: 560px) {
+  .kb-cta {
+    align-self: center;
+  }
+}
+
+/* ---------- How to Participate (artwork) ---------- */
+.contest-howto {
+  position: relative;
+  z-index: 1;
+  max-width: 1160px;
+  margin: var(--s-16) auto 0;
+  padding: 0 var(--s-6);
+}
+.contest-page .contest-howto {
+  padding-left: max(var(--s-6), calc(var(--contest-garland) * 0.34));
+  padding-right: max(var(--s-6), calc(var(--contest-garland) * 0.34));
+}
+.contest-howto img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 18px;
+  box-shadow: 0 0 0 1.5px rgba(200, 146, 42, 0.55), 0 14px 30px rgba(94, 7, 16, 0.12);
+}
+/* Phones: the wide artwork would shrink its text past reading size, so it
+   keeps a readable height and scrolls sideways inside its frame. */
+@media (max-width: 640px) {
+  .contest-howto {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .contest-howto img {
+    width: 760px;
+    max-width: none;
+  }
+}
+
+/* ---------- Gifts ---------- */
+.contest-gifts {
+  position: relative;
+  z-index: 1;
+  max-width: 1060px;
+  margin: var(--s-16) auto 0;
+  padding: 0 var(--s-6);
+}
+.contest-page .contest-gifts {
+  padding-left: max(var(--s-6), calc(var(--contest-garland) * 0.34));
+  padding-right: max(var(--s-6), calc(var(--contest-garland) * 0.34));
+}
+.shop-scope .contest-gift-grid {
+  list-style: none;
+  margin: clamp(28px, 4vw, 48px) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(14px, 2vw, 26px);
+}
+/* Each gift on a cream card with a fine gold edge and a warm glow behind the
+   picture; it lifts a little on hover. */
+.contest-gift {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(12px, 1.6vw, 20px) clamp(10px, 1.4vw, 16px) clamp(12px, 1.4vw, 16px);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, #fffaf0 0%, #fbf0d6 100%) padding-box,
+    linear-gradient(160deg, #f2da8c, #c8922a 45%, #e3c878) border-box;
+  border: 1.5px solid transparent;
+  box-shadow: 0 10px 22px rgba(94, 7, 16, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.contest-gift:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 16px 30px rgba(94, 7, 16, 0.18);
+}
+.contest-gift-media {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: radial-gradient(closest-side at 50% 52%, rgba(255, 214, 120, 0.45) 0%, rgba(255, 214, 120, 0) 100%);
+}
+/* Every picture fills the same 4:3 box and is fitted inside it, so tall gifts
+   (fridge, phone) and wide ones (TV, stove) all leave the cards one height. */
+.contest-gift-media {
+  position: relative;
+}
+.contest-gift-media img {
+  position: absolute;
+  inset: 8%;
+  width: 84%;
+  height: 84%;
+  max-width: none;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 10px rgba(60, 5, 12, 0.22));
+  transition: transform 0.3s ease;
+}
+.contest-gift:hover .contest-gift-media img {
+  transform: scale(1.06);
+}
+.contest-gift-name {
+  margin: var(--s-3) 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(15px, 1.4vw, 19px);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  color: #7a0d19;
+}
+.contest-gifts-note {
+  margin: var(--s-4) 0 0;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8a5a0c;
+}
+@media (max-width: 900px) {
+  .shop-scope .contest-gift-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .shop-scope .contest-gift-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .contest-gift,
+  .contest-gift-media img { transition: none; }
+  .contest-gift:hover { transform: none; }
+}
+
+/* ---------- Prize Winners ---------- */
+.contest-winners {
+  position: relative;
+  z-index: 1;
+  max-width: 1060px;
+  margin: var(--s-16) auto 0;
+  padding: 0 var(--s-6);
+}
+.contest-page .contest-winners {
+  padding-left: max(var(--s-6), calc(var(--contest-garland) * 0.34));
+  padding-right: max(var(--s-6), calc(var(--contest-garland) * 0.34));
+}
+
+/* Title bar: a maroon band with a gold rule along both edges. */
+.contest-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 14px 24px 16px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #a50f1d 0%, #7a0d19 60%, #5e0710 100%);
+  box-shadow:
+    inset 0 0 0 1.5px #d9a63c,
+    inset 0 0 0 5px #6d0a14,
+    inset 0 0 0 6px rgba(233, 191, 85, 0.6),
+    0 12px 26px rgba(94, 7, 16, 0.22);
+}
+.contest-bar h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(24px, 3.2vw, 38px);
+  font-weight: 700;
+  line-height: 1.1;
+  padding-bottom: 0.1em;
+  background: linear-gradient(180deg, #fff3bf 0%, #f0c25a 55%, #c8922a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.contest-bar-orn {
+  color: #e9bf55;
+  font-size: clamp(14px, 1.6vw, 20px);
+}
+
+/* Photo frames: a gold gradient outer frame, a thin maroon mat and a cream
+   "photo" holding the question mark. */
+.shop-scope .contest-frames {
+  list-style: none;
+  margin: clamp(28px, 4vw, 48px) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(18px, 3vw, 40px);
+}
+.contest-frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.contest-frame-photo {
+  position: relative;
+  width: 100%;
+  max-width: 260px;
+  aspect-ratio: 4 / 5;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #f2da8c 0%, #c8922a 30%, #8a5a0c 55%, #e3c878 80%, #b07a1a 100%);
+  box-shadow: 0 14px 28px rgba(94, 7, 16, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.contest-frame-photo::before {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border-radius: 4px;
+  background:
+    radial-gradient(70% 60% at 50% 45%, #fffaf0 0%, #f6e8c8 100%);
+  box-shadow: inset 0 0 0 3px #7a0d19, inset 0 0 0 5px rgba(233, 191, 85, 0.8), inset 0 6px 18px rgba(94, 7, 16, 0.18);
+}
+.contest-frame-q {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: clamp(72px, 9vw, 120px);
+  font-weight: 700;
+  line-height: 1;
+  background: linear-gradient(180deg, #b3121f 0%, #7a0d19 60%, #4f060f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 0 rgba(217, 166, 60, 0.55));
+  animation: contest-q-bob 3.2s ease-in-out infinite;
+}
+.contest-frame:nth-child(2) .contest-frame-q { animation-delay: 0.4s; }
+.contest-frame:nth-child(3) .contest-frame-q { animation-delay: 0.8s; }
+.contest-frame-note {
+  margin: var(--s-4) 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(15px, 1.4vw, 18px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a5a0c;
+}
+/* Note under the winner frames: a gold diamond rule above, then centred
+   text at a comfortable reading width. */
+.contest-note-rule {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(260px, 70%);
+  margin: clamp(32px, 4vw, 48px) auto 0;
+}
+.contest-note-rule i {
+  flex: 1;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, #c8922a);
+}
+.contest-note-rule i:last-child {
+  background: linear-gradient(270deg, transparent, #c8922a);
+}
+.contest-note-rule b {
+  width: 8px;
+  height: 8px;
+  background: #c8922a;
+  transform: rotate(45deg);
+}
+.contest-winners-note {
+  max-width: 62ch;
+  margin: 18px auto 0;
+  text-align: center;
+  font-size: clamp(15px, 1.25vw, 17px);
+  line-height: 1.75;
+  color: var(--ink-700);
+}
+@keyframes contest-q-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .contest-frame-q { animation: none; }
+}
+/* Phones: the three frames stay in one row, just smaller, so the section
+   doesn't become a long scroll of empty frames. */
+@media (max-width: 640px) {
+  .shop-scope .contest-frames {
+    gap: 10px;
+  }
+  .contest-frame-photo {
+    padding: 7px;
+  }
+  .contest-frame-photo::before {
+    inset: 7px;
+  }
+  .contest-frame-q {
+    font-size: 54px;
+  }
+  .contest-frame-note {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+  }
+}

@@ -43,7 +43,9 @@ export default function Navbar() {
               key={link.label}
               to={link.to}
               end={link.to === '/'}
-              className={({ isActive }) => (isActive ? 'nav-link nav-active' : 'nav-link')}
+              className={({ isActive }) =>
+                `nav-link${link.accent ? ' nav-link-accent' : ''}${isActive ? ' nav-active' : ''}`
+              }
             >
               {link.label}
             </NavLink>
@@ -106,7 +108,7 @@ export default function Navbar() {
       {open && (
         <div className="nav-mobile">
           {NAV_LINKS.map(link => (
-            <Link key={link.label} to={link.to} onClick={() => setOpen(false)}>
+            <Link key={link.label} to={link.to} className={link.accent ? 'nav-mobile-accent' : undefined} onClick={() => setOpen(false)}>
               {link.label}
             </Link>
           ))}
