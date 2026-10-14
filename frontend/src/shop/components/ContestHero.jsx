@@ -111,7 +111,7 @@ export default function ContestHero() {
       <aside className="kb-intro" aria-label="About the Super Slogan Contest">
         <img
           className="kb-mascot"
-          src="/assets/contest-mascot-pack.webp"
+          src="/assets/contest-mascot-pack-v2.webp"
           width="760"
           height="950"
           alt="The Chennai Rice mascot, a grain of rice in a straw hat and sunglasses, giving a thumbs up beside a Kitchidi Ponni Rice 5 kg pack"
