@@ -12,7 +12,6 @@ import './styles/shop-bridge.css'
 
 import Navbar from './components/Navbar.jsx'
 import Footer from './components/Footer.jsx'
-import RiceCursor from './components/RiceCursor.jsx'
 import SoruKutty from './components/chatbot/SoruKutty.jsx'
 import CookieBanner from './components/CookieBanner.jsx'
 import ContestPopup from './components/ContestPopup.jsx'
@@ -216,7 +215,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {!isTool && <Footer />}
-      {isStorefront && <RiceCursor />}
       {isStorefront && <SoruKutty />}
       {isStorefront && <CookieBanner />}
       {/* Appears 8 seconds into the visit; once closed, not again for a day. */}
