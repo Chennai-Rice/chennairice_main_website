@@ -149,34 +149,81 @@ export default function ContestPopup() {
 
 /**
  * The popup for visitors from a Meta or Google ad: a short sign-up form (name,
- * mobile, email) that cannot be dismissed until it is filled in. Saved with the
- * ad they came from.
+ * mobile, email) that cannot be dismissed until it is filled in. The mobile is
+ * confirmed with an OTP (MSG91) before the sign-up is saved with the ad the
+ * visitor came from. With no SMS account configured the OTP step is skipped.
  */
+const RESEND_AFTER_S = 30
+
+async function post(path, body) {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.')
+  return data
+}
+
 function AdSignup({ closeRef, close }) {
   const [form, setForm] = useState({ name: '', phone: '', email: '' })
-  const [state, setState] = useState('form') // form | sending | done
+  const [otp, setOtp] = useState('')
+  const [step, setStep] = useState('form') // form | otp | done
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [wait, setWait] = useState(0) // seconds until "Resend OTP"
+  const otpRef = useRef(null)
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+  const details = () => ({ ...form, attribution: currentAttribution(), page: window.location.pathname })
 
-  async function submit(e) {
-    e.preventDefault()
+  useEffect(() => {
+    if (wait <= 0) return undefined
+    const t = window.setTimeout(() => setWait((w) => w - 1), 1000)
+    return () => window.clearTimeout(t)
+  }, [wait])
+  useEffect(() => { if (step === 'otp') otpRef.current?.focus() }, [step])
+
+  async function run(fn) {
     setError('')
-    setState('sending')
+    setBusy(true)
     try {
-      const res = await fetch('/api/contest/lead', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, attribution: currentAttribution(), page: window.location.pathname }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Could not register you just now. Please try again.')
-      hideFor(HIDE_AFTER_JOIN_MS) // registered: no popup for a week
-      setState('done')
+      await fn()
     } catch (err) {
-      setError(err.message || 'Could not register you just now. Please try again.')
-      setState('form')
+      setError(err.message || 'Something went wrong. Please try again.')
+    } finally {
+      setBusy(false)
     }
   }
+
+  async function register(extra = {}) {
+    await post('/api/contest/lead', { ...details(), ...extra })
+    hideFor(HIDE_AFTER_JOIN_MS) // registered: no popup for a week
+    setStep('done')
+  }
+
+  // Step 1: details in, OTP out (or straight to registered if OTP is off).
+  const sendOtp = (e) => {
+    e.preventDefault()
+    run(async () => {
+      const r = await post('/api/contest/otp', details())
+      if (r.otpRequired === false) return register()
+      setOtp('')
+      setWait(RESEND_AFTER_S)
+      setStep('otp')
+    })
+  }
+  const resend = () => run(async () => {
+    await post('/api/contest/otp', { ...details(), resend: true })
+    setWait(RESEND_AFTER_S)
+  })
+  // Step 2: the OTP confirms the mobile and saves the sign-up.
+  const verify = (e) => {
+    e.preventDefault()
+    run(() => register({ otp }))
+  }
+
+  const masked = form.phone.replace(/\D/g, '').slice(-10).replace(/^(\d{2})\d{4}(\d{4})$/, '$1xxxx$2')
 
   return (
     <div className="contest-pop-backdrop">
@@ -189,7 +236,7 @@ function AdSignup({ closeRef, close }) {
       >
         <div className="contest-pop-body">
           <p className="contest-pop-eyebrow">Super Slogan Contest</p>
-          {state === 'done' ? (
+          {step === 'done' ? (
             <>
               <h2 id="contest-form-title" className="contest-form-title">Thank you, {form.name.split(' ')[0]}!</h2>
               <p className="contest-pop-text">
@@ -203,13 +250,49 @@ function AdSignup({ closeRef, close }) {
                 Continue browsing
               </button>
             </>
+          ) : step === 'otp' ? (
+            <>
+              <h2 id="contest-form-title" className="contest-form-title">Enter the OTP</h2>
+              <p className="contest-pop-text">
+                We have sent a 6-digit code by SMS to <strong>+91 {masked}</strong>.
+              </p>
+              <form className="contest-form" onSubmit={verify} noValidate>
+                <label className="contest-form-field">
+                  <span>OTP</span>
+                  <input
+                    ref={otpRef}
+                    data-focus
+                    required
+                    className="contest-form-otp"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    placeholder="••••••"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  />
+                </label>
+                {error && <p className="contest-form-error" role="alert">{error}</p>}
+                <button data-focus type="submit" className="contest-pop-cta contest-form-submit" disabled={busy || otp.length < 4}>
+                  {busy ? 'Checking…' : 'Verify & register'}
+                </button>
+                <div className="contest-form-otp-actions">
+                  <button data-focus type="button" className="contest-form-link" disabled={busy || wait > 0} onClick={resend}>
+                    {wait > 0 ? `Resend OTP in ${wait}s` : 'Resend OTP'}
+                  </button>
+                  <button data-focus type="button" className="contest-form-link" disabled={busy} onClick={() => { setError(''); setStep('form') }}>
+                    Change number
+                  </button>
+                </div>
+              </form>
+            </>
           ) : (
             <>
               <h2 id="contest-form-title" className="contest-form-title">Register &amp; win big prizes</h2>
               <p className="contest-pop-text">
                 Car, scooter, gold and more. Leave your details and we will send you everything you need to take part.
               </p>
-              <form className="contest-form" onSubmit={submit} noValidate>
+              <form className="contest-form" onSubmit={sendOtp} noValidate>
                 <label className="contest-form-field">
                   <span>Name</span>
                   <input ref={closeRef} data-focus required autoComplete="name" maxLength={80} value={form.name} onChange={set('name')} />
@@ -223,11 +306,12 @@ function AdSignup({ closeRef, close }) {
                   <input data-focus required type="email" autoComplete="email" maxLength={120} value={form.email} onChange={set('email')} />
                 </label>
                 {error && <p className="contest-form-error" role="alert">{error}</p>}
-                <button data-focus type="submit" className="contest-pop-cta contest-form-submit" disabled={state === 'sending'}>
-                  {state === 'sending' ? 'Registering…' : 'Register now'}
+                <button data-focus type="submit" className="contest-pop-cta contest-form-submit" disabled={busy}>
+                  {busy ? 'Sending OTP…' : 'Send OTP'}
                 </button>
                 <p className="contest-form-note">
-                  We use these details only for the contest. <Link to="/privacy" target="_blank" rel="noopener">Privacy policy</Link>
+                  We will text an OTP to confirm your number. We use these details only for the contest.{' '}
+                  <Link to="/privacy" target="_blank" rel="noopener">Privacy policy</Link>
                 </p>
               </form>
             </>

@@ -1102,3 +1102,53 @@ test('contest sign-up form: saved with the ad it came from, one row per mobile, 
   assert.match(csv.body, /Priya Sundar/)
   assert.match(csv.body, /Google Ads/)
 })
+
+test('contest sign-up with MSG91 OTP: only for ad visitors, wrong OTP refused, verified sign-up saved, limits per mobile', async () => {
+  // A stand-in for MSG91: remembers the OTP it "texted" to each mobile.
+  const http = await import('node:http')
+  const sent = new Map()
+  const calls = []
+  const fake = http.createServer((req, res) => {
+    const u = new URL(req.url, 'http://x')
+    calls.push(`${req.method} ${u.pathname} key=${req.headers.authkey}`)
+    const mobile = u.searchParams.get('mobile')
+    let ok = false
+    if (req.method === 'POST' && u.pathname === '/api/v5/otp') { sent.set(mobile, '482913'); ok = u.searchParams.get('template_id') === 'tmpl-1' }
+    if (req.method === 'GET' && u.pathname === '/api/v5/otp/retry') ok = sent.has(mobile)
+    if (req.method === 'GET' && u.pathname === '/api/v5/otp/verify') ok = sent.get(mobile) === u.searchParams.get('otp')
+    res.setHeader('content-type', 'application/json')
+    res.end(JSON.stringify(ok ? { type: 'success', message: 'ok' } : { type: 'error', message: 'OTP not match' }))
+  })
+  await new Promise((r) => fake.listen(0, r))
+  Object.assign(process.env, { MSG91_AUTH_KEY: 'test-key', MSG91_OTP_TEMPLATE_ID: 'tmpl-1', MSG91_BASE_URL: 'http://127.0.0.1:' + fake.address().port })
+  try {
+    const metaAd = { utm_source: 'fb', utm_medium: 'paid_social', utm_campaign: 'Slogan', utm_content: 'Reel 2', fbclid: true }
+    const who = { name: 'Meena R', phone: '9123456780', email: 'meena@example.com' }
+    // Not from an ad: no SMS is spent.
+    const organic = await api('POST', '/api/contest/otp', { body: { ...who, attribution: { referrer: 'https://www.google.com/' } } })
+    assert.equal(organic.status, 403)
+    const start = await api('POST', '/api/contest/otp', { body: { ...who, attribution: metaAd }, headers: { 'X-Forwarded-For': '10.9.0.1' } })
+    assert.equal(start.status, 200, JSON.stringify(start.body))
+    assert.deepEqual(start.body, { otpRequired: true, sent: true })
+    assert.ok(calls.some((c) => c === 'POST /api/v5/otp key=test-key'))
+    // Saving without, or with a wrong, OTP is refused.
+    assert.equal((await api('POST', '/api/contest/lead', { body: { ...who, attribution: metaAd } })).status, 400)
+    const wrong = await api('POST', '/api/contest/lead', { body: { ...who, otp: '111111', attribution: metaAd } })
+    assert.equal(wrong.status, 400)
+    assert.match(wrong.body.error, /OTP/)
+    // Resend, then the right OTP saves a verified sign-up.
+    assert.equal((await api('POST', '/api/contest/otp', { body: { ...who, attribution: metaAd, resend: true }, headers: { 'X-Forwarded-For': '10.9.0.1' } })).status, 200)
+    const ok = await api('POST', '/api/contest/lead', { body: { ...who, otp: '482 913', attribution: metaAd } })
+    assert.equal(ok.status, 200, JSON.stringify(ok.body))
+    const lead = (await api('GET', '/api/admin/warehouse/contest-leads', { token: OWNER })).body.leads.find((l) => l.phone === '9123456780')
+    assert.equal(lead.phone_verified, true)
+    assert.equal(lead.source, 'meta_ads_facebook')
+    // Three OTPs per mobile in 15 minutes, then a polite refusal.
+    await api('POST', '/api/contest/otp', { body: { ...who, attribution: metaAd }, headers: { 'X-Forwarded-For': '10.9.0.2' } })
+    const limited = await api('POST', '/api/contest/otp', { body: { ...who, attribution: metaAd }, headers: { 'X-Forwarded-For': '10.9.0.3' } })
+    assert.equal(limited.status, 429)
+  } finally {
+    for (const k of ['MSG91_AUTH_KEY', 'MSG91_OTP_TEMPLATE_ID', 'MSG91_BASE_URL']) delete process.env[k]
+    await new Promise((r) => fake.close(r))
+  }
+})

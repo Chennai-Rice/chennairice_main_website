@@ -13,6 +13,7 @@
 // proof of an ad (Facebook adds it to ordinary post links too), so a Meta
 // visit counts as an ad when the link says utm_medium=paid (or cpc, ads…).
 import { httpError, str } from './util.js'
+import { otpEnabled, sendOtp, verifyOtp } from './otp.js'
 
 export const SOURCES = {
   meta_ads_facebook: 'Meta ad · Facebook',
@@ -205,24 +206,53 @@ export function cleanMobile(raw) {
   return /^[6-9]\d{9}$/.test(d) ? d : ''
 }
 
-/** Saves a sign-up; the same mobile number again updates its row. */
-export async function saveContestLead(db, body) {
+const AD_SOURCES = ['meta_ads_facebook', 'meta_ads_instagram', 'meta_ads', 'google_ads']
+
+/** Name, mobile and email checked and tidied, or a 400 saying which is wrong. */
+function leadFields(body) {
   const name = str(body?.name).replace(/\s+/g, ' ')
   const phone = cleanMobile(body?.phone)
   const email = str(body?.email).toLowerCase()
   if (!NAME.test(name)) throw httpError('Bad name', { publicMessage: 'Please enter your name.' })
   if (!phone) throw httpError('Bad phone', { publicMessage: 'Please enter a valid 10-digit mobile number.' })
   if (email.length > 120 || !EMAIL.test(email)) throw httpError('Bad email', { publicMessage: 'Please enter a valid email address.' })
+  return { name, phone, email }
+}
+
+/**
+ * Step 1 of the sign-up: checks the details and texts an OTP to the mobile
+ * (MSG91). Only for visitors who came from a Meta or Google ad, the only ones
+ * shown the form, so the SMS budget is not spent on anyone else.
+ */
+export async function startContestLead(db, body, { ip = '' } = {}) {
+  const { phone } = leadFields(body)
+  if (!otpEnabled()) return { otpRequired: false }
+  const { source } = classify(cleanAttribution(body?.attribution))
+  if (!AD_SOURCES.includes(source)) {
+    throw httpError('Not from an ad', { status: 403, publicMessage: 'This sign-up is only for visitors from our ads.' })
+  }
+  return sendOtp(db, phone, { resend: body?.resend === true, ip })
+}
+
+/**
+ * Step 2: saves the sign-up. With OTP switched on (MSG91 configured), the
+ * mobile number must first be confirmed with the OTP sent to it. The same
+ * mobile number again updates its row.
+ */
+export async function saveContestLead(db, body) {
+  const { name, phone, email } = leadFields(body)
+  const verified = otpEnabled() ? await verifyOtp(phone, body?.otp) : false
   const a = cleanAttribution(body?.attribution)
   const { source, campaign, ad } = classify(a)
   await db.query(
-    `insert into contest_leads (name, phone, email, source, campaign, ad, landing, attribution)
-     values ($1, $2, $3, $4, $5, $6, $7, $8)
+    `insert into contest_leads (name, phone, email, source, campaign, ad, landing, attribution, phone_verified)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      on conflict (phone) do update set name = excluded.name, email = excluded.email,
        source = excluded.source, campaign = excluded.campaign, ad = excluded.ad,
        landing = excluded.landing, attribution = excluded.attribution,
+       phone_verified = contest_leads.phone_verified or excluded.phone_verified,
        submissions = contest_leads.submissions + 1, updated_at = now()`,
-    [name, phone, email, source, campaign, ad, clip(body?.page || a?.landing, 200) || null, a]
+    [name, phone, email, source, campaign, ad, clip(body?.page || a?.landing, 200) || null, a, verified]
   )
   return { ok: true }
 }
@@ -231,7 +261,7 @@ export async function saveContestLead(db, body) {
 export async function contestLeads(db, { days = 30 } = {}) {
   const span = Math.min(366, Math.max(1, Number(days) || 30))
   const { rows } = await db.query(
-    `select name, phone, email, source, campaign, ad, landing, submissions, created_at, updated_at
+    `select name, phone, email, source, campaign, ad, landing, submissions, phone_verified, created_at, updated_at
        from contest_leads
       where (updated_at at time zone 'Asia/Kolkata')::date >= (now() at time zone 'Asia/Kolkata')::date - ($1::int - 1)
       order by updated_at desc limit 2000`,
