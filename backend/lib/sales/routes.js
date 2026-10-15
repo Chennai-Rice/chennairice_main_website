@@ -19,7 +19,7 @@ import { sendQueued } from './email.js'
 import { staffAuth, permissionsFor, requirePermission, listStaff, createStaff, updateStaff, can } from './staff.js'
 import {
   listOrders, getOrderDetail, confirmOrder, packOrder, shipOrder, deliverShipment, cancelOrder,
-  returnOrder, addNote, resolveAttention, refundOrder, trackOrder, customerInvoice, setDispatched, setDispatchedMany, setPacking, updateShipmentDetails,
+  returnOrder, addNote, resolveAttention, refundOrder, deleteOrder, trackOrder, customerInvoice, setDispatched, setDispatchedMany, setPacking, updateShipmentDetails,
 } from './operations.js'
 import {
   listStock, listMovements, adjustStock, markDamaged, transferStock, listLocations, createLocation,
@@ -204,6 +204,7 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.post('/orders/:id/return', wrap(async (req, res) => res.json({ order: await returnOrder(req.staff, req.params.id, req.body) })))
   admin.post('/orders/:id/notes', wrap(async (req, res) => res.json({ note: await addNote(req.staff, req.params.id, req.body) })))
   admin.post('/orders/:id/resolve', wrap(async (req, res) => res.json({ order: await resolveAttention(req.staff, req.params.id, req.body) })))
+  admin.delete('/orders/:id', perm('order.delete'), wrap(async (req, res) => res.json(await deleteOrder(req.staff, req.params.id))))
   admin.post('/orders/:id/refunds', wrap(async (req, res) => res.json(await refundOrder(req.staff, req.params.id, req.body))))
   admin.get('/orders/:id/invoice', perm('order.view'), wrap(async (req, res) => {
     const detail = await getOrderDetail(req.params.id)

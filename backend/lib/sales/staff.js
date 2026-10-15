@@ -35,6 +35,8 @@ const PERMISSIONS = {
   'order.cancel': ['owner', 'admin', 'it', 'sales'],
   'order.return': ['owner', 'admin', 'it', 'sales'],
   'order.resolve': ['owner', 'admin', 'it', 'sales'],
+  // Deleting a cancelled, never-paid order for good: owner and IT team only.
+  'order.delete': ['owner', 'it'],
   'refund.create': ['owner', 'admin', 'it'],
   // Returns & Issues: anyone on the panel may log and work an issue.
   'issues.manage': ['owner', 'admin', 'it', 'sales', 'dispatch', 'inventory', 'warehouse'],

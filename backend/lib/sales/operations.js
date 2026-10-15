@@ -736,3 +736,45 @@ export async function customerInvoice({ orderId, orderNumber }) {
   })
   return getOrderDetail(orderId)
 }
+
+/**
+ * Deletes an order for good (owner / IT team). Only a cancelled order that was
+ * never paid — a failed or abandoned checkout — so nothing with money, an
+ * invoice or a dispatch behind it can disappear. Its stock history stays
+ * (just no longer linked to it); its order ID stays used in the register.
+ */
+export async function deleteOrder(staff, id) {
+  requirePermission(staff, 'order.delete')
+  assertId(id)
+  return tx(async (db) => {
+    const order = await lockOrder(db, id)
+    if (order.status !== 'cancelled' || ['paid', 'partially_refunded', 'refunded'].includes(order.payment_status)) {
+      throw httpError('Not deletable', {
+        status: 409,
+        publicMessage: `${order.order_number} can't be deleted: only cancelled orders that were never paid can be deleted.`,
+      })
+    }
+    const { rows: [blocker] } = await db.query(
+      `select (select count(*) from invoices where order_id = $1)::int as invoices,
+              (select count(*) from payments where order_id = $1 and status = 'paid')::int as paid,
+              (select count(*) from refunds where order_id = $1)::int as refunds,
+              (select count(*) from shipments where order_id = $1 and status <> 'cancelled')::int as shipments`,
+      [id]
+    )
+    if (blocker.invoices || blocker.paid || blocker.refunds || blocker.shipments) {
+      throw httpError('Has money or dispatch', { status: 409, publicMessage: `${order.order_number} has a payment, invoice or dispatch, so it can't be deleted.` })
+    }
+    await db.query(
+      `update stock_movements set order_id = null, shipment_id = null
+        where order_id = $1 or shipment_id in (select id from shipments where order_id = $1)`, [id])
+    await db.query('delete from shipments where order_id = $1', [id])
+    await db.query('delete from payments where order_id = $1', [id])
+    await db.query('delete from email_outbox where order_id = $1', [id])
+    await db.query('delete from order_issues where order_id = $1', [id])
+    await db.query('delete from orders where id = $1', [id])
+    await audit(db, staff, 'order.delete', 'order', id, {
+      orderNumber: order.order_number, customer: order.contact_name, total: Number(order.total_paise) / 100, paymentStatus: order.payment_status,
+    })
+    return { deleted: order.order_number }
+  })
+}

@@ -364,6 +364,7 @@ export default function WarehousePage() {
               focusQuery={focusQuery}
               money={money}
               readOnly={!warehouse}
+              canDelete={perms.includes('order.delete')}
             />
           )}
           {shown === 'dispatch' && <DispatchView say={say} onAuthError={onAuthError} />}

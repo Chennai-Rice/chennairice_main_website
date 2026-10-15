@@ -1234,3 +1234,35 @@ test('accounts team can read the order list and its CSV, with amounts, but not d
   const plant = await api('GET', '/api/admin/warehouse/orders?tab=all', { token: 'plant@x.test|uid-plant' })
   assert.equal(plant.status, 403)
 })
+
+test('delete order: owner and IT team only, and only a cancelled order that was never paid', async () => {
+  // An abandoned checkout: placed, never paid, then expired by the job.
+  const s = await api('POST', '/api/checkout/session', {
+    body: { ...buyer({ name: 'Abandoned Cart', phone: '+91 90000 11111' }), items: [{ id: 'alibaba', qty: 1 }] },
+    headers: { 'X-Forwarded-For': '10.77.0.1' },
+  })
+  assert.equal(s.status, 200, JSON.stringify(s.body))
+  await db.query(`update orders set reservation_expires_at = now() - interval '1 minute' where id = $1`, [s.body.orderId])
+  await api('POST', '/api/jobs/run', { headers: { 'X-Job-Token': 'job-token-for-tests' } })
+  const { rows: [o] } = await db.query('select status, payment_status from orders where id = $1', [s.body.orderId])
+  assert.equal(o.status, 'cancelled')
+
+  // Not for sales or accounts.
+  assert.equal((await api('DELETE', `/api/admin/orders/${s.body.orderId}`, { token: tokens.sales })).status, 403)
+  assert.equal((await api('DELETE', `/api/admin/orders/${s.body.orderId}`, { token: 'accounts@x.test|uid-accounts' })).status, 403)
+  // A paid order can never be deleted.
+  const { rows: [paid] } = await db.query(`select id from orders where payment_status = 'paid' limit 1`)
+  const refused = await api('DELETE', `/api/admin/orders/${paid.id}`, { token: OWNER })
+  assert.equal(refused.status, 409)
+  assert.match(refused.body.error, /never paid/)
+
+  const del = await api('DELETE', `/api/admin/orders/${s.body.orderId}`, { token: OWNER })
+  assert.equal(del.status, 200, JSON.stringify(del.body))
+  assert.equal(del.body.deleted, s.body.orderNumber)
+  assert.equal((await db.query('select 1 from orders where id = $1', [s.body.orderId])).rowCount, 0)
+  assert.equal((await db.query('select 1 from payments where order_id = $1', [s.body.orderId])).rowCount, 0)
+  // Recorded in the audit log; the order ID stays used in the register.
+  const { rows: [log] } = await db.query(`select details from staff_audit_log where action = 'order.delete' order by created_at desc limit 1`)
+  assert.equal(log.details.orderNumber, s.body.orderNumber)
+  assert.equal((await api('DELETE', `/api/admin/orders/${s.body.orderId}`, { token: OWNER })).status, 404)
+})

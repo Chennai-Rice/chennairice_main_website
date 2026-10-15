@@ -83,7 +83,10 @@ function ProductCell({ items }) {
   )
 }
 
-function RowMenu({ order, onView, onUndo, onClose, say }) {
+// Only a cancelled order that was never paid can be deleted (the server checks again).
+const deletable = (o) => o.status === 'cancelled' && !['paid', 'partially_refunded', 'refunded'].includes(o.paymentStatus)
+
+function RowMenu({ order, onView, onUndo, onDelete, onClose, say }) {
   const ref = useRef(null)
   useEffect(() => {
     const away = (e) => { if (!ref.current?.contains(e.target)) onClose() }
@@ -120,6 +123,11 @@ function RowMenu({ order, onView, onUndo, onClose, say }) {
       {onUndo && canUndo(order) && (
         <button type="button" role="menuitem" className="is-danger" onClick={() => { onUndo(order); onClose() }}>
           <Icon name="undo" size={16} /> Undo dispatch
+        </button>
+      )}
+      {onDelete && deletable(order) && (
+        <button type="button" role="menuitem" className="is-danger" onClick={() => { onDelete(order); onClose() }}>
+          <Icon name="x" size={16} /> Delete order
         </button>
       )}
     </div>
@@ -174,7 +182,8 @@ function Details({ order, onClose }) {
 
 // readOnly: the accounts team — the list, details and CSV, without the
 // dispatch switch, bulk actions or packing slips.
-export default function OrdersView({ status, onStatus, prefs, say, onAuthError, focusQuery, money = false, readOnly = false }) {
+// canDelete: owner / IT team — may delete cancelled, never-paid orders.
+export default function OrdersView({ status, onStatus, prefs, say, onAuthError, focusQuery, money = false, readOnly = false, canDelete = false }) {
   const [filters, setFilters] = useState(EMPTY)
   const [draft, setDraft] = useState('')
   const [sort, setSort] = useState(prefs.sort)
@@ -326,6 +335,28 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
       confirmLabel: 'Undo dispatch',
       danger: true,
       onConfirm: () => run(list, false),
+    })
+  }
+
+  function askDelete(o) {
+    setConfirm({
+      title: `Delete ${o.orderNumber}?`,
+      body: `This cancelled, unpaid order (${o.customer?.name || 'customer'}) is removed for good, with its failed payment attempts and emails. This cannot be undone.`,
+      confirmLabel: 'Delete order',
+      danger: true,
+      onConfirm: async () => {
+        mark([o.id], true)
+        try {
+          await staffJson(`/api/admin/orders/${o.id}`, { method: 'DELETE' })
+          say(`${o.orderNumber} deleted.`)
+        } catch (err) {
+          if (!onAuthError(err)) say(err.message, 'error')
+        } finally {
+          mark([o.id], false)
+          setConfirm(null)
+          load({ quiet: true })
+        }
+      },
     })
   }
 
@@ -616,7 +647,8 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
                       <Icon name="more" size={18} />
                     </button>
                     {menuFor === o.id && (
-                      <RowMenu order={o} say={say} onView={setDetails} onUndo={readOnly ? null : (x) => askUndo([x])} onClose={() => setMenuFor(null)} />
+                      <RowMenu order={o} say={say} onView={setDetails} onUndo={readOnly ? null : (x) => askUndo([x])}
+                        onDelete={canDelete ? askDelete : null} onClose={() => setMenuFor(null)} />
                     )}
                   </span>
                 </span>
