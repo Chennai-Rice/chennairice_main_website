@@ -34,6 +34,8 @@ import { listIssuedIds, issuedIdsCsv, checkRegister } from './idregister.js'
 import { invoiceHtml, packingSlipHtml } from './documents.js'
 import { recordVisit, sourcesReport, sourceOrders, saveContestLead, startContestLead, contestLeads } from './attribution.js'
 import { checkAutomationKey, automationContacts } from './automation.js'
+import { accountsSummary, invoiceRegister, invoiceRegisterCsv, paymentsList, refundsList, period } from './accounts.js'
+import { invoicePdf } from './invoice-pdf.js'
 import { query } from '../db.js'
 import { httpError, safeEqual } from './util.js'
 
@@ -360,6 +362,36 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/shipping-zones', perm('shipping.manage'), wrap(async (_req, res) => res.json({ zones: await listZones() })))
   admin.put('/shipping-zones', wrap(async (req, res) => res.json({ zone: await upsertZone(req.staff, req.body) })))
   admin.get('/emails', perm('emails.view'), wrap(async (req, res) => res.json({ emails: await listEmails(req.query) })))
+
+  // Accounts section: invoices, payments, refunds and GST totals (read-only).
+  admin.get('/accounts/summary', perm('accounts.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await accountsSummary({ query }, req.query))
+  }))
+  admin.get('/accounts/invoices', perm('accounts.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json({ invoices: await invoiceRegister({ query }, req.query) })
+  }))
+  admin.get('/accounts/invoices.csv', perm('accounts.view'), wrap(async (req, res) => {
+    const { from, to } = period(req.query)
+    res.set('Cache-Control', 'no-store')
+    res.type('text/csv').attachment(`invoice-register-${from}-to-${to}.csv`).send(await invoiceRegisterCsv({ query }, req.query))
+  }))
+  admin.get('/accounts/payments', perm('accounts.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json({ payments: await paymentsList({ query }, req.query) })
+  }))
+  admin.get('/accounts/refunds', perm('accounts.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json({ refunds: await refundsList({ query }, req.query) })
+  }))
+  // The invoice as the same PDF the customer is emailed.
+  admin.get('/orders/:id/invoice.pdf', perm('accounts.view'), wrap(async (req, res) => {
+    const detail = await getOrderDetail(req.params.id)
+    if (!detail.invoice) throw httpError('No invoice', { status: 404, publicMessage: 'This order has no invoice yet.' })
+    res.set('Cache-Control', 'private, no-store')
+    res.type('application/pdf').attachment(`Invoice ${detail.invoice.invoice_number.replaceAll('/', '-')}.pdf`).send(await invoicePdf(detail))
+  }))
 
   router.use('/api/admin', admin)
 

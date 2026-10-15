@@ -14,7 +14,8 @@ import { httpError, str } from './util.js'
 
 // warehouse: the team at the mill who confirm and pack orders on /warehouse.
 // 'it' is the IT Team: Admin's access plus company settings.
-export const ROLES = ['owner', 'admin', 'it', 'sales', 'inventory', 'plant', 'dispatch', 'warehouse']
+// accounts: the accounts team — invoices, payments, refunds and GST, read-only.
+export const ROLES = ['owner', 'admin', 'it', 'sales', 'inventory', 'plant', 'dispatch', 'warehouse', 'accounts']
 const ALL = ROLES
 // Everyone except warehouse: these views carry prices and revenue, which the
 // warehouse team does not need to pack an order.
@@ -38,7 +39,9 @@ const PERMISSIONS = {
   // Returns & Issues: anyone on the panel may log and work an issue.
   'issues.manage': ['owner', 'admin', 'it', 'sales', 'dispatch', 'inventory', 'warehouse'],
   // Money in the panel (order amounts, sales figures): owner and admin only.
-  'money.view': ['owner', 'admin', 'it'],
+  'money.view': ['owner', 'admin', 'it', 'accounts'],
+  // The Accounts section: invoices (GST register), payments, refunds.
+  'accounts.view': ['owner', 'admin', 'it', 'accounts'],
   'inventory.view': ALL,
   'inventory.adjust': ['owner', 'admin', 'it', 'inventory', 'warehouse'],
   'production.create': ['owner', 'admin', 'it', 'plant', 'inventory', 'warehouse'],
@@ -48,7 +51,7 @@ const PERMISSIONS = {
   'shipping.manage': ['owner', 'admin', 'it'],
   'emails.view': ['owner', 'admin', 'it'],
   // The register of every Order ID / Shipment ID issued, with Razorpay refs.
-  'ids.view': ['owner', 'admin', 'it'],
+  'ids.view': ['owner', 'admin', 'it', 'accounts'],
 }
 
 export function can(staff, permission) {

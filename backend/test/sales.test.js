@@ -1176,3 +1176,45 @@ test('mail automation endpoint: API key required, returns contest sign-ups, sinc
     delete process.env.AUTOMATION_API_KEY
   }
 })
+
+test('accounts team: sees invoices, payments, refunds and GST totals; cannot run the warehouse or change anything', async () => {
+  const add = await api('POST', '/api/admin/staff', { token: OWNER, body: { email: 'accounts@x.test', fullName: 'Accounts person', role: 'accounts' } })
+  assert.equal(add.status, 200, JSON.stringify(add.body))
+  const ACC = 'accounts@x.test|uid-accounts'
+  const me = await api('GET', '/api/admin/me', { token: ACC })
+  assert.equal(me.body.role, 'accounts')
+  assert.ok(me.body.permissions.includes('accounts.view'))
+  assert.ok(!me.body.permissions.includes('warehouse.view'))
+
+  const range = '?from=2000-01-01&to=2100-12-31'
+  const sum = await api('GET', '/api/admin/accounts/summary' + range, { token: ACC })
+  assert.equal(sum.status, 200, JSON.stringify(sum.body))
+  assert.ok(sum.body.invoices >= 1)
+  assert.ok(sum.body.received > 0)
+  const inv = await api('GET', '/api/admin/accounts/invoices' + range, { token: ACC })
+  assert.equal(inv.body.invoices.length, sum.body.invoices)
+  const first = inv.body.invoices[0]
+  assert.match(first.invoiceNumber, /\//)
+  assert.match(first.paymentId, /^pay_/)
+  // The register adds up to the summary.
+  const total = inv.body.invoices.reduce((t, r) => t + r.total, 0)
+  assert.equal(Math.round(total * 100), Math.round(sum.body.invoiced * 100))
+  const csv = await api('GET', '/api/admin/accounts/invoices.csv' + range, { token: ACC })
+  assert.match(csv.body, /Razorpay Payment ID/)
+  assert.match(csv.body, new RegExp(first.invoiceNumber.replace(/\//g, '\/')))
+  const pdf = await fetch(base + `/api/admin/orders/${first.orderId}/invoice.pdf`, { headers: { Authorization: 'Bearer ' + ACC } })
+  assert.equal(pdf.headers.get('content-type'), 'application/pdf')
+  assert.equal(Buffer.from(await pdf.arrayBuffer()).subarray(0, 4).toString(), '%PDF')
+  const html = await api('GET', `/api/admin/orders/${first.orderId}/invoice`, { token: ACC })
+  assert.match(html.body, /Razorpay Payment ID/)
+  const pays = await api('GET', '/api/admin/accounts/payments' + range + '&status=paid', { token: ACC })
+  assert.ok(pays.body.payments.every((p) => p.status === 'paid'))
+  assert.equal((await api('GET', '/api/admin/accounts/refunds' + range, { token: ACC })).status, 200)
+  // Read-only: no warehouse, staff, settings or refunds.
+  assert.equal((await api('GET', '/api/admin/warehouse/orders', { token: ACC })).status, 403)
+  assert.equal((await api('GET', '/api/admin/staff', { token: ACC })).status, 403)
+  assert.equal((await api('POST', `/api/admin/orders/${first.orderId}/refunds`, { token: ACC, body: { amount: 1, reason: 'x' } })).status, 403)
+  // Sales staff cannot see the accounts section.
+  assert.equal((await api('GET', '/api/admin/accounts/summary', { token: tokens.sales })).status, 403)
+  assert.equal((await api('GET', '/api/admin/accounts/summary?from=2026-13-01', { token: ACC })).status, 400)
+})

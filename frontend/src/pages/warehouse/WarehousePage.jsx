@@ -13,33 +13,38 @@ import IssuesView from './IssuesView.jsx'
 import InventoryView from './InventoryView.jsx'
 import TrackerView from './TrackerView.jsx'
 import { CustomersView, ReportsView, SettingsView } from './OtherViews.jsx'
+import AccountsView from './AccountsView.jsx'
 import './warehouse.css'
 import './warehouse-pages.css'
 
-const ALLOWED_ROLES = ['owner', 'admin', 'it', 'sales', 'dispatch', 'inventory', 'warehouse']
+const ALLOWED_ROLES = ['owner', 'admin', 'it', 'sales', 'dispatch', 'inventory', 'warehouse', 'accounts']
 
+// perm: the permission a section needs (see PERMISSIONS in backend staff.js);
+// the menu shows each role only what it can open.
 const NAV = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'reports' },
-  { id: 'orders', label: 'Orders', icon: 'orders' },
-  { id: 'dispatch', label: 'Dispatch', icon: 'truck' },
-  { id: 'deliveries', label: 'Deliveries', icon: 'delivered' },
-  { id: 'tracker', label: 'Tracker Upload', icon: 'download' },
-  { id: 'returns', label: 'Returns & Issues', icon: 'returns' },
-  { id: 'inventory', label: 'Products & Inventory', icon: 'box' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'reports', perm: 'warehouse.view' },
+  { id: 'orders', label: 'Orders', icon: 'orders', perm: 'warehouse.view' },
+  { id: 'dispatch', label: 'Dispatch', icon: 'truck', perm: 'warehouse.view' },
+  { id: 'deliveries', label: 'Deliveries', icon: 'delivered', perm: 'warehouse.view' },
+  { id: 'tracker', label: 'Tracker Upload', icon: 'download', perm: 'warehouse.view' },
+  { id: 'returns', label: 'Returns & Issues', icon: 'returns', perm: 'issues.manage' },
+  { id: 'inventory', label: 'Products & Inventory', icon: 'box', perm: 'warehouse.view' },
   { divider: true },
-  { id: 'customers', label: 'Customers', icon: 'users' },
-  { id: 'reports', label: 'Reports', icon: 'calendar' },
+  { id: 'accounts', label: 'Accounts', icon: 'print', perm: 'accounts.view' },
+  { id: 'customers', label: 'Customers', icon: 'users', perm: 'warehouse.view' },
+  { id: 'reports', label: 'Reports', icon: 'calendar', perm: 'warehouse.view' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
 ]
 const TITLES = {
   dashboard: 'Dashboard', orders: 'Orders', dispatch: 'Dispatch', deliveries: 'Deliveries', tracker: 'Tracker Upload', returns: 'Returns & Issues',
-  inventory: 'Products & Inventory', customers: 'Customers', reports: 'Reports', settings: 'Settings',
+  inventory: 'Products & Inventory', accounts: 'Accounts', customers: 'Customers', reports: 'Reports', settings: 'Settings',
 }
 // Letters only, so "Owner (local)" gives "OL", not "O(".
 const initials = (name) =>
   String(name || '?').replace(/[^\p{L}\s]/gu, ' ').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '?'
 const ROLE_LABEL = {
   owner: 'Owner', admin: 'Warehouse Admin', it: 'IT Team', warehouse: 'Warehouse staff', sales: 'Sales', dispatch: 'Dispatch', inventory: 'Inventory',
+  accounts: 'Accounts',
 }
 const SEEN_KEY = 'cr.wh.lastSeenOrder'
 
@@ -264,7 +269,13 @@ export default function WarehousePage() {
   if (!me) return <SignIn onSignedIn={setMe} />
 
   const fulfilment = locations.find((l) => l.is_fulfilment)
-  const activeNav = view
+  const perms = me.permissions || []
+  const canOpen = (id) => { const n = NAV.find((x) => x.id === id); return !n?.perm || perms.includes(n.perm) }
+  const nav = NAV.filter((n, i, all) => (n.divider ? i > 0 && !all[i - 1].divider : canOpen(n.id)))
+  // A role sent to a section it cannot open lands on its first one instead.
+  const shown = canOpen(view) ? view : nav.find((n) => !n.divider)?.id || 'settings'
+  const warehouse = perms.includes('warehouse.view')
+  const activeNav = shown
   const money = me.permissions?.includes('money.view')
   const openOrders = (q) => {
     go('orders', 'all')
@@ -282,7 +293,7 @@ export default function WarehousePage() {
           </div>
         </div>
         <nav className="wh-side-nav">
-          {NAV.map((n, i) =>
+          {nav.map((n, i) =>
             n.divider ? (
               <span key={'d' + i} className="wh-side-divider" aria-hidden="true" />
             ) : (
@@ -315,9 +326,9 @@ export default function WarehousePage() {
             </select>
             <Icon name="chevron" size={16} />
           </label>
-          <h1 className="wh-view-title">{TITLES[view]}</h1>
+          <h1 className="wh-view-title">{TITLES[shown]}</h1>
           {/* Search from anywhere: opens Orders filtered by what was typed. */}
-          <form
+          {warehouse && <form
             className="wh-top-search"
             role="search"
             onSubmit={(e) => {
@@ -328,9 +339,9 @@ export default function WarehousePage() {
             <Icon name="search" size={17} />
             <span className="visually-hidden">Search orders</span>
             <input type="search" value={topSearch} onChange={(e) => setTopSearch(e.target.value)} placeholder="Search order, customer…" />
-          </form>
+          </form>}
           <div className="wh-top-right">
-            <Bell onOpenOrder={openOrders} onAuthError={onAuthError} />
+            {warehouse && <Bell onOpenOrder={openOrders} onAuthError={onAuthError} />}
             <UserMenu me={me} onSettings={() => go('settings')} onSignOut={signOut} say={say} onAuthError={onAuthError} />
             <button type="button" className="wh-btn wh-btn--signout" onClick={signOut}>
               <Icon name="logout" size={18} /> <span>Sign out</span>
@@ -339,8 +350,9 @@ export default function WarehousePage() {
         </header>
 
         <main className="wh-content">
-          {view === 'dashboard' && <DashboardView say={say} onAuthError={onAuthError} go={go} money={money} />}
-          {view === 'orders' && (
+          {shown === 'accounts' && <AccountsView say={say} onAuthError={onAuthError} />}
+          {shown === 'dashboard' && <DashboardView say={say} onAuthError={onAuthError} go={go} money={money} />}
+          {shown === 'orders' && (
             <OrdersView
               status={status}
               onStatus={(s) => go('orders', s)}
@@ -351,16 +363,16 @@ export default function WarehousePage() {
               money={money}
             />
           )}
-          {view === 'dispatch' && <DispatchView say={say} onAuthError={onAuthError} />}
-          {view === 'deliveries' && <DeliveriesView say={say} onAuthError={onAuthError} initialTab={sub || undefined} />}
-          {view === 'tracker' && <TrackerView say={say} onAuthError={onAuthError} />}
-          {view === 'returns' && <IssuesView say={say} onAuthError={onAuthError} />}
-          {view === 'inventory' && (
+          {shown === 'dispatch' && <DispatchView say={say} onAuthError={onAuthError} />}
+          {shown === 'deliveries' && <DeliveriesView say={say} onAuthError={onAuthError} initialTab={sub || undefined} />}
+          {shown === 'tracker' && <TrackerView say={say} onAuthError={onAuthError} />}
+          {shown === 'returns' && <IssuesView say={say} onAuthError={onAuthError} />}
+          {shown === 'inventory' && (
             <InventoryView say={say} onAuthError={onAuthError} permissions={me.permissions || []} initialTab={sub || undefined} />
           )}
-          {view === 'customers' && <CustomersView say={say} onAuthError={onAuthError} onOpenOrders={openOrders} />}
-          {view === 'reports' && <ReportsView say={say} onAuthError={onAuthError} money={money} />}
-          {view === 'settings' && (
+          {shown === 'customers' && <CustomersView say={say} onAuthError={onAuthError} onOpenOrders={openOrders} />}
+          {shown === 'reports' && <ReportsView say={say} onAuthError={onAuthError} money={money} />}
+          {shown === 'settings' && (
             <SettingsView me={me} prefs={prefs} setPrefs={setPrefs} location={fulfilment?.name} onSignOut={signOut} />
           )}
         </main>

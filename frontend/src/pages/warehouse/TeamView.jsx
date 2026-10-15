@@ -10,6 +10,7 @@ const ROLES = [
   { key: 'sales', label: 'Sales', note: 'Orders, customers, cancellations and refunds.' },
   { key: 'inventory', label: 'Inventory', note: 'Stock, products and prices.' },
   { key: 'plant', label: 'Plant', note: 'Production batches (no warehouse panel).' },
+  { key: 'accounts', label: 'Accounts', note: 'Invoices, payments, refunds and GST totals. View and download only; changes nothing.' },
   { key: 'admin', label: 'Warehouse Admin', note: 'Everything, including money and the team.' },
   { key: 'it', label: 'IT Team', note: 'Everything an admin can do, plus company settings.' },
   { key: 'owner', label: 'Owner', note: 'Everything. Only an owner can add another owner.' },
