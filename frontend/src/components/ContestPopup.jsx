@@ -72,7 +72,7 @@ export default function ContestPopup() {
     lastFocus.current = document.activeElement
     closeRef.current?.focus()
     const onKey = (e) => {
-      if (e.key === 'Escape') close()
+      if (e.key === 'Escape' && !fromAd) close() // the ad sign-up is required
       // Keep Tab inside the dialog.
       if (e.key === 'Tab') {
         const items = [...document.querySelectorAll('.contest-pop [data-focus]')]
@@ -148,8 +148,9 @@ export default function ContestPopup() {
 }
 
 /**
- * The popup for visitors from a Meta or Google ad: the contest artwork and a
- * short sign-up form (name, mobile, email). Saved with the ad they came from.
+ * The popup for visitors from a Meta or Google ad: a short sign-up form (name,
+ * mobile, email) that cannot be dismissed until it is filled in. Saved with the
+ * ad they came from.
  */
 function AdSignup({ closeRef, close }) {
   const [form, setForm] = useState({ name: '', phone: '', email: '' })
@@ -178,7 +179,7 @@ function AdSignup({ closeRef, close }) {
   }
 
   return (
-    <div className="contest-pop-backdrop" onClick={() => close()}>
+    <div className="contest-pop-backdrop">
       <div
         className="contest-pop contest-pop--form"
         role="dialog"
@@ -186,19 +187,6 @@ function AdSignup({ closeRef, close }) {
         aria-labelledby="contest-form-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <button ref={closeRef} data-focus type="button" className="contest-pop-close" aria-label="Close" onClick={() => close()}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-          </svg>
-        </button>
-
-        <div className="contest-pop-art" aria-hidden="true">
-          <picture>
-            <source srcSet="/assets/contest-poster-v3.webp" type="image/webp" />
-            <img src="/assets/contest-poster-v3.jpg" width="800" height="1200" alt="" />
-          </picture>
-        </div>
-
         <div className="contest-pop-body">
           <p className="contest-pop-eyebrow">Super Slogan Contest</p>
           {state === 'done' ? (
@@ -211,6 +199,9 @@ function AdSignup({ closeRef, close }) {
               <Link data-focus className="contest-pop-cta contest-form-submit" to={BUY_PATH} onClick={() => close(HIDE_AFTER_JOIN_MS)}>
                 Buy Kitchidi Ponni Rice
               </Link>
+              <button data-focus type="button" className="contest-form-note" onClick={() => close(HIDE_AFTER_JOIN_MS)}>
+                Continue browsing
+              </button>
             </>
           ) : (
             <>
@@ -221,7 +212,7 @@ function AdSignup({ closeRef, close }) {
               <form className="contest-form" onSubmit={submit} noValidate>
                 <label className="contest-form-field">
                   <span>Name</span>
-                  <input data-focus required autoComplete="name" maxLength={80} value={form.name} onChange={set('name')} />
+                  <input ref={closeRef} data-focus required autoComplete="name" maxLength={80} value={form.name} onChange={set('name')} />
                 </label>
                 <label className="contest-form-field">
                   <span>Mobile number</span>
@@ -236,7 +227,7 @@ function AdSignup({ closeRef, close }) {
                   {state === 'sending' ? 'Registering…' : 'Register now'}
                 </button>
                 <p className="contest-form-note">
-                  We use these details only for the contest. <Link to="/privacy" onClick={() => close()}>Privacy policy</Link>
+                  We use these details only for the contest. <Link to="/privacy" target="_blank" rel="noopener">Privacy policy</Link>
                 </p>
               </form>
             </>

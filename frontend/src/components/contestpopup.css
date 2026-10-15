@@ -406,13 +406,13 @@
 
 /* ---- Sign-up form version (visitors from a Meta or Google ad) ---- */
 .contest-pop.contest-pop--form {
-  grid-template-columns: 0.82fr 1fr;
-  width: min(900px, 100%);
+  grid-template-columns: 1fr;
+  width: min(520px, 100%);
 }
 .contest-pop--form .contest-pop-art img { object-position: 50% 30%; }
 .contest-pop--form .contest-pop-body {
   justify-content: center;
-  padding: 40px 36px 30px 22px;
+  padding: 40px 36px 30px;
   gap: 12px;
 }
 .contest-form-title {
@@ -482,10 +482,26 @@
   color: #6b5248;
 }
 .contest-form-note a { color: var(--cp-maroon); text-decoration: underline; }
+button.contest-form-note { background: none; border: 0; cursor: pointer; text-decoration: underline; font: inherit; font-size: 13.5px; padding: 8px; }
 @media (max-width: 720px) {
-  .contest-pop.contest-pop--form { width: min(460px, 100%); }
-  .contest-pop--form .contest-pop-art { aspect-ratio: 16 / 9; }
-  .contest-pop--form .contest-pop-art img { object-position: 50% 4%; }
-  .contest-pop--form .contest-pop-body { padding: 4px 18px 20px; }
-  .contest-form { max-width: none; }
+  .contest-pop.contest-pop--form {
+    display: block;
+    width: min(460px, 100%);
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .contest-pop--form .contest-pop-body { padding: 26px 20px calc(20px + env(safe-area-inset-bottom)); gap: 10px; }
+  .contest-form-title { font-size: clamp(1.6rem, 7.5vw, 2rem); text-align: center; }
+  .contest-pop--form .contest-pop-text { font-size: 14px; text-align: center; }
+  .contest-form { max-width: none; gap: 10px; }
+  .contest-form-field input { min-height: 48px; }
+}
+/* Short phones (or the keyboard open): tighten so the button stays in reach. */
+@media (max-width: 720px) and (max-height: 700px) {
+  .contest-pop--form .contest-pop-body { padding-top: 18px; gap: 8px; }
+  .contest-pop--form .contest-pop-text { font-size: 13px; line-height: 1.45; }
+  .contest-form { gap: 8px; }
+  .contest-form-field input { min-height: 44px; }
+  .contest-form-submit { min-height: 48px; }
 }
