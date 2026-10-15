@@ -358,7 +358,7 @@
 .wh-acc-tr { display: grid; gap: 12px; align-items: start; padding: 12px 8px; border-bottom: 1px solid rgba(0, 0, 0, 0.06); font-size: 14px; }
 .wh-acc-th { padding-top: 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--wh-muted, #7a6b63); }
 .wh-acc-tr > span { min-width: 0; overflow-wrap: anywhere; }
-.wh-acc-table--inv .wh-acc-tr { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) 100px 140px 110px minmax(0, 1fr) 150px; }
+.wh-acc-table--inv .wh-acc-tr { grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr) 120px minmax(0, 1.1fr) 150px; }
 .wh-acc-table--pay .wh-acc-tr, .wh-acc-table--ref .wh-acc-tr { grid-template-columns: 150px minmax(0, 1.4fr) 100px minmax(0, 1fr) minmax(0, 1.3fr) 120px; }
 .wh-acc-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .wh-acc-actions .wh-btn { min-height: 34px; padding: 0 10px; font-size: 13px; }

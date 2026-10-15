@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { staffFetch, staffJson } from '../../services/staffAuth.js'
 import { Icon, dayLabel, istDay } from './shared.jsx'
 
-// Accounts: the GST register (every invoice issued), payments received,
-// refunds, and the totals for a period — for the accounts team. Read-only.
+// Accounts: every invoice issued, payments received, refunds, and the totals
+// for a period — for the accounts team. Read-only; no GST breakdown here.
 
 const rupees = (n) => '₹' + (Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const when = (iso) =>
@@ -124,10 +124,7 @@ export default function AccountsView({ say, onAuthError }) {
             <span className="wh-kpi-note">{s ? `${s.byMethod.reduce((t, m) => t + m.payments, 0)} payments` : ''}</span></span></div>
         <div className="wh-kpi wh-kpi--blue"><span className="wh-kpi-icon"><Icon name="orders" size={24} /></span>
           <span className="wh-kpi-text"><strong>{s ? rupees(s.invoiced) : '—'}</strong><span className="wh-kpi-label">Invoiced</span>
-            <span className="wh-kpi-note">{s ? `${s.invoices} invoices · taxable ${rupees(s.taxable)}` : ''}</span></span></div>
-        <div className="wh-kpi wh-kpi--pink"><span className="wh-kpi-icon"><Icon name="reports" size={24} /></span>
-          <span className="wh-kpi-text"><strong>{s ? rupees(s.gst) : '—'}</strong><span className="wh-kpi-label">GST collected</span>
-            <span className="wh-kpi-note">{s ? `CGST ${rupees(s.cgst)} · SGST ${rupees(s.sgst)} · IGST ${rupees(s.igst)}` : ''}</span></span></div>
+            <span className="wh-kpi-note">{s ? `${s.invoices} invoices` : ''}</span></span></div>
         <div className="wh-kpi wh-kpi--rose"><span className="wh-kpi-icon"><Icon name="undo" size={24} /></span>
           <span className="wh-kpi-text"><strong>{s ? rupees(s.refunded) : '—'}</strong><span className="wh-kpi-label">Refunded</span>
             <span className="wh-kpi-note">{s ? `${s.refunds} refunds${s.openRefunds ? ` · ${s.openRefunds} pending` : ''} · net ${rupees(s.net)}` : ''}</span></span></div>
@@ -135,20 +132,6 @@ export default function AccountsView({ say, onAuthError }) {
 
       {s && (
         <div className="wh-acc-split">
-          <section className="wh-panel">
-            <h2 className="wh-panel-title">Goods by GST rate</h2>
-            <p className="wh-muted wh-small">On the invoices in this period, excluding delivery.</p>
-            {s.byRate.length ? (
-              <table className="wh-acc-mini">
-                <thead><tr><th>GST</th><th>Packs</th><th>Taxable value</th><th>GST</th></tr></thead>
-                <tbody>
-                  {s.byRate.map((r) => (
-                    <tr key={r.rate}><td>{r.rate ? `${r.rate}%` : 'Nil (26 kg)'}</td><td>{r.packs}</td><td>{rupees(r.taxable)}</td><td>{rupees(r.tax)}</td></tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : <p className="wh-empty">No invoices in this period.</p>}
-          </section>
           <section className="wh-panel">
             <h2 className="wh-panel-title">Payments by method</h2>
             <p className="wh-muted wh-small">Razorpay payments received in this period.</p>
@@ -190,15 +173,13 @@ export default function AccountsView({ say, onAuthError }) {
         {!rows ? <p className="wh-empty">Loading…</p> : !rows.length ? <p className="wh-empty">Nothing in this period.</p> : tab === 'invoices' ? (
           <div className="wh-acc-table wh-acc-table--inv" role="table" aria-label="Invoices">
             <div className="wh-acc-tr wh-acc-th" role="row">
-              <span role="columnheader">Invoice</span><span role="columnheader">Customer / order</span><span role="columnheader">Taxable</span>
-              <span role="columnheader">GST</span><span role="columnheader">Total</span><span role="columnheader">Payment</span><span role="columnheader" />
+              <span role="columnheader">Invoice</span><span role="columnheader">Customer / order</span>
+              <span role="columnheader">Total</span><span role="columnheader">Payment</span><span role="columnheader" />
             </div>
             {rows.map((r) => (
               <div key={r.invoiceNumber} className="wh-acc-tr" role="row">
-                <span role="cell"><strong className="wh-mono">{r.invoiceNumber}</strong><br /><span className="wh-muted wh-small">{when(r.issuedAt)} · {r.type}</span></span>
+                <span role="cell"><strong className="wh-mono">{r.invoiceNumber}</strong><br /><span className="wh-muted wh-small">{when(r.issuedAt)}</span></span>
                 <span role="cell">{r.customer}<br /><span className="wh-muted wh-small wh-mono">{r.orderNumber}</span> <span className="wh-muted wh-small">· {r.placeOfSupply}</span><br /><span className="wh-muted wh-small">{r.items}</span></span>
-                <span role="cell"><span className="wh-k">Taxable</span>{rupees(r.taxable)}</span>
-                <span role="cell"><span className="wh-k">GST</span>{r.igst ? `IGST ${rupees(r.igst)}` : `${rupees(r.cgst + r.sgst)}`}<br /><span className="wh-muted wh-small">{r.igst ? '' : `CGST ${rupees(r.cgst)} + SGST ${rupees(r.sgst)}`}</span></span>
                 <span role="cell"><span className="wh-k">Total</span><strong>{rupees(r.total)}</strong>{r.refunded > 0 && <><br /><span className="wh-small wh-acc-bad">Refunded {rupees(r.refunded)}</span></>}</span>
                 <span role="cell"><span className="wh-k">Payment</span>{r.method || '—'}<br /><span className="wh-mono wh-small">{r.paymentId || '—'}</span></span>
                 <span role="cell" className="wh-acc-actions">

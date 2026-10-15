@@ -1,6 +1,6 @@
-// The Accounts section of the staff panel: invoices (the GST register),
-// payments and refunds for a period, with totals. Read-only — refunds are
-// still issued from the order by owner / admin / IT team.
+// The Accounts section of the staff panel: invoices, payments and refunds for
+// a period, with totals. No GST breakdown is shown here. Read-only — refunds
+// are still issued from the order by owner / admin / IT team.
 //
 // Periods are calendar days in India time, from and to inclusive
 // (YYYY-MM-DD); with none given, the current month so far.
@@ -25,22 +25,10 @@ const rupees = (paise) => Math.round(Number(paise || 0)) / 100
 
 export async function accountsSummary(db, params) {
   const { from, to } = period(params)
-  const [inv, rates, pays, refunds, pending] = await Promise.all([
+  const [inv, pays, refunds, pending] = await Promise.all([
     db.query(
-      `select count(*)::int as invoices, coalesce(sum(total_paise), 0)::bigint as total,
-              coalesce(sum(taxable_paise), 0)::bigint as taxable, coalesce(sum(cgst_paise), 0)::bigint as cgst,
-              coalesce(sum(sgst_paise), 0)::bigint as sgst, coalesce(sum(igst_paise), 0)::bigint as igst
+      `select count(*)::int as invoices, coalesce(sum(total_paise), 0)::bigint as total
          from invoices where ${IN_PERIOD('issued_at')}`,
-      [from, to]
-    ),
-    // Goods by GST rate (5% packs, nil-rated 26 kg packs) on those invoices.
-    db.query(
-      `select i.tax_rate_bp, count(*)::int as lines, sum(i.quantity)::int as packs,
-              coalesce(sum(i.taxable_paise), 0)::bigint as taxable,
-              coalesce(sum(i.cgst_paise + i.sgst_paise + i.igst_paise), 0)::bigint as tax
-         from order_items i join invoices v on v.order_id = i.order_id
-        where ${IN_PERIOD('v.issued_at')}
-        group by i.tax_rate_bp order by i.tax_rate_bp desc`,
       [from, to]
     ),
     db.query(
@@ -68,33 +56,27 @@ export async function accountsSummary(db, params) {
     from, to,
     invoices: i.invoices,
     invoiced: rupees(i.total),
-    taxable: rupees(i.taxable),
-    cgst: rupees(i.cgst), sgst: rupees(i.sgst), igst: rupees(i.igst),
-    gst: rupees(Number(i.cgst) + Number(i.sgst) + Number(i.igst)),
     received: rupees(received),
     refunded: rupees(refunds.rows[0].amount),
     refunds: refunds.rows[0].refunds,
     openRefunds: refunds.rows[0].open,
     net: rupees(received - Number(refunds.rows[0].amount)),
     paidWithoutInvoice: pending.rows[0].n,
-    byRate: rates.rows.map((r) => ({ rate: r.tax_rate_bp / 100, packs: r.packs, taxable: rupees(r.taxable), tax: rupees(r.tax) })),
     byMethod: pays.rows.map((p) => ({ method: PAYMENT_METHOD[p.method] || p.method, payments: p.payments, amount: rupees(p.amount) })),
   }
 }
 
-/** The invoices issued in the period (the GST register), newest first. */
+/** The invoices issued in the period, newest first. */
 export async function invoiceRegister(db, params) {
   const { from, to } = period(params)
   const q = str(params?.q)
   const { rows } = await db.query(
-    `select v.invoice_number, v.issued_at, v.place_of_supply, v.taxable_paise, v.cgst_paise, v.sgst_paise, v.igst_paise, v.total_paise,
+    `select v.invoice_number, v.issued_at, v.place_of_supply, v.total_paise,
             o.id as order_id, o.order_number, o.contact_name, o.contact_phone, o.status, o.payment_status, o.shipping_paise,
             p.method, p.gateway, p.gateway_payment_id, p.paid_at,
             (select coalesce(sum(r.amount_paise), 0) from refunds r where r.order_id = o.id and r.status in ('processed', 'manual'))::bigint as refunded_paise,
             (select string_agg(i.product_name || ' ' || trim(to_char(i.pack_kg, 'FM999')) || ' kg × ' || i.quantity, ', ')
-               from order_items i where i.order_id = o.id) as items,
-            exists (select 1 from order_items i where i.order_id = o.id and i.tax_rate_bp > 0) as taxed,
-            exists (select 1 from order_items i where i.order_id = o.id and i.tax_rate_bp = 0) as exempt
+               from order_items i where i.order_id = o.id) as items
        from invoices v
        join orders o on o.id = v.order_id
        left join payments p on p.order_id = o.id and p.status = 'paid'
@@ -108,15 +90,12 @@ export async function invoiceRegister(db, params) {
   return rows.map((r) => ({
     invoiceNumber: r.invoice_number,
     issuedAt: r.issued_at,
-    type: r.taxed && r.exempt ? 'Invoice-cum-Bill of Supply' : r.taxed ? 'Tax Invoice' : 'Bill of Supply',
     orderId: r.order_id,
     orderNumber: r.order_number,
     customer: r.contact_name,
     phone: r.contact_phone,
     placeOfSupply: r.place_of_supply,
     items: r.items,
-    taxable: rupees(r.taxable_paise),
-    cgst: rupees(r.cgst_paise), sgst: rupees(r.sgst_paise), igst: rupees(r.igst_paise),
     total: rupees(r.total_paise),
     delivery: rupees(r.shipping_paise),
     refunded: rupees(r.refunded_paise),
@@ -188,7 +167,7 @@ export async function refundsList(db, params) {
   }))
 }
 
-/** The invoice register as CSV, for the accountant's GST filing. */
+/** The invoice list as CSV. */
 export async function invoiceRegisterCsv(db, params) {
   const rows = await invoiceRegister(db, params)
   const cell = (v) => {
@@ -197,10 +176,9 @@ export async function invoiceRegisterCsv(db, params) {
     return '"' + t.replace(/"/g, '""') + '"'
   }
   const day = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '')
-  const head = ['Invoice No', 'Invoice Date', 'Type', 'Order No', 'Customer', 'Place of Supply', 'Items', 'Taxable Value', 'CGST', 'SGST', 'IGST',
+  const head = ['Invoice No', 'Invoice Date', 'Order No', 'Customer', 'Phone', 'State', 'Items',
     'Invoice Total', 'of which Delivery', 'Refunded', 'Payment Method', 'Razorpay Payment ID', 'Order Status']
-  const lines = [head].concat(rows.map((r) => [r.invoiceNumber, day(r.issuedAt), r.type, r.orderNumber, r.customer, r.placeOfSupply, r.items,
-    r.taxable.toFixed(2), r.cgst.toFixed(2), r.sgst.toFixed(2), r.igst.toFixed(2), r.total.toFixed(2), r.delivery.toFixed(2), r.refunded.toFixed(2),
-    r.method, r.paymentId, r.orderStatus]))
+  const lines = [head].concat(rows.map((r) => [r.invoiceNumber, day(r.issuedAt), r.orderNumber, r.customer, r.phone, r.placeOfSupply, r.items,
+    r.total.toFixed(2), r.delivery.toFixed(2), r.refunded.toFixed(2), r.method, r.paymentId, r.orderStatus]))
   return '﻿' + lines.map((l) => l.map(cell).join(',')).join('\r\n')
 }
