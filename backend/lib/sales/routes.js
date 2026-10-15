@@ -177,6 +177,9 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     }
     next()
   })
+  // Any one of several permissions (e.g. the order list: warehouse or accounts).
+  const permAny = (...ps) => (req, _res, next) =>
+    next(ps.some((p) => can(req.staff, p)) ? undefined : httpError('Forbidden', { status: 403, publicMessage: 'Your role does not allow that.' }))
   const perm = (p) => (req, _res, next) => {
     try {
       requirePermission(req.staff, p)
@@ -269,7 +272,7 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/warehouse/issues/:id', perm('issues.manage'), wrap(async (req, res) => res.json(await getIssue(req.params.id))))
   admin.post('/warehouse/issues', wrap(async (req, res) => res.json(await createIssue(req.staff, req.body))))
   admin.patch('/warehouse/issues/:id', wrap(async (req, res) => res.json(await updateIssue(req.staff, req.params.id, req.body))))
-  admin.get('/warehouse/orders', perm('warehouse.view'), wrap(async (req, res) => {
+  admin.get('/warehouse/orders', permAny('warehouse.view', 'accounts.view'), wrap(async (req, res) => {
     assertTab(req.query.tab)
     res.set('Cache-Control', 'no-store')
     res.json(await listWarehouseOrders(req.query, { money: can(req.staff, 'money.view') }))
@@ -307,7 +310,7 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.set('Cache-Control', 'no-store')
     res.json(await warehouseReport(req.query))
   }))
-  admin.get('/warehouse/orders.csv', perm('warehouse.view'), wrap(async (req, res) => {
+  admin.get('/warehouse/orders.csv', permAny('warehouse.view', 'accounts.view'), wrap(async (req, res) => {
     assertTab(req.query.tab)
     const day = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
     res.set('Cache-Control', 'no-store')

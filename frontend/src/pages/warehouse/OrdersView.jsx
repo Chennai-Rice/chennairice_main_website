@@ -117,7 +117,7 @@ function RowMenu({ order, onView, onUndo, onClose, say }) {
         </a>
       )}
       <a role="menuitem" href={telHref(order.customer.phone)} onClick={onClose}><Icon name="phone" size={16} /> Call customer</a>
-      {canUndo(order) && (
+      {onUndo && canUndo(order) && (
         <button type="button" role="menuitem" className="is-danger" onClick={() => { onUndo(order); onClose() }}>
           <Icon name="undo" size={16} /> Undo dispatch
         </button>
@@ -172,7 +172,9 @@ function Details({ order, onClose }) {
   )
 }
 
-export default function OrdersView({ status, onStatus, prefs, say, onAuthError, focusQuery, money = false }) {
+// readOnly: the accounts team — the list, details and CSV, without the
+// dispatch switch, bulk actions or packing slips.
+export default function OrdersView({ status, onStatus, prefs, say, onAuthError, focusQuery, money = false, readOnly = false }) {
   const [filters, setFilters] = useState(EMPTY)
   const [draft, setDraft] = useState('')
   const [sort, setSort] = useState(prefs.sort)
@@ -475,7 +477,7 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
       <section className="wh-panel wh-table-panel" aria-label="Orders" aria-busy={loading}>
         <header className="wh-table-head">
           <h2>Total Orders: {total}</h2>
-          <div className="wh-table-tools">
+          {!readOnly && <div className="wh-table-tools">
             <label className="wh-selectall">
               <input type="checkbox" checked={allOnPage} onChange={togglePage} disabled={!pageSelectable.length} />
               Select all ({selected.size})
@@ -527,7 +529,7 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
                 </div>
               )}
             </div>
-          </div>
+          </div>}
         </header>
 
         <div className={`wh-table wh-table--orders${money ? ' has-money' : ''}`} role="table" aria-label="Orders">
@@ -552,13 +554,13 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
             return (
               <div key={o.id} className={`wh-tr${selected.has(o.id) ? ' is-selected' : ''}`} role="row">
                 <span role="cell" className="wh-td-pick">
-                  <input
+                  {!readOnly && <input
                     type="checkbox"
                     checked={selected.has(o.id)}
                     disabled={!isSelectable(o)}
                     onChange={(e) => toggleOne(o, e.target.checked)}
                     aria-label={'Select ' + o.orderNumber}
-                  />
+                  />}
                 </span>
                 <span role="cell" className="wh-td-order">
                   <strong>ORDER #{(page - 1) * pageSize + i + 1}</strong>
@@ -594,7 +596,7 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
                   <span className={`wh-status wh-status--${STATUS_KEY[o.status]}`}>{STATUS[o.status]}</span>
                 </span>
                 <span role="cell" className="wh-td-actions">
-                  <button
+                  {!readOnly && <button
                     type="button"
                     className={`wh-icon-btn wh-icon-btn--primary${canUndo(o) ? ' is-done' : ''}`}
                     disabled={locked || busy}
@@ -603,18 +605,18 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
                     onClick={() => (canDispatch(o) ? askDispatch([o]) : canUndo(o) ? askUndo([o]) : null)}
                   >
                     <Icon name={canUndo(o) ? 'check' : 'truck'} size={18} />
-                  </button>
-                  <button type="button" className="wh-icon-btn" title="Print packing slip" aria-label={`Print slip for ${o.orderNumber}`}
+                  </button>}
+                  {!readOnly && <button type="button" className="wh-icon-btn" title="Print packing slip" aria-label={`Print slip for ${o.orderNumber}`}
                     onClick={() => printSlips([o.id], say)}>
                     <Icon name="print" size={18} />
-                  </button>
+                  </button>}
                   <span className="wh-menu-wrap">
                     <button type="button" className="wh-icon-btn" aria-label={`More for ${o.orderNumber}`} aria-expanded={menuFor === o.id}
                       onClick={() => setMenuFor(menuFor === o.id ? null : o.id)}>
                       <Icon name="more" size={18} />
                     </button>
                     {menuFor === o.id && (
-                      <RowMenu order={o} say={say} onView={setDetails} onUndo={(x) => askUndo([x])} onClose={() => setMenuFor(null)} />
+                      <RowMenu order={o} say={say} onView={setDetails} onUndo={readOnly ? null : (x) => askUndo([x])} onClose={() => setMenuFor(null)} />
                     )}
                   </span>
                 </span>

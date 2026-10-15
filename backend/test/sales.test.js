@@ -1211,10 +1211,26 @@ test('accounts team: sees invoices, payments, refunds and GST totals; cannot run
   assert.ok(pays.body.payments.every((p) => p.status === 'paid'))
   assert.equal((await api('GET', '/api/admin/accounts/refunds' + range, { token: ACC })).status, 200)
   // Read-only: no warehouse, staff, settings or refunds.
-  assert.equal((await api('GET', '/api/admin/warehouse/orders', { token: ACC })).status, 403)
+  assert.equal((await api('GET', '/api/admin/warehouse/dashboard', { token: ACC })).status, 403)
   assert.equal((await api('GET', '/api/admin/staff', { token: ACC })).status, 403)
   assert.equal((await api('POST', `/api/admin/orders/${first.orderId}/refunds`, { token: ACC, body: { amount: 1, reason: 'x' } })).status, 403)
   // Sales staff cannot see the accounts section.
   assert.equal((await api('GET', '/api/admin/accounts/summary', { token: tokens.sales })).status, 403)
   assert.equal((await api('GET', '/api/admin/accounts/summary?from=2026-13-01', { token: ACC })).status, 400)
+})
+
+test('accounts team can read the order list and its CSV, with amounts, but not dispatch or print slips', async () => {
+  const ACC = 'accounts@x.test|uid-accounts'
+  const list = await api('GET', '/api/admin/warehouse/orders?tab=all&limit=5', { token: ACC })
+  assert.equal(list.status, 200, JSON.stringify(list.body))
+  assert.ok(list.body.orders.length >= 1)
+  assert.ok(list.body.orders.some((o) => o.total != null || o.amount != null || o.totalPaise != null || o.items?.some?.((i) => i.price != null)), 'amounts shown')
+  const csv = await api('GET', '/api/admin/warehouse/orders.csv?tab=all', { token: ACC })
+  assert.equal(csv.status, 200)
+  const id = list.body.orders[0].id
+  assert.equal((await api('GET', `/api/admin/orders/${id}/packing-slip`, { token: ACC })).status, 403)
+  assert.equal((await api('POST', `/api/admin/orders/${id}/dispatched`, { token: ACC, body: { on: true } })).status, 403)
+  // Plant staff (no warehouse, no accounts) still cannot list orders.
+  const plant = await api('GET', '/api/admin/warehouse/orders?tab=all', { token: 'plant@x.test|uid-plant' })
+  assert.equal(plant.status, 403)
 })

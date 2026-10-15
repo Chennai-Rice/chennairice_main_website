@@ -23,7 +23,7 @@ const ALLOWED_ROLES = ['owner', 'admin', 'it', 'sales', 'dispatch', 'inventory',
 // the menu shows each role only what it can open.
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'reports', perm: 'warehouse.view' },
-  { id: 'orders', label: 'Orders', icon: 'orders', perm: 'warehouse.view' },
+  { id: 'orders', label: 'Orders', icon: 'orders', perm: ['warehouse.view', 'accounts.view'] },
   { id: 'dispatch', label: 'Dispatch', icon: 'truck', perm: 'warehouse.view' },
   { id: 'deliveries', label: 'Deliveries', icon: 'delivered', perm: 'warehouse.view' },
   { id: 'tracker', label: 'Tracker Upload', icon: 'download', perm: 'warehouse.view' },
@@ -270,11 +270,13 @@ export default function WarehousePage() {
 
   const fulfilment = locations.find((l) => l.is_fulfilment)
   const perms = me.permissions || []
-  const canOpen = (id) => { const n = NAV.find((x) => x.id === id); return !n?.perm || perms.includes(n.perm) }
+  const canOpen = (id) => { const n = NAV.find((x) => x.id === id); return !n?.perm || [].concat(n.perm).some((p) => perms.includes(p)) }
   const nav = NAV.filter((n, i, all) => (n.divider ? i > 0 && !all[i - 1].divider : canOpen(n.id)))
   // A role sent to a section it cannot open lands on its first one instead.
   const shown = canOpen(view) ? view : nav.find((n) => !n.divider)?.id || 'settings'
   const warehouse = perms.includes('warehouse.view')
+  // The order search in the top bar opens Orders, so it shows for anyone who can.
+  const orders = canOpen('orders')
   const activeNav = shown
   const money = me.permissions?.includes('money.view')
   const openOrders = (q) => {
@@ -328,7 +330,7 @@ export default function WarehousePage() {
           </label>
           <h1 className="wh-view-title">{TITLES[shown]}</h1>
           {/* Search from anywhere: opens Orders filtered by what was typed. */}
-          {warehouse && <form
+          {orders && <form
             className="wh-top-search"
             role="search"
             onSubmit={(e) => {
@@ -361,6 +363,7 @@ export default function WarehousePage() {
               onAuthError={onAuthError}
               focusQuery={focusQuery}
               money={money}
+              readOnly={!warehouse}
             />
           )}
           {shown === 'dispatch' && <DispatchView say={say} onAuthError={onAuthError} />}
