@@ -33,6 +33,7 @@ import { processTrackerUpload, listTrackerUploads, trackerTemplate, courierRedir
 import { listIssuedIds, issuedIdsCsv, checkRegister } from './idregister.js'
 import { invoiceHtml, packingSlipHtml } from './documents.js'
 import { recordVisit, sourcesReport, sourceOrders, saveContestLead, startContestLead, contestLeads } from './attribution.js'
+import { checkAutomationKey, automationContacts } from './automation.js'
 import { query } from '../db.js'
 import { httpError, safeEqual } from './util.js'
 
@@ -98,6 +99,13 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   }))
   router.post('/api/contest/lead', rateLimit({ windowMs: 10 * 60000, max: 10 }), wrap(async (req, res) => {
     res.json(await saveContestLead({ query }, req.body))
+  }))
+
+  // Feed for the email-automation tool: contest sign-ups, behind an API key.
+  router.get('/api/automation/contacts', rateLimit({ windowMs: 60000, max: 30 }), wrap(async (req, res) => {
+    checkAutomationKey(req)
+    res.set('Cache-Control', 'no-store')
+    res.json(await automationContacts({ query }, req.query))
   }))
 
   router.post('/api/checkout/quote', wrap(async (req, res) => res.json(await quoteCart(req.body))))

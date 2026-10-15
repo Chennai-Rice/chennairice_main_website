@@ -1152,3 +1152,27 @@ test('contest sign-up with MSG91 OTP: only for ad visitors, wrong OTP refused, v
     await new Promise((r) => fake.close(r))
   }
 })
+
+test('mail automation endpoint: API key required, returns contest sign-ups, since gives only newer ones', async () => {
+  process.env.AUTOMATION_API_KEY = 'auto-test-key-123'
+  try {
+    assert.equal((await api('GET', '/api/automation/contacts')).status, 401)
+    assert.equal((await api('GET', '/api/automation/contacts', { headers: { 'X-API-Key': 'wrong' } })).status, 401)
+    const all = await api('GET', '/api/automation/contacts', { headers: { 'X-API-Key': 'auto-test-key-123' } })
+    assert.equal(all.status, 200, JSON.stringify(all.body))
+    assert.ok(all.body.count >= 1)
+    const c = all.body.contacts.find((x) => x.email === 'priya@example.com')
+    assert.equal(c.phone, '+919876543210')
+    assert.equal(c.first_name, 'Priya')
+    assert.equal(c.list, 'super_slogan_contest')
+    assert.ok(all.body.next_since)
+    // A new sign-up after next_since is the only one returned next time.
+    await api('POST', '/api/contest/lead', { body: { name: 'Arjun K', phone: '9988776655', email: 'arjun@example.com', attribution: { gclid: true } } })
+    const newer = await api('GET', '/api/automation/contacts?since=' + encodeURIComponent(all.body.next_since), { headers: { 'X-API-Key': 'auto-test-key-123' } })
+    assert.deepEqual(newer.body.contacts.map((x) => x.email), ['arjun@example.com'])
+    assert.equal(newer.body.contacts[0].source_label, 'Google Ads')
+    assert.equal((await api('GET', '/api/automation/contacts?since=yesterday', { headers: { 'X-API-Key': 'auto-test-key-123' } })).status, 400)
+  } finally {
+    delete process.env.AUTOMATION_API_KEY
+  }
+})

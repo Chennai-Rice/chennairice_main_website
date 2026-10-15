@@ -36,7 +36,9 @@ export const api = onRequest(
     // MSG91_AUTH_KEY: MSG91's auth key, for the contest sign-up OTP
     // (firebase functions:secrets:set MSG91_AUTH_KEY). The OTP template ID is a
     // plain setting: MSG91_OTP_TEMPLATE_ID in functions/.env.
-    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY'],
+    // AUTOMATION_API_KEY: the X-API-Key for /api/automation/contacts, the
+    // contest sign-up feed for the email-automation tool.
+    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY', 'AUTOMATION_API_KEY'],
     // Runs as the backend account that phase1-setup.ps1 allowed into Cloud SQL
     // (Cloud SQL client) and nothing else.
     serviceAccount: 'api-backend@chennai-rice-website.iam.gserviceaccount.com',
