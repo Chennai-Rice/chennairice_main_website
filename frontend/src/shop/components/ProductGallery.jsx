@@ -27,7 +27,8 @@ export default function ProductGallery({ images, alt, peek = false }) {
 
   const [auto, setAuto] = useState(false);
 
-  // Phones and tablets: out for 2 seconds, back for 2 seconds, on repeat.
+  // Phones and tablets: already out when the page opens, then in for 2
+  // seconds, out for 2 seconds, on repeat.
   useEffect(() => {
     if (!canPeek || typeof window === "undefined" || !window.matchMedia) return undefined;
     const touch = window.matchMedia(AUTO_PEEK_MEDIA);
@@ -44,6 +45,8 @@ export default function ProductGallery({ images, alt, peek = false }) {
 
   useEffect(() => {
     if (!auto) return undefined;
+    // He starts out (peeking as the page opens), then goes in, and so on.
+    setPeeking(true)
     const t = window.setInterval(() => {
       if (document.visibilityState === "visible") setPeeking((p) => !p);
     }, AUTO_PEEK_MS);
