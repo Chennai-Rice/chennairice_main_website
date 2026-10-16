@@ -10,9 +10,13 @@ import React, { useEffect, useState } from "react";
  * hovering the pack brings the mascot out from behind its left side, leaning
  * and waving, with a "Coupon code inside!" bubble by his head. Touch screens
  * have no hover, so a tap does the same; the tap version folds away again
- * after a few seconds, or on the next tap.
+ * after a few seconds, or on the next tap. On phones and tablets he also pops
+ * out and back by himself every 2 seconds, so the coupon is noticed without a
+ * tap (not when the visitor has asked for reduced motion).
  */
 const PEEK_MS = 6000;
+const AUTO_PEEK_MS = 2000;
+const AUTO_PEEK_MEDIA = "(hover: none), (max-width: 900px)";
 
 export default function ProductGallery({ images, alt, peek = false }) {
   const [active, setActive] = useState(0);
@@ -21,11 +25,36 @@ export default function ProductGallery({ images, alt, peek = false }) {
   const current = images[active] || images[0];
   const canPeek = peek && !current.scene;
 
+  const [auto, setAuto] = useState(false);
+
+  // Phones and tablets: out for 2 seconds, back for 2 seconds, on repeat.
   useEffect(() => {
-    if (!peeking) return undefined;
+    if (!canPeek || typeof window === "undefined" || !window.matchMedia) return undefined;
+    const touch = window.matchMedia(AUTO_PEEK_MEDIA);
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setAuto(touch.matches && !calm.matches);
+    update();
+    touch.addEventListener?.("change", update);
+    calm.addEventListener?.("change", update);
+    return () => {
+      touch.removeEventListener?.("change", update);
+      calm.removeEventListener?.("change", update);
+    };
+  }, [canPeek]);
+
+  useEffect(() => {
+    if (!auto) return undefined;
+    const t = window.setInterval(() => {
+      if (document.visibilityState === "visible") setPeeking((p) => !p);
+    }, AUTO_PEEK_MS);
+    return () => window.clearInterval(t);
+  }, [auto]);
+
+  useEffect(() => {
+    if (!peeking || auto) return undefined;
     const t = window.setTimeout(() => setPeeking(false), PEEK_MS);
     return () => window.clearTimeout(t);
-  }, [peeking]);
+  }, [peeking, auto]);
 
   return (
     <div className="pdp-gallery">
