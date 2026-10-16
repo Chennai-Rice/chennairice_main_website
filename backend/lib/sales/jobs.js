@@ -9,6 +9,7 @@ import { query } from '../db.js'
 import { expireUnpaidOrders } from './checkout.js'
 import { queueEmail, sendQueued, staffInbox } from './email.js'
 import { formatInr, istDateStamp } from './util.js'
+import { sendCrmLeads } from '../crm.js'
 
 const SLA = [
   { key: 'confirm', status: ['placed'], since: 'placed_at', after: '4 hours', what: 'paid but not confirmed for 4 hours' },
@@ -74,5 +75,7 @@ export async function runJobs() {
   const reminders = await slaReminders()
   const lowStock = await lowStockAlerts()
   const email = await sendQueued({ query })
-  return { expired, reminders, lowStock, email }
+  // Leads Sales Daddy could not take at the time are retried here.
+  const crm = await sendCrmLeads({ query })
+  return { expired, reminders, lowStock, email, crm }
 }

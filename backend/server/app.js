@@ -21,6 +21,7 @@ import {
   saveRecord,
 } from '../lib/consent.js'
 import { buildContactRow, buildBulkOrderRow, insertEnquiry } from '../lib/enquiries.js'
+import { pushCrmLead } from '../lib/crm.js'
 import {
   buildSessionRow,
   insertSession,
@@ -101,6 +102,8 @@ app.post('/api/consent', async (req, res) => {
 app.post('/api/contact', async (req, res) => {
   const { row, error } = buildContactRow(req.body)
   if (error) return res.status(400).json({ error })
+  // Into the Sales Daddy CRM as well (best effort; never fails the form).
+  await pushCrmLead('contact', { name: row.name, phone: row.phone, email: row.email, note: 'Contact form enquiry:\n' + row.enquiry })
 
   try {
     const stored = await insertEnquiry('contact_enquiries', row)
@@ -114,6 +117,18 @@ app.post('/api/contact', async (req, res) => {
 app.post('/api/bulk-order', async (req, res) => {
   const { row, error } = buildBulkOrderRow(req.body)
   if (error) return res.status(400).json({ error })
+  await pushCrmLead('bulk_order', {
+    name: row.representative_name, company: row.company_or_name, phone: row.phone, email: row.email,
+    tags: [row.buyer_type === 'other' ? row.other_type || 'Other' : row.buyer_type],
+    note: [
+      'Bulk order enquiry from the website.',
+      'Buyer type: ' + (row.buyer_type === 'other' ? row.other_type || 'Other' : row.buyer_type),
+      'GSTIN: ' + row.gstin,
+      row.quantity_kg ? 'Quantity: ' + row.quantity_kg : '',
+      row.message ? 'Message: ' + row.message : '',
+    ].filter(Boolean).join('\n'),
+    custom: { gstin: row.gstin, quantity: row.quantity_kg || '', buyer_type: row.buyer_type },
+  })
 
   try {
     const stored = await insertEnquiry('bulk_order_enquiries', row)

@@ -14,6 +14,7 @@
 // visit counts as an ad when the link says utm_medium=paid (or cpc, ads…).
 import { httpError, str } from './util.js'
 import { otpEnabled, sendOtp, verifyOtp } from './otp.js'
+import { pushCrmLead } from '../crm.js'
 
 export const SOURCES = {
   meta_ads_facebook: 'Meta ad · Facebook',
@@ -254,6 +255,18 @@ export async function saveContestLead(db, body) {
        submissions = contest_leads.submissions + 1, updated_at = now()`,
     [name, phone, email, source, campaign, ad, clip(body?.page || a?.landing, 200) || null, a, verified]
   )
+  // Into the Sales Daddy CRM, tagged with the ad it came from.
+  const label = SOURCES[source] || source
+  await pushCrmLead('contest_signup', {
+    name, phone, email,
+    tags: [label, campaign && 'Campaign: ' + campaign].filter(Boolean),
+    note: [
+      'Super Slogan Contest sign-up from the website.',
+      'Came from: ' + label + (campaign ? ' · campaign ' + campaign : '') + (ad ? ' · ad ' + ad : ''),
+      'Mobile verified by OTP: ' + (verified ? 'yes' : 'no'),
+    ].join('\n'),
+    custom: { contest: 'Super Slogan Contest', came_from: label, campaign: campaign || '', ad: ad || '' },
+  })
   return { ok: true }
 }
 
