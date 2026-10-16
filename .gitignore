@@ -12,6 +12,10 @@ backend/server/.env
 # those are meant to be committed (see backend/server/.env.example and
 # frontend/.env.local.example) so contributors know which vars to set.
 .env*
+# Public build settings (prices, checkout, Firebase web sign-in config): no
+# secrets, and every build needs them — a build without them hides prices
+# and breaks staff sign-in. Kept in git so a build from any copy is right.
+!frontend/.env.production
 !.env*.example
 
 # Vercel CLI project link metadata
