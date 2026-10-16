@@ -111,8 +111,10 @@ export async function sendCrmLeads({ id = null, limit = 20, query = defaultQuery
       failed++
       const attempts = r.attempts + 1
       const error = `${result.status} ${result.data.error || ''} ${result.data.message || ''}`.trim().slice(0, 300)
-      // A lead Sales Daddy rejects outright (bad key, bad number) is not retried forever.
-      const permanent = ['invalid_number', 'validation_error', 'invalid_request'].includes(result.data.error) || attempts >= MAX_ATTEMPTS
+      // A lead Sales Daddy refuses (a 4xx such as an invalid or own number) is
+      // final; only it being down, busy or unreachable is worth retrying.
+      const refused = result.status >= 400 && result.status < 500 && ![401, 408, 429].includes(result.status)
+      const permanent = refused || attempts >= MAX_ATTEMPTS
       await query(
         `update crm_outbox set attempts = $2, last_error = $3, status = $4,
                 next_try_at = now() + make_interval(mins => $5) where id = $1`,

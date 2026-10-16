@@ -1329,3 +1329,22 @@ test('Sales Daddy CRM: contest sign-ups and enquiries are sent as leads; failure
     await new Promise((r) => fake.close(r))
   }
 })
+
+test('Sales Daddy CRM: a lead it refuses (e.g. own number) is not retried', async () => {
+  const http = await import('node:http')
+  const fake = http.createServer((req, res) => {
+    req.resume().on('end', () => { res.statusCode = 400; res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ ok: false, error: 'own_number_not_allowed' })) })
+  })
+  await new Promise((r) => fake.listen(0, r))
+  Object.assign(process.env, { SALESDADDY_API_KEY: 'sd_live_test', SALESDADDY_BASE_URL: 'http://127.0.0.1:' + fake.address().port })
+  try {
+    const { pushCrmLead } = await import('../lib/crm.js')
+    await pushCrmLead('contact', { name: 'Own Number', phone: '9876500000', note: 'x' })
+    const { rows: [r] } = await db.query(`select status, last_error from crm_outbox where payload->>'mobile' = '9876500000'`)
+    assert.equal(r.status, 'failed')
+    assert.match(r.last_error, /own_number_not_allowed/)
+  } finally {
+    for (const k of ['SALESDADDY_API_KEY', 'SALESDADDY_BASE_URL']) delete process.env[k]
+    await new Promise((r) => fake.close(r))
+  }
+})
