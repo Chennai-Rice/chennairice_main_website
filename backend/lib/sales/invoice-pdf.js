@@ -185,9 +185,9 @@ export function invoicePdf(detail) {
         : [h.hsn, money(h.taxable), pct(h.rateBp, 100), money(h.igst), money(h.igst)])
   }
   const sum = (k) => m.hsnRows.reduce((t, h) => t + h[k], 0)
-  hrow(!m.taxed ? ['Total', money(m.taxable)]
-    : m.intra ? ['Total', money(m.taxable), '', money(sum('cgst')), '', money(sum('sgst')), money(m.tax)]
-      : ['Total', money(m.taxable), '', money(sum('igst')), money(m.tax)], { bold: true })
+  hrow(!m.taxed ? ['Total', money(sum('taxable'))]
+    : m.intra ? ['Total', money(sum('taxable')), '', money(sum('cgst')), '', money(sum('sgst')), money(m.tax)]
+      : ['Total', money(sum('taxable')), '', money(sum('igst')), money(m.tax)], { bold: true })
   box(L, hTop, W, y - hTop)
   hx.slice(1).forEach((x) => vline(x, hTop, y))
 

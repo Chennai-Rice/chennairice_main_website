@@ -115,8 +115,11 @@ export function invoiceModel({ order, items, invoice, shipments = [], payments =
     })
   }
 
-  const taxed = lines.some((l) => l.rateBp > 0)
-  const exempt = lines.some((l) => !l.rateBp)
+  // The title follows the goods (rice) only: a delivery charge with no GST
+  // must not turn a Tax Invoice into an Invoice-cum-Bill of Supply.
+  const goods = lines.filter((l) => l.bags != null)
+  const taxed = goods.some((l) => l.rateBp > 0)
+  const exempt = goods.some((l) => !l.rateBp)
   const title = taxed && exempt ? 'Invoice-cum-Bill of Supply' : taxed ? 'Tax Invoice' : 'Bill of Supply'
 
   // "Output CGST 2.5%" etc., one row per tax and rate.
@@ -139,7 +142,8 @@ export function invoiceModel({ order, items, invoice, shipments = [], payments =
 
   // HSN/SAC summary, one row per code and rate.
   const hsn = new Map()
-  for (const l of lines) {
+  // A delivery charge without GST has no place in the tax summary.
+  for (const l of lines.filter((x) => x.bags != null || x.rateBp > 0)) {
     const key = `${l.hsn || (l.bags == null ? 'Delivery' : '')}|${l.rateBp}`
     const h = hsn.get(key) || { hsn: l.hsn || (l.bags == null ? 'Delivery' : ''), rateBp: l.rateBp, taxable: 0, cgst: 0, sgst: 0, igst: 0 }
     h.taxable += l.amount; h.cgst += l.cgst; h.sgst += l.sgst; h.igst += l.igst

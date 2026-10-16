@@ -102,11 +102,11 @@ export function invoiceHtml(detail, { forCustomer = false } = {}) {
          <td class="n">${money(h.igst)}</td><td class="n">${money(h.igst)}</td></tr>`
   const sum = (k) => m.hsnRows.reduce((t, h) => t + h[k], 0)
   const hsnTotal = !taxCols
-    ? `<tr class="b"><td class="n">Total</td><td class="n">${money(m.taxable)}</td></tr>`
+    ? `<tr class="b"><td class="n">Total</td><td class="n">${money(sum('taxable'))}</td></tr>`
     : m.intra
-      ? `<tr class="b"><td class="n">Total</td><td class="n">${money(m.taxable)}</td><td></td><td class="n">${money(sum('cgst'))}</td>
+      ? `<tr class="b"><td class="n">Total</td><td class="n">${money(sum('taxable'))}</td><td></td><td class="n">${money(sum('cgst'))}</td>
          <td></td><td class="n">${money(sum('sgst'))}</td><td class="n">${money(m.tax)}</td></tr>`
-      : `<tr class="b"><td class="n">Total</td><td class="n">${money(m.taxable)}</td><td></td><td class="n">${money(sum('igst'))}</td>
+      : `<tr class="b"><td class="n">Total</td><td class="n">${money(sum('taxable'))}</td><td></td><td class="n">${money(sum('igst'))}</td>
          <td class="n">${money(m.tax)}</td></tr>`
 
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
