@@ -16,7 +16,7 @@ import { createCheckoutSession, confirmCheckout, quoteCart } from './checkout.js
 import { handleRazorpayWebhook } from './webhooks.js'
 import { runJobs } from './jobs.js'
 import { sendQueued } from './email.js'
-import { staffAuth, permissionsFor, requirePermission, listStaff, createStaff, updateStaff, can } from './staff.js'
+import { staffAuth, audit, permissionsFor, requirePermission, listStaff, createStaff, updateStaff, can } from './staff.js'
 import {
   listOrders, getOrderDetail, confirmOrder, packOrder, shipOrder, deliverShipment, cancelOrder,
   returnOrder, addNote, resolveAttention, refundOrder, trackOrder, customerInvoice, setDispatched, setDispatchedMany, setPacking, updateShipmentDetails,
@@ -33,6 +33,10 @@ import { processTrackerUpload, listTrackerUploads, trackerTemplate, courierRedir
 import { listIssuedIds, issuedIdsCsv, checkRegister } from './idregister.js'
 import { invoiceHtml, packingSlipHtml } from './documents.js'
 import { recordVisit, sourcesReport, sourceOrders } from './attribution.js'
+import {
+  analyticsRaw, behaviour, heatmapPoints, publishedPosts, publishedPost, allPosts, postById, savePost, deletePost,
+  saveImage, getImage, listEnquiries, setEnquiryStatus, COVER_TYPES, MAX_COVER_BYTES,
+} from './sitedata.js'
 import { query } from '../db.js'
 import { httpError, safeEqual } from './util.js'
 
@@ -89,6 +93,23 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   // One landing from an ad link or another site (counts only, no visitor data).
   router.post('/api/traffic/visit', rateLimit({ windowMs: 60000, max: 30 }), wrap(async (req, res) => {
     res.json(await recordVisit({ query }, req.body))
+  }))
+
+  // The blog (published posts only) and its cover images.
+  router.get('/api/blog/posts', wrap(async (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=60')
+    res.json({ posts: await publishedPosts() })
+  }))
+  router.get('/api/blog/posts/:slug', wrap(async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=60')
+    res.json({ post: await publishedPost(req.params.slug) })
+  }))
+  router.get('/api/blog/images/:id', wrap(async (req, res) => {
+    const image = await getImage(req.params.id)
+    if (!image) throw httpError('No such image', { status: 404, publicMessage: 'Image not found.' })
+    // The id never points at different bytes, so browsers may keep it for a year.
+    res.set('Cache-Control', 'public, max-age=31536000, immutable')
+    res.type(image.content_type).send(image.data)
   }))
 
   router.post('/api/checkout/quote', wrap(async (req, res) => res.json(await quoteCart(req.body))))
@@ -327,6 +348,32 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/shipping-zones', perm('shipping.manage'), wrap(async (_req, res) => res.json({ zones: await listZones() })))
   admin.put('/shipping-zones', wrap(async (req, res) => res.json({ zone: await upsertZone(req.staff, req.body) })))
   admin.get('/emails', perm('emails.view'), wrap(async (req, res) => res.json({ emails: await listEmails(req.query) })))
+
+  // /admin dashboard: visitor analytics, the blog editor, website enquiries.
+  admin.get('/site/analytics', perm('analytics.view'), wrap(async (_req, res) => res.json(await analyticsRaw())))
+  admin.get('/site/behaviour', perm('analytics.view'), wrap(async (req, res) => res.json(await behaviour(req.query))))
+  admin.get('/site/heatmap', perm('analytics.view'), wrap(async (req, res) => res.json({ points: await heatmapPoints(req.query) })))
+  admin.post('/site/opened', perm('analytics.view'), wrap(async (req, res) => {
+    await audit({ query }, req.staff, 'analytics.' + String(req.body?.action || 'view').slice(0, 40), 'analytics', String(req.body?.target || '').slice(0, 80) || null)
+    res.json({ ok: true })
+  }))
+  admin.get('/blog/posts', perm('blog.write'), wrap(async (_req, res) => res.json({ posts: await allPosts() })))
+  admin.get('/blog/posts/:id', perm('blog.write'), wrap(async (req, res) => res.json({ post: await postById(req.params.id) })))
+  admin.post('/blog/posts', perm('blog.write'), wrap(async (req, res) => res.json({ post: await savePost(req.staff, null, req.body) })))
+  admin.put('/blog/posts/:id', perm('blog.write'), wrap(async (req, res) => res.json({ post: await savePost(req.staff, req.params.id, req.body) })))
+  admin.delete('/blog/posts/:id', perm('blog.write'), wrap(async (req, res) => {
+    await deletePost(req.params.id)
+    res.json({ ok: true })
+  }))
+  admin.post('/blog/images', perm('blog.write'), express.raw({ type: COVER_TYPES, limit: MAX_COVER_BYTES + 1024 }), wrap(async (req, res) => {
+    // Cloud Functions has already read the upload into req.rawBody.
+    const data = Buffer.isBuffer(req.body) && req.body.length ? req.body : req.rawBody
+    res.json({ coverPath: await saveImage(req.get('content-type'), data) })
+  }))
+  admin.get('/enquiries', perm('enquiries.view'), wrap(async (_req, res) => res.json(await listEnquiries())))
+  admin.patch('/enquiries/:kind/:id', perm('enquiries.view'), wrap(async (req, res) => {
+    res.json({ enquiry: await setEnquiryStatus(req.params.kind, req.params.id, req.body?.status) })
+  }))
 
   router.use('/api/admin', admin)
 

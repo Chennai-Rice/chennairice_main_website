@@ -1,7 +1,7 @@
 // Writes frontend/public/sitemap.xml and robots.txt before every build.
 //
 // Runs as the `prebuild` npm script, so the sitemap can never drift from what
-// the site actually contains: a product added to Supabase, or a blog post
+// the site actually contains: a product added to the catalog, or a blog post
 // published, appears in the next deploy's sitemap without anyone remembering
 // to update a hand-written file.
 //
@@ -9,7 +9,7 @@
 // /wishlist and /checkout (per-visitor state, nothing to index), the legacy
 // .html redirects, and the "coming soon" placeholder pages — submitting thin
 // placeholder pages to Google invites them to be indexed as low-value.
-import { writeFileSync, readFileSync, existsSync } from 'node:fs'
+import { writeFileSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -43,35 +43,17 @@ function productSlugs() {
 }
 
 /**
- * Published blog posts, if Supabase credentials happen to be present. Absent
- * credentials are not an error: the sitemap is simply built without them, so a
- * machine that cannot reach the database can still produce a valid file.
+ * Published blog posts, read from the live site's public blog API (Cloud SQL
+ * behind it). BLOG_API_BASE points it elsewhere, e.g. a local server. An
+ * unreachable API is not an error: the sitemap is simply built without them.
  */
 async function blogSlugs() {
-  const envPath = join(ROOT, 'backend', 'server', '.env')
-  let url = process.env.SUPABASE_URL
-  let key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if ((!url || !key) && existsSync(envPath)) {
-    for (const line of readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-      const t = line.trim()
-      if (!t || t.startsWith('#')) continue
-      const i = t.indexOf('=')
-      const k = t.slice(0, i)
-      const v = t.slice(i + 1).trim()
-      if (k === 'SUPABASE_URL' && !url) url = v
-      if (k === 'SUPABASE_SERVICE_ROLE_KEY' && !key) key = v
-    }
-  }
-  if (!url || !key) return []
-
+  const apiBase = (process.env.BLOG_API_BASE || SITE).replace(/\/$/, '')
   try {
-    const res = await fetch(
-      url + '/rest/v1/blog_posts?select=slug,published_at&status=eq.published&order=published_at.desc',
-      { headers: { apikey: key, Authorization: 'Bearer ' + key } }
-    )
-    if (!res.ok) return []
-    const rows = await res.json()
-    return rows.filter((r) => r.slug).map((r) => ({ slug: r.slug, lastmod: r.published_at }))
+    const res = await fetch(apiBase + '/api/blog/posts', { signal: AbortSignal.timeout(10000) })
+    if (!res.ok || !(res.headers.get('content-type') || '').includes('json')) return []
+    const { posts } = await res.json()
+    return (posts || []).filter((p) => p.slug).map((p) => ({ slug: p.slug, lastmod: p.published_at }))
   } catch {
     return []
   }
@@ -117,7 +99,7 @@ writeFileSync(join(PUBLIC_DIR, 'sitemap.xml'), xml)
 
 // /admin and /blog/studio are disallowed as a courtesy to crawlers, not as
 // security — they are client-side routes and robots.txt is advisory. Real
-// protection is the Supabase RLS behind them.
+// protection is the staff sign-in the server checks behind them.
 const robots =
   '# https://www.robotstxt.org/robotstxt.html\n' +
   'User-agent: *\n' +

@@ -1,22 +1,20 @@
-// The blog: author sign-in, reading posts, and writing them.
+// The blog: reading posts, and writing them.
 //
-// Everything goes through the ordinary browser Supabase client with the
-// public anon key. There is no service-role key in this file and there must
-// never be one — what decides who can read a draft or write a post is the
-// RLS in database/migrations/add_blog.sql, not this JavaScript. A logged-out
-// visitor running these exact queries sees published posts and nothing else.
+// Reading is the public /api/blog endpoints (published posts only). Writing
+// goes through /api/admin/blog with the staff Google sign-in, and the
+// backend decides who may write (blog.write in backend/lib/sales/staff.js).
+// Posts and cover images live in Cloud SQL (backend/lib/sales/sitedata.js).
 //
-// This module owns every blog query. The pages under src/pages/blog/ are
+// This module owns every blog request. The pages under src/pages/blog/ are
 // presentation only, so the data contract stays in one reviewable place.
-import { supabase, hasSupabase } from '../lib/supabaseClient.js'
 import { plainText, readingMinutes, slugify } from '../lib/markdown.jsx'
+import { staffJson } from './staffAuth.js'
 
 export class BlogError extends Error {
   /**
-   * `setupRequired` marks the one failure that is not the visitor's
-   * problem and not a bug: the migration has not been run yet. The studio
-   * says which file to run; the public journal deliberately does not,
-   * because a database table name is not something to show a shopper.
+   * `setupRequired` marks a failure that is not the visitor's problem: the
+   * blog service is not reachable. The public journal shows a gentle
+   * message instead of the detail.
    */
   constructor(message, options = {}) {
     super(message)
@@ -24,114 +22,40 @@ export class BlogError extends Error {
   }
 }
 
-const BUCKET = 'blog-images'
-
 /** Cover images. Kept modest deliberately — a 12MB phone photo on a
  *  listing page costs every reader on a slow connection. */
 export const MAX_COVER_BYTES = 5 * 1024 * 1024
 export const COVER_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif']
 
-/** Fields the public listing needs. Not select('*'): the listing does not
- *  need every post's full body, and sending it would be wasteful. */
-const CARD_FIELDS =
-  'id, slug, title, excerpt, cover_path, cover_alt, author_name, published_at, reading_minutes'
-
-function requireClient() {
-  if (!hasSupabase) {
-    throw new BlogError(
-      'Supabase is not configured — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
-    )
+/** Public request; a missing or failing service is reported, not thrown raw. */
+async function publicJson(path) {
+  let res
+  try {
+    res = await fetch(path, { headers: { Accept: 'application/json' } })
+  } catch {
+    throw new BlogError('Could not reach the journal. Check your connection and try again.')
   }
+  if (!res.ok || !(res.headers.get('content-type') || '').includes('json')) {
+    throw new BlogError('The journal is not available right now.', { setupRequired: res.status === 404 })
+  }
+  return res.json()
 }
 
-/** Turns a Postgres failure into something the writer can act on. */
-function writeError(error) {
-  if (error.code === '23505') {
-    return new BlogError('That web address is already used by another post. Change the link and try again.')
+/** Staff request, with server messages passed on as BlogErrors. */
+async function studio(path, options) {
+  try {
+    return await staffJson('/api/admin/blog' + path, options)
+  } catch (err) {
+    throw new BlogError(err.status === 403 ? 'This account is not allowed to write posts.' : err.message)
   }
-  if (error.code === '23514') {
-    return new BlogError('The web address may only contain lowercase letters, numbers and hyphens.')
-  }
-  if (error.code === '42501' || /row-level security/i.test(error.message || '')) {
-    return new BlogError('This account is not allowed to save that post.')
-  }
-  // PostgREST reports a missing table through its schema cache
-  // ("Could not find the table 'public.blog_posts'"), not with Postgres's
-  // own wording, so both are matched.
-  if (
-    error.code === 'PGRST205' ||
-    /could not find the table|relation .*blog_(posts|authors).* does not exist/i.test(error.message || '')
-  ) {
-    return new BlogError(
-      'The blog tables are not set up yet. Run database/migrations/add_blog.sql in the Supabase SQL editor.',
-      { setupRequired: true }
-    )
-  }
-  return new BlogError(error.message)
-}
-
-/* ------------------------------------------------------------------ auth */
-
-export async function getSession() {
-  if (!hasSupabase) return null
-  const { data } = await supabase.auth.getSession()
-  return data.session ?? null
-}
-
-/**
- * The signed-in writer's own blog_authors row, or null when the account
- * has one but is not a writer. Relies on the blog_authors_read_self policy,
- * so a non-author simply reads back nothing and this cannot be faked from
- * the browser.
- */
-export async function getAuthor() {
-  if (!hasSupabase) return null
-  const { data, error } = await supabase
-    .from('blog_authors')
-    .select('user_id, email, display_name, role')
-    .maybeSingle()
-  if (error) return null
-  return data ?? null
-}
-
-export async function signIn(email, password) {
-  requireClient()
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) {
-    // Supabase returns the same message for "no such user" and "wrong
-    // password" on purpose. Repeating it verbatim avoids turning the login
-    // form into a way to discover which addresses have accounts.
-    throw new BlogError('Incorrect email or password.')
-  }
-
-  // Signing in is not the same as being allowed to write. Any Supabase
-  // account authenticates; only a row in blog_authors makes someone a
-  // writer, so the session is dropped again if there is none.
-  const author = await getAuthor()
-  if (!author) {
-    await signOut()
-    throw new BlogError('This account is not set up to write posts.')
-  }
-  return author
-}
-
-export async function signOut() {
-  if (!hasSupabase) return
-  await supabase.auth.signOut()
-}
-
-export function onAuthChange(callback) {
-  if (!hasSupabase) return () => {}
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => callback(session))
-  return () => data.subscription.unsubscribe()
 }
 
 /* ----------------------------------------------------------------- reads */
 
-/** Public URL for a stored cover. Null in, null out. */
+/** Public URL for a stored cover ('img/<id>'). Null in, null out. */
 export function coverUrl(path) {
-  if (!path || !hasSupabase) return null
-  return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
+  if (!path || !path.startsWith('img/')) return null
+  return '/api/blog/images/' + path.slice(4)
 }
 
 function toCard(row) {
@@ -148,52 +72,22 @@ function toCard(row) {
   }
 }
 
-/**
- * Every post the caller is allowed to see, newest first.
- *
- * The status and date filters mirror the RLS policy rather than replacing
- * it. They are here so the query uses the index and so a signed-in author's
- * own drafts do not silently appear on the public listing — RLS lets them
- * read those rows, which is right for the studio and wrong for this page.
- */
+/** Every published post, newest first. */
 export async function fetchPublishedPosts() {
-  requireClient()
-  const { data, error } = await supabase
-    .from('blog_posts')
-    .select(CARD_FIELDS)
-    .eq('status', 'published')
-    .lte('published_at', new Date().toISOString())
-    .order('published_at', { ascending: false })
-
-  if (error) throw writeError(error)
-  return (data ?? []).map(toCard)
+  const { posts } = await publicJson('/api/blog/posts')
+  return (posts ?? []).map(toCard)
 }
 
-/**
- * One post by its URL.
- *
- * Returns null when there is nothing to show. A signed-in author reading
- * their own draft gets it — that is the preview, and it falls out of the
- * RLS policy rather than needing a separate code path.
- */
+/** One published post by its URL, or null when there is nothing to show. */
 export async function fetchPostBySlug(slug) {
-  requireClient()
-  const { data, error } = await supabase
-    .from('blog_posts')
-    .select('*')
-    .eq('slug', slug)
-    .maybeSingle()
-
-  if (error) throw writeError(error)
-  if (!data) return null
-
+  const { post } = await publicJson('/api/blog/posts/' + encodeURIComponent(slug))
+  if (!post) return null
   return {
-    ...toCard(data),
-    contentMd: data.content_md || '',
-    coverPath: data.cover_path,
-    status: data.status,
-    updatedAt: data.updated_at,
-    authorId: data.author_id,
+    ...toCard(post),
+    contentMd: post.content_md || '',
+    coverPath: post.cover_path,
+    status: post.status,
+    updatedAt: post.updated_at,
   }
 }
 
@@ -205,10 +99,13 @@ export async function fetchPostBySlug(slug) {
  * a trap.
  */
 export async function fetchPostById(id) {
-  requireClient()
-  const { data, error } = await supabase.from('blog_posts').select('*').eq('id', id).maybeSingle()
-  if (error) throw writeError(error)
-  if (!data) return null
+  let data
+  try {
+    ;({ post: data } = await staffJson('/api/admin/blog/posts/' + encodeURIComponent(id)))
+  } catch (err) {
+    if (err.status === 404) return null
+    throw new BlogError(err.message)
+  }
   return {
     id: data.id,
     slug: data.slug,
@@ -225,16 +122,10 @@ export async function fetchPostById(id) {
 
 /* ---------------------------------------------------------------- studio */
 
-/** Everything the signed-in writer may edit, drafts included. */
+/** Every post, drafts included. */
 export async function fetchMyPosts() {
-  requireClient()
-  const { data, error } = await supabase
-    .from('blog_posts')
-    .select('id, slug, title, status, published_at, updated_at, cover_path, cover_alt, author_name')
-    .order('updated_at', { ascending: false })
-
-  if (error) throw writeError(error)
-  return (data ?? []).map((row) => ({
+  const { posts } = await studio('/posts')
+  return (posts ?? []).map((row) => ({
     id: row.id,
     slug: row.slug,
     title: row.title,
@@ -248,14 +139,10 @@ export async function fetchMyPosts() {
 }
 
 /**
- * Uploads a cover and hands back where it went.
- *
- * Type and size are checked here as a courtesy to the writer, not as
- * security: the bucket's own policies are what actually stop anyone else
- * writing to it.
+ * Uploads a cover and hands back where it went. Type and size are checked
+ * here as a courtesy to the writer; the server checks them again.
  */
-export async function uploadCover(file, author) {
-  requireClient()
+export async function uploadCover(file) {
   if (!file) throw new BlogError('Choose an image first.')
 
   if (!COVER_TYPES.includes(file.type)) {
@@ -266,29 +153,12 @@ export async function uploadCover(file, author) {
     throw new BlogError(`That image is ${(file.size / 1024 / 1024).toFixed(1)}MB. Keep covers under ${mb}MB.`)
   }
 
-  // Filed under the author's id, and named with a fresh uuid rather than
-  // the original filename: two writers uploading "cover.jpg" must not
-  // collide, and a filename is not something to trust in a path.
-  const extension = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
-  const path = `${author.user_id}/${crypto.randomUUID()}.${extension}`
-
-  const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
-    contentType: file.type,
-    // A year: the path contains a uuid, so the file at it never changes.
-    cacheControl: '31536000',
-    upsert: false,
+  const { coverPath } = await studio('/images', {
+    method: 'POST',
+    headers: { 'Content-Type': file.type },
+    body: file,
   })
-
-  if (error) {
-    if (/bucket not found/i.test(error.message || '')) {
-      throw new BlogError(
-        'The blog-images bucket does not exist yet. Run the storage half of database/migrations/add_blog.sql, or create it in Storage.'
-      )
-    }
-    throw new BlogError(`Could not upload the image: ${error.message}`)
-  }
-
-  return { path, url: coverUrl(path) }
+  return { path: coverPath, url: coverUrl(coverPath) }
 }
 
 /**
@@ -299,7 +169,6 @@ export async function uploadCover(file, author) {
  * way and none of them can be left inconsistent with the body.
  */
 export async function savePost(draft, author) {
-  requireClient()
   if (!author) throw new BlogError('Sign in before saving.')
 
   const title = (draft.title || '').trim()
@@ -313,6 +182,7 @@ export async function savePost(draft, author) {
 
   const typedExcerpt = (draft.excerpt || '').trim()
   const body = plainText(contentMd)
+  const status = draft.status === 'published' ? 'published' : 'draft'
 
   const row = {
     slug,
@@ -320,44 +190,26 @@ export async function savePost(draft, author) {
     // Falls back to the opening of the post rather than making the writer
     // repeat themselves, and is trimmed at a word so it never cuts a word
     // in half on the card.
-    excerpt: typedExcerpt || (body ? body.slice(0, 180).replace(/\s+\S*$/, '') : null),
-    content_md: contentMd,
-    cover_path: draft.coverPath || null,
-    cover_alt: (draft.coverAlt || '').trim() || null,
-    author_id: author.user_id,
-    author_name: author.display_name,
-    status: draft.status === 'published' ? 'published' : 'draft',
-    reading_minutes: readingMinutes(contentMd),
-  }
-
-  if (row.status === 'published') {
+    excerpt: typedExcerpt || (body ? body.slice(0, 180).replace(/\s+\S*$/, '') : ''),
+    contentMd,
+    coverPath: draft.coverPath || '',
+    coverAlt: (draft.coverAlt || '').trim(),
+    status,
     // Keep the original date when re-editing something already live, so a
     // typo fix does not move the post back to the top of the blog.
-    row.published_at = draft.publishedAt || new Date().toISOString()
-  } else {
-    // Unpublishing clears the date, which is what the table's own check
-    // constraint expects of a draft.
-    row.published_at = null
+    publishedAt: status === 'published' ? draft.publishedAt || null : null,
+    readingMinutes: readingMinutes(contentMd),
   }
 
-  const query = draft.id
-    ? supabase.from('blog_posts').update(row).eq('id', draft.id).select().maybeSingle()
-    : supabase.from('blog_posts').insert(row).select().maybeSingle()
-
-  const { data, error } = await query
-  if (error) throw writeError(error)
-  if (!data) {
-    // An update that matched no row means RLS refused it — someone else's
-    // post, or an account that has since lost its author row.
-    throw new BlogError('That post could not be saved. It may belong to another author.')
-  }
-  return data
+  const { post } = await studio(draft.id ? '/posts/' + encodeURIComponent(draft.id) : '/posts', {
+    method: draft.id ? 'PUT' : 'POST',
+    body: JSON.stringify(row),
+  })
+  return post
 }
 
 export async function deletePost(id) {
-  requireClient()
-  const { error } = await supabase.from('blog_posts').delete().eq('id', id)
-  if (error) throw writeError(error)
+  await studio('/posts/' + encodeURIComponent(id), { method: 'DELETE' })
 }
 
 /* ------------------------------------------------------------ formatting */

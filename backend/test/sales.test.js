@@ -1073,3 +1073,78 @@ test('sales by source: ad links and referrers become a source, orders and visits
   assert.equal(list.body.orders.length, 1)
   assert.equal(list.body.orders[0].order_number, session.orderNumber)
 })
+
+test('site data in Cloud SQL: visitor analytics, blog with cover image, enquiries — by role', async () => {
+  const { insertSession, touchSession, insertPageview, insertEvent, insertInteractions } = await import('../lib/analytics.js')
+  const { insertEnquiry } = await import('../lib/enquiries.js')
+  const visitorId = 'visitor-abc123'
+  const sessionId = 'session-abc123'
+  assert.equal(await insertSession({ visitor_id: visitorId, session_id: sessionId, device_type: 'mobile', utm_source: 'facebook' }), true)
+  assert.equal(await insertSession({ visitor_id: visitorId, session_id: sessionId }), true, 'a repeated session start is harmless')
+  await touchSession({ sessionId, totalSeconds: 42, pageCount: 2 })
+  assert.deepEqual(await insertPageview({ sessionId, path: '/products/kitchidi-ponni-rice', secondsOnPage: 30, maxScrollPercent: 80 }), { stored: true })
+  assert.deepEqual(await insertEvent({ sessionId, visitorId, eventType: 'add_to_cart', productSlug: 'kitchidi-ponni-rice', quantity: 1 }), { stored: true })
+  // An event for a session the server never saw is dropped quietly, not an error.
+  assert.deepEqual(await insertEvent({ sessionId: 'session-unknown1', visitorId, eventType: 'product_view' }), { stored: false })
+  const clicks = await insertInteractions({
+    sessionId, visitorId,
+    items: [
+      { kind: 'click', path: '/', selector: 'a.buy', label: 'Buy', tag: 'a', relX: 0.5, absY: 400, viewportWidth: 1280, docHeight: 3000 },
+      { kind: 'rage_click', path: '/', selector: 'img.bag', label: '', tag: 'img', relX: 0.2, absY: 300, viewportWidth: 1280, docHeight: 3000, clickCount: 4 },
+    ],
+  })
+  assert.equal(clicks.stored, 2, JSON.stringify(clicks))
+
+  // Analytics: owner yes, sales no.
+  assert.equal((await api('GET', '/api/admin/site/analytics', { token: tokens.sales })).status, 403)
+  const raw = await api('GET', '/api/admin/site/analytics', { token: OWNER })
+  assert.equal(raw.status, 200)
+  assert.equal(raw.body.visitors.length, 1)
+  assert.equal(raw.body.sessions[0].total_seconds, 42)
+  assert.equal(raw.body.pageviews[0].max_scroll_percent, 80)
+  assert.equal(raw.body.events.length, 1)
+  const beh = await api('GET', '/api/admin/site/behaviour?from=' + new Date(Date.now() - 86400000).toISOString(), { token: OWNER })
+  assert.equal(beh.status, 200)
+  assert.equal(Number(beh.body.pages[0].clicks), 1)
+  assert.equal(Number(beh.body.rage[0].total_burst), 4)
+  assert.equal(Number(beh.body.scroll[0].reached_50), 1)
+  const heat = await api('GET', '/api/admin/site/heatmap?path=/&minWidth=1024', { token: OWNER })
+  assert.equal(heat.body.points.length, 2)
+  assert.equal((await api('GET', '/api/admin/site/heatmap?path=/&maxWidth=640', { token: OWNER })).body.points.length, 0)
+
+  // Blog: a draft is invisible to the public; publishing shows it; the cover is served.
+  const png = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex')
+  const up = await api('POST', '/api/admin/blog/images', { token: OWNER, raw: png, headers: { 'Content-Type': 'image/png' } })
+  assert.equal(up.status, 200, JSON.stringify(up.body))
+  assert.match(up.body.coverPath, /^img\//)
+  const bad = await api('POST', '/api/admin/blog/images', { token: OWNER, raw: 'x', headers: { 'Content-Type': 'text/html' } })
+  assert.equal(bad.status, 400)
+  const draft = { title: 'Why Ponni rice', slug: 'why-ponni-rice', contentMd: 'Soft and light.', coverPath: up.body.coverPath, status: 'draft' }
+  assert.equal((await api('POST', '/api/admin/blog/posts', { token: tokens.sales, body: draft })).status, 403)
+  const saved = await api('POST', '/api/admin/blog/posts', { token: OWNER, body: draft })
+  assert.equal(saved.status, 200, JSON.stringify(saved.body))
+  assert.equal((await api('GET', '/api/blog/posts')).body.posts.length, 0)
+  assert.equal((await api('GET', '/api/blog/posts/why-ponni-rice')).body.post, null)
+  const pub = await api('PUT', '/api/admin/blog/posts/' + saved.body.post.id, { token: OWNER, body: { ...draft, status: 'published' } })
+  assert.equal(pub.body.post.status, 'published')
+  assert.equal((await api('GET', '/api/blog/posts')).body.posts[0].slug, 'why-ponni-rice')
+  assert.equal((await api('GET', '/api/blog/posts/why-ponni-rice')).body.post.content_md, 'Soft and light.')
+  const img = await fetch(base + '/api/blog/' + up.body.coverPath.replace('img/', 'images/'))
+  assert.equal(img.headers.get('content-type'), 'image/png')
+  assert.deepEqual(Buffer.from(await img.arrayBuffer()), png)
+  const dup = await api('POST', '/api/admin/blog/posts', { token: OWNER, body: { ...draft, title: 'Another' } })
+  assert.equal(dup.status, 409)
+  assert.equal((await api('GET', '/api/admin/blog/posts/not-a-uuid', { token: OWNER })).status, 404)
+  assert.equal((await api('DELETE', '/api/admin/blog/posts/' + saved.body.post.id, { token: OWNER })).status, 200)
+  assert.equal((await fetch(base + '/api/blog/' + up.body.coverPath.replace('img/', 'images/'))).status, 404, 'the cover goes with the post')
+
+  // Enquiries: stored from the website forms, read and worked by sales.
+  assert.equal(await insertEnquiry('contact_enquiries', { name: 'Ravi', email: 'ravi@example.com', phone: '9876543210', enquiry: 'Price for 100 bags?' }), true)
+  await assert.rejects(insertEnquiry('staff_users', { email: 'x' }))
+  const enq = await api('GET', '/api/admin/enquiries', { token: tokens.sales })
+  assert.equal(enq.status, 200)
+  assert.equal(enq.body.contact[0].name, 'Ravi')
+  const done = await api('PATCH', '/api/admin/enquiries/contact/' + enq.body.contact[0].id, { token: tokens.sales, body: { status: 'contacted' } })
+  assert.equal(done.body.enquiry.status, 'contacted')
+  assert.equal((await api('GET', '/api/admin/enquiries', { token: tokens.dispatch })).status, 403)
+})

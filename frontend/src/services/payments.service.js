@@ -11,7 +11,6 @@
 // _lib/gateways.js). This file handles the half only the browser can see — a
 // checkout script that will not load, or a widget that refuses to open — by
 // asking the server for a session on the *other* gateway for the same order.
-import { supabase, hasSupabase } from '../lib/supabaseClient.js'
 
 export const RAZORPAY = 'razorpay'
 export const ZOHO = 'zoho_payments'
@@ -249,22 +248,4 @@ export async function openPaymentWidget(session) {
   await loadScript(gateway)
 
   return gateway === RAZORPAY ? openRazorpay(session) : openZoho(session)
-}
-
-/**
- * Fetch payment records for an order. RLS (`payments_select`,
- * authenticated-only) permits a signed-in user to read payments tied to their
- * own orders; guest orders are not readable from the browser by design.
- * @param {string} orderId
- * @returns {Promise<Array<Record<string, unknown>>>}
- */
-export async function getPaymentsForOrder(orderId) {
-  if (!hasSupabase) {
-    throw new Error('Supabase is not configured (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY missing).')
-  }
-  if (!orderId) throw new Error('getPaymentsForOrder requires an orderId.')
-
-  const { data, error } = await supabase.from('payments').select('*').eq('order_id', orderId)
-  if (error) throw new Error(`getPaymentsForOrder failed: ${error.message}`)
-  return data ?? []
 }

@@ -24,7 +24,7 @@ export default function ProductCard({ product }) {
   const [selectedKg, setSelectedKg] = useState(defaultSize.kg);
   const selected = sizes.find((s) => s.kg === selectedKg) || defaultSize;
   // inStock is only known when the catalog comes from the sales backend;
-  // undefined (Supabase / bundled packs) means "assume available".
+  // undefined (bundled packs) means "assume available".
   const soldOut = selected.inStock === false;
   const allSoldOut = product.inStock === false;
 

@@ -1,5 +1,5 @@
-// Product catalog — now backed by Supabase (`products` + `product_variants`,
-// via src/services/products.service.js) instead of a hand-written array.
+// Product catalog — from the sales backend (/api/catalog, Cloud SQL), the
+// same database checkout charges from.
 //
 // Consumers call the `useProducts()` hook (or `fetchProducts()` directly,
 // e.g. in a route loader) instead of importing a static PRODUCTS array. The
@@ -15,10 +15,8 @@
 // PRESENTATION below, keyed by the DB row's `slug` (== the old hand-written
 // `id`), and are merged onto every live-fetched row. Everything that IS
 // catalog data — name, description, pricing, which pack sizes exist —
-// comes from Supabase and is never hand-maintained here again.
+// comes from the catalog and is never hand-maintained here again.
 import { useEffect, useState } from "react";
-import { getProducts, getProductBySlug } from "../../services/products.service.js";
-import { hasSupabase } from "../../lib/supabaseClient.js";
 
 export const FILTERS = [
   { id: "all", label: "All packs" },
@@ -131,14 +129,13 @@ const FALLBACK_PRESENTATION = { variant: "red", width: 500, height: 800, tags: [
 // ---------------------------------------------------------------------------
 // Offline catalog.
 //
-// Supabase is not guaranteed to answer: a deploy may carry no VITE_SUPABASE_*
-// keys at all, the project may be paused, or the `products` table may be empty
-// on a fresh database. In any of those cases the storefront would otherwise
+// The catalog API is not guaranteed to answer: the backend may be down or
+// the `products` table empty on a fresh database. In any of those cases the storefront would otherwise
 // render an error and zero cards, which is worse than showing the range we
 // actually sell — the pack photos ship in this repo either way.
 //
-// These rows are a floor, never the source of truth: whenever Supabase returns
-// products, its rows win and nothing below is used.
+// These rows are a floor, never the source of truth: whenever the catalog
+// returns products, its rows win and nothing below is used.
 //
 // There are no prices here, and price 0 is deliberate rather than missing. The
 // supplied artwork carries no pricing, and inventing a figure on a live
@@ -297,55 +294,10 @@ function toLineup(products) {
   }));
 }
 
-// `short_description` was seeded as "<tag> — <flag>" or just "<tag>" (see the
-// commerce product seed) — split it back into the two display fields the UI
-// expects: a short tag chip ("Classic Red") and an optional flag badge
-// ("★ Premium").
-function splitShortDescription(shortDescription) {
-  if (!shortDescription) return { tag: "", flag: undefined };
-  const [tag, flag] = shortDescription.split(" — ");
-  return { tag: tag?.trim() || "", flag: flag?.trim() || undefined };
-}
-
-function mapVariants(variants) {
-  return (variants || [])
-    .filter((v) => v.is_active !== false)
-    .map((v) => ({ kg: Number(v.pack_size_kg), price: Number(v.price) }))
-    .sort((a, b) => a.kg - b.kg);
-}
-
-/** Map one Supabase `products` row (with `product_variants` joined) to the
- * shape every shop component already expects. */
-function mapProduct(row) {
-  const presentation = PRESENTATION[row.slug] || { ...FALLBACK_PRESENTATION };
-  const { tag, flag } = splitShortDescription(row.short_description);
-  const packSizes = mapVariants(row.product_variants);
-  const tenKg = packSizes.find((s) => s.kg === 10) || packSizes[0];
-
-  return {
-    id: row.slug,
-    variant: presentation.variant,
-    tag,
-    flag,
-    name: row.name,
-    description: row.description || "",
-    price: tenKg ? tenKg.price : 0,
-    packSizes,
-    // A row with no image_url still gets its pack photo — the file ships in
-    // this repo, so a blank card is never the right answer.
-    image: row.image_url || FALLBACK_IMAGES[row.slug] || null,
-    alt: row.name,
-    width: presentation.width,
-    height: presentation.height,
-    tags: presentation.tags,
-    search: presentation.search,
-  };
-}
-
 // The sales backend's catalog (/api/catalog, PostgreSQL). It is the same
 // database checkout charges from, so the price on the card is the price paid.
-// Where that backend is not running (it answers 404 until a database is
-// configured), this returns null and Supabase / the bundled packs are used.
+// Where that backend is not running, this returns null and the bundled
+// packs are used.
 async function fetchSalesCatalog() {
   try {
     const res = await fetch("/api/catalog", { headers: { Accept: "application/json" } });
@@ -402,16 +354,6 @@ async function fetchSalesCatalog() {
 export async function fetchProducts() {
   const sales = await fetchSalesCatalog();
   if (sales) return { products: sales, lineup: toLineup(sales) };
-  if (hasSupabase) {
-    try {
-      const rows = await getProducts({ isActive: true });
-      const products = rows.map(mapProduct);
-      // An empty table reads as an outage, not as "we sell nothing".
-      if (products.length) return { products, lineup: toLineup(products) };
-    } catch (error) {
-      console.warn("[products] Supabase catalog unavailable — showing the bundled packs.", error);
-    }
-  }
   return { products: FALLBACK_PRODUCTS, lineup: toLineup(FALLBACK_PRODUCTS) };
 }
 
@@ -420,14 +362,6 @@ export async function fetchProducts() {
 export async function fetchProductBySlug(slug) {
   const sales = await fetchSalesCatalog();
   if (sales) return sales.find((p) => p.id === slug) || null;
-  if (hasSupabase) {
-    try {
-      const row = await getProductBySlug(slug);
-      if (row) return mapProduct(row);
-    } catch (error) {
-      console.warn(`[products] Supabase lookup for "${slug}" failed — showing the bundled pack.`, error);
-    }
-  }
   return FALLBACK_PRODUCTS.find((p) => p.id === slug) || null;
 }
 

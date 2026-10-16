@@ -108,7 +108,7 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
       setNotice(
         status === 'published'
           ? 'Published. It is live on the journal now.'
-          : 'Saved as a draft. Only you can see it.'
+          : 'Saved as a draft. Only staff can see it.'
       )
       onSaved?.()
     } catch (err) {

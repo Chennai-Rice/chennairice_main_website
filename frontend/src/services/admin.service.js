@@ -1,19 +1,16 @@
-// Analyst dashboard: authentication and the queries behind /admin.
+// Analyst dashboard: who may see what, and the queries behind /admin.
 //
-// Every read here goes through the ordinary browser Supabase client using
-// the public anon key — there is no service-role key in this file, and there
-// must never be one. What makes the data readable is the caller's logged-in
-// session plus a row in admin_users; the RLS policies added in
-// database/migrations/add_admin_dashboard.sql are the actual security
-// boundary. A logged-out visitor running these exact queries gets zero rows.
+// Sign-in is the staff Google account (services/staffAuth.js), the same as
+// /warehouse. The backend checks the staff list and role on every request
+// (PERMISSIONS in backend/lib/sales/staff.js) — this file only asks; it holds
+// no key and cannot read anything the role does not allow.
 //
 // This module owns all analytics logic. The React views under
-// src/pages/admin/ are presentation only and must not query Supabase
+// src/pages/admin/ are presentation only and must not call the API
 // directly, so the data contract stays in one reviewable place.
-import { supabase, hasSupabase } from '../lib/supabaseClient.js'
-import { getAuthor } from './blog.service.js'
+import { hasStaffSession, signOutStaff, staffFetch, staffJson } from './staffAuth.js'
 
-/** Rows pulled per table. Aggregation happens in the browser (see below). */
+/** Rows pulled per table (the server's limit). Aggregation happens in the browser. */
 const ROW_LIMIT = 5000
 
 /** A session counts as live if its heartbeat landed within this window. */
@@ -21,100 +18,42 @@ export const REALTIME_WINDOW_MINUTES = 5
 
 export class AdminError extends Error {}
 
-function requireClient() {
-  if (!hasSupabase) {
-    throw new AdminError(
-      'Supabase is not configured — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
-    )
-  }
-}
-
 // ---------------------------------------------------------------- auth
 
 /**
- * What this account may do here.
+ * What this staff account may do here, or null when nobody is signed in.
  *
- * /admin is the one staff portal, and the two jobs behind it are separate:
- * a row in admin_users grants the analytics sections, a row in
- * blog_authors grants the journal. Most accounts have one; an account may
- * have both, and then it sees both. Neither is inferred from the other —
- * reading individual visitors' browsing history and writing a blog post
- * are different responsibilities.
- *
- * Both checks read back through RLS, so neither can be faked from the
- * browser: a non-member simply reads nothing.
+ * /admin has separate jobs: visitor analytics, the blog, the ad campaign
+ * sales report and the website enquiries. Each follows from the role
+ * (owner, admin and IT team see everything; sales sees enquiries).
  */
 export async function resolveAccess() {
-  const [analyst, author] = await Promise.all([isAdmin(), getAuthor()])
-  return { analyst, author, any: analyst || Boolean(author) }
-}
-
-export async function signIn(email, password) {
-  requireClient()
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) {
-    // Supabase returns the same message for "no such user" and "wrong
-    // password" on purpose — repeating it verbatim avoids turning the login
-    // form into a way to discover which email addresses exist.
-    throw new AdminError('Incorrect email or password.')
+  if (!(await hasStaffSession())) return null
+  const me = await staffJson('/api/admin/me')
+  const can = (p) => Boolean(me.permissions?.includes(p))
+  const access = {
+    me,
+    analyst: can('analytics.view'),
+    author: can('blog.write') ? { email: me.email, display_name: me.fullName || me.email, role: 'editor' } : null,
+    campaigns: can('money.view'),
+    enquiries: can('enquiries.view'),
   }
-
-  // Signing in is not the same as being allowed in. Anyone with a Supabase
-  // account authenticates successfully; only a listed analyst or author may
-  // go further, so that is checked separately and the session is dropped
-  // again if they are on neither list.
-  const access = await resolveAccess()
-  if (!access.any) {
-    await signOut()
-    throw new AdminError('This account does not have access.')
-  }
+  access.any = access.analyst || Boolean(access.author) || access.campaigns || access.enquiries
   return access
 }
 
 export async function signOut() {
-  if (!hasSupabase) return
-  await supabase.auth.signOut()
-}
-
-export async function getSession() {
-  if (!hasSupabase) return null
-  const { data } = await supabase.auth.getSession()
-  return data.session ?? null
+  await signOutStaff()
 }
 
 /**
- * True when the signed-in user is in admin_users. Relies on the
- * admin_users_read_self policy — a non-admin simply reads back nothing,
- * so this cannot be spoofed from the browser.
- */
-export async function isAdmin() {
-  if (!hasSupabase) return false
-  const { data, error } = await supabase.from('admin_users').select('user_id').maybeSingle()
-  if (error) return false
-  return Boolean(data)
-}
-
-export function onAuthChange(callback) {
-  if (!hasSupabase) return () => {}
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => callback(session))
-  return () => data.subscription.unsubscribe()
-}
-
-/**
- * Best-effort record that this account opened the dashboard. Never blocks
- * rendering — an audit write failing must not deny the analyst their view.
+ * Best-effort record that this account opened the dashboard or a visitor's
+ * journey. Never blocks rendering — an audit write failing must not deny
+ * the analyst their view.
  */
 export async function logAccess(action, target = null) {
-  if (!hasSupabase) return
   try {
-    const session = await getSession()
-    if (!session) return
-    await supabase.from('admin_audit_log').insert({
-      user_id: session.user.id,
-      email: session.user.email,
-      action,
-      target,
-    })
+    await staffFetch('/api/admin/site/opened', { method: 'POST', body: JSON.stringify({ action, target }) })
   } catch {
     /* audit logging is best-effort */
   }
@@ -216,27 +155,17 @@ function withinRange(iso, from, to) {
  * the UI says so rather than quietly under-reporting.
  */
 export async function fetchAnalytics() {
-  requireClient()
-
-  const [visitors, sessions, pageviews, events] = await Promise.all([
-    supabase.from('visitors').select('*').order('visitor_no', { ascending: true }).limit(ROW_LIMIT),
-    supabase.from('visitor_sessions').select('*').order('started_at', { ascending: false }).limit(ROW_LIMIT),
-    supabase.from('visitor_pageviews').select('*').order('entered_at', { ascending: false }).limit(ROW_LIMIT),
-    supabase.from('visitor_events').select('*').order('occurred_at', { ascending: false }).limit(ROW_LIMIT),
-  ])
-
-  const failed = [visitors, sessions, pageviews, events].find((r) => r.error)
-  if (failed) throw new AdminError(failed.error.message)
-
-  return {
-    visitors: visitors.data ?? [],
-    sessions: sessions.data ?? [],
-    pageviews: pageviews.data ?? [],
-    events: events.data ?? [],
-    truncated:
-      (sessions.data ?? []).length >= ROW_LIMIT ||
-      (pageviews.data ?? []).length >= ROW_LIMIT ||
-      (visitors.data ?? []).length >= ROW_LIMIT,
+  try {
+    const raw = await staffJson('/api/admin/site/analytics')
+    return {
+      visitors: raw.visitors ?? [],
+      sessions: raw.sessions ?? [],
+      pageviews: raw.pageviews ?? [],
+      events: raw.events ?? [],
+      truncated: Boolean(raw.truncated) || [raw.sessions, raw.pageviews, raw.visitors].some((r) => (r ?? []).length >= ROW_LIMIT),
+    }
+  } catch (err) {
+    throw new AdminError(err.message)
   }
 }
 
@@ -638,11 +567,8 @@ export function buildJourney(row) {
    These do NOT go through fetchAnalytics(). Clicks are the highest-volume
    thing the site records, and pulling them into the browser to count them
    would not survive contact with real traffic, so the grouping happens in
-   Postgres (see the functions in
-   database/migrations/add_interaction_analytics.sql) and only summary rows
-   cross the network. Those functions run as the caller, so the same RLS
-   policies still apply: a signed-in account that is not in admin_users
-   gets zero rows from them.
+   Postgres (backend/lib/sales/sitedata.js) and only summary rows cross
+   the network, to staff whose role has analytics.view.
    ================================================================ */
 
 /**
@@ -672,23 +598,16 @@ export const HEATMAP_DEVICES = [
 /** Ceiling on points drawn in one heatmap. Reported in the UI, never silent. */
 export const HEATMAP_POINT_LIMIT = 5000
 
-/**
- * Turns a Supabase RPC failure into something an analyst can act on.
- * The dashboard tends to be deployed before the migration is run, and
- * "Could not find the function" is not a message anyone can do anything
- * with — naming the file to run is.
- */
-function rpcError(error) {
-  const missing =
-    error.code === 'PGRST202' ||
-    /could not find the function|does not exist/i.test(error.message || '')
-
-  if (missing) {
-    return new AdminError(
-      'Interaction analytics is not set up yet. Run database/migrations/add_interaction_analytics.sql in the Supabase SQL editor, then refresh.'
-    )
+/** GET from the staff API, with a query string from the non-empty params. */
+async function getSite(path, params = {}) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== null && v !== undefined && v !== '')
+  ).toString()
+  try {
+    return await staffJson('/api/admin/site/' + path + (qs ? '?' + qs : ''))
+  } catch (err) {
+    throw new AdminError(err.message)
   }
-  return new AdminError(error.message)
 }
 
 const count = (value) => Number(value) || 0
@@ -696,28 +615,15 @@ const maybeNumber = (value) => (value == null ? null : Number(value))
 
 /** Everything the Behaviour and Heatmap sections need, for one date range. */
 export async function fetchBehaviour(rangeId = '7d') {
-  requireClient()
   const range = resolveRange(rangeId)
-  const from = range.from ? range.from.toISOString() : null
-
-  const [pages, rage, dead, elements, scroll] = await Promise.all([
-    supabase.rpc('interaction_page_summary', { p_from: from }),
-    supabase.rpc('interaction_element_summary', { p_kind: 'rage_click', p_from: from, p_path: null, p_limit: 100 }),
-    supabase.rpc('interaction_element_summary', { p_kind: 'dead_click', p_from: from, p_path: null, p_limit: 100 }),
-    supabase.rpc('interaction_element_summary', { p_kind: 'click', p_from: from, p_path: null, p_limit: 200 }),
-    supabase.rpc('scroll_depth_summary', { p_from: from }),
-  ])
-
-  const failed = [pages, rage, dead, elements, scroll].find((r) => r.error)
-  if (failed) throw rpcError(failed.error)
-
+  const data = await getSite('behaviour', { from: range.from ? range.from.toISOString() : null })
   return {
     range,
-    pages: pages.data ?? [],
-    rage: rage.data ?? [],
-    dead: dead.data ?? [],
-    elements: elements.data ?? [],
-    scroll: scroll.data ?? [],
+    pages: data.pages ?? [],
+    rage: data.rage ?? [],
+    dead: data.dead ?? [],
+    elements: data.elements ?? [],
+    scroll: data.scroll ?? [],
   }
 }
 
@@ -793,20 +699,18 @@ export function buildBehaviour(raw) {
 
 /** Click positions for one page, narrowed to one viewport band. */
 export async function fetchHeatmap({ path, rangeId = '7d', device = 'desktop' }) {
-  requireClient()
   const band = HEATMAP_DEVICES.find((d) => d.id === device) ?? HEATMAP_DEVICES[0]
   const range = resolveRange(rangeId)
 
-  const { data, error } = await supabase.rpc('heatmap_points', {
-    p_path: path,
-    p_from: range.from ? range.from.toISOString() : null,
-    p_min_width: band.minWidth,
-    p_max_width: band.maxWidth,
-    p_limit: HEATMAP_POINT_LIMIT,
+  const data = await getSite('heatmap', {
+    path,
+    from: range.from ? range.from.toISOString() : null,
+    minWidth: band.minWidth,
+    maxWidth: band.maxWidth,
+    limit: HEATMAP_POINT_LIMIT,
   })
-  if (error) throw rpcError(error)
 
-  const points = (data ?? [])
+  const points = (data.points ?? [])
     .map((row) => ({ relX: Number(row.rel_x), absY: Number(row.abs_y), kind: row.kind }))
     .filter((p) => Number.isFinite(p.relX) && Number.isFinite(p.absY))
 

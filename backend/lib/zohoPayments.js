@@ -6,9 +6,7 @@
 // be public — see VITE_ZOHO_* in .env.local.example), plus a short-lived
 // payments_session_id minted by createPaymentSession() below.
 //
-// Used by both deployment targets, the same arrangement as lib/supabase.js:
-// the Vercel functions in api/checkout/* and the local dev proxy in
-// backend/server/index.js.
+// Used by the sales checkout through lib/gateways.js.
 //
 // Flow this supports (embedded widget, the mode this storefront uses):
 //   1. server: createPaymentSession()      -> payments_session_id

@@ -10,9 +10,8 @@ import { PAGE_META } from '../../seo.js'
 /**
  * /blog — everything published, newest first.
  *
- * Reads through the ordinary anon client, so what appears here is decided
- * by the RLS policy rather than by this query: drafts and scheduled posts
- * are not filtered out of the results, they are never in them.
+ * The server sends published posts only (/api/blog/posts): drafts are
+ * never in the results.
  */
 export default function BlogListPage() {
   usePageMeta(PAGE_META.blog.title, PAGE_META.blog.description)

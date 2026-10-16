@@ -8,9 +8,9 @@ import '../warehouse/warehouse-pages.css'
 
 /**
  * /admin → Ad campaigns: the "Where orders come from" report from the
- * warehouse panel. Sales figures sit behind the staff sign-in (Google, a
- * staff account with money access: owner, admin or IT team), which is
- * separate from the analytics sign-in, so it is asked for here once if needed.
+ * warehouse panel. Sales figures need a staff account with money access
+ * (owner, admin or IT team); /admin already signs staff in, and the gate
+ * below only shows if that sign-in has lapsed.
  */
 export default function CampaignsPanel() {
   const [state, setState] = useState('checking') // checking | signin | denied | ready

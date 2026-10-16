@@ -15,7 +15,7 @@ import { app } from '../../backend/server/app.js'
 export const api = onRequest(
   {
     region: 'asia-south1',
-    // The gateways and Supabase are all reached over the network, so these
+    // The gateways and the database are all reached over the network, so these
     // spend most of their time waiting rather than computing.
     // Invoice PDFs and tracker spreadsheets are built in memory.
     memory: '512MiB',

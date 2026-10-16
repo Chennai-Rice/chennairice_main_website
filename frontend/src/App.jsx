@@ -33,7 +33,7 @@ import { isCheckoutEnabled } from './config.js'
 import WishlistPage from './shop/pages/WishlistPage.jsx'
 import InfrastructurePage from './pages/infrastructure/InfrastructurePage.jsx'
 
-/* Lazily loaded so the dashboard and the Supabase auth code it pulls in stay
+/* Lazily loaded so the dashboard and the Firebase sign-in code it pulls in stay
    out of the bundle every ordinary shopper downloads — only someone who
    actually opens /admin pays for it. */
 const AdminPage = lazy(() => import('./pages/admin/AdminPage.jsx'))

@@ -8,16 +8,14 @@ import {
   fetchAnalytics,
   fetchBehaviour,
   fetchHeatmap,
-  getSession,
-  isAdmin,
   logAccess,
-  onAuthChange,
   resolveAccess,
-  signIn,
   signOut,
 } from '../../services/admin.service.js'
+import { canUseGoogleSignIn, canUseLocalSignIn, signInLocal, signInWithGoogle } from '../../services/staffAuth.js'
 import JournalPanel from '../blog/JournalPanel.jsx'
 import CampaignsPanel from './CampaignsPanel.jsx'
+import EnquiriesPanel from './EnquiriesPanel.jsx'
 import { LoadingRegion } from './components/ui.jsx'
 import {
   BehaviourView,
@@ -35,17 +33,17 @@ import './admin.css'
 /**
  * /admin — the analyst dashboard.
  *
- * This page holds no credentials and no privileged key. It signs in through
- * Supabase Auth and then reads whatever the RLS policies allow; a visitor
- * who is not in admin_users sees nothing here no matter what they do to the
- * JavaScript, because the restriction lives in Postgres, not in this file.
+ * This page holds no credentials and no privileged key. Staff sign in with
+ * their Google account (the same sign-in as /warehouse) and the server
+ * answers only what their role allows, so changing this JavaScript reveals
+ * nothing: the restriction lives in the backend, not in this file.
  *
  * Navigation is local state rather than routes: the dashboard is one screen
  * with several panels over a single dataset, so switching section should
  * never refetch or reset the date range.
  */
 
-/* Sections that need a row in admin_users. */
+/* Sections that need analytics.view (owner, admin, IT team). */
 const ANALYTICS_NAV = [
   { id: 'overview', label: 'Overview', subtitle: 'How the site is performing', icon: 'grid' },
   { id: 'visitors', label: 'Visitors', subtitle: 'Everyone who has browsed', icon: 'user' },
@@ -56,10 +54,15 @@ const ANALYTICS_NAV = [
   { id: 'heatmap', label: 'Heatmap', subtitle: 'Where visitors click on a page', icon: 'target' },
   { id: 'scroll', label: 'Scroll depth', subtitle: 'How far down pages are read', icon: 'depth' },
   { id: 'realtime', label: 'Realtime', subtitle: 'Who is on the site now', icon: 'pulse' },
-  { id: 'campaigns', label: 'Ad campaigns', subtitle: 'Orders from Meta ads, Google Ads and direct visits', icon: 'target' },
 ]
 
-/* Section that needs a row in blog_authors. */
+/* Needs money.view: the report carries order values. */
+const CAMPAIGNS_NAV = { id: 'campaigns', label: 'Ad campaigns', subtitle: 'Orders from Meta ads, Google Ads and direct visits', icon: 'target' }
+
+/* Needs enquiries.view (also the sales team). */
+const ENQUIRIES_NAV = { id: 'enquiries', label: 'Enquiries', subtitle: 'Messages from the Contact and Bulk order forms', icon: 'mail' }
+
+/* Needs blog.write. */
 const JOURNAL_NAV = {
   id: 'journal',
   label: 'Journal',
@@ -79,6 +82,8 @@ const NAV_SOON = [
   { id: 'settings', label: 'Settings', icon: 'cog' },
 ]
 
+const ROLE_LABELS = { owner: 'Owner', admin: 'Admin', it: 'IT Team', sales: 'Sales' }
+
 const PATHS = {
   grid: <><rect x="2.5" y="2.5" width="6" height="6" rx="1.4" /><rect x="11.5" y="2.5" width="6" height="6" rx="1.4" /><rect x="2.5" y="11.5" width="6" height="6" rx="1.4" /><rect x="11.5" y="11.5" width="6" height="6" rx="1.4" /></>,
   user: <><circle cx="10" cy="6.5" r="3" /><path d="M3.5 17c0-3.3 2.9-5.5 6.5-5.5s6.5 2.2 6.5 5.5" /></>,
@@ -90,6 +95,7 @@ const PATHS = {
   target: <><circle cx="10" cy="10" r="6.8" /><circle cx="10" cy="10" r="2.6" /><path d="M10 1.6v2.2M10 16.2v2.2M18.4 10h-2.2M3.8 10H1.6" /></>,
   depth: <><path d="M10 2.6v9.6" /><path d="M6.2 8.4L10 12.2l3.8-3.8" /><path d="M3.4 16.6h13.2" /></>,
   doc: <><path d="M5 2.5h6.5L15.5 6.5V17.5H5z" /><path d="M11.5 2.5V6.5h4" /></>,
+  mail: <><rect x="2.5" y="4.5" width="15" height="11" rx="1.6" /><path d="M3 5.5l7 5.5 7-5.5" /></>,
   pen: <><path d="M13.4 3.2l3.4 3.4-9 9-4.2.8.8-4.2z" /><path d="M11.8 4.8l3.4 3.4" /></>,
   cog: <><circle cx="10" cy="10" r="2.6" /><path d="M10 2.6v2.1M10 15.3v2.1M17.4 10h-2.1M4.7 10H2.6M15.2 4.8l-1.5 1.5M6.3 13.7l-1.5 1.5M15.2 15.2l-1.5-1.5M6.3 6.3L4.8 4.8" /></>,
 }
@@ -103,44 +109,30 @@ const NavIcon = ({ name }) => (
 
 export default function AdminPage() {
   const [checking, setChecking] = useState(true)
-  const [session, setSession] = useState(null)
   const [access, setAccess] = useState(null)
+  const [denied, setDenied] = useState('')
 
-  useEffect(() => {
-    let cancelled = false
-
-    // A Supabase session in localStorage is not proof of access — the
-    // account could have been removed from admin_users or blog_authors
-    // since last login, so both are re-checked on every load rather than
-    // trusted.
-    getSession()
-      .then(async (existing) => {
-        if (cancelled || !existing) return
-        const resolved = await resolveAccess()
-        if (cancelled) return
-        if (resolved.any) {
-          setSession(existing)
-          setAccess(resolved)
-        } else {
-          await signOut()
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setChecking(false)
-      })
-
-    const unsubscribe = onAuthChange((next) => {
-      if (!next) {
-        setSession(null)
+  /* Access is asked of the server on every load rather than remembered: a
+     role can change or be removed between visits. */
+  const check = useCallback(async () => {
+    try {
+      const resolved = await resolveAccess()
+      if (resolved && !resolved.any) {
+        await signOut()
+        setDenied('This staff account has no access to the dashboard.')
         setAccess(null)
+      } else {
+        setAccess(resolved)
       }
-    })
-
-    return () => {
-      cancelled = true
-      unsubscribe()
+    } catch (err) {
+      setAccess(null)
+      if (err?.status === 403) setDenied(err.message)
+    } finally {
+      setChecking(false)
     }
   }, [])
+
+  useEffect(() => { check() }, [check])
 
   if (checking) {
     return (
@@ -150,20 +142,15 @@ export default function AdminPage() {
     )
   }
 
-  return session && access ? (
-    <Dashboard
-      session={session}
-      access={access}
-      onSignOut={() => {
-        setSession(null)
-        setAccess(null)
-      }}
-    />
+  return access ? (
+    <Dashboard access={access} onSignOut={() => setAccess(null)} />
   ) : (
     <LoginScreen
-      onSignedIn={async (resolved) => {
-        setAccess(resolved)
-        setSession(await getSession())
+      initialError={denied}
+      onSignedIn={() => {
+        setDenied('')
+        setChecking(true)
+        check()
       }}
     />
   )
@@ -171,20 +158,21 @@ export default function AdminPage() {
 
 /* ---------------------------------------------------------------- login */
 
-function LoginScreen({ onSignedIn }) {
+function LoginScreen({ onSignedIn, initialError = '' }) {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(initialError)
   const [busy, setBusy] = useState(false)
 
-  const submit = async (event) => {
-    event.preventDefault()
+  useEffect(() => { setError(initialError) }, [initialError])
+
+  const run = async (signIn) => {
     setError('')
     setBusy(true)
     try {
-      onSignedIn(await signIn(email.trim(), password))
+      await signIn()
+      onSignedIn()
     } catch (err) {
-      setError(err instanceof AdminError ? err.message : 'Could not sign in. Please try again.')
+      setError(err?.message || 'Could not sign in. Please try again.')
     } finally {
       setBusy(false)
     }
@@ -192,7 +180,7 @@ function LoginScreen({ onSignedIn }) {
 
   return (
     <div className="ad-shell ad-shell-center">
-      <form className="ad-login" onSubmit={submit}>
+      <div className="ad-login">
         <div className="ad-login-brand">
           <span className="ad-logo" aria-hidden="true">CR</span>
           <div>
@@ -201,40 +189,48 @@ function LoginScreen({ onSignedIn }) {
           </div>
         </div>
 
-        <label className="ad-field">
-          <span>Email</span>
-          <input type="email" className="ad-input" value={email} autoComplete="username" required
-                 onChange={(e) => setEmail(e.target.value)} />
-        </label>
-
-        <label className="ad-field">
-          <span>Password</span>
-          <input type="password" className="ad-input" value={password} autoComplete="current-password" required
-                 onChange={(e) => setPassword(e.target.value)} />
-        </label>
+        <p className="ad-muted ad-small">Use your company Google account, the same one as the warehouse panel.</p>
 
         {error && <p className="ad-alert" role="alert">{error}</p>}
 
-        <button className="ad-btn ad-btn-primary" type="submit" disabled={busy}>
-          {busy ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
+        {canUseGoogleSignIn && (
+          <button className="ad-btn ad-btn-primary" type="button" disabled={busy} onClick={() => run(signInWithGoogle)}>
+            {busy ? 'Signing in…' : 'Sign in with Google'}
+          </button>
+        )}
+
+        {canUseLocalSignIn && (
+          <form onSubmit={(e) => { e.preventDefault(); run(() => signInLocal(email)) }}>
+            <label className="ad-field">
+              <span>Staff email (local test only)</span>
+              <input type="email" className="ad-input" value={email} required onChange={(e) => setEmail(e.target.value)} />
+            </label>
+            <button className="ad-btn" type="submit" disabled={busy}>Sign in</button>
+          </form>
+        )}
+
+        {!canUseGoogleSignIn && !canUseLocalSignIn && (
+          <p className="ad-alert">Google sign-in is not set up in this build.</p>
+        )}
+      </div>
     </div>
   )
 }
 
 /* ------------------------------------------------------------ dashboard */
 
-function Dashboard({ session, access, onSignOut }) {
-  /* The sidebar is built from what this account may actually do, so a
-     writer never sees an analytics section they cannot open, and an
-     analyst never sees the journal. */
+function Dashboard({ access, onSignOut }) {
+  /* The sidebar is built from what this account may actually do, so
+     nobody sees a section their role cannot open. */
   const nav = useMemo(() => {
     const items = []
     if (access.analyst) items.push(...ANALYTICS_NAV)
+    if (access.campaigns) items.push(CAMPAIGNS_NAV)
+    if (access.enquiries) items.push(ENQUIRIES_NAV)
     if (access.author) items.push(JOURNAL_NAV)
     return items
   }, [access])
+  const email = access.me?.email || ''
 
   const [raw, setRaw] = useState(null)
   const [error, setError] = useState('')
@@ -259,8 +255,7 @@ function Dashboard({ session, access, onSignOut }) {
   const [refreshKey, setRefreshKey] = useState(0)
 
   const load = useCallback(() => {
-    // A writer has no rows to read here — RLS would return an empty set —
-    // so the query is not made at all rather than made and discarded.
+    // Only roles with analytics access may read it, so nobody else asks.
     if (!access.analyst) return
     setLoading(true)
     fetchAnalytics()
@@ -279,8 +274,8 @@ function Dashboard({ session, access, onSignOut }) {
 
   useEffect(() => {
     load()
-    // admin_audit_log only accepts writes from an analyst, and a writer
-    // opening the journal is not the access this log exists to record.
+    // Recorded in the staff audit log: opening visitor data is the access
+    // this log exists for.
     if (access.analyst) logAccess('view_dashboard')
   }, [load, access.analyst])
 
@@ -414,17 +409,11 @@ function Dashboard({ session, access, onSignOut }) {
 
         <div className="ad-side-user">
           <span className="ad-avatar" aria-hidden="true">
-            {session.user.email?.charAt(0).toUpperCase()}
+            {email.charAt(0).toUpperCase()}
           </span>
           <span className="ad-side-user-text">
-            <span className="ad-side-email" title={session.user.email}>{session.user.email}</span>
-            <span className="ad-muted ad-small">
-              {access.analyst && access.author
-                ? 'Analyst · Writer'
-                : access.analyst
-                  ? 'Analyst'
-                  : 'Writer'}
-            </span>
+            <span className="ad-side-email" title={email}>{email}</span>
+            <span className="ad-muted ad-small">{ROLE_LABELS[access.me?.role] || access.me?.role}</span>
           </span>
         </div>
       </aside>
@@ -442,7 +431,7 @@ function Dashboard({ session, access, onSignOut }) {
           </div>
 
           <div className="ad-topbar-actions">
-            {view !== 'realtime' && view !== 'journal' && view !== 'campaigns' && (
+            {view !== 'realtime' && ANALYTICS_NAV.some((n) => n.id === view) ? (
               <label className="ad-select-wrap">
                 <span className="ad-sr">Date range</span>
                 <select className="ad-select" value={rangeId} onChange={(e) => setRangeId(e.target.value)}>
@@ -451,8 +440,8 @@ function Dashboard({ session, access, onSignOut }) {
                   ))}
                 </select>
               </label>
-            )}
-            {view !== 'journal' && view !== 'campaigns' && (
+            ) : null}
+            {ANALYTICS_NAV.some((n) => n.id === view) && (
               <button type="button" className="ad-btn ad-btn-quiet" onClick={refresh} disabled={loading}>
                 {loading ? 'Refreshing…' : 'Refresh'}
               </button>
@@ -468,6 +457,8 @@ function Dashboard({ session, access, onSignOut }) {
             <JournalPanel author={access.author} />
           ) : view === 'campaigns' ? (
             <CampaignsPanel />
+          ) : view === 'enquiries' ? (
+            <EnquiriesPanel />
           ) : needsInteractions ? (
             <>
               {view === 'behaviour' && (

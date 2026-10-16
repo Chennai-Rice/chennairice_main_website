@@ -8,10 +8,8 @@ import './blog.css'
 /**
  * /blog/:slug — one post.
  *
- * A signed-in author reading their own unpublished post gets it here, which
- * is the preview: it falls out of the RLS policy rather than needing a
- * separate route. The draft banner exists so that is never mistaken for
- * something the public can see.
+ * Only published posts are served here; drafts stay in the writing tool
+ * under /admin until they are published.
  */
 export default function BlogPostPage() {
   const { slug } = useParams()

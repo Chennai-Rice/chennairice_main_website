@@ -1,8 +1,7 @@
 // Guest checkout on the sales database.
 //
 // Answers /api/checkout/session and /api/checkout/verify with exactly the same
-// response shapes as the earlier Supabase version (lib/checkout.js), so the
-// storefront's CheckoutPage needs no change when the switch is made.
+// response shapes the storefront's CheckoutPage expects.
 //
 //   session  validate buyer → price cart → create order + HOLD STOCK (30 min)
 //            → open a payment on the first working gateway

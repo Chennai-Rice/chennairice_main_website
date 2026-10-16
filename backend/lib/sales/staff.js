@@ -49,6 +49,10 @@ const PERMISSIONS = {
   'emails.view': ['owner', 'admin', 'it'],
   // The register of every Order ID / Shipment ID issued, with Razorpay refs.
   'ids.view': ['owner', 'admin', 'it'],
+  // The /admin dashboard: visitor analytics, the blog editor, enquiries.
+  'analytics.view': ['owner', 'admin', 'it'],
+  'blog.write': ['owner', 'admin', 'it'],
+  'enquiries.view': ['owner', 'admin', 'it', 'sales'],
 }
 
 export function can(staff, permission) {

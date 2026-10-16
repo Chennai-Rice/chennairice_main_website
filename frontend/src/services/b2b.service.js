@@ -6,7 +6,7 @@
 // of an inline fetch(), matching the field names those endpoints already
 // expect.
 //
-// Unlike analytics.service.js, these do NOT swallow errors: a contact/bulk
+// These do NOT swallow errors: a contact/bulk
 // order form needs to know a submission failed so it can show the user the
 // server's error message (see api/_lib/enquiries.js's client-safe error
 // strings), the same way the existing contact/bulk-order form components

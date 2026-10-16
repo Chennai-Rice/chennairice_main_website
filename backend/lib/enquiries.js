@@ -2,7 +2,7 @@
 // (api/contact.js, api/bulk-order.js, production) and the local dev proxy
 // (backend/server/index.js). Keeping one copy avoids the two drifting apart, the
 // same arrangement as lib/consent.js.
-import { hasSupabase, supabase } from './supabase.js'
+import { hasDatabase, query } from './db.js'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_PATTERN = /^[+()\-\s\d]{8,16}$/
@@ -74,17 +74,25 @@ export function buildBulkOrderRow(body) {
 
 /**
  * Inserts one row into the given table. Resolves to true when stored and
- * false when Supabase is not configured — a missing store must not fail the
+ * false when no database is configured — a missing store must not fail the
  * request, since the visitor should still see their enquiry as accepted only
  * once we are certain we can retain it, so callers surface `false` as a
  * clear "not delivered yet" state rather than a fabricated success.
  */
-export async function insertEnquiry(table, row) {
-  if (!hasSupabase) return false
+const ENQUIRY_TABLES = new Set(['contact_enquiries', 'bulk_order_enquiries'])
 
-  const { error } = await supabase.from(table).insert(row)
-  if (error) {
-    const err = new Error(`Supabase insert into ${table} failed: ${error.message}`)
+export async function insertEnquiry(table, row) {
+  if (!ENQUIRY_TABLES.has(table)) throw new Error('Unknown enquiry table ' + table)
+  if (!hasDatabase()) return false
+
+  const cols = Object.keys(row)
+  try {
+    await query(
+      `insert into ${table} (${cols.join(', ')}) values (${cols.map((_, i) => '$' + (i + 1)).join(', ')})`,
+      cols.map((c) => row[c])
+    )
+  } catch (cause) {
+    const err = new Error(`Insert into ${table} failed: ${cause.message}`)
     err.status = 502
     err.publicMessage = 'Could not save your enquiry. Please try again shortly.'
     throw err
