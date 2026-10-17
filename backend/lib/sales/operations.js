@@ -9,7 +9,7 @@
 import { tx, query } from '../db.js'
 import { createRefund as razorpayRefund } from '../razorpay.js'
 import { moveStock, releaseForOrder } from './stock.js'
-import { queueEmail, templates, queueShippedEmail, cancelShippedEmails } from './email.js'
+import { queueEmail, staffRecipients, templates, queueShippedEmail, cancelShippedEmails } from './email.js'
 import { audit, requirePermission } from './staff.js'
 import { findCourier, buildTrackingUrl } from './couriers.js'
 import { shippingTax } from './tax.js'
@@ -535,6 +535,11 @@ export async function cancelOrder(staff, id, body = {}) {
     if (order.status !== 'pending_payment') {
       const note = order.payment_status === 'paid' ? 'Your payment will be refunded in full.' : null
       await queueEmail(db, { to: updated.contact_email, ...templates.orderCancelled(updated, note), orderId: id, dedupeKey: 'cancelled:' + id })
+      await queueEmail(db, {
+        to: await staffRecipients(db),
+        ...templates.orderCancelledForStaff(updated, { by: staff.full_name || staff.fullName || '', wasPaid: order.payment_status === 'paid' }),
+        orderId: id, dedupeKey: 'staff-cancelled:' + id,
+      })
     }
     return updated
   })
