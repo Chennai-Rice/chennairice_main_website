@@ -63,7 +63,7 @@ export async function updateSettings(staff, body) {
     let value = str(String(raw ?? ''))
     if (key === 'staff_notify_emails') {
       const list = parseEmailList(value)
-      const typed = value.split(/[s,;]+/).filter(Boolean)
+      const typed = value.split(/[\s,;]+/).filter(Boolean)
       if (list.length !== new Set(typed.map((e) => e.toLowerCase())).size) throw httpError('One of those does not look like an email address.')
       value = list.join(', ')
     }
