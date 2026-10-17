@@ -84,6 +84,52 @@ export const PAGE_META = {
     description: 'Write a slogan for Chennai Rice and win exciting prizes. Buy a Kitchidi Ponni Rice 5 kg or 26 kg bag, scan the coupon inside and register to enter.',
     h1: 'Chennai Rice Slogan Contest',
   },
+  // Phase 2 landing pages (data/landing.js). lang and alternate drive the
+  // hreflang links between each English page and its Tamil version.
+  ponni: {
+    path: '/ponni-rice',
+    alternate: '/ta/ponni-rice',
+    title: 'Ponni Rice 26 kg – Aged Ponni Rice Online | Chennai Rice',
+    description: 'Buy Ponni rice 26 kg from Chennai Rice, Erode. Aged Ponni varieties that cook soft and non-sticky for everyday meals. See prices and order online.',
+    h1: 'Ponni Rice – 26 kg Packs from Chennai Rice',
+  },
+  idli: {
+    path: '/idli-rice',
+    alternate: '/ta/idli-rice',
+    title: 'Idli Rice 26 kg for Soft Idli & Dosa | Chennai Rice',
+    description: 'Chennai Rice Special Idly Rice in 26 kg packs: grinds smooth, ferments well and steams into soft, fluffy idlis and crisp dosas. Order for home or wholesale.',
+    h1: 'Idli Rice for Soft Idlis & Crisp Dosas – 26 kg',
+  },
+  distributor: {
+    path: '/rice-distributorship',
+    title: 'Rice Distributorship in Tamil Nadu | Join Chennai Rice',
+    description: 'Become a Chennai Rice distributor. A rice brand since the 1950s, steady supply from our Erode mill and 13 rice packs to sell. Apply online today.',
+    h1: 'Become a Chennai Rice Distributor',
+  },
+  taHome: {
+    path: '/ta',
+    lang: 'ta',
+    alternate: '/',
+    title: 'சென்னை ரைஸ் – பொன்னி & இட்லி அரிசி உற்பத்தியாளர், ஈரோடு',
+    description: 'ஈரோடு சென்னை ரைஸ் இண்டஸ்ட்ரீஸ் – 1950களிலிருந்து தரமான பொன்னி, இட்லி மற்றும் புழுங்கல் அரிசி 26 கிலோ பைகளில். இப்போதே ஆர்டர் செய்யுங்கள்.',
+    h1: 'தரமான பொன்னி அரிசி & இட்லி அரிசி – ஈரோடு',
+  },
+  taPonni: {
+    path: '/ta/ponni-rice',
+    lang: 'ta',
+    alternate: '/ponni-rice',
+    title: 'பொன்னி அரிசி 26 கிலோ – விலை & ஆர்டர் | சென்னை ரைஸ்',
+    description: 'சென்னை ரைஸ் பொன்னி அரிசி 26 கிலோ – பழைய பொன்னி வகைகள். தினசரி சாப்பாட்டுக்கு ஏற்றது. விலை பார்த்து ஆன்லைனில் ஆர்டர் செய்யுங்கள்.',
+    h1: 'பொன்னி அரிசி – 26 கிலோ',
+  },
+  taIdli: {
+    path: '/ta/idli-rice',
+    lang: 'ta',
+    alternate: '/idli-rice',
+    title: 'இட்லி அரிசி 26 கிலோ – மென்மையான இட்லிக்கு | சென்னை ரைஸ்',
+    description: 'சென்னை ரைஸ் ஸ்பெஷல் இட்லி அரிசி 26 கிலோ – மிருதுவான இட்லி, மொறுமொறுப்பான தோசைக்கு. வீட்டுக்கும் மொத்த விற்பனைக்கும் ஆர்டர் செய்யுங்கள்.',
+    h1: 'இட்லி அரிசி – மென்மையான இட்லிக்கு',
+  },
   trackOrder: {
     path: '/track-order',
     title: 'Track Your Order | Chennai Rice',

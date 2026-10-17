@@ -21,6 +21,12 @@ const SITE = process.env.SITE_URL || 'https://chennairiceindustries.com'
 const STATIC_ROUTES = [
   ['/', 1.0, 'weekly'],
   ['/rice-products', 0.9, 'weekly'],
+  ['/ponni-rice', 0.9, 'weekly'],
+  ['/idli-rice', 0.9, 'weekly'],
+  ['/rice-distributorship', 0.7, 'monthly'],
+  ['/ta', 0.6, 'monthly'],
+  ['/ta/ponni-rice', 0.6, 'monthly'],
+  ['/ta/idli-rice', 0.6, 'monthly'],
   ['/infrastructure', 0.7, 'monthly'],
   ['/about-us', 0.7, 'monthly'],
   ['/contest', 0.6, 'monthly'],

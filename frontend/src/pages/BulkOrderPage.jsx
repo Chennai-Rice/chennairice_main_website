@@ -56,7 +56,12 @@ const Icon = ({ kind }) => (
 
 export default function BulkOrderPage() {
   usePageMeta(PAGE_META.bulkOrder.title, PAGE_META.bulkOrder.description)
-  const [form, setForm] = useState(EMPTY)
+  // /bulk-order?type=distributor (from the distributorship page) starts with
+  // that buyer type chosen.
+  const [form, setForm] = useState(() => {
+    const type = new URLSearchParams(window.location.search).get('type')
+    return BUYER_TYPES.some((t) => t.key === type) ? { ...EMPTY, type } : EMPTY
+  })
   const [errors, setErrors] = useState({})
   const [sent, setSent] = useState(false)
   const [submitting, setSubmitting] = useState(false)

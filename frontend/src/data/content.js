@@ -320,6 +320,16 @@ export const FOOTER = {
 
   columns: [
     {
+      // The topic pages (SEO sheet Phase 2), linked from every page.
+      head: 'Our Rice',
+      links: [
+        { label: 'Ponni Rice', to: '/ponni-rice' },
+        { label: 'Idli Rice', to: '/idli-rice' },
+        { label: 'Become a Distributor', to: '/rice-distributorship' },
+        { label: 'தமிழ்', to: '/ta' },
+      ],
+    },
+    {
       head: 'Company',
       links: [
         { label: 'About Us', to: '/about-us' },

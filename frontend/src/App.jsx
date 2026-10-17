@@ -22,6 +22,8 @@ import ComingSoonPage from './pages/ComingSoonPage.jsx'
 import ContactPage from './pages/ContactPage.jsx'
 import TrackOrderPage from './pages/TrackOrderPage.jsx'
 import BulkOrderPage from './pages/BulkOrderPage.jsx'
+import LandingPage from './pages/LandingPage.jsx'
+import { LANDING_PAGES } from './data/landing.js'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage.jsx'
 import TermsPage from './pages/TermsPage.jsx'
 import ProductsPage from './shop/pages/ProductsPage.jsx'
@@ -156,6 +158,10 @@ export default function App() {
         <Route path="/contact-us" element={<ContactPage />} />
         <Route path="/track-order" element={<TrackOrderPage />} />
         <Route path="/bulk-order" element={<BulkOrderPage />} />
+        {/* Topic landing pages and the Tamil pages (SEO sheet Phase 2). */}
+        {LANDING_PAGES.map(({ path, key }) => (
+          <Route key={path} path={path} element={<LandingPage key={key} id={key} />} />
+        ))}
         <Route path="/about-us" element={<AboutPage />} />
         {/* Old addresses (and /home) still land on the right page; firebase.json
             also answers them with a permanent 301 for search engines. */}

@@ -1,0 +1,246 @@
+/* Topic landing pages (pages/LandingPage.jsx): /ponni-rice, /idli-rice,
+   /rice-distributorship and the Tamil pages. Same type scale and colours as
+   the rest of the site; long-form text kept to a readable measure. */
+.shop-scope .lp {
+  background: var(--cream);
+  color: var(--heading);
+}
+
+.shop-scope .lp-shell {
+  width: min(100% - 32px, 820px);
+  margin-inline: auto;
+}
+.shop-scope .lp-shell--wide {
+  width: min(100% - 32px, 1200px);
+}
+
+/* hero — padding-top clears the fixed navbar */
+.shop-scope .lp-hero {
+  padding: 150px 0 56px;
+  background: var(--cream-soft);
+  border-bottom: 1px solid rgba(74, 44, 34, 0.12);
+  text-align: center;
+}
+.shop-scope .lp-eyebrow {
+  margin: 0 0 14px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.shop-scope .lp-title {
+  margin: 0 0 22px;
+  font-family: var(--serif);
+  font-size: var(--fs-h1);
+  line-height: 1.15;
+  color: var(--heading);
+  text-wrap: balance;
+}
+.shop-scope .lp-intro {
+  max-width: 680px;
+  margin: 0 auto 14px;
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+.shop-scope .lp-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 14px 22px;
+  margin-top: 26px;
+}
+
+.shop-scope .lp-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 26px;
+  border-radius: 999px;
+  background: var(--maroon);
+  color: #fff;
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+.shop-scope .lp-btn:hover,
+.shop-scope .lp-btn:focus-visible { background: var(--maroon-deep); }
+
+.shop-scope .lp-lang {
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--maroon);
+  text-underline-offset: 4px;
+}
+
+/* products */
+.shop-scope .lp-products {
+  padding: 64px 0 24px;
+}
+.shop-scope .lp-products .lp-h2 { text-align: center; margin-bottom: 32px; }
+.shop-scope .lp-muted { text-align: center; color: var(--muted); }
+
+/* long-form body */
+.shop-scope .lp-body {
+  padding: 40px 0 96px;
+}
+.shop-scope .lp-section {
+  padding: 28px 0;
+}
+.shop-scope .lp-h2 {
+  margin: 0 0 16px;
+  font-family: var(--serif);
+  font-size: var(--fs-h2);
+  line-height: 1.2;
+  color: var(--heading);
+}
+.shop-scope .lp-h2--small { font-size: var(--fs-h3); }
+.shop-scope .lp-section p,
+.shop-scope .lp-list li,
+.shop-scope .lp-steps li {
+  font-family: var(--sans);
+  font-size: 16.5px;
+  line-height: 1.8;
+  color: #5c4a3c;
+}
+.shop-scope .lp-section p { margin: 0 0 14px; }
+.shop-scope .lp-list,
+.shop-scope .lp-steps {
+  margin: 0 0 14px;
+  padding-left: 1.3em;
+  display: grid;
+  gap: 8px;
+}
+.shop-scope .lp-list { list-style: disc; }
+.shop-scope .lp-steps { list-style: decimal; }
+.shop-scope .lp-list li::marker,
+.shop-scope .lp-steps li::marker { color: var(--gold); font-weight: 700; }
+.shop-scope .lp-note {
+  padding: 12px 16px;
+  border-left: 3px solid var(--gold);
+  background: var(--cream-soft);
+  font-style: italic;
+}
+
+/* comparison table: scrolls inside its own box on narrow screens */
+.shop-scope .lp-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(74, 44, 34, 0.16);
+  border-radius: 12px;
+  background: #fff;
+}
+.shop-scope .lp-table-wrap:focus-visible { outline: 2px solid var(--maroon); outline-offset: 2px; }
+.shop-scope .lp-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  font-family: var(--sans);
+  font-size: 14.5px;
+}
+.shop-scope .lp-table th,
+.shop-scope .lp-table td {
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(74, 44, 34, 0.1);
+  color: #5c4a3c;
+}
+.shop-scope .lp-table thead th {
+  background: var(--maroon);
+  color: #fff;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.shop-scope .lp-table tbody th { font-weight: 600; color: var(--heading); }
+.shop-scope .lp-table tbody tr:last-child > * { border-bottom: 0; }
+
+.shop-scope .lp-cta-row { text-align: center; padding: 12px 0 8px; }
+
+/* FAQ — the same accordion as the home page */
+.shop-scope .lp-faq-list { border-top: 1px solid rgba(74, 44, 34, 0.16); }
+.shop-scope .lp-faq-item { border-bottom: 1px solid rgba(74, 44, 34, 0.16); }
+.shop-scope .lp-faq-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 4px;
+  cursor: pointer;
+  list-style: none;
+}
+.shop-scope .lp-faq-item summary::-webkit-details-marker { display: none; }
+.shop-scope .lp-faq-q {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 19px;
+  line-height: 1.35;
+  color: var(--heading);
+}
+.shop-scope .lp-faq-icon {
+  position: relative;
+  flex: 0 0 18px;
+  height: 18px;
+}
+.shop-scope .lp-faq-icon::before,
+.shop-scope .lp-faq-icon::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 18px;
+  height: 2px;
+  background: var(--maroon);
+  transition: transform 0.2s ease;
+}
+.shop-scope .lp-faq-icon::after { transform: rotate(90deg); }
+.shop-scope .lp-faq-item[open] .lp-faq-icon::after { transform: rotate(0); }
+.shop-scope .lp-faq-a { margin: 0 4px 20px !important; }
+
+/* related links */
+.shop-scope .lp-links { padding-top: 28px; }
+.shop-scope .lp-links ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.shop-scope .lp-links a {
+  display: inline-flex;
+  gap: 8px;
+  padding: 12px 18px;
+  border: 1px solid rgba(122, 31, 43, 0.3);
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--maroon);
+  text-decoration: none;
+}
+.shop-scope .lp-links a:hover,
+.shop-scope .lp-links a:focus-visible { background: rgba(122, 31, 43, 0.06); }
+
+/* Tamil: a typeface with Tamil letters, and a little more line height */
+.shop-scope .lp[lang='ta'],
+.shop-scope .lp[lang='ta'] :is(.lp-title, .lp-h2, .lp-faq-q, .lp-eyebrow, p, li, a) {
+  font-family: 'Noto Sans Tamil', 'Nirmala UI', 'Latha', var(--sans);
+}
+.shop-scope .lp[lang='ta'] .lp-title { line-height: 1.35; font-weight: 700; }
+.shop-scope .lp[lang='ta'] .lp-h2 { line-height: 1.4; font-weight: 700; }
+.shop-scope .lp[lang='ta'] .lp-eyebrow { letter-spacing: 0.04em; }
+
+@media (max-width: 640px) {
+  .shop-scope .lp-hero { padding: 116px 0 40px; }
+  .shop-scope .lp-intro { font-size: 16px; }
+  .shop-scope .lp-section p,
+  .shop-scope .lp-list li,
+  .shop-scope .lp-steps li { font-size: 15.5px; }
+}

@@ -25,6 +25,7 @@ const src = (p) => pathToFileURL(join(ROOT, 'frontend', 'src', p)).href
 
 const { PAGE_META, PRODUCT_SEO, productPath } = await import(src('seo.js'))
 const { FOOTER } = await import(src('data/content.js'))
+const { LANDING } = await import(src('data/landing.js'))
 
 // Pack images, from the shop's built-in catalogue (the same block the sitemap reads).
 const catalogue = readFileSync(join(ROOT, 'frontend', 'src', 'shop', 'data', 'products.js'), 'utf8')
@@ -105,6 +106,35 @@ const SCHEMA = {
   terms: [crumb('terms')],
 }
 
+// Landing pages (data/landing.js): their packs, their FAQs and a breadcrumb.
+for (const [key, page] of Object.entries(LANDING)) {
+  const items = []
+  const packs = (page.productIds || []).filter((id) => PRODUCT_SEO[id])
+  if (packs.length) {
+    items.push({ '@type': 'ItemList', name: page.productsHeading, itemListElement: packs.map((id, i) => ({
+      '@type': 'ListItem', position: i + 1, name: PRODUCT_SEO[id].h1.replace(/ – d+ kg$/, ''), url: abs(productPath(id)),
+    })) })
+  }
+  if (page.faqs?.length) {
+    items.push({ '@type': 'FAQPage', inLanguage: page.lang, mainEntity: page.faqs.map((q) => ({
+      '@type': 'Question', name: q.q, acceptedAnswer: { '@type': 'Answer', text: q.a },
+    })) })
+  }
+  items.push(key === 'taHome' ? breadcrumb() : crumb(key))
+  SCHEMA[key] = items
+}
+
+// hreflang: each English page and its Tamil version name each other, and
+// English is the default for everyone else.
+const ALTERNATE = {}
+for (const page of Object.values(PAGE_META)) {
+  if (!page.alternate) continue
+  const ta = page.lang === 'ta' ? page.path : page.alternate
+  const en = page.lang === 'ta' ? page.alternate : page.path
+  ALTERNATE[ta] = ALTERNATE[en] = { en, ta }
+}
+const TAMIL_FONT = 'https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;600;700&display=swap'
+
 const jsonLd = (items) => items.length
   ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': items }).replace(/</g, '\\u003c')}</script>`
   : ''
@@ -113,9 +143,10 @@ const jsonLd = (items) => items.length
 const shell = readFileSync(join(DIST, 'index.html'), 'utf8')
 writeFileSync(join(DIST, 'app.html'), shell)
 
-function render({ path, title, description, noindex, image, schema = [] }) {
+function render({ path, title, description, noindex, image, lang, schema = [] }) {
   const url = abs(path)
   let html = shell
+  if (lang && lang !== 'en') html = html.replace('<html lang="en">', `<html lang="${lang}">`)
   const swap = (re, value) => {
     if (!re.test(html)) throw new Error(`prerender-head: ${re} not found in index.html`)
     html = html.replace(re, () => value)
@@ -128,6 +159,12 @@ function render({ path, title, description, noindex, image, schema = [] }) {
   if (image) swap(/<meta property="og:image" content="[^"]*" \/>/, `<meta property="og:image" content="${esc(SITE + image)}" />`)
   const extra = [
     noindex ? '<meta name="robots" content="noindex, follow" />' : `<link rel="canonical" href="${esc(url)}" />`,
+    ...(ALTERNATE[path] ? [
+      `<link rel="alternate" hreflang="en" href="${esc(abs(ALTERNATE[path].en))}" />`,
+      `<link rel="alternate" hreflang="ta" href="${esc(abs(ALTERNATE[path].ta))}" />`,
+      `<link rel="alternate" hreflang="x-default" href="${esc(abs(ALTERNATE[path].en))}" />`,
+    ] : []),
+    lang === 'ta' ? `<link rel="stylesheet" href="${TAMIL_FONT}" />` : '',
     jsonLd(schema),
   ].filter(Boolean).join('\n    ')
   html = html.replace('</head>', `    ${extra}\n  </head>`)
