@@ -40,7 +40,9 @@ export const api = onRequest(
     // contest sign-up feed for the email-automation tool.
     // SALESDADDY_API_KEY: the Sales Daddy CRM Developer API key (Leads scope);
     // website leads are sent there (backend/lib/crm.js).
-    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY', 'AUTOMATION_API_KEY', 'SALESDADDY_API_KEY'],
+    // ASKEVA_TOKEN: the AskEva API token, for the WhatsApp "order placed"
+    // message (backend/lib/whatsapp.js).
+    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY', 'AUTOMATION_API_KEY', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN'],
     // Runs as the backend account that phase1-setup.ps1 allowed into Cloud SQL
     // (Cloud SQL client) and nothing else.
     serviceAccount: 'api-backend@chennai-rice-website.iam.gserviceaccount.com',
@@ -60,7 +62,7 @@ import { runJobs } from '../../backend/lib/sales/jobs.js'
 export const salesJobs = onSchedule(
   {
     schedule: 'every 10 minutes', region: 'asia-south1', timeZone: 'Asia/Kolkata', memory: '256MiB', timeoutSeconds: 120,
-    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'SALESDADDY_API_KEY'], // the database, queued emails, CRM retries
+    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN'], // the database, queued emails, CRM and WhatsApp retries
     serviceAccount: 'api-backend@chennai-rice-website.iam.gserviceaccount.com',
   },
   async () => {
