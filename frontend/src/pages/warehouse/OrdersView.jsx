@@ -622,7 +622,6 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
                 )}
                 <span role="cell" className="wh-td-payment">
                   <span className={`wh-badge wh-badge--pay-${o.paymentStatus}`}>{PAYMENT[o.paymentStatus] || o.paymentStatus}</span>
-                  <span className="wh-muted wh-small">{STATUS[o.status]}</span>
                 </span>
                 <span role="cell" className="wh-td-status">
                   <span className={`wh-status wh-status--${STATUS_KEY[o.status]}`}>{STATUS[o.status]}</span>

@@ -438,6 +438,8 @@ button.wh-kpi:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(8
 .wh-badge--pay-paid { background: var(--wh-ok-bg); color: var(--wh-ok); }
 .wh-badge--pay-refunded,
 .wh-badge--pay-partially_refunded { background: var(--wh-warn-bg); color: var(--wh-warn); }
+.wh-badge--pay-failed { background: var(--wh-bad-bg, #fbe4e4); color: var(--wh-bad, #a3242f); }
+.wh-badge--pay-pending { background: var(--wh-warn-bg); color: var(--wh-warn); }
 .wh-badge--flag { background: var(--wh-warn-bg); color: var(--wh-warn); margin-top: 3px; }
 .wh-status {
   justify-self: start;
