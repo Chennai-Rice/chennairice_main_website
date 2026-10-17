@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { currentAttribution, isAdVisit } from '../services/attribution.js'
+import { trackMetaEvent } from '../services/metaPixel.js'
 import './contestpopup.css'
 
 // The Super Slogan Contest poster. Taking part starts with buying a Kitchidi
@@ -199,6 +200,7 @@ function AdSignup({ closeRef, close }) {
   async function register(extra = {}) {
     await post('/api/contest/lead', { ...details(), ...extra })
     hideFor(HIDE_AFTER_JOIN_MS) // registered: no popup for a week
+    trackMetaEvent('Lead', { content_name: 'Super Slogan Contest sign-up' })
     setStep('done')
   }
 
@@ -243,10 +245,7 @@ function AdSignup({ closeRef, close }) {
                 You are registered. We will send the contest details to your mobile and email. Buy a Kitchidi Ponni
                 5&nbsp;kg or 26&nbsp;kg bag to find your coupon inside.
               </p>
-              <Link data-focus className="contest-pop-cta contest-form-submit" to={BUY_PATH} onClick={() => close(HIDE_AFTER_JOIN_MS)}>
-                Buy Kitchidi Ponni Rice
-              </Link>
-              <button data-focus type="button" className="contest-form-note" onClick={() => close(HIDE_AFTER_JOIN_MS)}>
+              <button data-focus type="button" className="contest-pop-cta contest-form-submit" onClick={() => close(HIDE_AFTER_JOIN_MS)}>
                 Continue browsing
               </button>
             </>

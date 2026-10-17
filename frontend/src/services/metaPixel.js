@@ -41,6 +41,18 @@ export function disableMetaPixel() {
   if (loaded && window.fbq) window.fbq('consent', 'revoke')
 }
 
+/**
+ * A standard Meta event (ViewContent, AddToCart, InitiateCheckout, Purchase,
+ * Lead). Sent only while the visitor has accepted marketing cookies. An
+ * eventId lets Meta match the same event arriving from the server later, so a
+ * sale is counted once.
+ */
+export function trackMetaEvent(name, data = {}, eventId) {
+  if (!loaded || !window.fbq) return
+  if (eventId) window.fbq("track", name, data, { eventID: eventId })
+  else window.fbq("track", name, data)
+}
+
 /** One page view. The site is a single-page app, so this runs on every route change. */
 export function trackMetaPageView() {
   if (loaded && window.fbq) window.fbq('track', 'PageView')
