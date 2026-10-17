@@ -289,8 +289,8 @@ export function FunnelView({ report }) {
           ]}
         />
         <p className="ad-footnote">
-          “Paid” cannot rise above zero until a payment gateway is connected. The event is already
-          recorded and the funnel will populate on its own once purchases are written.
+          “Paid” counts visitors whose Razorpay payment went through, from 17 Oct 2026 onwards, and
+          only those who accepted analytics cookies. For every paid order, see Orders in /warehouse.
         </p>
       </Card>
     </>
