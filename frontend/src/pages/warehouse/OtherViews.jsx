@@ -1,5 +1,6 @@
 import TeamView from './TeamView.jsx'
 import SourcesReport from './SourcesReport.jsx'
+import AlertEmails from './AlertEmails.jsx'
 import { useEffect, useMemo, useState } from 'react'
 import { staffJson } from '../../services/staffAuth.js'
 import { Icon, Pagination, dayLabel, telHref, writePrefs } from './shared.jsx'
@@ -324,6 +325,8 @@ export function SettingsView({ me, prefs, setPrefs, location, onSignOut, say, on
       </section>
 
       {me.permissions?.includes('staff.manage') && <TeamView me={me} say={say} onAuthError={onAuthError} />}
+
+      {me.permissions?.includes('settings.manage') && <AlertEmails say={say} onAuthError={onAuthError} />}
 
       <section className="wh-panel">
         <h2 className="wh-panel-title">Preferences</h2>

@@ -2,6 +2,7 @@
 import { query } from '../db.js'
 import { audit, requirePermission } from './staff.js'
 import { httpError, str, toPaise, toRupees } from './util.js'
+import { parseEmailList } from './email.js'
 
 export async function dashboard() {
   const [byStatus, today, week, attention, lowStock, overdue, mail] = await Promise.all([
@@ -46,7 +47,7 @@ export async function dashboard() {
 const EDITABLE_SETTINGS = [
   'seller_legal_name', 'seller_address', 'seller_state', 'seller_state_code', 'seller_gstin',
   'seller_phone', 'seller_email', 'invoice_prefix', 'reservation_minutes', 'low_stock_alerts',
-  'seller_former_name', 'seller_fssai', 'delivery_tax_rate_bp',
+  'seller_former_name', 'seller_fssai', 'delivery_tax_rate_bp', 'staff_notify_emails',
 ]
 
 export async function getSettingsAdmin() {
@@ -59,7 +60,13 @@ export async function updateSettings(staff, body) {
   const changes = Object.entries(body || {}).filter(([k]) => EDITABLE_SETTINGS.includes(k))
   if (!changes.length) throw httpError('Nothing to change. Editable: ' + EDITABLE_SETTINGS.join(', '))
   for (const [key, raw] of changes) {
-    const value = str(String(raw ?? ''))
+    let value = str(String(raw ?? ''))
+    if (key === 'staff_notify_emails') {
+      const list = parseEmailList(value)
+      const typed = value.split(/[s,;]+/).filter(Boolean)
+      if (list.length !== new Set(typed.map((e) => e.toLowerCase())).size) throw httpError('One of those does not look like an email address.')
+      value = list.join(', ')
+    }
     if (key === 'seller_gstin' && value && !/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(value)) {
       throw httpError('That does not look like a GSTIN (15 characters, e.g. 33ABCDE1234F1Z5).')
     }

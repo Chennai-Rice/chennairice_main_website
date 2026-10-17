@@ -58,11 +58,32 @@ export function staffInbox() {
   return process.env.SALES_NOTIFY_EMAIL || ''
 }
 
+const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/
+
+/** "a@x.com, b@y.com" (or one per line) as a clean, de-duplicated list. */
+export function parseEmailList(raw) {
+  return [...new Set(String(raw ?? '').split(/[\s,;]+/).map((s) => s.trim().toLowerCase()).filter((s) => EMAIL_RE.test(s)))]
+}
+
+/**
+ * Who gets the staff alerts (new paid order, cancellation, reminders): the
+ * list set under Settings in the admin panel, or SALES_NOTIFY_EMAIL when none
+ * is set there. Returned as one comma-separated string for queueEmail().
+ */
+export async function staffRecipients(db = { query }) {
+  try {
+    const { rows: [r] } = await db.query(`select value from company_settings where key = 'staff_notify_emails'`)
+    const list = parseEmailList(r?.value)
+    if (list.length) return list.join(', ')
+  } catch { /* fall back to the environment */ }
+  return staffInbox()
+}
+
 function itemsText(items) {
   return items.map((i) => `  ${i.quantity} × ${i.product_name} (${Number(i.pack_kg)} kg)  ${formatInr(i.line_total_paise)}`).join('\n')
 }
 
-const trackUrl = (order) => `${SITE}/track-order?order=${encodeURIComponent(order.order_number)}`
+export const trackUrl = (order) => `${SITE}/track-order?order=${encodeURIComponent(order.order_number)}`
 const trackLine = (order) => `Track your order: ${trackUrl(order)}`
 const invoiceUrl = (order) =>
   `${SITE}/api/orders/${order.id}/invoice?n=${encodeURIComponent(order.order_number)}`
@@ -263,6 +284,17 @@ export const templates = {
         `\n\nFor any questions call +91 70666 46667.`,
     }
   },
+  orderCancelledForStaff(order, { by = '', wasPaid = false } = {}) {
+    return {
+      template: 'staff_order_cancelled',
+      subject: `Order ${order.order_number} cancelled — ${formatInr(order.total_paise)}`,
+      text:
+        `${order.order_number} (${order.contact_name}, ${order.contact_phone}) was cancelled${by ? ' by ' + by : ''}.\n` +
+        `Amount: ${formatInr(order.total_paise)}${wasPaid ? ' (it was paid)' : ''}\n` +
+        (order.cancel_reason ? `Reason: ${order.cancel_reason}\n` : '') +
+        (wasPaid ? '\nCheck in the admin panel that the customer has been refunded.' : ''),
+    }
+  },
   refundIssued(order, amountPaise) {
     return {
       template: 'refund_issued',
@@ -333,7 +365,7 @@ async function sendViaResend(mail, files) {
     headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: process.env.EMAIL_FROM,
-      to: [mail.to_email],
+      to: String(mail.to_email).split(/[\s,;]+/).filter(Boolean),
       subject: mail.subject,
       text: mail.body_text,
       ...(mail.body_html ? { html: mail.body_html } : {}),

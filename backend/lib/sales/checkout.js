@@ -17,7 +17,8 @@ import { priceCart, quoteShipping } from './catalog.js'
 import { deliveryTaxRateBp } from './tax.js'
 import { cleanAttribution, classify } from './attribution.js'
 import { moveStock, releaseForOrder } from './stock.js'
-import { queueEmail, staffInbox, templates } from './email.js'
+import { queueEmail, staffRecipients, templates, trackUrl } from './email.js'
+import { queueOrderPlaced, sendWhatsAppMessages } from '../whatsapp.js'
 import {
   httpError, str, toRupees, getSettings, recordOrderStatus, newShipmentId, newOrderNumber, reserveId, linkId,
 } from './util.js'
@@ -213,7 +214,15 @@ export async function createCheckoutSession(body) {
  *
  * @returns {{ order, payment, already: boolean, mismatch: boolean }}
  */
-export async function markOrderPaid({ paymentRowId, outcome, actor }) {
+export async function markOrderPaid(args) {
+  const result = await markOrderPaidTx(args)
+  // The WhatsApp thank-you was queued with the order; send it now (best effort,
+  // the 10-minute job retries it, and it never holds up the payment).
+  if (!result.already) sendWhatsAppMessages({ limit: 5 }).catch(() => {})
+  return result
+}
+
+async function markOrderPaidTx({ paymentRowId, outcome, actor }) {
   return tx(async (db) => {
     const { rows: [payment] } = await db.query('select * from payments where id = $1 for update', [paymentRowId])
     const { rows: [order] } = await db.query('select * from orders where id = $1 for update', [payment.order_id])
@@ -283,8 +292,9 @@ export async function markOrderPaid({ paymentRowId, outcome, actor }) {
       to: updated.contact_email, ...forCustomer, orderId: order.id, dedupeKey: 'placed:' + order.id,
       attachments: [{ kind: 'invoice', orderId: order.id }], // GST invoice PDF, made when sent
     })
+    await queueOrderPlaced(db, updated, trackUrl(updated))
     const forStaff = templates.newOrderForStaff(updated, items)
-    await queueEmail(db, { to: staffInbox(), ...forStaff, orderId: order.id, dedupeKey: 'staff-placed:' + order.id })
+    await queueEmail(db, { to: await staffRecipients(db), ...forStaff, orderId: order.id, dedupeKey: 'staff-placed:' + order.id })
 
     return { order: updated, payment: paid, already: false, mismatch: problems.length > 0 && outcome.amountPaise !== Number(order.total_paise) }
   })

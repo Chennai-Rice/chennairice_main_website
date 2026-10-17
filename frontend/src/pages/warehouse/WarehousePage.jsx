@@ -377,7 +377,7 @@ export default function WarehousePage() {
           {shown === 'customers' && <CustomersView say={say} onAuthError={onAuthError} onOpenOrders={openOrders} />}
           {shown === 'reports' && <ReportsView say={say} onAuthError={onAuthError} money={money} />}
           {shown === 'settings' && (
-            <SettingsView me={me} prefs={prefs} setPrefs={setPrefs} location={fulfilment?.name} onSignOut={signOut} />
+            <SettingsView me={me} prefs={prefs} setPrefs={setPrefs} location={fulfilment?.name} onSignOut={signOut} say={say} onAuthError={onAuthError} />
           )}
         </main>
       </div>
