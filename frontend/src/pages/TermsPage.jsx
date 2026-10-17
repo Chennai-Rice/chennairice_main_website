@@ -3,9 +3,10 @@ import { TERMS_LAST_UPDATED, TERMS_INTRO, TERMS_SECTIONS, TERMS_CONTACT } from '
 import './page.css'
 import './legal.css'
 import usePageMeta from '../shop/hooks/usePageMeta.js'
+import { PAGE_META } from '../seo.js'
 
 export default function TermsPage() {
-  usePageMeta('Terms and Conditions — Chennai Rice Industries', 'The terms governing use of the Chennai Rice Industries website and any orders placed through it.')
+  usePageMeta(PAGE_META.terms.title, PAGE_META.terms.description)
   return (
     <main className="page">
       <div className="container page-inner page-inner--wide">
@@ -14,7 +15,7 @@ export default function TermsPage() {
           <span>Legal</span>
           <Ornament flip />
         </div>
-        <h1 className="page-title">Terms and Conditions</h1>
+        <h1 className="page-title">{PAGE_META.terms.h1}</h1>
         <p className="legal-updated">Last Updated: {TERMS_LAST_UPDATED}</p>
 
         <article className="legal-body">

@@ -24,30 +24,84 @@ export const MOVED_PAGES = {
   '/contact': PATHS.contact,
 }
 
+// Every public page's title, meta description and H1, from the "Chennai Rice
+// SEO - Sheet1" on-page plan (Oct 2026), with only facts already on the site.
+// The pages read these, and scripts/prerender-head.mjs writes them into each
+// page's HTML so a crawler sees them before any JavaScript runs. noindex pages
+// are left out of the sitemap.
 export const PAGE_META = {
   home: {
-    title: 'Chennai Rice | Quality Ponni Rice & Idli Rice',
-    description: 'Discover quality Ponni Rice, Idli Rice and everyday rice at Chennai Rice, bringing 75+ years of rice expertise and tradition to every meal.',
+    path: '/',
+    title: 'Chennai Rice | Ponni Rice & Idli Rice Manufacturer, Erode',
+    description: 'Chennai Rice Industries, Erode: Ponni, Idli & boiled rice in 5, 10 & 26 kg packs since the 1950s. For homes, retailers & distributors. Order online today.',
+    h1: 'Premium Ponni Rice & Idli Rice from Erode, Tamil Nadu',
   },
   products: {
-    title: 'Shop Ponni Rice, Idli Rice & More | Chennai Rice',
-    description: "Explore Chennai Rice's Ponni Rice, Idli Rice and everyday rice varieties for daily cooking, traditional South Indian meals and family favourites.",
+    path: '/rice-products',
+    title: 'Buy Ponni & Idli Rice 26 kg Bags Online | Chennai Rice',
+    description: 'Shop the full Chennai Rice range: Ponni, Idli, aged and sappadu rice in 5, 10 and 26 kg bags. Mill-direct quality from Erode with doorstep delivery.',
+    h1: 'Our Rice Range – Ponni, Idli & Sappadu Rice',
   },
   about: {
-    title: 'About Chennai Rice | 75+ Years of Rice Expertise',
-    description: "Discover Chennai Rice's 75+ year legacy of rice expertise, advanced automated milling and hygienic processing for consistent quality in every pack.",
+    path: '/about-us',
+    title: 'About Us | Chennai Rice Industries, Rice Mill in Erode',
+    description: 'Since the 1950s, Chennai Rice Industries has milled quality rice in Erode, Tamil Nadu. ~1,000 tonnes a day, paddy sourced from 5 states, 6 warehouses.',
+    h1: 'About Chennai Rice Industries – Rice Millers in Erode Since the 1950s',
   },
   infrastructure: {
-    title: 'Rice Mill & Paddy Storage Infrastructure | Chennai Rice',
-    description: 'Explore Chennai Rice’s Erode infrastructure: 2,44,000 MTPA milling capacity, 31 silos storing 61,500 MT of paddy and a 10 stage quality process.',
+    path: '/infrastructure',
+    title: 'Modern Rice Mill in Erode – 2,44,000 MTPA | Chennai Rice',
+    description: 'Inside the Chennai Rice plant in Erode: 2,44,000 MTPA milling capacity, 31 silos holding 61,500 MT of paddy and a 10-stage process for consistent rice.',
+    h1: 'Our Rice Milling Infrastructure in Erode',
   },
   contact: {
-    title: 'Contact Chennai Rice | Erode, Tamil Nadu',
-    description: 'Get in touch with Chennai Rice for product enquiries, orders and where to buy. Call 70 6664 6667 or email support@chennairiceindustries.com.',
+    path: '/contact-us',
+    title: 'Contact Chennai Rice Industries, Erode | Call 70666 46667',
+    description: 'Contact Chennai Rice Industries, Nasiyanur, Erode – 638102. Call 70666 46667 or email support@chennairiceindustries.com for orders and enquiries.',
+    h1: 'Contact Chennai Rice Industries',
   },
   blog: {
-    title: 'Rice Guides, Insights & Stories | Chennai Rice Blog',
-    description: 'Learn about rice from 75+ years of expertise: how rice is milled, how to choose and store it, quality insights and stories from Tamil Nadu’s paddy fields.',
+    path: '/blog',
+    title: 'Rice Tips, Recipes & Buying Guides | Chennai Rice Blog',
+    description: 'Guides on choosing, cooking and storing rice, idli batter tips, Ponni vs other rice, and rice prices in Tamil Nadu from the Chennai Rice team.',
+    h1: 'Chennai Rice Blog – Rice Guides, Tips & Recipes',
+  },
+  bulkOrder: {
+    path: '/bulk-order',
+    title: 'Wholesale & Bulk Rice Supply, Tamil Nadu | Chennai Rice',
+    description: 'Order rice in bulk from Chennai Rice, Erode. Wholesale Ponni, Idli & sappadu rice for retailers, hotels, caterers & institutions. Send your enquiry today.',
+    h1: 'Wholesale & Bulk Rice Supply – Direct from Our Erode Mill',
+  },
+  founder: {
+    path: '/founder',
+    title: 'Our Founder – The Story Behind Chennai Rice Industries',
+    description: 'Meet M. S. Tamilselvan, Founder & Chairman of Chennai Rice Industries, and the family legacy of rice milling in Tamil Nadu since the 1950s.',
+    h1: 'M. S. Tamilselvan – Founder, Chennai Rice Industries',
+  },
+  contest: {
+    path: '/contest',
+    title: 'Chennai Rice Slogan Contest – Write & Win Exciting Prizes',
+    description: 'Write a slogan for Chennai Rice and win exciting prizes. Buy a Kitchidi Ponni Rice 5 kg or 26 kg bag, scan the coupon inside and register to enter.',
+    h1: 'Chennai Rice Slogan Contest',
+  },
+  trackOrder: {
+    path: '/track-order',
+    title: 'Track Your Order | Chennai Rice',
+    description: 'Track your Chennai Rice order status.',
+    h1: 'Track Your Order',
+    noindex: true,
+  },
+  privacy: {
+    path: '/privacy',
+    title: 'Privacy Policy | Chennai Rice',
+    description: 'The Privacy Policy of Chennai Rice Industries India Private Limited: what personal information we collect, how we use it and how we keep it safe.',
+    h1: 'Privacy Policy',
+  },
+  terms: {
+    path: '/terms',
+    title: 'Terms & Conditions | Chennai Rice',
+    description: 'The terms and conditions for using the Chennai Rice Industries website and for orders placed through it: payment, delivery, returns and refunds.',
+    h1: 'Terms & Conditions',
   },
 }
 
@@ -65,8 +119,9 @@ export const PRODUCT_SEO = {
     line: 'Soft, fluffy grains for sambar sadam and curd rice.',
     dishes: ['Sambar Sadam', 'Rasam Rice', 'Curd Rice'],
     slug: 'a1-special-ponni-rice',
-    title: 'A1 Special Ponni Rice | Soft Everyday Rice | Chennai Rice',
-    description: 'A1 Special Ponni cooks soft and fluffy, ideal for sambar sadam, rasam rice and curd rice. Quality graded for everyday meals. Order online today.',
+    h1: 'A1 Special Ponni Rice – 26 kg',
+    title: 'A1 Special Ponni Rice 26 kg – Buy Online | Chennai Rice',
+    description: 'Buy A1 Special Ponni Rice 26 kg from Chennai Rice, Erode. Quality graded, soft and fluffy for sambar sadam and curd rice. Home & wholesale delivery.',
   },
   'alibaba': {
     about: "A proper saapadu needs rice that holds its own on the plate. Alibaba is 100% pure, original quality rice with full flavour in every grain. Serve it with kuzhambu, rasam, poriyal, kootu and appalam for a complete Tamil lunch, whether it is a busy weekday, a Sunday family meal or guests visiting home. A dependable choice for households that enjoy a hearty plate of rice every day.",
@@ -74,8 +129,9 @@ export const PRODUCT_SEO = {
     line: 'Full flavoured rice for a complete Tamil saapadu.',
     dishes: ['Full Tamil Saapadu', 'Kuzhambu Rice', 'Rasam Rice'],
     slug: 'alibaba-sappadu-rice',
-    title: 'Alibaba Premium Sappadu Rice | Chennai Rice',
-    description: 'Alibaba is pure, full flavoured rice for a complete Tamil saapadu with kuzhambu, poriyal and kootu. Perfect for daily family lunch. Shop online.',
+    h1: 'Alibaba Sappadu Rice – 26 kg',
+    title: 'Alibaba Sappadu Rice 26 kg – Buy Online | Chennai Rice',
+    description: 'Buy Alibaba Sappadu Rice 26 kg from Chennai Rice, Erode. 100% pure, full-flavoured rice for a complete Tamil saapadu. Home & wholesale delivery.',
   },
   'nayara-super-aged': {
     about: "If you want rice that does not turn sticky, choose Nayara Super Aged. This aged gel cook rice cooks into separate, firm grains, making it ideal for variety rice such as lemon rice, puliyodharai, coconut rice and tomato rice. It keeps its texture in school and office lunch boxes, on travel days and for prasadam made at home. Use it whenever presentation and grain separation matter.",
@@ -83,8 +139,9 @@ export const PRODUCT_SEO = {
     line: 'Cooks separate and firm, perfect for lemon rice and lunch boxes.',
     dishes: ['Lemon Rice', 'Tamarind Rice', 'Lunch Boxes'],
     slug: 'nayara-super-aged-rice',
-    title: 'Nayara Super Aged Rice | Separate Grains | Chennai Rice',
-    description: 'Nayara Super Aged rice cooks separate and firm, never sticky. Perfect for lemon rice, tamarind rice, coconut rice and lunch boxes. Order online now.',
+    h1: 'Nayara Super Aged Rice – 26 kg',
+    title: 'Nayara Super Aged Rice 26 kg – Buy Online | Chennai Rice',
+    description: 'Buy Nayara Super Aged Rice 26 kg from Chennai Rice, Erode. Gel cook rice that cooks separate and firm, never sticky. Home & wholesale delivery.',
   },
   'rudra': {
     about: "Rudra brings original taste and a rich aroma that fills the kitchen as the rice finishes cooking. It suits larger families and homes that host relatives, festivals and weekend gatherings. Enjoy it with sambar, kara kuzhambu, mor kuzhambu or simple rasam for a satisfying everyday meal. Store in a cool, dry place and keep the bag sealed after opening.",
@@ -92,8 +149,9 @@ export const PRODUCT_SEO = {
     line: 'Original taste and rich aroma for everyday family meals.',
     dishes: ['Sambar Rice', 'Kara Kuzhambu Rice', 'Mor Kuzhambu Rice'],
     slug: 'rudra-ponni-rice',
-    title: 'Rudra Rice | Aromatic Rice for Daily Meals | Chennai Rice',
-    description: 'Rudra rice brings original taste and a rich aroma to every meal. Ideal for sambar, kara kuzhambu and rasam with the whole family. Order online today.',
+    h1: 'Rudra Ponni Rice – 25 kg',
+    title: 'Rudra Ponni Rice 25 kg – Buy Online | Chennai Rice',
+    description: 'Buy Rudra Ponni Rice 25 kg from Chennai Rice, Erode. Rajabhogam Ponni with original taste and a rich aroma. Home & wholesale delivery.',
   },
   'special-rajabhogam': {
     about: "Look for the signature red pack on your grocery list. Special Rajabhogam is milled and sealed at our Erode facility, so it reaches your kitchen clean and consistent. It is everyday rice for lunch and dinner at home, served with sambar, rasam, vathal kuzhambu and vegetable poriyal. A comforting choice for daily family meals and easy weeknight cooking.",
@@ -101,8 +159,9 @@ export const PRODUCT_SEO = {
     line: 'Everyday rice in our signature red pack for comforting home meals.',
     dishes: ['Sambar Rice', 'Vathal Kuzhambu Rice', 'Rasam Rice'],
     slug: 'special-rajabhogam-rice',
-    title: 'Special Rajabhogam Rice | Red Pack | Chennai Rice',
-    description: 'Special Rajabhogam in our signature red pack, sealed at Erode for clean grains. Everyday rice for lunch and dinner at home. Shop online today.',
+    h1: 'Special Rajabhogam Rice – 26 kg',
+    title: 'Special Rajabhogam Rice 26 kg – Buy Online | Chennai Rice',
+    description: 'Buy Special Rajabhogam Rice 26 kg from Chennai Rice, Erode. Kitchidi Ponni in our red pack for daily family meals. Home & wholesale delivery.',
   },
   'thaaram': {
     about: "A good nei kitchadi needs rice that will not break down in the pot. Thaaram has strong grains with superior taste and rich aroma, made for ghee rich kitchadi, ven pongal and sakkarai pongal. Cook it for Pongal and Margazhi mornings, Sunday breakfasts, poojas at home or any day you want a festive dish on the table. Adjust water to the texture your family likes.",
@@ -110,8 +169,9 @@ export const PRODUCT_SEO = {
     line: 'Strong grains that hold shape in nei kitchadi and pongal.',
     dishes: ['Nei Kitchadi', 'Ven Pongal', 'Sakkarai Pongal'],
     slug: 'thaaram-pooni-rice',
-    title: 'Thaaram Nei Kitchadi Rice | Kitchadi & Pongal | Chennai Rice',
-    description: 'Make perfect nei kitchadi and ven pongal with Thaaram: strong grains that hold shape, superior taste and rich aroma. Ideal for festive mornings.',
+    h1: 'Thaaram Nei Kitchadi Rice – 25 kg',
+    title: 'Thaaram Nei Kitchadi Rice 25 kg – Buy Online | Chennai Rice',
+    description: 'Buy Thaaram Nei Kitchadi Rice 25 kg from Chennai Rice, Erode. Akshaya Ponni with strong grains for nei kitchadi and pongal. Home & wholesale delivery.',
   },
   'united-5kg': {
     about: "United is everyday rice made simple. Clean, consistent grains cook easily for daily rice meals, quick curd rice, lunch boxes and weeknight dinners. It is a great fit for couples, small families, working professionals and students cooking for themselves, and an easy way to try Chennai Rice for the first time.",
@@ -119,8 +179,9 @@ export const PRODUCT_SEO = {
     line: 'Clean, consistent rice for small families and daily meals.',
     dishes: ['Daily Rice Meals', 'Curd Rice', 'Lunch Boxes'],
     slug: 'united-ponni-rice',
-    title: 'United Rice | Everyday Rice for Daily Meals | Chennai Rice',
-    description: 'United is clean, consistent everyday rice for couples, small families and students cooking at home. Great for daily meals and lunch boxes. Order online.',
+    h1: 'United Ponni Rice – 26 kg',
+    title: 'United Ponni Rice 26 kg – Buy Online | Chennai Rice',
+    description: 'Buy United Ponni Rice 26 kg from Chennai Rice, Erode. Dependable everyday rice for lunch and dinner at home. Home & wholesale delivery.',
   },
   'vijaya-nagaram': {
     about: "Vijaya Nagaram is milled for everyday South Indian cooking, with the familiar taste your family grew up with. Serve it at lunch with sambar, rasam and kootu, at dinner with kara kuzhambu, or as curd rice on warm afternoons. A comforting rice for family meals, festival lunches and the daily plate at home.",
@@ -128,8 +189,9 @@ export const PRODUCT_SEO = {
     line: 'Familiar taste for sambar, rasam, kootu and curd rice.',
     dishes: ['Sambar Rice', 'Rasam Rice', 'Curd Rice'],
     slug: 'vijaya-nagaram-rice',
-    title: 'Vijaya Nagaram Rice | South Indian Meals | Chennai Rice',
-    description: 'Vijaya Nagaram brings familiar taste to everyday South Indian meals with sambar, rasam, kootu and curd rice. Shop online today.',
+    h1: 'Vijaya Nagaram Rice – 26 kg',
+    title: 'Vijaya Nagaram Rice 26 kg – Buy Online | Chennai Rice',
+    description: 'Buy Vijaya Nagaram Rice 26 kg from Chennai Rice, Erode. Amman Ponni (HMT grain) for everyday South Indian meals. Home & wholesale delivery.',
   },
   'vintage': {
     about: "Vintage is our premium selection, recognisable by its black and gold pack. Milled and sealed at our Erode facility, it is the rice to bring out for occasions: Deepavali and Pongal lunches, birthdays, housewarming meals, family gatherings and Sunday feasts on a banana leaf. Pair it with sambar, rasam, payasam and a full spread of poriyal for a meal worth remembering.",
@@ -137,8 +199,9 @@ export const PRODUCT_SEO = {
     line: 'Our premium choice for festival lunches and family gatherings.',
     dishes: ['Festival Lunches', 'Banana Leaf Feasts', 'Family Gatherings'],
     slug: 'vintage-ponni-rice',
-    title: 'Vintage Rice | Premium Rice for Festivals | Chennai Rice',
-    description: 'Vintage in the black and gold pack is our premium rice for festival lunches, family gatherings and special meals at home. Order online today.',
+    h1: 'Vintage Special Ponni Rice – 26 kg',
+    title: 'Vintage Special Ponni Rice 26 kg – Buy Online | Chennai Rice',
+    description: 'Buy Vintage Special Ponni Rice 26 kg from Chennai Rice, Erode. Premium rice in the black-and-gold pack for festive meals. Home & wholesale delivery.',
   },
   'viruchagam': {
     about: "Look for the blue and gold pack. Viruchagam suits the everyday traditional Tamil menu: steamed rice with kuzhambu, rasam and poriyal at lunch, or a simple plate of rice and curd at dinner. Dependable grains that cook well day after day make it a reliable rice for regular family cooking all through the week.",
@@ -146,8 +209,9 @@ export const PRODUCT_SEO = {
     line: 'Everyday rice for traditional Tamil lunch and dinner.',
     dishes: ['Kuzhambu Rice', 'Rasam Rice', 'Curd Rice'],
     slug: 'viruchagam-ponni-rice',
-    title: 'Viruchagam Rice | Traditional Tamil Meals | Chennai Rice',
-    description: 'Viruchagam in the blue and gold pack is everyday rice for traditional Tamil lunch and dinner with kuzhambu, rasam and poriyal. Shop online.',
+    h1: 'Viruchagam Ponni Rice – 26 kg',
+    title: 'Viruchagam Ponni Rice 26 kg – Buy Online | Chennai Rice',
+    description: 'Buy Viruchagam Ponni Rice 26 kg from Chennai Rice, Erode. Poompuhar Ponni from RNR paddy for traditional Tamil meals. Home & wholesale delivery.',
   },
   'chennai-bullets': {
     about: "Chennai Bullets is aromatic rice made for big kitchens and bigger gatherings. It is ideal for joint families, homes that cook for many every day, and occasions such as poojas, housewarmings, family functions and festival feasts. Serve it with sambar, kara kuzhambu and a full spread of sides, and enjoy rich aroma in every meal.",
@@ -155,8 +219,9 @@ export const PRODUCT_SEO = {
     line: 'Rich aroma for joint families, poojas and home functions.',
     dishes: ['Poojas and Home Functions', 'Joint Family Meals', 'Festival Feasts'],
     slug: 'chennai-bullets-rice',
-    title: 'Chennai Bullets Rice | Rich Aroma Rice | Chennai Rice',
-    description: 'Chennai Bullets brings rich aroma to every meal. Ideal for joint families, home functions, poojas and festival feasts. Order online today.',
+    h1: 'Chennai Bullets Rice – 26 kg',
+    title: 'Chennai Bullets Rice 26 kg – Buy Online | Chennai Rice',
+    description: 'Buy Chennai Bullets Rice 26 kg from Chennai Rice, Erode. Rajabhogam Ponni with a rich aroma in our trade pack. Home & wholesale delivery.',
   },
   'kitchidi-ponni-rice': {
     about: "Nothing feels quite like veettu saapadu, the simple meal of rice, kuzhambu, rasam and poriyal cooked at home. Kitchidi Ponni is made for exactly that. It is processed end to end in our fully automated Erode mill with no human handling, so the grains reach your kitchen clean. Cook it for everyday lunch and dinner, school and office lunch boxes, and the comforting Sunday meal at home.",
@@ -164,8 +229,9 @@ export const PRODUCT_SEO = {
     line: 'Everyday rice for real veettu saapadu, lunch and dinner.',
     dishes: ['Veettu Saapadu', 'Sambar Rice', 'Curd Rice'],
     slug: 'kitchidi-ponni-rice',
-    title: 'Kitchidi Ponni Rice | Everyday Home Meal Rice | Chennai Rice',
-    description: 'Celebrate every special meal with Kitchidi Ponni Rice. Perfect for festive feasts, family gatherings, and everyday home cooking with authentic taste and aroma.',
+    h1: 'Kitchidi Ponni Rice – 26 kg',
+    title: 'Kitchidi Ponni Rice 26 kg – Buy Online | Chennai Rice',
+    description: 'Buy Kitchidi Ponni Rice 26 kg from Chennai Rice, Erode. Aged for a year, soft and non-sticky for everyday meals. Home & wholesale delivery.',
   },
   'special-idly-rice': {
     about: "Soft idlis start with the right rice. Special Idly Rice, in the pink pack, is made for grinding batter at home with urad dal. Steam it into soft, fluffy idlis, spread it into crisp golden dosas, or use it for kuzhi paniyaram and uthappam. Perfect for weekday breakfasts, Sunday tiffin and evening dinners. Adjust soaking and fermentation time to suit your kitchen and weather.",
@@ -173,8 +239,9 @@ export const PRODUCT_SEO = {
     line: 'For soft, fluffy idlis and crisp golden dosas.',
     dishes: ['Soft Idlis', 'Crisp Dosas', 'Uthappam'],
     slug: 'special-idly-rice',
-    title: 'Special Idly Rice | Soft Idli & Crisp Dosa | Chennai Rice',
-    description: 'Special Idly Rice for soft, fluffy idlis and crisp dosas. Grind fresh batter at home for breakfast and tiffin. Buy idli rice online today.',
+    h1: 'Special Idly Rice – 26 kg',
+    title: 'Special Idly Rice 26 kg – Buy Online | Chennai Rice',
+    description: 'Buy Special Idly Rice 26 kg from Chennai Rice, Erode. Idly rice for soft, fluffy idlis and crisp dosas. Home & wholesale delivery.',
   },
 }
 

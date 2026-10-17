@@ -1024,3 +1024,16 @@
   .about-page .reveal--left { transform: none; }
   .ab-marquee-track { animation: none; }
 }
+
+/* The About page's H1 (SEO sheet, Oct 2026): a small gold label above the
+   scroll statement, which is now an h2 at the same size as before. */
+.about-page .ab-scale-h1 {
+  margin: 0 0 0.6rem;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}

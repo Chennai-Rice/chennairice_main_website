@@ -58,7 +58,7 @@ export const HERO = {
   // Curly quotes rather than the straight " character: this is display
   // typography, and a straight quote reads as an inch mark at 4rem.
   titleLines: ['“RICE”', 'The White Gold', 'Among Foods.'],
-  h1: 'Chennai Rice: Authentic Ponni Rice for Every Tamil Kitchen',
+  h1: 'Premium Ponni Rice & Idli Rice from Erode, Tamil Nadu', // SEO sheet, Oct 2026
   subtitle: 'The simplicity of cooking rice is the most culturally satisfying experience.',
   estd: "1950's",
 }

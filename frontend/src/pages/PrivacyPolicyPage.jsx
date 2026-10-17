@@ -3,9 +3,10 @@ import { POLICY_LAST_UPDATED, POLICY_INTRO, POLICY_SECTIONS, POLICY_CONTACT } fr
 import './page.css'
 import './legal.css'
 import usePageMeta from '../shop/hooks/usePageMeta.js'
+import { PAGE_META } from '../seo.js'
 
 export default function PrivacyPolicyPage() {
-  usePageMeta('Privacy Policy — Chennai Rice Industries', 'How Chennai Rice Industries India Private Limited collects, uses and protects your personal information.')
+  usePageMeta(PAGE_META.privacy.title, PAGE_META.privacy.description)
   return (
     <main className="page">
       <div className="container page-inner page-inner--wide">

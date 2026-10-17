@@ -75,7 +75,8 @@ export default function CheckoutPage() {
 
   usePageMeta(
     onConfirmedPage ? "Order confirmed — Chennai Rice" : "Checkout — Chennai Rice",
-    onConfirmedPage ? "Your Chennai Rice order is confirmed." : "Complete your Chennai Rice order."
+    onConfirmedPage ? "Your Chennai Rice order is confirmed." : "Complete your Chennai Rice order.",
+    { noindex: true }
   );
 
   const set = (key) => (event) => {

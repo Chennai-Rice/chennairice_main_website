@@ -97,9 +97,13 @@ export default function ContestHero() {
       <div className="kb" role="img" aria-label="Super Slogan Contest">
         <Flourish className="kb-flourish kb-fl-l" />
         <Flourish className="kb-flourish kb-fl-r" />
-        <div className="kb-text" aria-hidden="true">
+        <div className="kb-text">
           <Divider />
-          <span className="kb-title">Super Slogan Contest</span>
+          {/* The page's H1; "Chennai Rice" is for search and screen readers,
+              the artwork shows the contest's own name. */}
+          <h1 className="kb-title">
+            <span className="visually-hidden">Chennai Rice </span>Super Slogan Contest
+          </h1>
           <Divider />
         </div>
       </div>

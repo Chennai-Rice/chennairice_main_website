@@ -1,4 +1,5 @@
 import React from "react";
+import { PAGE_META } from "../../seo.js";
 
 // Product-page hero: the gold "Premium Collection" pill with its five
 // twinkling glints, plus the heading and subline.
@@ -19,7 +20,7 @@ export default function Hero() {
           used to read "Kitchidi Ponni Rice" — one pack out of thirteen — which
           both misdescribed the page and made it compete with the Kitchidi Ponni
           product page for the same search. */}
-      <h1 id="hero-heading">Chennai Rice: Quality Ponni Rice for Every Home, Every Meal</h1>
+      <h1 id="hero-heading">{PAGE_META.products.h1}</h1>
       <p className="hero-sub">
         Rice for every meal, milled and sealed at our own Erode facility. From everyday lunch and dinner to idli
         batter, variety rice and festival feasts, find the right rice for your home.

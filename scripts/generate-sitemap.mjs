@@ -25,7 +25,6 @@ const STATIC_ROUTES = [
   ['/about-us', 0.7, 'monthly'],
   ['/contest', 0.6, 'monthly'],
   ['/contact-us', 0.7, 'monthly'],
-  ['/track-order', 0.5, 'monthly'],
   ['/bulk-order', 0.7, 'monthly'],
   ['/founder', 0.6, 'yearly'],
   ['/blog', 0.6, 'weekly'],

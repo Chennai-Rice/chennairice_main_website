@@ -24,7 +24,7 @@ export default function WishlistPage() {
   const { add } = useCart();
   const { products, loading } = useProducts();
 
-  usePageMeta("Saved Items — Chennai Rice Industries", "The packs you have saved for later.");
+  usePageMeta("Saved Items — Chennai Rice Industries", "The packs you have saved for later.", { noindex: true });
 
   const saved = loading ? [] : ids.map((id) => products.find((p) => p.id === id)).filter(Boolean);
 

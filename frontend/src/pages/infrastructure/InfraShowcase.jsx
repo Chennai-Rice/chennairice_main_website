@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Img from '../../components/Img.jsx'
 import { INFRA_ASSETS, SHOWCASE_SLIDES, SHOWCASE_STATS, SHOWCASE_CARDS } from '../../data/infrastructure.js'
+import { PAGE_META } from '../../seo.js'
 
 const ArrowRight = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -151,15 +152,15 @@ export default function InfraShowcase() {
           </div>
 
           <div className="ish-hero-body">
-            <span className="infra-eyebrow">Our Infrastructure</span>
+            {/* The page's H1 (SEO sheet, Oct 2026) in the eyebrow style; the
+                carousel headline under it changes per slide, so it is an h2. */}
+            <h1 className="infra-eyebrow infra-eyebrow--h1">{PAGE_META.infrastructure.h1}</h1>
 
-            {/* The page's h1 — Infrastructure had none, so its main headline
-                is promoted and takes the shared page-title size. */}
-            <h1 className="infra-title ish-hero-title" key={active.id}>
+            <h2 className="infra-title ish-hero-title" key={active.id}>
               {active.titleLines.map(line => (
                 <span key={line}>{line}</span>
               ))}
-            </h1>
+            </h2>
 
             <Divider />
 

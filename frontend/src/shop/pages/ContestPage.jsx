@@ -3,6 +3,7 @@ import SiteLayout from "../layouts/SiteLayout.jsx";
 import ContestHero from "../components/ContestHero.jsx";
 import usePageMeta from "../hooks/usePageMeta.js";
 import "./contest.css";
+import { PAGE_META } from "../../seo.js";
 
 /**
  * The Super Slogan Contest page, opened from the "Contest" button in the
@@ -71,10 +72,7 @@ const STEPS = [
 ];
 
 export default function ContestPage() {
-  usePageMeta(
-    "Super Slogan Contest — Chennai Rice Industries",
-    "Craft the best slogan and bring home the grand prize. Buy a Kitchidi Ponni Rice 5 kg or 26 kg bag, find the coupon inside, scan it and register."
-  );
+  usePageMeta(PAGE_META.contest.title, PAGE_META.contest.description);
 
   return (
     <SiteLayout skipTo="contest-main" skipLabel="Skip to the contest">

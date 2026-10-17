@@ -5,6 +5,7 @@ import { FOUNDER } from "../data/founder.js";
 import { useCountUp } from "../hooks/useCountUp.js";
 import { useRevealGroup } from "../hooks/useScrollFx.js";
 import usePageMeta from "../hooks/usePageMeta.js";
+import { PAGE_META } from "../../seo.js";
 
 const GLANCE_ICONS = {
   "From Our Mill": <path d="M4 20V9l8-5 8 5v11M9 20v-6h6v6" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />,
@@ -51,10 +52,7 @@ export default function FounderPage() {
   const pageRef = useRevealGroup();
   const [photoMissing, setPhotoMissing] = useState(false);
 
-  usePageMeta(
-    "Meet Our Founder — Chennai Rice",
-    `${FOUNDER.name}, ${FOUNDER.title} of Chennai Rice Industries.`
-  );
+  usePageMeta(PAGE_META.founder.title, PAGE_META.founder.description);
 
   // same words as FOUNDER.heading, just split so the last word can carry
   // its own weight — the wording itself never changes
@@ -82,8 +80,10 @@ export default function FounderPage() {
 
             <div className="fp-hero-copy reveal reveal--left">
               <h1 id="founder-heading" className="fp-hero-title">
-                <span className="fp-hero-title-lead">{titleLead}</span>
-                <span className="fp-hero-title-strong">{titleLast}</span>
+                {/* "Meet Our Founder" over the founder's name, so the H1
+                    names him (SEO sheet, Oct 2026). */}
+                <span className="fp-hero-title-lead">{titleLead} {titleLast}</span>
+                <span className="fp-hero-title-strong">{FOUNDER.name}</span>
               </h1>
 
               <blockquote className="fp-intro-block">

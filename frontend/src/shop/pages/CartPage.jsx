@@ -18,7 +18,7 @@ export default function CartPage() {
   const { items, count } = useCart();
   const { subtotal, shipping, total, error } = useCartQuote();
 
-  usePageMeta("Your Cart — Chennai Rice", "Your cart — Chennai Rice Industries.");
+  usePageMeta("Your Cart — Chennai Rice", "Your cart — Chennai Rice Industries.", { noindex: true });
 
   const isEmpty = items.length === 0;
 

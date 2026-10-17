@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "dev:all": "node scripts/dev-all.mjs",
-    "prebuild": "node scripts/generate-sitemap.mjs"
+    "prebuild": "node scripts/generate-sitemap.mjs",
+    "postbuild": "node scripts/prerender-head.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

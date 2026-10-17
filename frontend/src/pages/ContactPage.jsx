@@ -96,7 +96,7 @@ export default function ContactPage() {
           <span>Reach Us</span>
           <Ornament flip />
         </div>
-        <h1 className="page-title">Get in Touch</h1>
+        <h1 className="page-title">{PAGE_META.contact.h1}</h1>
         <p className="page-text">
           Tell us what you need and our team will get back to you.
         </p>

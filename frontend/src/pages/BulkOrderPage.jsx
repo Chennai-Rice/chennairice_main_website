@@ -4,6 +4,7 @@ import { FOOTER } from '../data/content.js'
 import usePageMeta from '../shop/hooks/usePageMeta.js'
 import './page.css'
 import './bulkorder.css'
+import { PAGE_META } from '../seo.js'
 
 const BUYER_TYPES = [
   { key: 'distributor', label: 'Distributor' },
@@ -54,10 +55,7 @@ const Icon = ({ kind }) => (
 )
 
 export default function BulkOrderPage() {
-  usePageMeta(
-    'Bulk Orders — Chennai Rice Industries',
-    'Bulk rice orders for distributors, wholesalers and retailers. Trade packs up to 26 kg, milled and graded at our Erode facility.'
-  )
+  usePageMeta(PAGE_META.bulkOrder.title, PAGE_META.bulkOrder.description)
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
   const [sent, setSent] = useState(false)
@@ -132,7 +130,7 @@ export default function BulkOrderPage() {
           <span>Bulk Order</span>
           <Ornament flip />
         </div>
-        <h1 className="page-title">Order in Bulk</h1>
+        <h1 className="page-title">{PAGE_META.bulkOrder.h1}</h1>
         <p className="page-text">
           Tell us who you are and how much rice you need, and our trade team will get back
           to you with pricing and availability.

@@ -577,3 +577,10 @@
     animation: none;
   }
 }
+
+/* The eyebrow is the page's H1 (SEO sheet, Oct 2026): keep the eyebrow look. */
+h1.infra-eyebrow--h1 {
+  margin: 0;
+  font-family: inherit;
+  line-height: 1.5;
+}

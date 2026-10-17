@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import usePageMeta from '../shop/hooks/usePageMeta.js'
 import './page.css'
 import './trackorder.css'
+import { PAGE_META } from '../seo.js'
 
 // The order a customer can follow, in the order it happens. Cancelled and
 // returned are shown as a banner instead, because they end the journey early.
@@ -51,10 +52,8 @@ async function fetchTracking(body) {
 }
 
 export default function TrackOrderPage() {
-  usePageMeta(
-    'Track your order — Chennai Rice Industries',
-    'Follow your Chennai Rice order from our Erode mill to your door with your order number or shipment ID.'
-  )
+  // A utility page: kept out of Google (noindex) and out of the sitemap.
+  usePageMeta(PAGE_META.trackOrder.title, PAGE_META.trackOrder.description, { noindex: true })
   const [params] = useSearchParams()
   const [orderRef, setOrderRef] = useState(params.get('order') || '')
   const [state, setState] = useState({ status: 'idle', data: null, error: '' })
@@ -110,7 +109,7 @@ export default function TrackOrderPage() {
       <div className="container">
         <div className="page-inner page-inner--wide track-inner">
           <p className="section-label">Order tracking</p>
-          <h1 className="page-title">Track your order</h1>
+          <h1 className="page-title">{PAGE_META.trackOrder.h1}</h1>
           <p className="page-text">Paste your order number or shipment ID from your receipt.</p>
 
           <form className="contact-form track-form" onSubmit={onSubmit} noValidate>

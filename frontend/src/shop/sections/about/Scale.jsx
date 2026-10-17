@@ -1,5 +1,6 @@
 import React from "react";
 import { SCALE } from "../../data/about.jsx";
+import { PAGE_META } from "../../../seo.js";
 import { useParallax } from "../../hooks/useScrollFx.js";
 import { useCountUp } from "../../hooks/useCountUp.js";
 import ScrollReveal from "../../components/ScrollReveal.jsx";
@@ -32,8 +33,9 @@ export default function Scale() {
         {/* Word-by-word scroll reveal — the first block of text you scroll to.
             It needs scroll distance to scrub against, which is why it lives
             here rather than in the hero (nothing scrolls above the hero). */}
+        <h1 className="ab-scale-h1">{PAGE_META.about.h1}</h1>
         <ScrollReveal
-          as="h1"
+          as="h2"
           containerClassName="ab-scroll-reveal"
           textClassName="ab-scroll-reveal-text"
           baseOpacity={0.12}

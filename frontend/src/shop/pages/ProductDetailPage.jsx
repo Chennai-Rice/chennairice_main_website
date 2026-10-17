@@ -51,6 +51,46 @@ export default function ProductDetailPage() {
     seo?.description || (product ? product.description : undefined)
   );
 
+  // Google's Product structured data, with the live pack prices (so it can
+  // never disagree with the page). The page's breadcrumb is in its HTML
+  // (scripts/prerender-head.mjs).
+  useEffect(() => {
+    if (!product) return undefined;
+    const site = "https://chennairiceindustries.com";
+    const priced = showCardPrices ? sizes.filter((s) => typeof s.price === "number" && s.price > 0) : [];
+    const prices = priced.map((s) => s.price);
+    const data = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: (seo?.h1 || product.name).replace(/ – d+ kg$/, ""),
+      description: seo?.description || product.description,
+      image: product.image ? [new URL(product.image, site).href] : undefined,
+      sku: product.id,
+      brand: { "@type": "Brand", name: "Chennai Rice" },
+      url: site + productPath(product.id),
+      ...(prices.length && {
+        offers: {
+          "@type": "AggregateOffer",
+          priceCurrency: "INR",
+          lowPrice: Math.min(...prices),
+          highPrice: Math.max(...prices),
+          offerCount: prices.length,
+          availability: priced.some((s) => s.inStock !== false)
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+          seller: { "@id": site + "/#organization" },
+        },
+      }),
+    };
+    const tag = document.createElement("script");
+    tag.type = "application/ld+json";
+    tag.id = "product-schema";
+    tag.textContent = JSON.stringify(data);
+    document.getElementById("product-schema")?.remove();
+    document.head.appendChild(tag);
+    return () => tag.remove();
+  }, [product, sizes, seo]);
+
   // Pack size defaults to 10 kg once the product has loaded — keep the
   // selector in sync instead of getting stuck on the pre-load undefined.
   useEffect(() => {
@@ -164,7 +204,7 @@ export default function ProductDetailPage() {
               </Link>
             )}
             <span className="pdp-badge">Premium Quality</span>
-            <h1 className="pdp-title">{headName}</h1>
+            <h1 className="pdp-title">{seo?.h1 || headName}</h1>
             <p className="pdp-subtitle">{category}</p>
             <p className="pdp-desc">{seo?.line || product.description}</p>
 

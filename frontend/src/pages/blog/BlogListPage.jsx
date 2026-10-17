@@ -49,7 +49,7 @@ export default function BlogListPage() {
           <span>Journal</span>
           <Ornament flip />
         </div>
-        <h1 className="page-title">From the Mill</h1>
+        <h1 className="page-title">{PAGE_META.blog.h1}</h1>
         <p className="page-text">
           Notes from the fields, the mill floor and the kitchen.
         </p>
