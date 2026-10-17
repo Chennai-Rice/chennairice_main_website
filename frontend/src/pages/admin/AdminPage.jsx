@@ -18,6 +18,7 @@ import {
 } from '../../services/admin.service.js'
 import JournalPanel from '../blog/JournalPanel.jsx'
 import CampaignsPanel from './CampaignsPanel.jsx'
+import EnquiriesPanel from './EnquiriesPanel.jsx'
 import { LoadingRegion } from './components/ui.jsx'
 import {
   BehaviourView,
@@ -57,6 +58,7 @@ const ANALYTICS_NAV = [
   { id: 'scroll', label: 'Scroll depth', subtitle: 'How far down pages are read', icon: 'depth' },
   { id: 'realtime', label: 'Realtime', subtitle: 'Who is on the site now', icon: 'pulse' },
   { id: 'campaigns', label: 'Ad campaigns', subtitle: 'Orders from Meta ads, Google Ads and direct visits', icon: 'target' },
+  { id: 'enquiries', label: 'Enquiries', subtitle: 'Contact and bulk-order enquiries from the website', icon: 'mail' },
 ]
 
 /* Section that needs a row in blog_authors. */
@@ -90,6 +92,7 @@ const PATHS = {
   target: <><circle cx="10" cy="10" r="6.8" /><circle cx="10" cy="10" r="2.6" /><path d="M10 1.6v2.2M10 16.2v2.2M18.4 10h-2.2M3.8 10H1.6" /></>,
   depth: <><path d="M10 2.6v9.6" /><path d="M6.2 8.4L10 12.2l3.8-3.8" /><path d="M3.4 16.6h13.2" /></>,
   doc: <><path d="M5 2.5h6.5L15.5 6.5V17.5H5z" /><path d="M11.5 2.5V6.5h4" /></>,
+  mail: <><rect x="2.5" y="4.5" width="15" height="11" rx="1.6" /><path d="M3 5.5l7 5.5 7-5.5" /></>,
   pen: <><path d="M13.4 3.2l3.4 3.4-9 9-4.2.8.8-4.2z" /><path d="M11.8 4.8l3.4 3.4" /></>,
   cog: <><circle cx="10" cy="10" r="2.6" /><path d="M10 2.6v2.1M10 15.3v2.1M17.4 10h-2.1M4.7 10H2.6M15.2 4.8l-1.5 1.5M6.3 13.7l-1.5 1.5M15.2 15.2l-1.5-1.5M6.3 6.3L4.8 4.8" /></>,
 }
@@ -442,7 +445,7 @@ function Dashboard({ session, access, onSignOut }) {
           </div>
 
           <div className="ad-topbar-actions">
-            {view !== 'realtime' && view !== 'journal' && view !== 'campaigns' && (
+            {view !== 'realtime' && view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && (
               <label className="ad-select-wrap">
                 <span className="ad-sr">Date range</span>
                 <select className="ad-select" value={rangeId} onChange={(e) => setRangeId(e.target.value)}>
@@ -452,7 +455,7 @@ function Dashboard({ session, access, onSignOut }) {
                 </select>
               </label>
             )}
-            {view !== 'journal' && view !== 'campaigns' && (
+            {view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && (
               <button type="button" className="ad-btn ad-btn-quiet" onClick={refresh} disabled={loading}>
                 {loading ? 'Refreshing…' : 'Refresh'}
               </button>
@@ -468,6 +471,8 @@ function Dashboard({ session, access, onSignOut }) {
             <JournalPanel author={access.author} />
           ) : view === 'campaigns' ? (
             <CampaignsPanel />
+          ) : view === 'enquiries' ? (
+            <EnquiriesPanel />
           ) : needsInteractions ? (
             <>
               {view === 'behaviour' && (

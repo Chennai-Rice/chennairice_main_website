@@ -1364,3 +1364,15 @@ test('order list: a cancelled, never-paid order is dated by when it was attempte
   const dated = await api('GET', `/api/admin/warehouse/orders?tab=cancelled&from=${today}&to=${today}&limit=50`, { token: OWNER })
   assert.ok(dated.body.orders.some((o) => o.orderNumber === s.body.orderNumber), 'found by the date filter')
 })
+
+test('/admin enquiries: owner, admin, IT and sales only; empty when Supabase is not set up here', async () => {
+  const list = await api('GET', '/api/admin/enquiries', { token: OWNER })
+  assert.equal(list.status, 200, JSON.stringify(list.body))
+  assert.deepEqual(list.body.contact, [])
+  assert.equal(list.body.configured, false)
+  assert.equal((await api('GET', '/api/admin/enquiries', { token: tokens.sales })).status, 200)
+  assert.equal((await api('GET', '/api/admin/enquiries', { token: tokens.dispatch })).status, 403)
+  assert.equal((await api('GET', '/api/admin/enquiries', { token: 'accounts@x.test|uid-accounts' })).status, 403)
+  const bad = await api('PATCH', '/api/admin/enquiries/contact/00000000-0000-0000-0000-000000000000', { token: OWNER, body: { status: 'maybe' } })
+  assert.equal(bad.status, 400)
+})

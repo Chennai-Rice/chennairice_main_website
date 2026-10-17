@@ -34,6 +34,7 @@ import { listIssuedIds, issuedIdsCsv, checkRegister } from './idregister.js'
 import { invoiceHtml, packingSlipHtml } from './documents.js'
 import { recordVisit, sourcesReport, sourceOrders, saveContestLead, startContestLead, contestLeads } from './attribution.js'
 import { checkAutomationKey, automationContacts } from './automation.js'
+import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { accountsSummary, invoiceRegister, invoiceRegisterCsv, paymentsList, refundsList, period } from './accounts.js'
 import { invoicePdf } from './invoice-pdf.js'
 import { query } from '../db.js'
@@ -366,6 +367,15 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/shipping-zones', perm('shipping.manage'), wrap(async (_req, res) => res.json({ zones: await listZones() })))
   admin.put('/shipping-zones', wrap(async (req, res) => res.json({ zone: await upsertZone(req.staff, req.body) })))
   admin.get('/emails', perm('emails.view'), wrap(async (req, res) => res.json({ emails: await listEmails(req.query) })))
+
+  // /admin → Enquiries: the website's contact and bulk-order enquiries.
+  admin.get('/enquiries', perm('enquiries.view'), wrap(async (_req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await listEnquiries())
+  }))
+  admin.patch('/enquiries/:kind/:id', perm('enquiries.view'), wrap(async (req, res) => {
+    res.json({ enquiry: await updateEnquiry(req.params.kind, req.params.id, req.body) })
+  }))
 
   // Accounts section: invoices, payments, refunds and GST totals (read-only).
   admin.get('/accounts/summary', perm('accounts.view'), wrap(async (req, res) => {
