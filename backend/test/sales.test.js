@@ -1348,3 +1348,19 @@ test('Sales Daddy CRM: a lead it refuses (e.g. own number) is not retried', asyn
     await new Promise((r) => fake.close(r))
   }
 })
+
+test('order list: a cancelled, never-paid order is dated by when it was attempted', async () => {
+  const s = await api('POST', '/api/checkout/session', {
+    body: { ...buyer({ name: 'Never Paid', phone: '+91 90000 33333' }), items: [{ id: 'alibaba', qty: 1 }] },
+    headers: { 'X-Forwarded-For': '10.78.0.1' },
+  })
+  await db.query(`update orders set reservation_expires_at = now() - interval '1 minute' where id = $1`, [s.body.orderId])
+  await api('POST', '/api/jobs/run', { headers: { 'X-Job-Token': 'job-token-for-tests' } })
+  const list = await api('GET', '/api/admin/warehouse/orders?tab=cancelled&limit=50', { token: OWNER })
+  const row = list.body.orders.find((o) => o.orderNumber === s.body.orderNumber)
+  assert.ok(row, 'listed under cancelled')
+  assert.ok(row.placedAt, 'has a date and time')
+  const today = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
+  const dated = await api('GET', `/api/admin/warehouse/orders?tab=cancelled&from=${today}&to=${today}&limit=50`, { token: OWNER })
+  assert.ok(dated.body.orders.some((o) => o.orderNumber === s.body.orderNumber), 'found by the date filter')
+})

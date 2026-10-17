@@ -26,7 +26,10 @@ const MAX_PAGE = 500
 
 export const DATE = /^\d{4}-\d{2}-\d{2}$/
 // India time, so "today" means the shop's today, not UTC's.
-const IST_DAY = `(o.placed_at at time zone 'Asia/Kolkata')::date`
+// An order that was never paid (failed / cancelled checkout) has no placed_at;
+// it is dated by when the customer tried to check out.
+const WHEN = 'coalesce(o.placed_at, o.created_at)'
+const IST_DAY = `(${WHEN} at time zone 'Asia/Kolkata')::date`
 
 /**
  * WHERE clause for every filter except the status tab, so the same filters
@@ -120,7 +123,7 @@ export async function listWarehouseOrders(f = {}, { maxLimit = MAX_PAGE, money =
 
   const listParams = [...params, TABS[tab]]
   const { rows } = await query(
-    `select o.id, o.order_number, o.shipment_id, o.status, o.payment_status, o.placed_at, o.shipped_at,
+    `select o.id, o.order_number, o.shipment_id, o.status, o.payment_status, ${WHEN} as placed_at, o.shipped_at,
             o.contact_name, o.contact_phone, o.shipping_address, o.needs_attention, o.total_paise,
             (select json_build_object('id', sh.id, 'method', sh.method, 'carrier', sh.carrier_name,
                     'trackingNumber', sh.tracking_number, 'lrNumber', sh.lr_number, 'vehicle', sh.vehicle_number,
@@ -139,7 +142,7 @@ export async function listWarehouseOrders(f = {}, { maxLimit = MAX_PAGE, money =
        join products p on p.id = v.product_id
       where ${base} and o.status = any($${listParams.length})
       group by o.id
-      order by o.placed_at ${sort}, o.order_number
+      order by ${WHEN} ${sort}, o.order_number
       limit ${limit} offset ${offset}`,
     listParams
   )
