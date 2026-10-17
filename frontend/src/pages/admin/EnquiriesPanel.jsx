@@ -16,6 +16,35 @@ const KINDS = [
 ]
 const STATUSES = ['new', 'contacted', 'closed']
 
+// CSV for Excel: a BOM so Tamil and ₹ open correctly, and no cell may start
+// like a formula.
+function toCsv(header, lines) {
+  const cell = (v) => {
+    let t = String(v ?? '')
+    if (/^[=+\-@]/.test(t)) t = "'" + t
+    return '"' + t.replace(/"/g, '""') + '"'
+  }
+  return '\ufeff' + [header, ...lines].map((r) => r.map(cell).join(',')).join('\r\n')
+}
+
+function downloadCsv(kind, rows, show) {
+  const istDay = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
+  const csv = kind === 'contact'
+    ? toCsv(['Received', 'Name', 'Email', 'Phone', 'Message', 'Status'],
+        rows.map((r) => [when(r.created_at), r.name, r.email, r.phone, r.enquiry, r.status]))
+    : toCsv(['Received', 'Company / name', 'Representative', 'Buyer type', 'Email', 'Phone', 'Quantity', 'GSTIN', 'Message', 'Status'],
+        rows.map((r) => [when(r.created_at), r.company_or_name, r.representative_name,
+          r.buyer_type === 'other' ? r.other_type || 'Other' : r.buyer_type, r.email, r.phone, r.quantity_kg, r.gstin, r.message, r.status]))
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${kind === 'contact' ? 'contact' : 'bulk-order'}-enquiries${show === 'all' ? '' : '-' + show}-${istDay}.csv`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 const when = (iso) =>
   new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 
@@ -142,6 +171,10 @@ function Enquiries({ onAuthError }) {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                 <Segmented options={KINDS} value={kind} onChange={setKind} ariaLabel="Enquiry type" />
                 <Segmented options={FILTERS} value={show} onChange={setShow} ariaLabel="Status" />
+                <button type="button" className="ad-btn ad-btn-quiet" disabled={!rows.length}
+                  onClick={() => downloadCsv(kind, rows, show)} title="Download these enquiries for Excel">
+                  Download CSV ({rows.length})
+                </button>
               </div>
             }
           >
