@@ -466,6 +466,7 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
                 <option value="">All payments</option>
                 <option value="paid">Paid</option>
                 <option value="refunded">Refunded</option>
+                <option value="failed">Failed / cancelled</option>
               </select>
             </span>
           </label>

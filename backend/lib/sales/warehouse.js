@@ -44,6 +44,8 @@ export function filterSql(f, params) {
 
   if (f.payment === 'paid') where.push(`o.payment_status = 'paid'`)
   else if (f.payment === 'refunded') where.push(`o.payment_status in ('refunded', 'partially_refunded')`)
+  // Payment never went through (failed or abandoned), so the order was cancelled.
+  else if (f.payment === 'failed') where.push(`o.payment_status in ('failed', 'pending')`)
 
   if (['5', '10', '26'].includes(String(f.pack))) {
     where.push(`exists (select 1 from order_items x where x.order_id = o.id and x.pack_kg = ${add(Number(f.pack))})`)
