@@ -133,6 +133,7 @@ const robots =
   'Disallow: /cart\n' +
   'Disallow: /checkout\n' +
   'Disallow: /wishlist\n' +
+  'Disallow: /warehouse\n' +
   '\n' +
   'Sitemap: ' + SITE + '/sitemap.xml\n'
 

@@ -198,7 +198,7 @@ function UserMenu({ me, onSettings, onSignOut }) {
 }
 
 export default function WarehousePage() {
-  usePageMeta('Warehouse — Chennai Rice Industries', 'Staff only.')
+  usePageMeta('Warehouse — Chennai Rice Industries', 'Staff only.', { noindex: true })
   const [params, setParams] = useSearchParams()
   const [me, setMe] = useState(null)
   const [checking, setChecking] = useState(true)
