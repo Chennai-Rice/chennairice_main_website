@@ -212,6 +212,19 @@ export default function App() {
             )
           }
         />
+        <Route
+          path="/order-confirmed"
+          element={
+            isCheckoutEnabled ? (
+              <CheckoutPage />
+            ) : (
+              <ComingSoonPage
+                title="Checkout"
+                blurb="Online ordering and payment are almost ready. In the meantime, call or write to us and we will take your order directly."
+              />
+            )
+          }
+        />
         <Route path="/wishlist" element={<WishlistPage />} />
         {/* legacy deep links from the product-page repo */}
         <Route path="/index.html" element={<Navigate to="/rice-products" replace />} />

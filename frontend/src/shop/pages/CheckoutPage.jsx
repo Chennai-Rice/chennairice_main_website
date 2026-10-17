@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import SiteLayout from "../layouts/SiteLayout.jsx";
 import { useCart } from "../hooks/useCart.jsx";
 import useCartQuote from "../hooks/useCartQuote.js";
@@ -60,14 +60,23 @@ function validate(form) {
 export default function CheckoutPage() {
   const { items, count, clear } = useCart();
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState(EMPTY_FORM);
   const { subtotal, shipping, region, total, hasPin, error: quoteError } = useCartQuote(form.pincode);
   const [errors, setErrors] = useState({});
-  const [status, setStatus] = useState("idle"); // idle | paying | done
+  // After payment the receipt moves to /order-confirmed (a page of its own
+  // for ad and Tag Manager conversion tracking). The receipt rides in the
+  // browser history, so a refresh there still shows it.
+  const onConfirmedPage = location.pathname === "/order-confirmed";
+  const fromHistory = onConfirmedPage ? location.state?.confirmed ?? null : null;
+  const [status, setStatus] = useState(fromHistory ? "done" : "idle"); // idle | paying | done
   const [failure, setFailure] = useState("");
-  const [confirmed, setConfirmed] = useState(null);
+  const [confirmed, setConfirmed] = useState(fromHistory);
 
-  usePageMeta("Checkout — Chennai Rice", "Complete your Chennai Rice order.");
+  usePageMeta(
+    onConfirmedPage ? "Order confirmed — Chennai Rice" : "Checkout — Chennai Rice",
+    onConfirmedPage ? "Your Chennai Rice order is confirmed." : "Complete your Chennai Rice order."
+  );
 
   const set = (key) => (event) => {
     const { value } = event.target;
@@ -159,7 +168,7 @@ export default function CheckoutPage() {
       // Every figure on the receipt comes from the server's verified result,
       // not from what this page sent — the amount in particular is the one the
       // gateway actually captured.
-      setConfirmed({
+      const receipt = {
         orderId: session.orderId,
         orderNumber: result.orderNumber,
         amount: result.amount ?? session.amount,
@@ -169,8 +178,10 @@ export default function CheckoutPage() {
         last4: result.last4,
         customerName: form.name,
         customerEmail: form.email,
-      });
+      };
+      setConfirmed(receipt);
       setStatus("done");
+      navigate("/order-confirmed", { replace: true, state: { confirmed: receipt } });
       // The funnel's "Paid" step (/admin). Only for visitors who accepted
       // analytics cookies; best effort, never in the way of the receipt.
       trackEvent("purchase", { orderRef: result.orderNumber, valueInr: Number(result.amount ?? session.amount) }).catch(() => {});
@@ -186,6 +197,11 @@ export default function CheckoutPage() {
           " before paying again."
       );
     }
+  }
+
+  // /order-confirmed opened without a receipt (a shared or bookmarked link).
+  if (onConfirmedPage && !(status === "done" && confirmed)) {
+    return <Navigate to="/track-order" replace />;
   }
 
   if (status === "done" && confirmed) {
