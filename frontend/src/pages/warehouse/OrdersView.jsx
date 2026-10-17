@@ -565,7 +565,8 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
 
         <div className={`wh-table wh-table--orders${money ? ' has-money' : ''}`} role="table" aria-label="Orders">
           <div className="wh-tr wh-th" role="row">
-            <span role="columnheader" className="visually-hidden">Select</span>
+            {/* Keeps its grid column (only the label is hidden), so the headings below line up with their columns. */}
+            <span role="columnheader"><span className="visually-hidden">Select</span></span>
             <span role="columnheader">Order ID</span>
             <span role="columnheader">Date &amp; Time</span>
             <span role="columnheader">Products</span>
