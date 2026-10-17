@@ -7,9 +7,10 @@
 //   4. send queued emails
 import { query } from '../db.js'
 import { expireUnpaidOrders } from './checkout.js'
-import { queueEmail, sendQueued, staffInbox } from './email.js'
+import { queueEmail, sendQueued, staffRecipients } from './email.js'
 import { formatInr, istDateStamp } from './util.js'
 import { sendCrmLeads } from '../crm.js'
+import { sendWhatsAppMessages } from '../whatsapp.js'
 
 const SLA = [
   { key: 'confirm', status: ['placed'], since: 'placed_at', after: '4 hours', what: 'paid but not confirmed for 4 hours' },
@@ -18,7 +19,7 @@ const SLA = [
 ]
 
 async function slaReminders() {
-  const inbox = staffInbox()
+  const inbox = await staffRecipients({ query })
   if (!inbox) return 0
   let queued = 0
   for (const rule of SLA) {
@@ -45,7 +46,7 @@ async function slaReminders() {
 }
 
 async function lowStockAlerts() {
-  const inbox = process.env.INVENTORY_NOTIFY_EMAIL || staffInbox()
+  const inbox = process.env.INVENTORY_NOTIFY_EMAIL || await staffRecipients({ query })
   if (!inbox) return 0
   const { rows: [setting] } = await query(`select value from company_settings where key = 'low_stock_alerts'`)
   if (setting && setting.value === 'off') return 0
@@ -77,5 +78,6 @@ export async function runJobs() {
   const email = await sendQueued({ query })
   // Leads Sales Daddy could not take at the time are retried here.
   const crm = await sendCrmLeads({ query })
-  return { expired, reminders, lowStock, email, crm }
+  const whatsapp = await sendWhatsAppMessages({ query })
+  return { expired, reminders, lowStock, email, crm, whatsapp }
 }
