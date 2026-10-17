@@ -4,6 +4,7 @@ import SiteLayout from "../layouts/SiteLayout.jsx";
 import { useCart } from "../hooks/useCart.jsx";
 import useCartQuote from "../hooks/useCartQuote.js";
 import { currentAttribution } from "../../services/attribution.js";
+import { trackEvent } from "../../services/events.js";
 import { formatRupees } from "../utils/format.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
@@ -170,6 +171,9 @@ export default function CheckoutPage() {
         customerEmail: form.email,
       });
       setStatus("done");
+      // The funnel's "Paid" step (/admin). Only for visitors who accepted
+      // analytics cookies; best effort, never in the way of the receipt.
+      trackEvent("purchase", { orderRef: result.orderNumber, valueInr: Number(result.amount ?? session.amount) }).catch(() => {});
       clear();
     } catch (error) {
       // The money may well have left the customer's account here, so never

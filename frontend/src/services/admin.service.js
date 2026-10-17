@@ -390,10 +390,9 @@ export function buildReport(raw, rangeId = '7d') {
       stage('Added to cart', addedToCart, viewedProduct),
       stage('Paid', paid, addedToCart),
     ],
-    // Payment is not wired to a gateway yet, so this stage is structurally
-    // present but can only ever be zero. The UI greys it rather than
-    // implying nobody bought.
-    paidTracked: false,
+    // Paid = a 'purchase' event, sent by the checkout when Razorpay confirms
+    // the payment (from 17 Oct 2026; visitors who accepted analytics only).
+    paidTracked: true,
   }
 
   // ---- time series ----
