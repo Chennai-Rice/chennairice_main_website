@@ -14,7 +14,7 @@ const KINDS = [
   { id: 'contact', label: 'Contact' },
   { id: 'bulk', label: 'Bulk orders' },
 ]
-const STATUSES = ['new', 'contacted', 'closed']
+const STATUSES = ['new', 'contacted', 'closed', 'spam']
 
 // CSV for Excel: a BOM so Tamil and ₹ open correctly, and no cell may start
 // like a formula.
@@ -53,6 +53,7 @@ const FILTERS = [
   { id: 'new', label: 'New' },
   { id: 'contacted', label: 'Contacted' },
   { id: 'closed', label: 'Closed' },
+  { id: 'spam', label: 'Spam' },
 ]
 
 export default function EnquiriesPanel() {
@@ -87,7 +88,8 @@ function Enquiries({ onAuthError }) {
   // The counts follow any status change made here without a reload.
   const all = data ? [...data.contact, ...data.bulk] : []
   const counted = (st) => all.filter((e) => e.status === st).length
-  const recent = (days) => all.filter((e) => Date.now() - new Date(e.created_at).getTime() < days * 864e5).length
+  // Spam is left out of the recent counts.
+  const recent = (days) => all.filter((e) => e.status !== 'spam' && Date.now() - new Date(e.created_at).getTime() < days * 864e5).length
   const rows = data ? data[kind].filter((r) => show === 'all' || r.status === show) : []
 
   async function setStatus(row, status) {
@@ -160,6 +162,7 @@ function Enquiries({ onAuthError }) {
             <MetricCard label="New — not yet contacted" value={counted('new')} />
             <MetricCard label="Contacted" value={counted('contacted')} />
             <MetricCard label="Closed" value={counted('closed')} />
+            <MetricCard label="Spam" value={counted('spam')} />
             <MetricCard label="Last 7 days" value={recent(7)} />
             <MetricCard label="Today" value={recent(1)} />
             <MetricCard label="Contact / Bulk order" value={`${data.contact.length} / ${data.bulk.length}`} />

@@ -1374,5 +1374,6 @@ test('/admin enquiries: owner, admin, IT and sales only; empty when Supabase is 
   assert.equal((await api('GET', '/api/admin/enquiries', { token: tokens.dispatch })).status, 403)
   assert.equal((await api('GET', '/api/admin/enquiries', { token: 'accounts@x.test|uid-accounts' })).status, 403)
   const bad = await api('PATCH', '/api/admin/enquiries/contact/00000000-0000-0000-0000-000000000000', { token: OWNER, body: { status: 'maybe' } })
+  assert.match(bad.body.error, /spam/)
   assert.equal(bad.status, 400)
 })

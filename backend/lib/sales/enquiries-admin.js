@@ -6,7 +6,8 @@ import { hasSupabase, supabase } from '../supabase.js'
 import { httpError, str } from './util.js'
 
 const TABLES = { contact: 'contact_enquiries', bulk: 'bulk_order_enquiries' }
-const STATUSES = ['new', 'contacted', 'closed']
+// 'spam' needs the Supabase enum value: alter type lead_status add value 'spam'
+const STATUSES = ['new', 'contacted', 'closed', 'spam']
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const LIMIT = 1000
 
@@ -31,6 +32,7 @@ export async function listEnquiries() {
     new: all.filter((e) => e.status === 'new').length,
     contacted: all.filter((e) => e.status === 'contacted').length,
     closed: all.filter((e) => e.status === 'closed').length,
+    spam: all.filter((e) => e.status === 'spam').length,
     today: all.filter((e) => new Date(e.created_at).getTime() > since(1)).length,
     week: all.filter((e) => new Date(e.created_at).getTime() > since(7)).length,
   }
@@ -44,12 +46,15 @@ export async function updateEnquiry(kind, id, body) {
   if (!UUID.test(String(id))) throw httpError('Not found', { status: 404, publicMessage: 'That enquiry could not be found.' })
   const patch = { updated_at: new Date().toISOString() }
   if (body?.status !== undefined) {
-    if (!STATUSES.includes(body.status)) throw httpError('Status must be new, contacted or closed.')
+    if (!STATUSES.includes(body.status)) throw httpError('Status must be new, contacted, closed or spam.')
     patch.status = body.status
   }
   if (body?.notes !== undefined) patch.notes = str(body.notes).slice(0, 2000) || null
   if (!hasSupabase) throw httpError('No Supabase', { status: 503, publicMessage: 'Enquiries are not available right now.' })
   const { data, error } = await supabase.from(table).update(patch).eq('id', id).select().maybeSingle()
+  if (error && /invalid input value for enum/i.test(error.message || '') && patch.status === 'spam') {
+    throw httpError('Spam status missing', { status: 409, publicMessage: "'Spam' is not switched on in the database yet. Ask the IT team to add it in Supabase." })
+  }
   if (error) throw failed(error)
   if (!data) throw httpError('Not found', { status: 404, publicMessage: 'That enquiry could not be found.' })
   return data
