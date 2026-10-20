@@ -198,9 +198,9 @@ function ContestLeads({ days, say, onAuthError }) {
     <section className="wh-panel wh-src">
       <header className="wh-src-head">
         <div>
-          <h2 className="wh-panel-title">Contest sign-ups from ads</h2>
+          <h2 className="wh-panel-title">Contest sign-ups from ads and WhatsApp</h2>
           <p className="wh-muted wh-small">
-            Name, mobile and email from the Super Slogan Contest form, shown to visitors who came from a Meta or Google ad
+            Name, mobile and email from the Super Slogan Contest form, shown to visitors who came from a Meta or Google ad or a WhatsApp link
             {leads ? ` · ${leads.length} in this period` : ''}.
           </p>
         </div>

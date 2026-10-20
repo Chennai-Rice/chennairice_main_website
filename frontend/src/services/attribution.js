@@ -36,7 +36,16 @@ function isPaidAd(a) {
   )
 }
 
-/** Did this browsing session start from a Meta or Google ad? */
+// A WhatsApp link (utm_source=whatsapp / wa, or WhatsApp as the referrer). These
+// visitors get the same contest sign-up form as ad visitors.
+function isWhatsApp(a) {
+  const s = (a.utm_source || '').toLowerCase()
+  let host = ''
+  try { host = a.referrer ? new URL(a.referrer).hostname : '' } catch { /* none */ }
+  return /^(whatsapp|wa)$/.test(s) || /(^|\.)(whatsapp\.com|wa\.me)$/.test(host)
+}
+
+/** Did this browsing session start from a Meta or Google ad, or a WhatsApp link? */
 export function isAdVisit() {
   try {
     return window.sessionStorage.getItem(FROM_AD) === '1'
@@ -74,7 +83,7 @@ export function captureAttribution() {
   if (ref) a.referrer = ref
   // This visit came from a paid ad: remembered for this browsing session
   // (the contest popup is shown only to these visitors).
-  if (isPaidAd(a)) {
+  if (isPaidAd(a) || isWhatsApp(a)) {
     try { window.sessionStorage.setItem(FROM_AD, '1') } catch { /* popup stays off */ }
   }
   if (!Object.keys(a).length) return // a direct visit keeps any earlier ad visit

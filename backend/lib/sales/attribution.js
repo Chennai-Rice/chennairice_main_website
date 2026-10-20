@@ -217,7 +217,8 @@ export function cleanMobile(raw) {
   return /^[6-9]\d{9}$/.test(d) ? d : ''
 }
 
-const AD_SOURCES = ['meta_ads_facebook', 'meta_ads_instagram', 'meta_ads', 'google_ads']
+// Visitors shown the sign-up form: from a Meta or Google ad, or a WhatsApp link.
+const AD_SOURCES = ['meta_ads_facebook', 'meta_ads_instagram', 'meta_ads', 'google_ads', 'whatsapp']
 
 /** Name, mobile and email checked and tidied, or a 400 saying which is wrong. */
 function leadFields(body) {
@@ -240,7 +241,7 @@ export async function startContestLead(db, body, { ip = '' } = {}) {
   if (!otpEnabled()) return { otpRequired: false }
   const { source } = classify(cleanAttribution(body?.attribution))
   if (!AD_SOURCES.includes(source)) {
-    throw httpError('Not from an ad', { status: 403, publicMessage: 'This sign-up is only for visitors from our ads.' })
+    throw httpError('Not from an ad', { status: 403, publicMessage: 'This sign-up is only for visitors from our ads or WhatsApp links.' })
   }
   return sendOtp(db, phone, { resend: body?.resend === true, ip })
 }
