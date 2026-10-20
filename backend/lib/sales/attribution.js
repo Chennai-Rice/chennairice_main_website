@@ -31,7 +31,7 @@ export const SOURCES = {
 
 // Sales Daddy: the lead source key for an ad platform it knows, and the tag
 // for each ad channel (created once in Sales Daddy; see CRM_TAGS in crm.js).
-const CRM_SOURCE = { meta_ads_instagram: 'instagram', meta_ads_facebook: 'facebook' }
+const CRM_SOURCE = { meta_ads_instagram: 'instagram', meta_ads_facebook: 'facebook', whatsapp: 'whatsapp' }
 export const AD_TAG = {
   meta_ads_instagram: 'Instagram ad',
   meta_ads_facebook: 'Facebook ad',
