@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { currentAttribution, isAdVisit } from '../services/attribution.js'
+import { trackMetaEvent } from '../services/metaPixel.js'
 import './contestpopup.css'
 
 // The Super Slogan Contest poster. Taking part starts with buying a Kitchidi
@@ -199,6 +200,7 @@ function AdSignup({ closeRef, close }) {
   async function register(extra = {}) {
     await post('/api/contest/lead', { ...details(), ...extra })
     hideFor(HIDE_AFTER_JOIN_MS) // registered: no popup for a week
+    trackMetaEvent('Lead', { content_name: 'Super Slogan Contest sign-up' })
     setStep('done')
   }
 

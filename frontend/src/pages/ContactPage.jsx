@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { trackMetaEvent } from '../services/metaPixel.js'
 import Ornament from './../components/Ornament.jsx'
 import { FOOTER } from '../data/content.js'
 import './page.css'
@@ -79,6 +80,7 @@ export default function ContactPage() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not send your enquiry.')
+      trackMetaEvent('Lead', { content_name: 'Contact enquiry' })
       setSent(true)
       setForm(EMPTY)
     } catch (err) {

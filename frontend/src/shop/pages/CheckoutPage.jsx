@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import SiteLayout from "../layouts/SiteLayout.jsx";
 import { useCart } from "../hooks/useCart.jsx";
@@ -8,6 +8,7 @@ import { trackEvent } from "../../services/events.js";
 import { formatRupees } from "../utils/format.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
+import { trackMetaEvent } from "../../services/metaPixel.js";
 import {
   initiatePayment,
   openPaymentWidget,
@@ -88,6 +89,20 @@ export default function CheckoutPage() {
   };
 
   const isEmpty = items.length === 0;
+
+  // Meta: the customer reached checkout with something in the cart (once).
+  const startedCheckout = !isEmpty && status === "idle";
+  const [checkoutTracked, setCheckoutTracked] = useState(false);
+  useEffect(() => {
+    if (!startedCheckout || checkoutTracked) return;
+    setCheckoutTracked(true);
+    trackMetaEvent("InitiateCheckout", {
+      content_ids: items.map((i) => i.id), content_type: "product",
+      num_items: items.reduce((n, i) => n + i.qty, 0),
+      value: subtotal, currency: "INR",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startedCheckout]);
   const busy = status === "paying";
 
   const lines = useMemo(
@@ -181,6 +196,17 @@ export default function CheckoutPage() {
         customerEmail: form.email,
       };
       setConfirmed(receipt);
+      // Meta: the sale, with the amount the gateway actually captured. The order
+      // number is the event ID, so a later server-side copy counts as the same sale.
+      trackMetaEvent(
+        "Purchase",
+        {
+          content_ids: items.map((i) => i.id), content_type: "product",
+          num_items: items.reduce((n, i) => n + i.qty, 0),
+          value: Number(result.amount ?? session.amount), currency: "INR",
+        },
+        "purchase-" + result.orderNumber
+      );
       setStatus("done");
       navigate("/order-confirmed", { replace: true, state: { confirmed: receipt } });
       // The funnel's "Paid" step (/admin). Only for visitors who accepted

@@ -20,6 +20,7 @@ import { useRipple } from "../hooks/useRipple.js";
 import { formatRupees } from "../utils/format.js";
 import { showCardPrices } from "../../config.js";
 import usePageMeta from "../hooks/usePageMeta.js";
+import { trackMetaEvent } from "../../services/metaPixel.js";
 import { PRODUCT_SEO, productIdFromSlug, productPath } from "../../seo.js";
 import "./productdetail.css";
 
@@ -62,7 +63,7 @@ export default function ProductDetailPage() {
     const data = {
       "@context": "https://schema.org",
       "@type": "Product",
-      name: (seo?.h1 || product.name).replace(/ – d+ kg$/, ""),
+      name: (seo?.h1 || product.name).replace(/ – \d+ kg$/, ""),
       description: seo?.description || product.description,
       image: product.image ? [new URL(product.image, site).href] : undefined,
       sku: product.id,
@@ -90,6 +91,18 @@ export default function ProductDetailPage() {
     document.head.appendChild(tag);
     return () => tag.remove();
   }, [product, sizes, seo]);
+
+  // Meta: this product was viewed (once per product, with the pack size shown first).
+  const viewedId = product?.id;
+  const viewedPrice = defaultSize?.price;
+  useEffect(() => {
+    if (!viewedId) return;
+    trackMetaEvent("ViewContent", {
+      content_ids: [viewedId], content_name: product.name, content_type: "product",
+      value: viewedPrice, currency: "INR",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewedId]);
 
   // Pack size defaults to 10 kg once the product has loaded — keep the
   // selector in sync instead of getting stuck on the pre-load undefined.

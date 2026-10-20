@@ -112,7 +112,7 @@ for (const [key, page] of Object.entries(LANDING)) {
   const packs = (page.productIds || []).filter((id) => PRODUCT_SEO[id])
   if (packs.length) {
     items.push({ '@type': 'ItemList', name: page.productsHeading, itemListElement: packs.map((id, i) => ({
-      '@type': 'ListItem', position: i + 1, name: PRODUCT_SEO[id].h1.replace(/ – d+ kg$/, ''), url: abs(productPath(id)),
+      '@type': 'ListItem', position: i + 1, name: PRODUCT_SEO[id].h1.replace(/ – \d+ kg$/, ''), url: abs(productPath(id)),
     })) })
   }
   if (page.faqs?.length) {

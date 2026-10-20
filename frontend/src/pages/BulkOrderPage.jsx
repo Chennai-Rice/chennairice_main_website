@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { trackMetaEvent } from '../services/metaPixel.js'
 import Ornament from '../components/Ornament.jsx'
 import { FOOTER } from '../data/content.js'
 import usePageMeta from '../shop/hooks/usePageMeta.js'
@@ -118,6 +119,7 @@ export default function BulkOrderPage() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not send your enquiry.')
+      trackMetaEvent('Lead', { content_name: 'Bulk order enquiry' })
       setSent(true)
       setForm(EMPTY)
     } catch (err) {

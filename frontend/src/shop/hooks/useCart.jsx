@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { trackAddToCart } from "../../services/events.js";
+import { trackMetaEvent } from "../../services/metaPixel.js";
 
 /**
  * The cart, ported from js/cart-store.js.
@@ -51,6 +52,10 @@ export function CartProvider({ children }) {
     // than once, which would record duplicate events for a single add.
     // Best-effort and gated on analytics consent inside trackAddToCart.
     trackAddToCart(product);
+    trackMetaEvent("AddToCart", {
+      content_ids: [product.id], content_name: product.name, content_type: "product",
+      value: product.price, currency: "INR",
+    });
 
     setItems((current) => {
       const existing = current.find((item) => item.id === product.id);
