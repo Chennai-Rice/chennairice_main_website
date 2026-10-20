@@ -1304,7 +1304,9 @@ test('Sales Daddy CRM: contest sign-ups and enquiries are sent as leads; failure
     assert.match(contest.lead.note, /Reel 3/)
     assert.ok(contest.lead.clientRef)
 
-    // The waiting one goes out with the job.
+    // The waiting one goes out with the job. (Order notes from the earlier
+    // tests are set aside so they do not fill this run's batch.)
+    await db.query(`update crm_outbox set status = 'failed' where kind = 'order_event' and status = 'queued'`)
     await api('POST', '/api/jobs/run', { headers: { 'X-Job-Token': 'job-token-for-tests' } })
     assert.ok(got.some((g) => g.lead.mobile === '9840055555'))
 
@@ -1343,6 +1345,77 @@ test('Sales Daddy CRM: a lead it refuses (e.g. own number) is not retried', asyn
     const { rows: [r] } = await db.query(`select status, last_error from crm_outbox where payload->>'mobile' = '9876500000'`)
     assert.equal(r.status, 'failed')
     assert.match(r.last_error, /own_number_not_allowed/)
+  } finally {
+    for (const k of ['SALESDADDY_API_KEY', 'SALESDADDY_BASE_URL']) delete process.env[k]
+    await new Promise((r) => fake.close(r))
+  }
+})
+
+test('Sales Daddy CRM: website orders land as notes on the customer lead — paid, each warehouse step, abandoned checkout', async () => {
+  const http = await import('node:http')
+  const got = []
+  const fake = http.createServer((req, res) => {
+    let body = ''
+    req.on('data', (c) => (body += c)).on('end', () => {
+      got.push({ path: req.url, body: JSON.parse(body) })
+      res.setHeader('content-type', 'application/json')
+      res.end(JSON.stringify(req.url.endsWith('/notes') ? { ok: true, noteId: 'n' + got.length } : { ok: true, leadId: 'lead-77', duplicate: got.length > 1 }))
+    })
+  })
+  await new Promise((r) => fake.listen(0, r))
+  const { sendCrmLeads } = await import('../lib/crm.js')
+  try {
+    // A paid order, then confirm → pack → ship with a tracking number.
+    const { session } = await buy([{ id: 'rudra', qty: 2 }], buyer({ name: 'Selvi Murugan', email: 'selvi@example.com', phone: '+91 94430 12121', city: 'Salem' }))
+    const id = session.orderId
+    assert.equal((await api('POST', `/api/admin/orders/${id}/confirm`, { token: tokens.sales })).status, 200)
+    assert.equal((await api('POST', `/api/admin/orders/${id}/pack`, { token: tokens.dispatch })).status, 200)
+    const { rows: [batch] } = await db.query(
+      `select b.id from production_batches b join product_variants v on v.id = b.variant_id join products p on p.id = v.product_id where p.slug = 'rudra'`)
+    const { rows: [item] } = await db.query('select id from order_items where order_id = $1', [id])
+    const shipped = await api('POST', `/api/admin/orders/${id}/ship`, {
+      token: tokens.dispatch,
+      body: { method: 'courier', carrierName: 'DTDC', trackingNumber: 'D555000111', expectedDelivery: '2026-10-25', batches: { [item.id]: batch.id } },
+    })
+    assert.equal(shipped.status, 200, JSON.stringify(shipped.body))
+
+    // An abandoned checkout: never paid, released by the job.
+    const gone = await api('POST', '/api/checkout/session', {
+      body: { ...buyer({ name: 'Arun Kumar', email: 'arun@example.com', phone: '9944001122' }), items: [{ id: 'alibaba', qty: 1 }] },
+      headers: { 'X-Forwarded-For': '10.79.0.1' },
+    })
+    await db.query(`update orders set reservation_expires_at = now() - interval '1 minute' where id = $1`, [gone.body.orderId])
+    await api('POST', '/api/jobs/run', { headers: { 'X-Job-Token': 'job-token-for-tests' } })
+
+    // All queued with the steps (the order is never held up by the CRM)...
+    const { rows: queued } = await db.query(`select payload from crm_outbox where kind = 'order_event' and status = 'queued' order by created_at`)
+    const selvi = queued.filter((q) => q.payload.lead.mobile === '9443012121').map((q) => q.payload.note)
+    assert.equal(selvi.length, 4)
+    assert.match(selvi[0], new RegExp(`Website order ${session.orderNumber} paid: ₹`))
+    assert.match(selvi[0], /2 x Rudra 25 kg/)
+    assert.match(selvi[0], /Ship to: Salem/)
+    assert.match(selvi[1], /confirmed/)
+    assert.match(selvi[2], /packed/)
+    assert.match(selvi[3], /dispatched/)
+    assert.match(selvi[3], /Tracking no: D555000111/)
+    const arun = queued.find((q) => q.payload.lead.mobile === '9944001122').payload
+    assert.match(arun.note, /checkout not completed/)
+    assert.ok(arun.lead.tags.includes('Abandoned checkout'))
+    assert.ok(arun.lead.tags.includes('Website order'))
+
+    // ...then sent: for each, the lead (found or created by mobile), then the note on it, oldest first.
+    Object.assign(process.env, { SALESDADDY_API_KEY: 'sd_live_test', SALESDADDY_BASE_URL: 'http://127.0.0.1:' + fake.address().port })
+    const sent = await sendCrmLeads({ query: db.query, limit: 1000 })
+    assert.equal(sent.failed, 0)
+    const forSelvi = got.filter((g, i) => g.body.mobile === '9443012121' || (g.path.endsWith('/notes') && got[i - 1]?.body.mobile === '9443012121'))
+    assert.deepEqual(forSelvi.map((g) => g.path), [
+      '/v1/ext/leads', '/v1/ext/leads/lead-77/notes', '/v1/ext/leads', '/v1/ext/leads/lead-77/notes',
+      '/v1/ext/leads', '/v1/ext/leads/lead-77/notes', '/v1/ext/leads', '/v1/ext/leads/lead-77/notes',
+    ])
+    assert.match(forSelvi[1].body.body, /paid: ₹/)
+    assert.match(forSelvi[7].body.body, /Tracking no: D555000111/)
+    const { rows: left } = await db.query(`select status from crm_outbox where kind = 'order_event' and status <> 'sent' and payload->'lead'->>'mobile' in ('9443012121', '9944001122')`)
+    assert.equal(left.length, 0)
   } finally {
     for (const k of ['SALESDADDY_API_KEY', 'SALESDADDY_BASE_URL']) delete process.env[k]
     await new Promise((r) => fake.close(r))

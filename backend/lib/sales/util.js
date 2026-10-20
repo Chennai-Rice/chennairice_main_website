@@ -1,5 +1,6 @@
 // Small helpers shared by every sales module.
 import crypto from 'node:crypto'
+import { queueOrderEvent } from '../crm.js'
 
 /** An error that carries an HTTP status and a message safe to show a customer. */
 export function httpError(message, { status = 400, publicMessage, code } = {}) {
@@ -152,4 +153,6 @@ export async function recordOrderStatus(db, { orderId, from, to, actor, staffId 
      values ($1, $2, $3, $4, $5, $6)`,
     [orderId, from, to, actor, staffId, reason]
   )
+  // Tell the Sales Daddy CRM (a note on the customer's lead). Never throws.
+  await queueOrderEvent(db, { orderId, from, to, reason })
 }

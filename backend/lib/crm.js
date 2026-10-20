@@ -3,6 +3,12 @@
 // enquiries. Each lead is written to crm_outbox first, then sent; if Sales
 // Daddy is unreachable it is retried by the 10-minute job (see jobs.js).
 //
+// Shop orders follow the same path ('order_event'): a paid order, an
+// abandoned checkout and every warehouse step after payment are queued in the
+// same transaction as the status change (queueOrderEvent, called from
+// recordOrderStatus) and land as notes on the customer's lead, so sales sees
+// where each order is without opening the warehouse page.
+//
 //   SALESDADDY_API_KEY   the API key with the Leads scope (Secret Manager)
 //   SALESDADDY_BASE_URL  optional, defaults to https://api.salesdaddy.in
 //
@@ -31,6 +37,7 @@ export function crmLead(kind, f) {
     contest_signup: ['Website', 'Super Slogan Contest'],
     contact: ['Website', 'Contact form'],
     bulk_order: ['Website', 'Bulk order'],
+    order_event: ['Website', 'Website order'],
   }[kind].concat(f.tags || [])
   const lead = {
     name: clip(f.name, 200),
@@ -61,8 +68,8 @@ export async function queueCrmLead(kind, fields, db = { query: defaultQuery }) {
   return row.id
 }
 
-async function post(payload) {
-  const res = await fetch(base() + '/v1/ext/leads', {
+async function post(payload, path = '/v1/ext/leads') {
+  const res = await fetch(base() + path, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + process.env.SALESDADDY_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(payload),
@@ -70,6 +77,23 @@ async function post(payload) {
   })
   const data = await res.json().catch(() => ({}))
   return { status: res.status, data }
+}
+
+const accepted = (r) => r.status >= 200 && r.status < 300 && r.data.ok !== false
+
+/**
+ * One outbox row to Sales Daddy. An enquiry is a lead with its note. An order
+ * event first finds (or creates) the customer's lead, since Sales Daddy
+ * matches by mobile, then adds the event as a note on it, so a repeat buyer's
+ * orders all collect on one lead.
+ */
+async function deliver(kind, payload, ref) {
+  if (kind !== 'order_event') return post({ ...payload, clientRef: ref })
+  const lead = await post({ ...payload.lead, clientRef: ref })
+  if (!accepted(lead)) return lead
+  if (!lead.data.leadId) return { status: 502, data: { error: 'no_lead_id', message: 'Sales Daddy did not return the lead' } }
+  const note = await post({ body: payload.note }, `/v1/ext/leads/${encodeURIComponent(lead.data.leadId)}/notes`)
+  return accepted(note) ? lead : note
 }
 
 /**
@@ -87,19 +111,21 @@ export async function sendCrmLeads({ id = null, limit = 20, query = defaultQuery
         where id in (select id from crm_outbox
                       where status = 'queued' and next_try_at <= now() and ($1::uuid is null or id = $1)
                       order by created_at limit $2 for update skip locked)
-        returning id, payload, attempts`,
+        returning id, kind, payload, attempts, created_at`,
       [id, limit]
     )
+    // UPDATE ... RETURNING has no order of its own; send oldest first so an
+    // order's notes land in the order things happened.
+    rows.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
     for (const r of rows) {
-      // clientRef lets Sales Daddy recognise a retry of the same lead.
-      const payload = { ...r.payload, clientRef: r.id }
       let result
       try {
-        result = await post(payload)
+        // clientRef lets Sales Daddy recognise a retry of the same lead.
+        result = await deliver(r.kind, r.payload, r.id)
       } catch (err) {
         result = { status: 0, data: { error: 'network', message: err.message } }
       }
-      const ok = result.status >= 200 && result.status < 300 && result.data.ok !== false
+      const ok = accepted(result)
       if (ok) {
         sent++
         await query(
@@ -134,5 +160,116 @@ export async function pushCrmLead(kind, fields) {
     if (id) await sendCrmLeads({ id })
   } catch (err) {
     console.error('[crm] could not queue a lead:', err.message)
+  }
+}
+
+// ---- shop orders --------------------------------------------------------------
+
+const rupees = (paise) => '₹' + (Number(paise || 0) / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })
+
+/** The note line for each order step; a status not listed here sends nothing. */
+const ORDER_NOTE = {
+  placed: (o) => `Website order ${o.order_number} paid: ${rupees(o.total_paise)}`,
+  confirmed: (o) => `Website order ${o.order_number} confirmed by sales`,
+  packed: (o) => `Website order ${o.order_number} packed, ready to dispatch`,
+  shipped: (o) => `Website order ${o.order_number} dispatched`,
+  delivered: (o) => `Website order ${o.order_number} delivered`,
+  returned: (o) => `Website order ${o.order_number} returned`,
+  cancelled: (o) => `Website order ${o.order_number} cancelled`,
+}
+
+const METHOD = { own_vehicle: 'Own vehicle', courier: 'Courier', transport: 'Transport', pickup: 'Customer pickup' }
+
+function shipmentLines(s) {
+  if (!s) return []
+  const lines = [`Sent by: ${[METHOD[s.method] || s.method, s.carrier_name].filter(Boolean).join(', ')}`]
+  if (s.tracking_number) lines.push(`Tracking no: ${s.tracking_number}`)
+  if (s.lr_number) lines.push(`LR no: ${s.lr_number}`)
+  if (s.vehicle_number) lines.push(`Vehicle: ${s.vehicle_number}${s.driver_name ? ` (${s.driver_name}${s.driver_phone ? ', ' + s.driver_phone : ''})` : ''}`)
+  if (s.expected_delivery) lines.push(`Expected delivery: ${String(s.expected_delivery).slice(0, 10)}`)
+  if (s.tracking_url) lines.push(`Track: ${s.tracking_url}`)
+  return lines
+}
+
+/**
+ * The outbox payload for one order status change, or null when the change is
+ * not worth telling sales about (an order being created and waiting for
+ * payment is noise; it is still unpaid). Reads with `db` so it sees the
+ * transaction's own uncommitted changes.
+ */
+export async function orderEventPayload(db, { orderId, from, to, reason }) {
+  const abandoned = from === 'pending_payment' && to === 'cancelled'
+  if (!ORDER_NOTE[to]) return null
+  const { rows: [o] } = await db.query(
+    `select order_number, contact_name, contact_email, contact_phone, shipping_address, ship_state,
+            total_paise, payment_status
+       from orders where id = $1`, [orderId])
+  if (!o) return null
+  const mobile = crmMobile(o.contact_phone)
+  if (!o.contact_name || mobile.length < 10) return null
+
+  const lines = [abandoned
+    ? `Website checkout not completed: order ${o.order_number} for ${rupees(o.total_paise)} was not paid in time. Worth a call.`
+    : ORDER_NOTE[to](o)]
+
+  if (to === 'placed' || abandoned) {
+    const { rows: items } = await db.query(
+      'select product_name, pack_kg, quantity from order_items where order_id = $1 order by product_name', [orderId])
+    for (const i of items) lines.push(`${i.quantity} x ${i.product_name} ${Number(i.pack_kg)} kg`)
+    const a = o.shipping_address || {}
+    const place = [a.city, a.state || o.ship_state, a.pincode].filter(Boolean).join(', ')
+    if (place) lines.push(`Ship to: ${place}`)
+  }
+  if (to === 'shipped') {
+    const { rows: [s] } = await db.query(
+      `select method, carrier_name, tracking_number, lr_number, tracking_url, vehicle_number, driver_name,
+              driver_phone, expected_delivery
+         from shipments where order_id = $1 and status = 'shipped' order by shipped_at desc limit 1`, [orderId])
+    lines.push(...shipmentLines(s))
+  }
+  if (reason && to !== 'placed' && !abandoned) lines.push(`Reason: ${reason}`)
+  if (to === 'cancelled' && !abandoned && ['paid', 'partially_refunded'].includes(o.payment_status)) {
+    lines.push('Customer had paid: check the refund.')
+  }
+
+  const a = o.shipping_address || {}
+  return {
+    lead: crmLead('order_event', {
+      name: o.contact_name, phone: o.contact_phone, email: o.contact_email,
+      city: a.city, state: a.state || o.ship_state,
+      tags: abandoned ? ['Abandoned checkout'] : [],
+    }),
+    note: lines.join('\n').slice(0, 2000),
+  }
+}
+
+/**
+ * Queues an order status change for Sales Daddy inside the caller's
+ * transaction, so the note exists exactly when the change commits. Guarded by
+ * a savepoint: nothing about the CRM may ever fail or roll back an order step
+ * (for example before migration 023 has been applied).
+ */
+export async function queueOrderEvent(db, change) {
+  if (!hasDatabase()) return
+  let savepoint = false
+  try {
+    await db.query('savepoint crm_order_event')
+    savepoint = true
+  } catch {
+    // Not inside a transaction (a pool query): each statement stands alone.
+  }
+  try {
+    const payload = await orderEventPayload(db, change)
+    if (payload) {
+      const { rows: [row] } = await db.query(
+        `insert into crm_outbox (kind, payload) values ('order_event', $1) returning id`, [payload])
+      // Best effort: try to send soon after the transaction commits; the
+      // 10-minute job sends it anyway if this does not get to run.
+      if (crmEnabled()) setTimeout(() => sendCrmLeads({ id: row.id }).catch(() => {}), 3000).unref?.()
+    }
+    if (savepoint) await db.query('release savepoint crm_order_event')
+  } catch (err) {
+    if (savepoint) await db.query('rollback to savepoint crm_order_event').catch(() => {})
+    console.error('[crm] could not queue an order event:', err.message)
   }
 }
