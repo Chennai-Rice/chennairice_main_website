@@ -1298,9 +1298,9 @@ test('Sales Daddy CRM: contest sign-ups and enquiries are sent as leads; failure
     assert.equal(contest.path, '/v1/ext/leads')
     assert.equal(contest.auth, 'Bearer sd_live_test')
     assert.equal(contest.lead.name, 'Lakshmi Devi')
-    assert.equal(contest.lead.source, 'website')
-    assert.ok(contest.lead.tags.includes('Super Slogan Contest'))
-    assert.ok(contest.lead.tags.includes('Meta ad · Instagram'))
+    // An Instagram ad sign-up: Sales Daddy's own Instagram source, and tags to filter by.
+    assert.equal(contest.lead.source, 'instagram')
+    assert.deepEqual(contest.lead.tags, ['Contest sign-up', 'Instagram ad'])
     assert.match(contest.lead.note, /Reel 3/)
     assert.ok(contest.lead.clientRef)
 
@@ -1322,7 +1322,8 @@ test('Sales Daddy CRM: contest sign-ups and enquiries are sent as leads; failure
     assert.deepEqual(await sendCrmLeads({ query: db.query }), { sent: 1, failed: 0 })
     const bulk = got.find((g) => g.lead.mobile === '9000012345')
     assert.equal(bulk.lead.company, 'Ravi Stores')
-    assert.ok(bulk.lead.tags.includes('Bulk order'))
+    assert.deepEqual(bulk.lead.tags, ['Bulk enquiry'])
+    assert.equal(bulk.lead.source, 'website')
     const { rows: [done] } = await db.query(`select status, crm_lead_id from crm_outbox where payload->>'mobile' = '9000012345'`)
     assert.equal(done.status, 'sent')
     assert.ok(done.crm_lead_id)
@@ -1359,7 +1360,7 @@ test('Sales Daddy CRM: website orders land as notes on the customer lead — pai
     req.on('data', (c) => (body += c)).on('end', () => {
       got.push({ path: req.url, body: JSON.parse(body) })
       res.setHeader('content-type', 'application/json')
-      res.end(JSON.stringify(req.url.endsWith('/notes') ? { ok: true, noteId: 'n' + got.length } : { ok: true, leadId: 'lead-77', duplicate: got.length > 1 }))
+      res.end(JSON.stringify(req.url.endsWith('/notes') ? { ok: true, noteId: 'n' + got.length } : { ok: true, leadId: 'lead-77', duplicate: false }))
     })
   })
   await new Promise((r) => fake.listen(0, r))
@@ -1400,8 +1401,9 @@ test('Sales Daddy CRM: website orders land as notes on the customer lead — pai
     assert.match(selvi[3], /Tracking no: D555000111/)
     const arun = queued.find((q) => q.payload.lead.mobile === '9944001122').payload
     assert.match(arun.note, /checkout not completed/)
-    assert.ok(arun.lead.tags.includes('Abandoned checkout'))
-    assert.ok(arun.lead.tags.includes('Website order'))
+    // An abandoned checkout is tagged as that, not as an order.
+    assert.deepEqual(arun.lead.tags, ['Abandoned checkout'])
+    assert.deepEqual(queued.find((q) => q.payload.lead.mobile === '9443012121').payload.lead.tags, ['Website order'])
 
     // ...then sent: for each, the lead (found or created by mobile), then the note on it, oldest first.
     Object.assign(process.env, { SALESDADDY_API_KEY: 'sd_live_test', SALESDADDY_BASE_URL: 'http://127.0.0.1:' + fake.address().port })
@@ -1416,6 +1418,37 @@ test('Sales Daddy CRM: website orders land as notes on the customer lead — pai
     assert.match(forSelvi[7].body.body, /Tracking no: D555000111/)
     const { rows: left } = await db.query(`select status from crm_outbox where kind = 'order_event' and status <> 'sent' and payload->'lead'->>'mobile' in ('9443012121', '9944001122')`)
     assert.equal(left.length, 0)
+  } finally {
+    for (const k of ['SALESDADDY_API_KEY', 'SALESDADDY_BASE_URL']) delete process.env[k]
+    await new Promise((r) => fake.close(r))
+  }
+})
+
+test('Sales Daddy CRM: a repeat customer — the enquiry goes on their existing lead as a note, and its tag is added to theirs', async () => {
+  const http = await import('node:http')
+  const got = []
+  const fake = http.createServer((req, res) => {
+    let body = ''
+    req.on('data', (c) => (body += c)).on('end', () => {
+      got.push({ method: req.method, path: req.url, body: body ? JSON.parse(body) : null })
+      res.setHeader('content-type', 'application/json')
+      if (req.method === 'GET') return res.end(JSON.stringify({ ok: true, lead: { id: 'lead-9', tags: ['Website order'] } }))
+      if (req.method === 'PATCH' || req.url.endsWith('/notes')) return res.end(JSON.stringify({ ok: true }))
+      res.end(JSON.stringify({ ok: true, leadId: 'lead-9', duplicate: true }))
+    })
+  })
+  await new Promise((r) => fake.listen(0, r))
+  Object.assign(process.env, { SALESDADDY_API_KEY: 'sd_live_test', SALESDADDY_BASE_URL: 'http://127.0.0.1:' + fake.address().port })
+  try {
+    const { pushCrmLead } = await import('../lib/crm.js')
+    await pushCrmLead('bulk_order', { name: 'Meena', company: 'Meena Traders', phone: '9790012345', note: 'Bulk order enquiry: 40 bags', tags: ['Distributor'] })
+    assert.deepEqual(got.map((g) => g.method + ' ' + g.path), [
+      'POST /v1/ext/leads', 'GET /v1/ext/leads/lead-9', 'PATCH /v1/ext/leads/lead-9', 'POST /v1/ext/leads/lead-9/notes',
+    ])
+    assert.deepEqual(got[2].body.tags, ['Website order', 'Bulk enquiry', 'Distributor'])
+    assert.match(got[3].body.body, /40 bags/)
+    const { rows: [r] } = await db.query(`select status from crm_outbox where payload->>'mobile' = '9790012345'`)
+    assert.equal(r.status, 'sent')
   } finally {
     for (const k of ['SALESDADDY_API_KEY', 'SALESDADDY_BASE_URL']) delete process.env[k]
     await new Promise((r) => fake.close(r))

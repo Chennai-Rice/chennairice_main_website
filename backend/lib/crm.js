@@ -31,14 +31,26 @@ export function crmMobile(raw) {
   return d
 }
 
-/** The lead in Sales Daddy's shape (POST /v1/ext/leads). */
+/**
+ * The tags the website puts on leads, so sales can filter each kind apart.
+ * Sales Daddy only keeps tags that already exist in the workspace (Settings),
+ * so these exact names are created there once; any other tag is dropped.
+ */
+export const CRM_TAGS = {
+  contest_signup: 'Contest sign-up',
+  contact: 'Contact enquiry',
+  bulk_order: 'Bulk enquiry',
+  order_event: 'Website order',
+  abandoned: 'Abandoned checkout',
+}
+
+/**
+ * The lead in Sales Daddy's shape (POST /v1/ext/leads). `f.source` is a
+ * Sales Daddy source key (instagram, facebook…), website by default.
+ * `f.onlyTags` replaces the kind's own tag (an abandoned checkout is not an order).
+ */
 export function crmLead(kind, f) {
-  const tags = {
-    contest_signup: ['Website', 'Super Slogan Contest'],
-    contact: ['Website', 'Contact form'],
-    bulk_order: ['Website', 'Bulk order'],
-    order_event: ['Website', 'Website order'],
-  }[kind].concat(f.tags || [])
+  const tags = (f.onlyTags ? [] : [CRM_TAGS[kind]]).concat(f.tags || [])
   const lead = {
     name: clip(f.name, 200),
     mobile: crmMobile(f.phone),
@@ -46,7 +58,7 @@ export function crmLead(kind, f) {
     company: clip(f.company, 200),
     city: clip(f.city, 100),
     state: clip(f.state, 100),
-    source: 'website',
+    source: f.source || 'website',
     tags: [...new Set(tags.map((t) => String(t).slice(0, 50)).filter(Boolean))].slice(0, 20),
     note: clip(f.note, 2000),
     custom: f.custom || {},
@@ -79,21 +91,58 @@ async function post(payload, path = '/v1/ext/leads') {
   return { status: res.status, data }
 }
 
+async function request(method, path, payload) {
+  const res = await fetch(base() + path, {
+    method,
+    headers: { Authorization: 'Bearer ' + process.env.SALESDADDY_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
+    ...(payload && { body: JSON.stringify(payload) }),
+    signal: AbortSignal.timeout(8000),
+  })
+  const data = await res.json().catch(() => ({}))
+  return { status: res.status, data }
+}
+
 const accepted = (r) => r.status >= 200 && r.status < 300 && r.data.ok !== false
+const leadPath = (id) => `/v1/ext/leads/${encodeURIComponent(id)}`
 
 /**
- * One outbox row to Sales Daddy. An enquiry is a lead with its note. An order
- * event first finds (or creates) the customer's lead, since Sales Daddy
- * matches by mobile, then adds the event as a note on it, so a repeat buyer's
- * orders all collect on one lead.
+ * Sales Daddy returns an existing lead as it is when the mobile is already
+ * known (duplicate), without the new tags. Adds them, keeping the lead's own:
+ * read its tags, then write the union. Best effort — a failure here never
+ * fails the delivery (the note is what matters).
+ */
+async function addTags(leadId, tags) {
+  if (!tags?.length) return
+  try {
+    const got = await request('GET', leadPath(leadId))
+    if (!accepted(got)) return
+    const have = (got.data.lead?.tags || []).map((t) => (typeof t === 'string' ? t : t?.name)).filter(Boolean)
+    const all = [...new Set([...have, ...tags])]
+    if (all.length > have.length) await request('PATCH', leadPath(leadId), { tags: all.slice(0, 20) })
+  } catch (err) {
+    console.error('[crm] could not add tags:', err.message)
+  }
+}
+
+/**
+ * One outbox row to Sales Daddy. An enquiry is a lead with its note; when the
+ * mobile already has a lead, the enquiry goes on it as a note and its tags are
+ * added. An order event first finds (or creates) the customer's lead, since
+ * Sales Daddy matches by mobile, then adds the event as a note on it, so a
+ * repeat buyer's orders all collect on one lead.
  */
 async function deliver(kind, payload, ref) {
-  if (kind !== 'order_event') return post({ ...payload, clientRef: ref })
-  const lead = await post({ ...payload.lead, clientRef: ref })
+  const fields = kind === 'order_event' ? payload.lead : payload
+  const { note } = payload
+  const lead = await post({ ...fields, clientRef: ref })
   if (!accepted(lead)) return lead
-  if (!lead.data.leadId) return { status: 502, data: { error: 'no_lead_id', message: 'Sales Daddy did not return the lead' } }
-  const note = await post({ body: payload.note }, `/v1/ext/leads/${encodeURIComponent(lead.data.leadId)}/notes`)
-  return accepted(note) ? lead : note
+  const leadId = lead.data.leadId
+  if (kind !== 'order_event' && !lead.data.duplicate) return lead
+  if (!leadId) return { status: 502, data: { error: 'no_lead_id', message: 'Sales Daddy did not return the lead' } }
+  if (lead.data.duplicate) await addTags(leadId, fields.tags)
+  if (!note) return lead
+  const added = await post({ body: note }, `${leadPath(leadId)}/notes`)
+  return accepted(added) ? lead : added
 }
 
 /**
@@ -237,7 +286,7 @@ export async function orderEventPayload(db, { orderId, from, to, reason }) {
     lead: crmLead('order_event', {
       name: o.contact_name, phone: o.contact_phone, email: o.contact_email,
       city: a.city, state: a.state || o.ship_state,
-      tags: abandoned ? ['Abandoned checkout'] : [],
+      ...(abandoned && { onlyTags: true, tags: [CRM_TAGS.abandoned] }),
     }),
     note: lines.join('\n').slice(0, 2000),
   }

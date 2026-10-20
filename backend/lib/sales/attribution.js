@@ -29,6 +29,16 @@ export const SOURCES = {
   direct: 'Direct / typed the address',
 }
 
+// Sales Daddy: the lead source key for an ad platform it knows, and the tag
+// for each ad channel (created once in Sales Daddy; see CRM_TAGS in crm.js).
+const CRM_SOURCE = { meta_ads_instagram: 'instagram', meta_ads_facebook: 'facebook' }
+export const AD_TAG = {
+  meta_ads_instagram: 'Instagram ad',
+  meta_ads_facebook: 'Facebook ad',
+  meta_ads: 'Meta ad',
+  google_ads: 'Google ad',
+}
+
 const PAID = /^(paid|cpc|ppc|ads?|paid[_-]?social|paidsocial|paid[_-]?search|display|sponsored)$/i
 const clip = (v, n = 120) => str(String(v ?? '')).slice(0, n)
 
@@ -255,11 +265,14 @@ export async function saveContestLead(db, body) {
        submissions = contest_leads.submissions + 1, updated_at = now()`,
     [name, phone, email, source, campaign, ad, clip(body?.page || a?.landing, 200) || null, a, verified]
   )
-  // Into the Sales Daddy CRM, tagged with the ad it came from.
+  // Into the Sales Daddy CRM: the lead's source is the platform of the ad
+  // (Instagram / Facebook, Sales Daddy's own sources) and a tag names the ad
+  // channel, so sales can filter each apart. The campaign and ad are in the note.
   const label = SOURCES[source] || source
   await pushCrmLead('contest_signup', {
     name, phone, email,
-    tags: [label, campaign && 'Campaign: ' + campaign].filter(Boolean),
+    source: CRM_SOURCE[source],
+    tags: [AD_TAG[source]].filter(Boolean),
     note: [
       'Super Slogan Contest sign-up from the website.',
       'Came from: ' + label + (campaign ? ' · campaign ' + campaign : '') + (ad ? ' · ad ' + ad : ''),
