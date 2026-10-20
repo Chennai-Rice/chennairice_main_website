@@ -12,7 +12,7 @@ const KPIS = [
   { key: 'cancelled', label: 'Cancelled', note: 'Cancelled orders', icon: 'cancel', tone: 'pink' },
 ]
 
-const EMPTY = { q: '', date: '', from: '', to: '', payment: '', pack: '', state: '' }
+const EMPTY = { q: '', date: '', from: '', to: '', payment: '', pack: '', state: '', abandoned: false }
 const REFRESH_MS = 30000
 
 // Rows the checkbox and bulk actions can change.
@@ -32,7 +32,7 @@ function dateRange(f) {
 function queryString(status, sort, f, extra = {}) {
   const p = new URLSearchParams({ tab: status, sort })
   const { from, to } = dateRange(f)
-  for (const [k, v] of Object.entries({ q: f.q.trim(), payment: f.payment, pack: f.pack, state: f.state, from, to, ...extra })) {
+  for (const [k, v] of Object.entries({ q: f.q.trim(), payment: f.payment, pack: f.pack, state: f.state, abandoned: f.abandoned ? '1' : '', from, to, ...extra })) {
     if (v !== '' && v != null) p.set(k, v)
   }
   return p.toString()
@@ -500,6 +500,14 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
               </select>
             </span>
           </label>
+          <label className="wh-toggle" title="Customers who entered their details and pressed Pay but did not pay">
+            <input
+              type="checkbox"
+              checked={filters.abandoned}
+              onChange={(e) => { setFilters((f) => ({ ...f, abandoned: e.target.checked })); onStatus('all') }}
+            />
+            <span>Abandoned checkouts only (unpaid)</span>
+          </label>
           <button type="button" className="wh-btn wh-btn--outline wh-reset" onClick={reset}>
             <Icon name="reset" size={17} /> Reset
           </button>
@@ -508,7 +516,7 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
 
       <section className="wh-panel wh-table-panel" aria-label="Orders" aria-busy={loading}>
         <header className="wh-table-head">
-          <h2>Total Orders: {total}</h2>
+          <h2>{filters.abandoned ? "Abandoned checkouts" : "Total Orders"}: {total}</h2>
           {!readOnly && <div className="wh-table-tools">
             <label className="wh-selectall">
               <input type="checkbox" checked={allOnPage} onChange={togglePage} disabled={!pageSelectable.length} />

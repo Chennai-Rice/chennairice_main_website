@@ -47,6 +47,9 @@ export function filterSql(f, params) {
   // Payment never went through (failed or abandoned), so the order was cancelled.
   else if (f.payment === 'failed') where.push(`o.payment_status in ('failed', 'pending')`)
 
+  // Abandoned checkouts: the customer gave their details and pressed Pay, but never paid.
+  if (f.abandoned === '1' || f.abandoned === true) where.push(`o.status = 'cancelled' and o.payment_status in ('failed', 'pending')`)
+
   if (['5', '10', '26'].includes(String(f.pack))) {
     where.push(`exists (select 1 from order_items x where x.order_id = o.id and x.pack_kg = ${add(Number(f.pack))})`)
   }
