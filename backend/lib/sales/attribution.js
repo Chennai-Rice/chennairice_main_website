@@ -14,7 +14,7 @@
 // visit counts as an ad when the link says utm_medium=paid (or cpc, ads…).
 import { httpError, str } from './util.js'
 import { otpEnabled, sendOtp, verifyOtp } from './otp.js'
-import { pushCrmLead } from '../crm.js'
+import { pushCrmLead, CRM_TAGS } from '../crm.js'
 
 export const SOURCES = {
   meta_ads_facebook: 'Meta ad · Facebook',
@@ -268,11 +268,17 @@ export async function saveContestLead(db, body) {
   // Into the Sales Daddy CRM: the lead's source is the platform of the ad
   // (Instagram / Facebook, Sales Daddy's own sources) and a tag names the ad
   // channel, so sales can filter each apart. The campaign and ad are in the note.
+  // "Not converted" until this mobile pays for an order (the order's paid note
+  // takes it off); someone who has already bought does not get it.
   const label = SOURCES[source] || source
+  const mobile = String(phone).replace(/\D/g, '').slice(-10)
+  const { rows: [bought] } = await db.query(
+    `select 1 from orders where right(regexp_replace(contact_phone, '\\D', '', 'g'), 10) = $1
+        and payment_status in ('paid', 'partially_refunded') limit 1`, [mobile])
   await pushCrmLead('contest_signup', {
     name, phone, email,
     source: CRM_SOURCE[source],
-    tags: [AD_TAG[source]].filter(Boolean),
+    tags: [AD_TAG[source], !bought && CRM_TAGS.notConverted].filter(Boolean),
     note: [
       'Super Slogan Contest sign-up from the website.',
       'Came from: ' + label + (campaign ? ' · campaign ' + campaign : '') + (ad ? ' · ad ' + ad : ''),

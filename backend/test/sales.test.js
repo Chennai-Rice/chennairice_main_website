@@ -1300,7 +1300,7 @@ test('Sales Daddy CRM: contest sign-ups and enquiries are sent as leads; failure
     assert.equal(contest.lead.name, 'Lakshmi Devi')
     // An Instagram ad sign-up: Sales Daddy's own Instagram source, and tags to filter by.
     assert.equal(contest.lead.source, 'instagram')
-    assert.deepEqual(contest.lead.tags, ['Contest sign-up', 'Instagram ad'])
+    assert.deepEqual(contest.lead.tags, ['Contest sign-up', 'Instagram ad', 'Not converted'])
     assert.match(contest.lead.note, /Reel 3/)
     assert.ok(contest.lead.clientRef)
 
@@ -1449,6 +1449,43 @@ test('Sales Daddy CRM: a repeat customer — the enquiry goes on their existing 
     assert.match(got[3].body.body, /40 bags/)
     const { rows: [r] } = await db.query(`select status from crm_outbox where payload->>'mobile' = '9790012345'`)
     assert.equal(r.status, 'sent')
+  } finally {
+    for (const k of ['SALESDADDY_API_KEY', 'SALESDADDY_BASE_URL']) delete process.env[k]
+    await new Promise((r) => fake.close(r))
+  }
+})
+
+test('Sales Daddy CRM: an ad sign-up who then buys loses "Not converted" and gains "Website order"; a buyer signing up never gets it', async () => {
+  const http = await import('node:http')
+  const got = []
+  const fake = http.createServer((req, res) => {
+    let body = ''
+    req.on('data', (c) => (body += c)).on('end', () => {
+      got.push({ method: req.method, path: req.url, body: body ? JSON.parse(body) : null })
+      res.setHeader('content-type', 'application/json')
+      if (req.method === 'GET') return res.end(JSON.stringify({ ok: true, lead: { tags: ['Contest sign-up', 'Instagram ad', 'Not converted'] } }))
+      if (req.method === 'PATCH' || req.url.endsWith('/notes')) return res.end(JSON.stringify({ ok: true }))
+      res.end(JSON.stringify({ ok: true, leadId: 'lead-nc', duplicate: true }))
+    })
+  })
+  await new Promise((r) => fake.listen(0, r))
+  const { sendCrmLeads } = await import('../lib/crm.js')
+  try {
+    // The sign-up's buyer pays (queued with the order, sent below).
+    const { session } = await buy([{ id: 'alibaba', qty: 1 }], buyer({ name: 'Kavya', email: 'kavya@example.com', phone: '9566012345' }))
+    Object.assign(process.env, { SALESDADDY_API_KEY: 'sd_live_test', SALESDADDY_BASE_URL: 'http://127.0.0.1:' + fake.address().port })
+    await sendCrmLeads({ query: db.query, limit: 1000 })
+    const patch = got.find((g) => g.method === 'PATCH' && g.path === '/v1/ext/leads/lead-nc')
+    assert.deepEqual(patch.body.tags, ['Contest sign-up', 'Instagram ad', 'Website order'])
+    assert.ok(got.some((g) => g.path.endsWith('/notes') && g.body.body.includes(session.orderNumber + ' paid')))
+
+    // Now the same mobile signs up from an Instagram ad: already a buyer, so no "Not converted".
+    got.length = 0
+    const r = await api('POST', '/api/contest/lead', { body: { name: 'Kavya', phone: '9566012345', email: 'kavya@example.com',
+      attribution: { utm_source: 'ig', utm_medium: 'paid_social', utm_campaign: 'Slogan', fbclid: true } } })
+    assert.equal(r.status, 200, JSON.stringify(r.body))
+    const lead = got.find((g) => g.method === 'POST' && g.path === '/v1/ext/leads')
+    assert.deepEqual(lead.body.tags, ['Contest sign-up', 'Instagram ad'])
   } finally {
     for (const k of ['SALESDADDY_API_KEY', 'SALESDADDY_BASE_URL']) delete process.env[k]
     await new Promise((r) => fake.close(r))

@@ -42,6 +42,9 @@ export const CRM_TAGS = {
   bulk_order: 'Bulk enquiry',
   order_event: 'Website order',
   abandoned: 'Abandoned checkout',
+  // On an ad sign-up until that mobile pays for an order; taken off by the
+  // order's "paid" note (orderEventPayload).
+  notConverted: 'Not converted',
 }
 
 /**
@@ -107,20 +110,22 @@ const leadPath = (id) => `/v1/ext/leads/${encodeURIComponent(id)}`
 
 /**
  * Sales Daddy returns an existing lead as it is when the mobile is already
- * known (duplicate), without the new tags. Adds them, keeping the lead's own:
- * read its tags, then write the union. Best effort — a failure here never
- * fails the delivery (the note is what matters).
+ * known (duplicate), without the new tags. Adds them and takes off `remove`
+ * (a buyer is no longer "Not converted"), keeping the lead's other tags: read
+ * its tags, then write the result. Best effort — a failure here never fails
+ * the delivery (the note is what matters).
  */
-async function addTags(leadId, tags) {
-  if (!tags?.length) return
+async function updateTags(leadId, add = [], remove = []) {
+  if (!add.length && !remove.length) return
   try {
     const got = await request('GET', leadPath(leadId))
     if (!accepted(got)) return
     const have = (got.data.lead?.tags || []).map((t) => (typeof t === 'string' ? t : t?.name)).filter(Boolean)
-    const all = [...new Set([...have, ...tags])]
-    if (all.length > have.length) await request('PATCH', leadPath(leadId), { tags: all.slice(0, 20) })
+    const next = [...new Set([...have, ...add])].filter((t) => !remove.includes(t))
+    const changed = next.length !== have.length || next.some((t) => !have.includes(t))
+    if (changed) await request('PATCH', leadPath(leadId), { tags: next.slice(0, 20) })
   } catch (err) {
-    console.error('[crm] could not add tags:', err.message)
+    console.error('[crm] could not update tags:', err.message)
   }
 }
 
@@ -139,7 +144,7 @@ async function deliver(kind, payload, ref) {
   const leadId = lead.data.leadId
   if (kind !== 'order_event' && !lead.data.duplicate) return lead
   if (!leadId) return { status: 502, data: { error: 'no_lead_id', message: 'Sales Daddy did not return the lead' } }
-  if (lead.data.duplicate) await addTags(leadId, fields.tags)
+  if (lead.data.duplicate) await updateTags(leadId, fields.tags, payload.untag)
   if (!note) return lead
   const added = await post({ body: note }, `${leadPath(leadId)}/notes`)
   return accepted(added) ? lead : added
@@ -289,6 +294,8 @@ export async function orderEventPayload(db, { orderId, from, to, reason }) {
       ...(abandoned && { onlyTags: true, tags: [CRM_TAGS.abandoned] }),
     }),
     note: lines.join('\n').slice(0, 2000),
+    // Paid: the customer has bought, so an ad sign-up is no longer "Not converted".
+    ...(to === 'placed' && { untag: [CRM_TAGS.notConverted] }),
   }
 }
 
