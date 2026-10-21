@@ -377,6 +377,8 @@ export const FOOTER = {
   ],
 
   phone: '+91 70666 46667',
+  // Food safety licence (State), shown with the FSSAI logo in the footer.
+  fssai: '12415007000253',
   email: 'support@chennairiceindustries.com',
   // The registered office. Kept word for word identical to the address in
   // privacyPolicy.js and termsConditions.js — this one is what the Contact
