@@ -71,10 +71,10 @@ function labelHtml(d) {
       </div>
       <div class="pin"><small>PIN CODE</small><b>${esc(a.pincode || '')}</b></div>
     </div>
-    <div class="row awb">
-      <div class="k">COURIER: <b>${esc(carrier || '________________')}</b></div>
-      ${awb ? `${barcode(awb, 46)}<div class="num">${esc(awb)}</div>` : '<div class="blank">AWB / LR no: ______________________</div>'}
-    </div>
+    ${carrier || awb ? `<div class="row awb">
+      ${carrier ? `<div class="k">COURIER: <b>${esc(carrier)}</b></div>` : ''}
+      ${awb ? `${barcode(awb, 46)}<div class="num">${esc(awb)}</div>` : ''}
+    </div>` : ''}
     <div class="row ord">
       <div class="k">ORDER NO: <b>${esc(d.orderNumber)}</b></div>
       ${barcode(d.orderNumber, 30)}
