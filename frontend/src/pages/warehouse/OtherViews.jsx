@@ -124,12 +124,14 @@ const CUST_PAGE = 20
 export function CustomersView({ say, onAuthError, onOpenOrders }) {
   const [draft, setDraft] = useState('')
   const [q, setQ] = useState('')
+  const [status, setStatus] = useState('') // '' | converted | not_converted
   const [page, setPage] = useState(1)
+  useEffect(() => { setPage(1) }, [status])
   useEffect(() => {
     const t = window.setTimeout(() => { setQ(draft.trim()); setPage(1) }, 400)
     return () => window.clearTimeout(t)
   }, [draft])
-  const path = `/api/admin/warehouse/customers?${new URLSearchParams({ q, limit: CUST_PAGE, offset: (page - 1) * CUST_PAGE })}`
+  const path = `/api/admin/warehouse/customers?${new URLSearchParams({ q, status, limit: CUST_PAGE, offset: (page - 1) * CUST_PAGE })}`
   const { data, loading } = useLoad(path, say, onAuthError)
   const total = data?.total || 0
   const pages = Math.max(1, Math.ceil(total / CUST_PAGE))
@@ -137,7 +139,7 @@ export function CustomersView({ say, onAuthError, onOpenOrders }) {
   // The whole list (every customer matching the search), as a spreadsheet.
   async function downloadCsv() {
     try {
-      const res = await staffFetch(`/api/admin/warehouse/customers.csv?${new URLSearchParams({ q })}`)
+      const res = await staffFetch(`/api/admin/warehouse/customers.csv?${new URLSearchParams({ q, status })}`)
       const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'customers.csv'
       const url = URL.createObjectURL(await res.blob())
       const a = document.createElement('a')
@@ -161,6 +163,14 @@ export function CustomersView({ say, onAuthError, onOpenOrders }) {
           <span className="visually-hidden">Search customers</span>
           <input type="search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Name, phone or city" />
         </label>
+        <label className="wh-select">
+          <span className="visually-hidden">Show</span>
+          <select value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="">All customers</option>
+            <option value="converted">Converted (bought)</option>
+            <option value="not_converted">Not converted</option>
+          </select>
+        </label>
         <button type="button" className="wh-btn wh-btn--outline wh-csv" onClick={downloadCsv} disabled={!total}>
           <Icon name="download" size={18} /> Download CSV
         </button>
@@ -170,6 +180,8 @@ export function CustomersView({ say, onAuthError, onOpenOrders }) {
           <span role="columnheader">Customer</span>
           <span role="columnheader">Phone</span>
           <span role="columnheader">Location</span>
+          <span role="columnheader">Source</span>
+          <span role="columnheader">Status</span>
           <span role="columnheader">Orders</span>
           <span role="columnheader">Packs</span>
           <span role="columnheader">Last order</span>
@@ -181,19 +193,25 @@ export function CustomersView({ say, onAuthError, onOpenOrders }) {
             <div className="wh-tr" role="row" key={c.id}>
               <span role="cell"><span className="wh-avatar">{c.name.slice(0, 1).toUpperCase()}</span><strong>{c.name}</strong></span>
               <span role="cell"><a className="wh-phone" href={telHref(c.phone)}>{c.phone}</a></span>
-              <span role="cell" className="wh-td-address"><Icon name="pin" size={15} className="wh-pin" /><span>{c.city}, {c.state}</span></span>
+              <span role="cell" className="wh-td-address">{c.city ? <><Icon name="pin" size={15} className="wh-pin" /><span>{c.city}, {c.state}</span></> : <span className="wh-muted">—</span>}</span>
+              <span role="cell"><span className="wh-k">Source</span>{c.source}</span>
+              <span role="cell"><span className={`wh-badge wh-badge--pay-${c.converted ? 'paid' : 'refunded'}`}>{c.converted ? 'Converted' : 'Not converted'}</span></span>
               <span role="cell"><span className="wh-k">Orders</span><strong>{c.orders}</strong></span>
               <span role="cell"><span className="wh-k">Packs</span>{c.packs}</span>
-              <span role="cell"><span className="wh-k">Last order</span><span className={last.recent ? 'is-recent' : ''}>{last.text}</span></span>
+              <span role="cell"><span className="wh-k">Last order</span>{c.lastOrderAt ? <span className={last.recent ? 'is-recent' : ''}>{last.text}</span> : <span className="wh-muted">—</span>}</span>
               <span role="cell">
-                <button type="button" className="wh-btn wh-btn--outline wh-btn--small" onClick={() => onOpenOrders(c.phone)}>
-                  View orders
-                </button>
+                {c.orders > 0 ? (
+                  <button type="button" className="wh-btn wh-btn--outline wh-btn--small" onClick={() => onOpenOrders(c.phone)}>
+                    View orders
+                  </button>
+                ) : (
+                  <a className="wh-btn wh-btn--outline wh-btn--small" href={telHref(c.phone)}>Call</a>
+                )}
               </span>
             </div>
           )
         })}
-        {!loading && !(data?.customers || []).length && <p className="wh-empty">No customers yet.</p>}
+        {!loading && !(data?.customers || []).length && <p className="wh-empty">No customers match.</p>}
       </div>
       <Pagination page={page} pages={pages} total={total} from={total ? (page - 1) * CUST_PAGE + 1 : 0}
         to={Math.min(page * CUST_PAGE, total)} onPage={setPage} noun="customers" />
