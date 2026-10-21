@@ -77,7 +77,7 @@ function SignIn({ onSignedIn }) {
   return (
     <main className="wh-signin">
       <div className="wh-signin-card">
-        <img src="/assets/shop/logo.png" alt="" width="64" height="64" />
+        <img src="/assets/warehouse-logo.png" alt="" width="64" height="64" />
         <h1>Warehouse</h1>
         <p className="wh-muted">Chennai Rice Industries · staff only</p>
         {canUseLocalSignIn ? (
@@ -288,7 +288,7 @@ export default function WarehousePage() {
     <div className={`wh-app${drawer ? ' has-drawer' : ''}`}>
       <aside className="wh-side" aria-label="Warehouse menu">
         <div className="wh-side-brand">
-          <img src="/assets/shop/logo.png" alt="" width="44" height="44" />
+          <img src="/assets/warehouse-logo.png" alt="" width="44" height="44" />
           <div>
             <strong>Warehouse</strong>
             <span>Nasiyanur mill · Chennai Rice</span>
