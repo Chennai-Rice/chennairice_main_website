@@ -22,6 +22,7 @@ import { showCardPrices } from "../../config.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import { trackMetaEvent } from "../../services/metaPixel.js";
 import { PRODUCT_SEO, productIdFromSlug, productPath } from "../../seo.js";
+import { FOOTER } from "../../data/content.js";
 import "./productdetail.css";
 
 export default function ProductDetailPage() {
@@ -315,6 +316,12 @@ export default function ProductDetailPage() {
             <Link className="pdp-bulk-link" to="/contact-us">
               Bulk Order Enquiry &rarr;
             </Link>
+
+            {/* Food safety licence, where the buying decision is made. */}
+            <p className="pdp-fssai">
+              <img src="/assets/fssai-logo.png" alt="FSSAI" width="835" height="458" loading="lazy" />
+              <span>FSSAI Lic. No. <strong>{FOOTER.fssai}</strong></span>
+            </p>
           </div>
         </section>
 

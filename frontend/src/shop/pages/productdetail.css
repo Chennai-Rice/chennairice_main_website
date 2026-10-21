@@ -1525,3 +1525,19 @@ ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .pdp-share-menu { animation: none; } }
 
+
+/* FSSAI licence, under the buy buttons. */
+.pdp-fssai {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--ink-600, #5c4a3c);
+}
+.pdp-fssai img {
+  width: 56px;
+  height: auto;
+  display: block;
+}
+.pdp-fssai strong { letter-spacing: 0.02em; color: var(--ink-900, #2b1a14); }
