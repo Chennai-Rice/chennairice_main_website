@@ -611,7 +611,7 @@ button.wh-kpi:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(8
 .wh-stock--off { background: #eee; color: #666; }
 
 /* ------------------------------------------------------------- customers */
-.wh-table--customers .wh-tr { grid-template-columns: minmax(170px, 1.4fr) minmax(130px, 1fr) minmax(150px, 1.2fr) 80px 80px 120px 130px; padding-inline: 0; }
+.wh-table--customers .wh-tr { grid-template-columns: minmax(160px, 1.3fr) minmax(120px, 0.9fr) minmax(130px, 1fr) 100px 130px 60px 60px 110px 110px; padding-inline: 0; }
 .wh-table--customers .wh-tr > span:first-child { display: flex; align-items: center; gap: 10px; }
 .wh-avatar { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 auto; border-radius: 50%; color: var(--wh-maroon); background: #f6dede; font-weight: 700; }
 .wh-k { display: none; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--wh-muted); }

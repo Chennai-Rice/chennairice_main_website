@@ -222,9 +222,9 @@ export async function warehouseCsv(f = {}) {
 export async function customersCsv(f = {}) {
   const { customers } = await listWarehouseCustomers({ ...f, limit: 20000, offset: 0 }, { maxLimit: 20000 })
   const when = (d) => (d ? new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' }) : '')
-  const header = ['Customer name', 'Phone', 'Email', 'City', 'State', 'Orders', 'Packs', 'First order', 'Last order']
+  const header = ['Customer name', 'Phone', 'Email', 'Source', 'Status', 'City', 'State', 'Orders', 'Packs', 'First order', 'Last order']
   const lines = customers.map((c) => [
-    c.name, phoneForSheet(c.phone), c.email, c.city, c.state, c.orders, c.packs, when(c.firstOrderAt), when(c.lastOrderAt),
+    c.name, phoneForSheet(c.phone), c.email, c.source, c.converted ? 'Converted' : 'Not converted', c.city, c.state, c.orders, c.packs, when(c.firstOrderAt), when(c.lastOrderAt),
   ].map(cell).join(','))
   return '\ufeff' + [header.map(cell).join(','), ...lines].join('\r\n') + '\r\n'
 }
@@ -240,48 +240,92 @@ export function assertTab(tab) {
  */
 export async function listWarehouseCustomers(f = {}, { maxLimit = 100 } = {}) {
   const params = []
-  let where = `o.status <> 'pending_payment'`
   const q = str(f.q).slice(0, 100)
+  let search = ''
   if (q) {
     params.push('%' + q + '%')
+    search = `(name ilike $1 or email ilike $1 or city ilike $1`
     const digits = q.replace(/\D/g, '')
-    where += ` and (c.name ilike $1 or c.email::text ilike $1 or o.shipping_address->>'city' ilike $1`
     if (digits.length >= 4) {
       params.push('%' + digits + '%')
-      where += ` or regexp_replace(c.phone, '\D', '', 'g') like $2`
+      search += ` or regexp_replace(phone, '[^0-9]', '', 'g') like $2`
     }
-    where += ')'
+    search += ')'
   }
+  // Converted = has paid for an order. Everyone else (a sign-up who has not bought, or a buyer whose
+  // payment never went through) is "not converted".
+  const status = f.status === 'converted' ? 'converted' : f.status === 'not_converted' ? 'not_converted' : ''
+  const where = [search, status === 'converted' ? 'converted' : status === 'not_converted' ? 'not converted' : ''].filter(Boolean).join(' and ')
   const limit = Math.min(Math.max(Number(f.limit) || 20, 1), maxLimit)
   const offset = Math.max(Number(f.offset) || 0, 0)
+
+  // People who ordered (or tried to), plus contest sign-ups that have not ordered. A sign-up whose mobile
+  // number has an order is shown once, as the customer.
+  const base = `
+    with buyers as (
+      select c.id::text as id, c.name, c.phone, c.email::text as email,
+             (array_agg(o.shipping_address->>'city' order by o.placed_at desc nulls last))[1] as city,
+             (array_agg(o.ship_state order by o.placed_at desc nulls last))[1] as state,
+             count(distinct o.id)::int as orders,
+             coalesce(sum(i.quantity), 0)::int as packs,
+             max(o.placed_at) as last_order_at,
+             min(o.placed_at) as first_order_at,
+             -- Where they first came from: the contest sign-up if they made one, else their earliest tagged order.
+             coalesce(
+               nullif((select l.source from contest_leads l
+                        where right(regexp_replace(l.phone, '[^0-9]', '', 'g'), 10) = right(regexp_replace(c.phone, '[^0-9]', '', 'g'), 10) limit 1), 'direct'),
+               (array_agg(o.traffic_source order by (o.traffic_source is not null and o.traffic_source <> 'direct') desc, o.placed_at asc nulls last))[1]
+             ) as source,
+             bool_or(o.payment_status in ('paid', 'partially_refunded', 'refunded')) as converted,
+             right(regexp_replace(c.phone, '[^0-9]', '', 'g'), 10) as pkey,
+             max(coalesce(o.placed_at, o.created_at)) as recent
+        from customers c
+        join orders o on o.customer_id = c.id
+        join order_items i on i.order_id = o.id
+       where o.status <> 'pending_payment'
+       group by c.id
+    ), signups as (
+      select l.id::text as id, l.name, l.phone, l.email, null::text as city, null::text as state,
+             0 as orders, 0 as packs, null::timestamptz as last_order_at, null::timestamptz as first_order_at,
+             l.source, false as converted, right(regexp_replace(l.phone, '[^0-9]', '', 'g'), 10) as pkey, l.updated_at
+        from contest_leads l
+       where right(regexp_replace(l.phone, '[^0-9]', '', 'g'), 10) not in (select pkey from buyers)
+    ), everyone as (
+      select id, name, phone, email, city, state, orders, packs, last_order_at, first_order_at, source, converted,
+             'customer' as kind, recent
+        from buyers
+      union all
+      select id, name, phone, email, city, state, orders, packs, last_order_at, first_order_at, source, converted,
+             'signup' as kind, updated_at as recent
+        from signups
+    )`
+  const filter = where ? `where ${where}` : ''
   const { rows } = await query(
-    `select c.id, c.name, c.phone, c.email,
-            (array_agg(o.shipping_address->>'city' order by o.placed_at desc))[1] as city,
-            (array_agg(o.ship_state order by o.placed_at desc))[1] as state,
-            count(distinct o.id)::int as orders,
-            coalesce(sum(i.quantity), 0)::int as packs,
-            max(o.placed_at) as last_order_at,
-            min(o.placed_at) as first_order_at
-       from customers c
-       join orders o on o.customer_id = c.id
-       join order_items i on i.order_id = o.id
-      where ${where}
-      group by c.id
-      order by max(o.placed_at) desc
+    `${base}
+     select * from everyone ${filter}
+      order by recent desc
       limit ${limit} offset ${offset}`,
     params
   )
-  const { rows: [{ n }] } = await query(
-    `select count(distinct c.id)::int as n from customers c join orders o on o.customer_id = c.id where ${where}`,
-    params
-  )
+  const { rows: [{ n }] } = await query(`${base} select count(*)::int as n from everyone ${filter}`, params)
   return {
     total: n,
     customers: rows.map((r) => ({
-      id: r.id, name: r.name, phone: r.phone, email: r.email, city: r.city, state: r.state,
+      id: r.id, kind: r.kind, name: r.name, phone: r.phone, email: r.email, city: r.city, state: r.state,
       orders: r.orders, packs: r.packs, lastOrderAt: r.last_order_at, firstOrderAt: r.first_order_at,
+      converted: r.converted, source: customerSource(r.source),
     })),
   }
+}
+
+/** The simple "where did they come from" shown on the Customers page. */
+export function customerSource(key) {
+  if (/^meta_ads|^facebook$|^instagram$/.test(key || '')) return 'Meta'
+  if (key === 'google_ads') return 'Google Ads'
+  if (key === 'google_search') return 'Google search'
+  if (key === 'whatsapp') return 'WhatsApp'
+  if (key === 'other_website') return 'Other website'
+  return 'Direct'
 }
 
 /**
