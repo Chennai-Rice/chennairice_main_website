@@ -1590,6 +1590,14 @@ test('AskEva → WhatsApp contacts → Sales Daddy: webhook saves the contact, q
     assert.equal(flat.body.messages, 1)
     const receipt = await api('POST', '/api/askeva/webhook?key=askeva-hook-test', { body: { entry: [{ changes: [{ value: { statuses: [{ id: 'x', status: 'read' }] } }] }] } })
     assert.equal(receipt.body.messages, 0)
+    // AskEva's Test Run (Meta's sample: John Doe, +1 555…) is answered but saved as no contact.
+    const sample = { object: 'whatsapp_business_account', entry: [{ id: '1234567890', changes: [{ value: { messaging_product: 'whatsapp',
+      metadata: { display_phone_number: '15551234567', phone_number_id: '123456789012345' },
+      contacts: [{ profile: { name: 'John Doe' }, wa_id: '15557654321' }], messages: [{ from: '15557654321', id: 'wamid.x', timestamp: String(now), type: 'text', text: { body: 'Hello' } }] } }] }] }
+    const test = await api('POST', '/api/askeva/webhook', { body: sample, headers: { 'X-API-Key': 'askeva-hook-test' } })
+    assert.equal(test.status, 200)
+    assert.equal(test.body.messages, 0)
+    assert.equal((await db.query(`select 1 from whatsapp_contacts where phone like '%5557654321'`)).rowCount, 0)
     assert.ok((await db.query('select count(*)::int n from askeva_events')).rows[0].n >= 5)
 
     // The one-time import of AskEva's export.

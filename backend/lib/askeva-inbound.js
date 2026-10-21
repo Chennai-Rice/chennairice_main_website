@@ -65,6 +65,8 @@ export function parseMessages(payload) {
     for (const entry of body.entry || []) {
       for (const change of entry.changes || []) {
         const v = change.value || {}
+        // AskEva's "Test Run" sends Meta's sample (John Doe, +1 555… numbers): logged, not a contact.
+        if (v.metadata?.phone_number_id === '123456789012345' || /^1555/.test(String(v.metadata?.display_phone_number || ''))) continue
         const names = Object.fromEntries((v.contacts || []).map((c) => [String(c.wa_id || ''), c.profile?.name]))
         for (const m of v.messages || []) add(m.from, names[String(m.from)], messageText(m), m.timestamp)
       }
