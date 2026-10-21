@@ -60,7 +60,7 @@ function labelHtml(d) {
 
   return `<section class="label">
     <header class="hd">
-      <img class="logo" src="${window.location.origin}/assets/logo-footer-v1.png" alt="">
+      <img class="logo" src="${window.location.origin}/assets/label-logo.png" alt="">
       <div class="brand"><b>CHENNAI<br>RICE</b><span>INDUSTRIES INDIA (P) LTD</span></div>
     </header>
     <div class="row pay"><span class="tag">${paid ? 'PREPAID' : 'PAYMENT PENDING'}</span><span class="date">${esc(date)}</span></div>
@@ -105,7 +105,7 @@ body { font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: ex
 small { display: block; font-size: 8pt; font-weight: 700; letter-spacing: .04em; }
 .hd { display: flex; align-items: center; gap: 10px; padding-bottom: 3px; }
 /* The colour roundel as pure black and white (thermal printers print no grey). */
-.logo { width: 0.7in; height: 0.7in; filter: url(#mono); }
+.logo { width: 0.86in; height: auto; filter: url(#mono); }
 .brand { border-left: 1.5px solid #000; padding-left: 10px; }
 .brand b { display: block; font-size: 18pt; line-height: .95; letter-spacing: .02em; }
 .brand span { display: block; font-size: 7pt; font-weight: 700; margin-top: 3px; letter-spacing: .06em; }
@@ -146,7 +146,7 @@ small { display: block; font-size: 8pt; font-weight: 700; letter-spacing: .04em;
 .qr svg { width: 0.72in; height: 0.72in; display: block; }
 .qr span { font-size: 6.5pt; font-weight: 700; }
 /* A long address or many items: shrink in two steps until the label fits (FIT below). */
-.tight .hd .logo { width: 0.58in; height: 0.58in; }
+.tight .hd .logo { width: 0.6in; height: auto; }
 .tight .brand b { font-size: 15pt; }
 .tight .name { font-size: 12pt; }
 .tight .to p, .tight .contents { font-size: 8pt; line-height: 1.15; }
