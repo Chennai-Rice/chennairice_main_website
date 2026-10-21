@@ -218,6 +218,17 @@ export async function warehouseCsv(f = {}) {
   return '﻿' + [header.map(cell).join(','), ...lines].join('\r\n') + '\r\n'
 }
 
+/** The Customers page as a spreadsheet: every customer matching the search, not one page of them. */
+export async function customersCsv(f = {}) {
+  const { customers } = await listWarehouseCustomers({ ...f, limit: 20000, offset: 0 }, { maxLimit: 20000 })
+  const when = (d) => (d ? new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' }) : '')
+  const header = ['Customer name', 'Phone', 'Email', 'City', 'State', 'Orders', 'Packs', 'First order', 'Last order']
+  const lines = customers.map((c) => [
+    c.name, phoneForSheet(c.phone), c.email, c.city, c.state, c.orders, c.packs, when(c.firstOrderAt), when(c.lastOrderAt),
+  ].map(cell).join(','))
+  return '\ufeff' + [header.map(cell).join(','), ...lines].join('\r\n') + '\r\n'
+}
+
 export function assertTab(tab) {
   if (tab && !TABS[tab]) throw httpError('Unknown tab.')
 }
@@ -227,7 +238,7 @@ export function assertTab(tab) {
  * who they are, how to reach them, where they are, and how often they buy.
  * No money: order counts and packs only.
  */
-export async function listWarehouseCustomers(f = {}) {
+export async function listWarehouseCustomers(f = {}, { maxLimit = 100 } = {}) {
   const params = []
   let where = `o.status <> 'pending_payment'`
   const q = str(f.q).slice(0, 100)
@@ -241,10 +252,10 @@ export async function listWarehouseCustomers(f = {}) {
     }
     where += ')'
   }
-  const limit = Math.min(Math.max(Number(f.limit) || 20, 1), 100)
+  const limit = Math.min(Math.max(Number(f.limit) || 20, 1), maxLimit)
   const offset = Math.max(Number(f.offset) || 0, 0)
   const { rows } = await query(
-    `select c.id, c.name, c.phone,
+    `select c.id, c.name, c.phone, c.email,
             (array_agg(o.shipping_address->>'city' order by o.placed_at desc))[1] as city,
             (array_agg(o.ship_state order by o.placed_at desc))[1] as state,
             count(distinct o.id)::int as orders,
@@ -267,7 +278,7 @@ export async function listWarehouseCustomers(f = {}) {
   return {
     total: n,
     customers: rows.map((r) => ({
-      id: r.id, name: r.name, phone: r.phone, city: r.city, state: r.state,
+      id: r.id, name: r.name, phone: r.phone, email: r.email, city: r.city, state: r.state,
       orders: r.orders, packs: r.packs, lastOrderAt: r.last_order_at, firstOrderAt: r.first_order_at,
     })),
   }

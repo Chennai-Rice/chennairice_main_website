@@ -2,7 +2,7 @@ import TeamView from './TeamView.jsx'
 import SourcesReport from './SourcesReport.jsx'
 import AlertEmails from './AlertEmails.jsx'
 import { useEffect, useMemo, useState } from 'react'
-import { staffJson } from '../../services/staffAuth.js'
+import { staffFetch, staffJson } from '../../services/staffAuth.js'
 import { Icon, Pagination, dayLabel, telHref, writePrefs } from './shared.jsx'
 
 function useLoad(path, say, onAuthError) {
@@ -134,6 +134,24 @@ export function CustomersView({ say, onAuthError, onOpenOrders }) {
   const total = data?.total || 0
   const pages = Math.max(1, Math.ceil(total / CUST_PAGE))
 
+  // The whole list (every customer matching the search), as a spreadsheet.
+  async function downloadCsv() {
+    try {
+      const res = await staffFetch(`/api/admin/warehouse/customers.csv?${new URLSearchParams({ q })}`)
+      const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'customers.csv'
+      const url = URL.createObjectURL(await res.blob())
+      const a = document.createElement('a')
+      a.href = url
+      a.download = name
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (err) {
+      if (!onAuthError(err)) say(err.message, 'error')
+    }
+  }
+
   return (
     <section className="wh-panel">
       <header className="wh-table-head">
@@ -143,6 +161,9 @@ export function CustomersView({ say, onAuthError, onOpenOrders }) {
           <span className="visually-hidden">Search customers</span>
           <input type="search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Name, phone or city" />
         </label>
+        <button type="button" className="wh-btn wh-btn--outline wh-csv" onClick={downloadCsv} disabled={!total}>
+          <Icon name="download" size={18} /> Download CSV
+        </button>
       </header>
       <div className="wh-table wh-table--customers" role="table" aria-label="Customers">
         <div className="wh-tr wh-th" role="row">

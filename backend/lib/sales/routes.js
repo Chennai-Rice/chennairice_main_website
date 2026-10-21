@@ -26,7 +26,7 @@ import {
   recordProduction, listBatches, demandBoard, listCatalogAdmin, updateVariant, createProduct, createVariant,
 } from './inventory.js'
 import { dashboard, getSettingsAdmin, updateSettings, listZones, upsertZone, listEmails } from './admin.js'
-import { listWarehouseOrders, warehouseCsv, assertTab, listWarehouseCustomers, warehouseReport } from './warehouse.js'
+import { listWarehouseOrders, warehouseCsv, assertTab, listWarehouseCustomers, customersCsv, warehouseReport } from './warehouse.js'
 import { listShipments, pickList, pickListCsv, warehouseDashboard } from './deliveries.js'
 import { listIssues, getIssue, createIssue, updateIssue } from './issues.js'
 import { processTrackerUpload, listTrackerUploads, trackerTemplate, courierRedirect, dispatchBatchSheet } from './tracker.js'
@@ -282,6 +282,12 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/warehouse/customers', perm('warehouse.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await listWarehouseCustomers(req.query))
+  }))
+  admin.get('/warehouse/customers.csv', perm('warehouse.view'), wrap(async (req, res) => {
+    const day = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
+    res.set('Cache-Control', 'no-store')
+    res.set('Content-Disposition', `attachment; filename="customers-${day}.csv"`)
+    res.type('text/csv; charset=utf-8').send(await customersCsv(req.query))
   }))
   // Sales by source, campaign and ad (money: owner, admin, IT team).
   admin.get('/warehouse/sources', perm('money.view'), wrap(async (req, res) => {
