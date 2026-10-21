@@ -1554,6 +1554,59 @@ test('courier label: ship-to, items and the courier tracking number for the ware
   assert.equal((await api('GET', `/api/admin/orders/${session.orderId}/label`)).status, 401)
 })
 
+test('AskEva → WhatsApp contacts → Sales Daddy: webhook saves the contact, queues a lead once a day, ignores receipts; export import', async () => {
+  process.env.ASKEVA_WEBHOOK_KEY = 'askeva-hook-test'
+  try {
+    const meta = (from, name, body, ts) => ({ object: 'whatsapp_business_account', entry: [{ changes: [{ value: {
+      contacts: [{ wa_id: from, profile: { name } }], messages: [{ from, timestamp: String(ts), type: 'text', text: { body } }] } }] }] })
+    const now = Math.floor(Date.now() / 1000)
+    assert.equal((await api('POST', '/api/askeva/webhook', { body: meta('919751591220', 'Samiha', 'Hi', now) })).status, 401)
+    assert.equal((await api('POST', '/api/askeva/webhook?key=wrong', { body: meta('919751591220', 'Samiha', 'Hi', now) })).status, 401)
+
+    const r = await api('POST', '/api/askeva/webhook?key=askeva-hook-test', { body: meta('919751591220', 'Samiha', 'Hi, price of 26 kg Ponni?', now) })
+    assert.equal(r.status, 200, JSON.stringify(r.body))
+    assert.equal(r.body.messages, 1)
+    const { rows: [c] } = await db.query(`select * from whatsapp_contacts where phone = '9751591220'`)
+    assert.equal(c.name, 'Samiha')
+    assert.equal(c.messages, 1)
+    assert.match(c.first_message, /26 kg Ponni/)
+    const crm = async () => (await db.query(`select payload from crm_outbox where kind = 'whatsapp_chat' and payload->>'mobile' = '9751591220'`)).rows
+    const [lead] = await crm()
+    assert.equal(lead.payload.source, 'whatsapp')
+    assert.deepEqual(lead.payload.tags, ['WhatsApp chat'])
+    assert.match(lead.payload.note, /New WhatsApp chat[\s\S]*26 kg Ponni/)
+
+    // More messages the same day: counted, but no second note to Sales Daddy.
+    await api('POST', '/api/askeva/webhook?key=askeva-hook-test', { body: meta('919751591220', 'Samiha', 'Do you deliver to Salem?', now + 60) })
+    assert.equal((await db.query(`select messages, last_message from whatsapp_contacts where phone = '9751591220'`)).rows[0].messages, 2)
+    assert.equal((await crm()).length, 1)
+    // A day later: a new note.
+    await db.query(`update whatsapp_contacts set crm_noted_at = now() - interval '25 hours' where phone = '9751591220'`)
+    await api('POST', '/api/askeva/webhook?key=askeva-hook-test', { body: meta('919751591220', 'Samiha', 'Ordered!', now + 120) })
+    assert.equal((await crm()).length, 2)
+
+    // A flat payload works too; delivery receipts (no message) change nothing.
+    const flat = await api('POST', '/api/askeva/webhook?key=askeva-hook-test', { body: { from: '917708749128', name: 'Anu Ak', message: 'QR scan panna mudiyala', timestamp: now } })
+    assert.equal(flat.body.messages, 1)
+    const receipt = await api('POST', '/api/askeva/webhook?key=askeva-hook-test', { body: { entry: [{ changes: [{ value: { statuses: [{ id: 'x', status: 'read' }] } }] }] } })
+    assert.equal(receipt.body.messages, 0)
+    assert.ok((await db.query('select count(*)::int n from askeva_events')).rows[0].n >= 5)
+
+    // The one-time import of AskEva's export.
+    const { importAskevaContacts } = await import('../lib/askeva-inbound.js')
+    const res = await importAskevaContacts([
+      { name: 'Dhinesh', phone: '917810091766', lastMessage: 'Hi, I am interested', lastMessageAt: '2026-10-20T12:30:45Z' },
+      { name: 'Samiha', phone: '919751591220', lastMessage: 'image', lastMessageAt: '2026-10-21T04:25:18Z' }, // already here, noted today
+      { name: 'No number', phone: '' },
+    ])
+    assert.deepEqual(res, { saved: 2, queued: 1, skipped: 1 })
+    const { rows: [d] } = await db.query(`select source, messages from whatsapp_contacts where phone = '7810091766'`)
+    assert.deepEqual(d, { source: 'import', messages: 0 })
+  } finally {
+    delete process.env.ASKEVA_WEBHOOK_KEY
+  }
+})
+
 test('order list: a cancelled, never-paid order is dated by when it was attempted', async () => {
   const s = await api('POST', '/api/checkout/session', {
     body: { ...buyer({ name: 'Never Paid', phone: '+91 90000 33333' }), items: [{ id: 'alibaba', qty: 1 }] },

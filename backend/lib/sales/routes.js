@@ -34,6 +34,7 @@ import { listIssuedIds, issuedIdsCsv, checkRegister } from './idregister.js'
 import { invoiceHtml, packingSlipHtml } from './documents.js'
 import { recordVisit, sourcesReport, sourceOrders, saveContestLead, startContestLead, contestLeads } from './attribution.js'
 import { checkAutomationKey, automationContacts } from './automation.js'
+import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { accountsSummary, invoiceRegister, invoiceRegisterCsv, paymentsList, refundsList, period } from './accounts.js'
 import { invoicePdf } from './invoice-pdf.js'
@@ -109,6 +110,17 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     checkAutomationKey(req)
     res.set('Cache-Control', 'no-store')
     res.json(await automationContacts({ query }, req.query))
+  }))
+
+  // AskEva → WhatsApp contacts → Sales Daddy (askeva-inbound.js). The key is in
+  // the webhook URL AskEva calls: /api/askeva/webhook?key=<ASKEVA_WEBHOOK_KEY>.
+  router.get('/api/askeva/webhook', wrap(async (req, res) => {
+    checkAskevaKey(req)
+    res.json({ ok: true })
+  }))
+  router.post('/api/askeva/webhook', rateLimit({ windowMs: 60000, max: 600 }), wrap(async (req, res) => {
+    checkAskevaKey(req)
+    res.json(await recordAskevaWebhook(req.body))
   }))
 
   router.post('/api/checkout/quote', wrap(async (req, res) => res.json(await quoteCart(req.body))))

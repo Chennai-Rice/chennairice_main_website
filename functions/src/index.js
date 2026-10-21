@@ -42,7 +42,9 @@ export const api = onRequest(
     // website leads are sent there (backend/lib/crm.js).
     // ASKEVA_TOKEN: the AskEva API token, for the WhatsApp "order placed"
     // message (backend/lib/whatsapp.js).
-    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY', 'AUTOMATION_API_KEY', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN'],
+    // ASKEVA_WEBHOOK_KEY: the secret in the URL AskEva calls with WhatsApp
+    // messages (/api/askeva/webhook?key=…), backend/lib/askeva-inbound.js.
+    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY', 'AUTOMATION_API_KEY', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'ASKEVA_WEBHOOK_KEY'],
     // Runs as the backend account that phase1-setup.ps1 allowed into Cloud SQL
     // (Cloud SQL client) and nothing else.
     serviceAccount: 'api-backend@chennai-rice-website.iam.gserviceaccount.com',

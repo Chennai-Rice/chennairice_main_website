@@ -20,5 +20,7 @@ export async function runJobs() {
   // Leads Sales Daddy could not take at the time are retried here.
   const crm = await sendCrmLeads({ query })
   const whatsapp = await sendWhatsAppMessages({ query })
+  // Raw AskEva webhook calls are kept 90 days for checking, then dropped.
+  await query("delete from askeva_events where received_at < now() - interval '90 days'").catch(() => {})
   return { expired, digest, email, crm, whatsapp }
 }

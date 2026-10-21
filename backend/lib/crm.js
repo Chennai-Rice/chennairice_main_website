@@ -42,6 +42,8 @@ export const CRM_TAGS = {
   bulk_order: 'Bulk enquiry',
   order_event: 'Website order',
   abandoned: 'Abandoned checkout',
+  // Someone who messaged the business WhatsApp number (AskEva → askeva-inbound.js).
+  whatsapp_chat: 'WhatsApp chat',
   // On an ad sign-up until that mobile pays for an order; taken off by the
   // order's "paid" note (orderEventPayload), which also moves the lead to
   // Sales Daddy's won stage, "Converted" (markConverted).
