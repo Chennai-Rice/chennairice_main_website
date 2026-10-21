@@ -1490,7 +1490,7 @@ test('Sales Daddy CRM: a repeat customer — the enquiry goes on their existing 
   }
 })
 
-test('Sales Daddy CRM: an ad sign-up who then buys loses "Not converted" and gains "Website order"; a buyer signing up never gets it', async () => {
+test('Sales Daddy CRM: an ad sign-up who then buys (same mobile) turns from "Not converted" to "Converted" + "Website order"; a buyer signing up is Converted at once', async () => {
   const http = await import('node:http')
   const got = []
   const fake = http.createServer((req, res) => {
@@ -1511,16 +1511,16 @@ test('Sales Daddy CRM: an ad sign-up who then buys loses "Not converted" and gai
     Object.assign(process.env, { SALESDADDY_API_KEY: 'sd_live_test', SALESDADDY_BASE_URL: 'http://127.0.0.1:' + fake.address().port })
     await sendCrmLeads({ query: db.query, limit: 1000 })
     const patch = got.find((g) => g.method === 'PATCH' && g.path === '/v1/ext/leads/lead-nc')
-    assert.deepEqual(patch.body.tags, ['Contest sign-up', 'Instagram ad', 'Website order'])
+    assert.deepEqual(patch.body.tags, ['Contest sign-up', 'Instagram ad', 'Website order', 'Converted'])
     assert.ok(got.some((g) => g.path.endsWith('/notes') && g.body.body.includes(session.orderNumber + ' paid')))
 
-    // Now the same mobile signs up from an Instagram ad: already a buyer, so no "Not converted".
+    // Now the same mobile signs up from an Instagram ad: already a buyer, so Converted straight away.
     got.length = 0
     const r = await api('POST', '/api/contest/lead', { body: { name: 'Kavya', phone: '9566012345', email: 'kavya@example.com',
       attribution: { utm_source: 'ig', utm_medium: 'paid_social', utm_campaign: 'Slogan', fbclid: true } } })
     assert.equal(r.status, 200, JSON.stringify(r.body))
     const lead = got.find((g) => g.method === 'POST' && g.path === '/v1/ext/leads')
-    assert.deepEqual(lead.body.tags, ['Contest sign-up', 'Instagram ad'])
+    assert.deepEqual(lead.body.tags, ['Contest sign-up', 'Instagram ad', 'Converted'])
   } finally {
     for (const k of ['SALESDADDY_API_KEY', 'SALESDADDY_BASE_URL']) delete process.env[k]
     await new Promise((r) => fake.close(r))

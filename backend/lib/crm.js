@@ -43,8 +43,11 @@ export const CRM_TAGS = {
   order_event: 'Website order',
   abandoned: 'Abandoned checkout',
   // On an ad sign-up until that mobile pays for an order; taken off by the
-  // order's "paid" note (orderEventPayload).
+  // order's "paid" note (orderEventPayload), which puts "Converted" in its place.
   notConverted: 'Not converted',
+  // An ad sign-up whose mobile has a paid order (matched by Sales Daddy on the
+  // mobile number, so the sign-up and the order land on the same lead).
+  converted: 'Converted',
 }
 
 /**
@@ -112,16 +115,19 @@ const leadPath = (id) => `/v1/ext/leads/${encodeURIComponent(id)}`
  * Sales Daddy returns an existing lead as it is when the mobile is already
  * known (duplicate), without the new tags. Adds them and takes off `remove`
  * (a buyer is no longer "Not converted"), keeping the lead's other tags: read
- * its tags, then write the result. Best effort — a failure here never fails
- * the delivery (the note is what matters).
+ * its tags, then write the result. With `convert` (a paid order), a lead that
+ * came from an ad sign-up also becomes "Converted". Best effort — a failure
+ * here never fails the delivery (the note is what matters).
  */
-async function updateTags(leadId, add = [], remove = []) {
-  if (!add.length && !remove.length) return
+async function updateTags(leadId, add = [], remove = [], convert = false) {
+  if (!add.length && !remove.length && !convert) return
   try {
     const got = await request('GET', leadPath(leadId))
     if (!accepted(got)) return
     const have = (got.data.lead?.tags || []).map((t) => (typeof t === 'string' ? t : t?.name)).filter(Boolean)
-    const next = [...new Set([...have, ...add])].filter((t) => !remove.includes(t))
+    const signedUp = have.includes(CRM_TAGS.contest_signup) || have.includes(CRM_TAGS.notConverted)
+    const plus = convert && signedUp ? [...add, CRM_TAGS.converted] : add
+    const next = [...new Set([...have, ...plus])].filter((t) => !remove.includes(t))
     const changed = next.length !== have.length || next.some((t) => !have.includes(t))
     if (changed) await request('PATCH', leadPath(leadId), { tags: next.slice(0, 20) })
   } catch (err) {
@@ -144,7 +150,7 @@ async function deliver(kind, payload, ref) {
   const leadId = lead.data.leadId
   if (kind !== 'order_event' && !lead.data.duplicate) return lead
   if (!leadId) return { status: 502, data: { error: 'no_lead_id', message: 'Sales Daddy did not return the lead' } }
-  if (lead.data.duplicate) await updateTags(leadId, fields.tags, payload.untag)
+  if (lead.data.duplicate) await updateTags(leadId, fields.tags, payload.untag, payload.convert === true)
   if (!note) return lead
   const added = await post({ body: note }, `${leadPath(leadId)}/notes`)
   return accepted(added) ? lead : added
@@ -294,8 +300,8 @@ export async function orderEventPayload(db, { orderId, from, to, reason }) {
       ...(abandoned && { onlyTags: true, tags: [CRM_TAGS.abandoned] }),
     }),
     note: lines.join('\n').slice(0, 2000),
-    // Paid: the customer has bought, so an ad sign-up is no longer "Not converted".
-    ...(to === 'placed' && { untag: [CRM_TAGS.notConverted] }),
+    // Paid: the customer has bought, so an ad sign-up is no longer "Not converted" but "Converted".
+    ...(to === 'placed' && { untag: [CRM_TAGS.notConverted], convert: true }),
   }
 }
 
