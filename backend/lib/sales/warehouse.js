@@ -255,7 +255,16 @@ export async function listWarehouseCustomers(f = {}, { maxLimit = 100 } = {}) {
   // Converted = has paid for an order. Everyone else (a sign-up who has not bought, or a buyer whose
   // payment never went through) is "not converted".
   const status = f.status === 'converted' ? 'converted' : f.status === 'not_converted' ? 'not_converted' : ''
-  const where = [search, status === 'converted' ? 'converted' : status === 'not_converted' ? 'not converted' : ''].filter(Boolean).join(' and ')
+  const SOURCE_LABELS = ['Meta', 'Google Ads', 'Google search', 'WhatsApp', 'Other website', 'Direct']
+  const source = SOURCE_LABELS.includes(f.source) ? f.source : ''
+  let sourceSql = ''
+  if (source) {
+    params.push(source)
+    sourceSql = `src_label = $${params.length}`
+  }
+  // The counts on the toggle ignore the status, so each button shows how many people it would list.
+  const baseWhere = [search, sourceSql].filter(Boolean).join(' and ')
+  const where = [baseWhere, status === 'converted' ? 'converted' : status === 'not_converted' ? 'not converted' : ''].filter(Boolean).join(' and ')
   const limit = Math.min(Math.max(Number(f.limit) || 20, 1), maxLimit)
   const offset = Math.max(Number(f.offset) || 0, 0)
 
@@ -298,34 +307,40 @@ export async function listWarehouseCustomers(f = {}, { maxLimit = 100 } = {}) {
       select id, name, phone, email, city, state, orders, packs, last_order_at, first_order_at, source, converted,
              'signup' as kind, updated_at as recent
         from signups
+    ), labeled as (
+      select *, case
+               when source ~ '^meta_ads' or source in ('facebook', 'instagram') then 'Meta'
+               when source = 'google_ads' then 'Google Ads'
+               when source = 'google_search' then 'Google search'
+               when source = 'whatsapp' then 'WhatsApp'
+               when source = 'other_website' then 'Other website'
+               else 'Direct' end as src_label
+        from everyone
     )`
   const filter = where ? `where ${where}` : ''
   const { rows } = await query(
     `${base}
-     select * from everyone ${filter}
+     select * from labeled ${filter}
       order by recent desc
       limit ${limit} offset ${offset}`,
     params
   )
-  const { rows: [{ n }] } = await query(`${base} select count(*)::int as n from everyone ${filter}`, params)
+  const { rows: [{ n }] } = await query(`${base} select count(*)::int as n from labeled ${filter}`, params)
+  const { rows: [c] } = await query(
+    `${base} select count(*)::int as everyone, count(*) filter (where converted)::int as converted,
+                    count(*) filter (where not converted)::int as not_converted
+               from labeled ${baseWhere ? 'where ' + baseWhere : ''}`,
+    params
+  )
   return {
     total: n,
+    counts: { all: c.everyone, converted: c.converted, notConverted: c.not_converted },
     customers: rows.map((r) => ({
       id: r.id, kind: r.kind, name: r.name, phone: r.phone, email: r.email, city: r.city, state: r.state,
       orders: r.orders, packs: r.packs, lastOrderAt: r.last_order_at, firstOrderAt: r.first_order_at,
-      converted: r.converted, source: customerSource(r.source),
+      converted: r.converted, source: r.src_label,
     })),
   }
-}
-
-/** The simple "where did they come from" shown on the Customers page. */
-export function customerSource(key) {
-  if (/^meta_ads|^facebook$|^instagram$/.test(key || '')) return 'Meta'
-  if (key === 'google_ads') return 'Google Ads'
-  if (key === 'google_search') return 'Google search'
-  if (key === 'whatsapp') return 'WhatsApp'
-  if (key === 'other_website') return 'Other website'
-  return 'Direct'
 }
 
 /**

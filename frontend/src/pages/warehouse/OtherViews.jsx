@@ -126,20 +126,22 @@ export function CustomersView({ say, onAuthError, onOpenOrders }) {
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('') // '' | converted | not_converted
   const [page, setPage] = useState(1)
-  useEffect(() => { setPage(1) }, [status])
+  const [source, setSource] = useState('') // '' | Meta | WhatsApp | Google Ads | ...
+  useEffect(() => { setPage(1) }, [status, source])
   useEffect(() => {
     const t = window.setTimeout(() => { setQ(draft.trim()); setPage(1) }, 400)
     return () => window.clearTimeout(t)
   }, [draft])
-  const path = `/api/admin/warehouse/customers?${new URLSearchParams({ q, status, limit: CUST_PAGE, offset: (page - 1) * CUST_PAGE })}`
+  const path = `/api/admin/warehouse/customers?${new URLSearchParams({ q, status, source, limit: CUST_PAGE, offset: (page - 1) * CUST_PAGE })}`
   const { data, loading } = useLoad(path, say, onAuthError)
   const total = data?.total || 0
+  const counts = data?.counts || {}
   const pages = Math.max(1, Math.ceil(total / CUST_PAGE))
 
   // The whole list (every customer matching the search), as a spreadsheet.
   async function downloadCsv() {
     try {
-      const res = await staffFetch(`/api/admin/warehouse/customers.csv?${new URLSearchParams({ q, status })}`)
+      const res = await staffFetch(`/api/admin/warehouse/customers.csv?${new URLSearchParams({ q, status, source })}`)
       const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'customers.csv'
       const url = URL.createObjectURL(await res.blob())
       const a = document.createElement('a')
@@ -163,18 +165,28 @@ export function CustomersView({ say, onAuthError, onOpenOrders }) {
           <span className="visually-hidden">Search customers</span>
           <input type="search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Name, phone or city" />
         </label>
-        <label className="wh-select">
-          <span className="visually-hidden">Show</span>
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="">All customers</option>
-            <option value="converted">Converted (bought)</option>
-            <option value="not_converted">Not converted</option>
-          </select>
-        </label>
         <button type="button" className="wh-btn wh-btn--outline wh-csv" onClick={downloadCsv} disabled={!total}>
           <Icon name="download" size={18} /> Download CSV
         </button>
       </header>
+
+      <div className="wh-cust-filters">
+        <div className="wh-seg" role="group" aria-label="Converted or not">
+          {[['', 'All', counts.all], ['converted', 'Converted', counts.converted], ['not_converted', 'Not converted', counts.notConverted]].map(([key, label, n]) => (
+            <button key={key || 'all'} type="button" className={`wh-seg-btn${status === key ? ' is-active' : ''}`} aria-pressed={status === key} onClick={() => setStatus(key)}>
+              {label}{n != null ? ` (${n})` : ''}
+            </button>
+          ))}
+        </div>
+        <div className="wh-seg" role="group" aria-label="Source">
+          {['', 'Meta', 'WhatsApp', 'Google Ads', 'Google search', 'Direct'].map((key) => (
+            <button key={key || 'any'} type="button" className={`wh-seg-btn${source === key ? ' is-active' : ''}`} aria-pressed={source === key} onClick={() => setSource(key)}>
+              {key || 'All sources'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="wh-table wh-table--customers" role="table" aria-label="Customers">
         <div className="wh-tr wh-th" role="row">
           <span role="columnheader">Customer</span>
