@@ -44,7 +44,9 @@ const ICONS = {
 
 function labelHtml(d) {
   const a = d.address || {}
-  const street = [a.line1, a.line2].filter(Boolean).join(', ') + (a.landmark ? ` (near ${a.landmark.replace(/^near\s+/i, '')})` : '')
+  // Customers type commas and spaces loosely (",virugambakkam(near …"): tidy them.
+  const tidy = (t) => String(t || '').replace(/\s*,\s*/g, ', ').replace(/\s*\(\s*/g, ' (').replace(/\s+/g, ' ').replace(/^[,\s]+|[,\s]+$/g, '')
+  const street = tidy([a.line1, a.line2].filter(Boolean).join(', ') + (a.landmark ? ` (near ${a.landmark.replace(/^near\s+/i, '')})` : ''))
   const place = [a.city, a.state].filter(Boolean).join(', ')
   const s = d.shipment || {}
   const carrier = s.carrier || METHOD[s.method] || ''
@@ -124,12 +126,19 @@ small { display: block; font-size: 8pt; font-weight: 700; letter-spacing: .04em;
 .num { text-align: center; font-size: 10pt; font-weight: 700; letter-spacing: .08em; margin-top: 2px; }
 .blank { font-size: 10pt; padding: 12px 0 8px; }
 .contents { font-size: 8.5pt; line-height: 1.25; margin-top: 3px; }
-.marks { display: flex; }
-.marks > div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; border-left: 1px solid #000; }
+/* Handling marks: small, icon beside its words, each centred in its third. */
+.marks { display: flex; align-items: center; }
+.marks > div { flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; border-left: 1px solid #000; padding: 1px 0; }
 .marks > div:first-child { border-left: 0; }
-.ic { width: 0.26in; height: 0.26in; fill: #000; }
-.marks span { font-size: 7pt; font-weight: 800; }
-.from { border-top: 1.5px solid #000; padding-top: 4px; margin-top: auto; display: flex; gap: 8px; align-items: flex-end; }
+.ic { width: 0.18in; height: 0.18in; fill: #000; flex: 0 0 auto; }
+.marks span { font-size: 6.5pt; font-weight: 800; white-space: nowrap; }
+.from { border-top: 1.5px solid #000; padding-top: 4px; display: flex; gap: 8px; align-items: center; }
+/* Spare height is shared evenly between the sections (no empty band above
+   the return address); each section's content sits in the middle of its band. */
+.label > .row, .label > .from { flex: 1 1 auto; }
+.ship, .marks { align-items: center; }
+.awb, .ord { display: flex; flex-direction: column; justify-content: center; }
+.ord .bc { align-self: flex-start; }
 .from > div:first-child { flex: 1; min-width: 0; }
 .from b { display: block; font-size: 8.5pt; }
 .from span { display: block; font-size: 7pt; line-height: 1.25; }
