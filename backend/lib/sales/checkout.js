@@ -17,7 +17,7 @@ import { priceCart, quoteShipping } from './catalog.js'
 import { deliveryTaxRateBp } from './tax.js'
 import { cleanAttribution, classify } from './attribution.js'
 import { moveStock, releaseForOrder } from './stock.js'
-import { queueEmail, staffRecipients, templates, trackUrl } from './email.js'
+import { queueEmail, templates, trackUrl } from './email.js'
 import { queueOrderPlaced, sendWhatsAppMessages } from '../whatsapp.js'
 import {
   httpError, str, toRupees, getSettings, recordOrderStatus, newShipmentId, newOrderNumber, reserveId, linkId,
@@ -293,8 +293,7 @@ async function markOrderPaidTx({ paymentRowId, outcome, actor }) {
       attachments: [{ kind: 'invoice', orderId: order.id }], // GST invoice PDF, made when sent
     })
     await queueOrderPlaced(db, updated, trackUrl(updated))
-    const forStaff = templates.newOrderForStaff(updated, items)
-    await queueEmail(db, { to: await staffRecipients(db), ...forStaff, orderId: order.id, dedupeKey: 'staff-placed:' + order.id })
+    // The team hears about new orders in the daily 9 o'clock summary (digest.js), not one email each.
 
     return { order: updated, payment: paid, already: false, mismatch: problems.length > 0 && outcome.amountPaise !== Number(order.total_paise) }
   })

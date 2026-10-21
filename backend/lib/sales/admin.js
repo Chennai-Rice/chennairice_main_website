@@ -119,13 +119,16 @@ export async function upsertZone(staff, body) {
   return zone
 }
 
-export async function listEmails({ status, limit = 100 } = {}) {
+export async function listEmails({ status, staff, limit = 100 } = {}) {
   const params = [Math.min(Number(limit) || 100, 500)]
-  let where = ''
+  const conds = []
   if (status) {
     params.push(status)
-    where = 'where status = $2'
+    conds.push('status = $' + params.length)
   }
+  // The alerts the team receives (new paid order, cancellation, reminders), not the customers' mail.
+  if (staff === '1' || staff === true) conds.push("template like 'staff_%'")
+  const where = conds.length ? 'where ' + conds.join(' and ') : ''
   const { rows } = await query(
     `select id, to_email, subject, template, status, attempts, last_error, created_at, sent_at
        from email_outbox ${where} order by created_at desc limit $1`,

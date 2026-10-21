@@ -375,3 +375,15 @@
   .wh-acc-tr .wh-k { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--wh-muted, #7a6b63); }
   .wh-acc-actions { grid-column: 1 / -1; }
 }
+
+/* Order alert emails: the list of alerts sent (Settings). */
+.wh-mail-list { display: grid; margin-top: 8px; }
+.wh-mail-row { display: grid; grid-template-columns: 110px minmax(180px, 1.6fr) minmax(150px, 1fr) minmax(90px, 0.6fr); gap: 12px; padding: 10px 0; border-top: 1px solid var(--wh-line, #e8dfd6); align-items: start; }
+@media (max-width: 720px) {
+  .wh-mail-row { grid-template-columns: 1fr; gap: 4px; }
+}
+
+/* Order alert emails: the saved recipients (Settings). */
+.wh-alert-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.wh-alert-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--wh-line, #e8dfd6); }
+.wh-alert-list li span { overflow-wrap: anywhere; }

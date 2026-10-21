@@ -188,12 +188,17 @@ export const templates = {
       html: renderTemplate('order-confirmation.html', orderConfirmationVars(order, payment), orderConfirmationItems(items)),
     }
   },
-  newOrderForStaff(order, items) {
+  // `who`: { source: label of where the buyer came from, campaign, ad, earlierOrders: paid orders before this one }
+  newOrderForStaff(order, items, who = {}) {
+    const isNew = who.earlierOrders === 0
+    const from = [who.source, who.campaign && 'campaign ' + who.campaign, who.ad && 'ad ' + who.ad].filter(Boolean).join(' · ')
     return {
       template: 'staff_new_order',
-      subject: `New paid order ${order.order_number} — ${formatInr(order.total_paise)}`,
+      subject: `${isNew ? 'NEW customer — ' : ''}New paid order ${order.order_number} — ${formatInr(order.total_paise)}${who.source ? ' · ' + who.source : ''}`,
       text:
         `${order.contact_name} (${order.contact_phone}) paid ${formatInr(order.total_paise)}.\n` +
+        (who.earlierOrders == null ? '' : (isNew ? 'New customer: this is their first order.\n' : `Repeat customer: ${who.earlierOrders} earlier paid order${who.earlierOrders === 1 ? '' : 's'}.\n`)) +
+        `Came from: ${from || 'Direct / typed the address'}\n` +
         `Ship to: ${order.shipping_address.city}, ${order.ship_state}\n\n${itemsText(items)}\n\n` +
         `Confirm it in the admin panel.`,
     }
