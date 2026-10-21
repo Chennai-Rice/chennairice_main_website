@@ -46,7 +46,8 @@ export default function AlertEmails({ say, onAuthError }) {
           <span>Email addresses</span>
           <textarea className="wh-input" rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder={'orders@chennairiceindustries.com\nowner@chennairiceindustries.com'} />
         </label>
-        <button type="submit" className="wh-btn wh-btn--primary" disabled={busy || text === saved}>{busy ? 'Saving…' : 'Save'}</button>
+        <button type="submit" className="wh-btn wh-btn--primary" disabled={busy || text === saved}>{busy ? 'Saving…' : text === saved ? (saved ? 'Saved ✓' : 'Save') : 'Save'}</button>
+        {text !== saved && <span className="wh-muted wh-small"> You have unsaved changes.</span>}
       </form>
     </section>
   )
