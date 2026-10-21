@@ -279,7 +279,7 @@ export async function saveContestLead(db, body) {
   await pushCrmLead('contest_signup', {
     name, phone, email,
     source: CRM_SOURCE[source],
-    tags: [AD_TAG[source], bought ? CRM_TAGS.converted : CRM_TAGS.notConverted].filter(Boolean),
+    tags: [AD_TAG[source], !bought && CRM_TAGS.notConverted].filter(Boolean),
     note: [
       'Super Slogan Contest sign-up from the website.',
       'Came from: ' + label + (campaign ? ' · campaign ' + campaign : '') + (ad ? ' · ad ' + ad : ''),
