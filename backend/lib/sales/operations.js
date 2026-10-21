@@ -748,15 +748,47 @@ export async function customerInvoice({ orderId, orderNumber }) {
  * invoice or a dispatch behind it can disappear. Its stock history stays
  * (just no longer linked to it); its order ID stays used in the register.
  */
+/** Orders at or below this total are test orders (the ₹1 payment tests). */
+export const TEST_ORDER_MAX_PAISE = 1000
+
+async function deleteTestOrder(db, staff, order) {
+  const id = order.id
+  await releaseForOrder(db, { orderId: id, reason: 'Test order deleted', staffId: staff.id })
+  const { rows: [kept] } = await db.query(
+    `select (select string_agg(invoice_number, ', ') from invoices where order_id = $1) as invoices,
+            (select string_agg(gateway_payment_id, ', ') from payments where order_id = $1 and gateway_payment_id is not null) as payments`, [id])
+  // Stock history stays (levels unchanged); it just no longer points at the order.
+  await db.query(
+    `update stock_movements set order_id = null, shipment_id = null
+      where order_id = $1 or shipment_id in (select id from shipments where order_id = $1)`, [id])
+  await db.query('delete from shipments where order_id = $1', [id])
+  await db.query('delete from refunds where order_id = $1', [id])
+  await db.query('delete from payments where order_id = $1', [id])
+  await db.query('delete from invoices where order_id = $1', [id])
+  await db.query('delete from email_outbox where order_id = $1', [id])
+  await db.query('delete from order_issues where order_id = $1', [id])
+  await db.query('delete from orders where id = $1', [id])
+  await audit(db, staff, 'order.delete', 'order', id, {
+    orderNumber: order.order_number, customer: order.contact_name, total: Number(order.total_paise) / 100,
+    paymentStatus: order.payment_status, status: order.status, testOrder: true,
+    invoices: kept.invoices || null, razorpayPayments: kept.payments || null,
+  })
+  return { deleted: order.order_number, testOrder: true }
+}
+
 export async function deleteOrder(staff, id) {
   requirePermission(staff, 'order.delete')
   assertId(id)
   return tx(async (db) => {
     const order = await lockOrder(db, id)
+    // A test order (₹10 or less, such as the ₹1 payment tests) can go whatever
+    // its state: its bag hold is released and its payment, invoice and
+    // dispatch records go with it. Real orders only when cancelled and never paid.
+    if (Number(order.total_paise) <= TEST_ORDER_MAX_PAISE) return deleteTestOrder(db, staff, order)
     if (order.status !== 'cancelled' || ['paid', 'partially_refunded', 'refunded'].includes(order.payment_status)) {
       throw httpError('Not deletable', {
         status: 409,
-        publicMessage: `${order.order_number} can't be deleted: only cancelled orders that were never paid can be deleted.`,
+        publicMessage: `${order.order_number} can't be deleted: only cancelled orders that were never paid, or test orders of ₹10 or less, can be deleted.`,
       })
     }
     const { rows: [blocker] } = await db.query(

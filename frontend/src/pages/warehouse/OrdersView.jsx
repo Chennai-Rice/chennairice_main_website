@@ -83,8 +83,10 @@ function ProductCell({ items }) {
   )
 }
 
-// Only a cancelled order that was never paid can be deleted (the server checks again).
-const deletable = (o) => o.status === 'cancelled' && !['paid', 'partially_refunded', 'refunded'].includes(o.paymentStatus)
+// A test order (₹10 or less, like the ₹1 payment tests) can be deleted in any
+// state; a real order only when cancelled and never paid. The server checks again.
+const isTestOrder = (o) => typeof o.total === 'number' && o.total <= 10
+const deletable = (o) => isTestOrder(o) || (o.status === 'cancelled' && !['paid', 'partially_refunded', 'refunded'].includes(o.paymentStatus))
 
 function RowMenu({ order, onView, onUndo, onDelete, onClose, say }) {
   const ref = useRef(null)
@@ -341,7 +343,9 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
   function askDelete(o) {
     setConfirm({
       title: `Delete ${o.orderNumber}?`,
-      body: `This cancelled, unpaid order (${o.customer?.name || 'customer'}) is removed for good, with its failed payment attempts and emails. This cannot be undone.`,
+      body: isTestOrder(o) && !(o.status === 'cancelled' && !['paid', 'partially_refunded', 'refunded'].includes(o.paymentStatus))
+        ? `This ₹${o.total} test order (${o.customer?.name || 'customer'}) is removed for good, with its payment record, invoice and emails, and its bag is put back in stock. The money stays in Razorpay unless you refund it there. This cannot be undone.`
+        : `This cancelled, unpaid order (${o.customer?.name || 'customer'}) is removed for good, with its failed payment attempts and emails. This cannot be undone.`,
       confirmLabel: 'Delete order',
       danger: true,
       onConfirm: async () => {

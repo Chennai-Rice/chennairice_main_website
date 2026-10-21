@@ -1267,6 +1267,41 @@ test('delete order: owner and IT team only, and only a cancelled order that was 
   assert.equal((await api('DELETE', `/api/admin/orders/${s.body.orderId}`, { token: OWNER })).status, 404)
 })
 
+test('delete order: a paid ₹1 test order can be deleted — its bag goes back, its payment and invoice go with it', async () => {
+  const vid = await variantId('rudra')
+  const { rows: [before] } = await db.query('select price_paise from product_variants where id = $1', [vid])
+  const { rows: regions } = await db.query('select region, price_paise, delivery_paise from variant_region_prices where variant_id = $1', [vid])
+  await db.query('update product_variants set price_paise = 100 where id = $1', [vid])
+  await db.query('update variant_region_prices set price_paise = 100, delivery_paise = 0 where variant_id = $1', [vid])
+  try {
+    const held = (await stockOf('rudra')).reserved
+    const { session } = await buy([{ id: 'rudra', qty: 1 }], buyer({ name: 'Rupee Test', email: 'rupee@example.com', phone: '9600011111' }))
+    const { rows: [o] } = await db.query('select status, payment_status, total_paise from orders where id = $1', [session.orderId])
+    assert.deepEqual(o, { status: 'placed', payment_status: 'paid', total_paise: 100 })
+    assert.equal((await stockOf('rudra')).reserved, held + 1)
+    // The warehouse list lets owner / IT see it is a test order (₹1).
+    const list = await api('GET', '/api/admin/warehouse/orders?tab=all&limit=100', { token: OWNER })
+    assert.equal(list.body.orders.find((r) => r.id === session.orderId).total, 1)
+
+    assert.equal((await api('DELETE', `/api/admin/orders/${session.orderId}`, { token: tokens.sales })).status, 403)
+    const del = await api('DELETE', `/api/admin/orders/${session.orderId}`, { token: OWNER })
+    assert.equal(del.status, 200, JSON.stringify(del.body))
+    assert.equal(del.body.testOrder, true)
+    for (const t of ['orders', 'payments', 'invoices']) {
+      assert.equal((await db.query(`select 1 from ${t} where ${t === 'orders' ? 'id' : 'order_id'} = $1`, [session.orderId])).rowCount, 0, t)
+    }
+    assert.equal((await stockOf('rudra')).reserved, held)
+    const { rows: [log] } = await db.query(`select details from staff_audit_log where action = 'order.delete' order by created_at desc limit 1`)
+    assert.equal(log.details.testOrder, true)
+    assert.match(log.details.razorpayPayments, /^pay_/)
+  } finally {
+    await db.query('update product_variants set price_paise = $2 where id = $1', [vid, before.price_paise])
+    for (const r of regions) {
+      await db.query('update variant_region_prices set price_paise = $3, delivery_paise = $4 where variant_id = $1 and region = $2', [vid, r.region, r.price_paise, r.delivery_paise])
+    }
+  }
+})
+
 test('Sales Daddy CRM: contest sign-ups and enquiries are sent as leads; failures wait and are retried; no key, nothing sent', async () => {
   const http = await import('node:http')
   const got = []
