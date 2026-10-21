@@ -38,6 +38,8 @@ function queryString(status, sort, f, extra = {}) {
   return p.toString()
 }
 
+import { printLabels } from './courierLabel.js'
+
 /** Prints several packing slips in one window, one per page. */
 export async function printSlips(ids, say) {
   const win = window.open('', '_blank')
@@ -121,6 +123,7 @@ function RowMenu({ order, onView, onUndo, onDelete, onClose, say }) {
           <Icon name="truck" size={16} /> Track on {order.shipment.carrier || 'courier'}
         </a>
       )}
+      <button type="button" role="menuitem" onClick={() => { printLabels([order.id], say); onClose() }}><Icon name="print" size={16} /> Print courier label</button>
       <a role="menuitem" href={telHref(order.customer.phone)} onClick={onClose}><Icon name="phone" size={16} /> Call customer</a>
       {onUndo && canUndo(order) && (
         <button type="button" role="menuitem" className="is-danger" onClick={() => { onUndo(order); onClose() }}>
@@ -537,6 +540,15 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
             <div className="wh-split">
               <button
                 type="button"
+                className="wh-btn wh-btn--outline wh-btn--labels"
+                title="4 × 6 inch courier labels for the thermal printer"
+                onClick={() => printLabels((chosen.length ? chosen : data.orders).map((o) => o.id), say)}
+                disabled={!data.orders.length}
+              >
+                <Icon name="print" size={18} /> Courier Labels{chosen.length ? ` (${chosen.length})` : ''}
+              </button>
+              <button
+                type="button"
                 className="wh-btn wh-btn--outline"
                 onClick={() => printSlips((chosen.length ? chosen : data.orders).map((o) => o.id), say)}
                 disabled={!data.orders.length}
@@ -561,6 +573,14 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
                   <button type="button" role="menuitem" disabled={!data.orders.length}
                     onClick={() => { setPrintMenu(false); printSlips(data.orders.map((o) => o.id), say) }}>
                     <Icon name="print" size={16} /> Print all on this page ({data.orders.length})
+                  </button>
+                  <button type="button" role="menuitem" disabled={!chosen.length}
+                    onClick={() => { setPrintMenu(false); printLabels(chosen.map((o) => o.id), say) }}>
+                    <Icon name="print" size={16} /> Courier labels for selected ({chosen.length})
+                  </button>
+                  <button type="button" role="menuitem" disabled={!data.orders.length}
+                    onClick={() => { setPrintMenu(false); printLabels(data.orders.map((o) => o.id), say) }}>
+                    <Icon name="print" size={16} /> Courier labels for this page ({data.orders.length})
                   </button>
                   <button type="button" role="menuitem" className="is-danger" disabled={!toUndo.length}
                     onClick={() => { setPrintMenu(false); askUndo(toUndo) }}>

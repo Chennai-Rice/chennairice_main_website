@@ -216,6 +216,25 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/orders/:id/packing-slip', perm('warehouse.view'), wrap(async (req, res) => {
     res.type('html').send(packingSlipHtml(await getOrderDetail(req.params.id)))
   }))
+  // The courier label (4 × 6 in, drawn by the warehouse page): who and where,
+  // what is in the bag and the courier's tracking number. No prices.
+  admin.get('/orders/:id/label', perm('warehouse.view'), wrap(async (req, res) => {
+    const { order, items, shipments } = await getOrderDetail(req.params.id)
+    const s = [...(shipments || [])].reverse().find((x) => x.status !== 'cancelled') || null
+    res.set('Cache-Control', 'no-store')
+    res.json({
+      orderNumber: order.order_number,
+      placedAt: order.placed_at || order.created_at,
+      paymentStatus: order.payment_status,
+      name: order.contact_name,
+      phone: order.contact_phone,
+      address: order.shipping_address || {},
+      items: items.map((i) => ({ name: i.product_name, packKg: Number(i.pack_kg), qty: i.quantity })),
+      shipment: s && {
+        method: s.method, carrier: s.carrier_name, trackingNumber: s.tracking_number, lrNumber: s.lr_number,
+      },
+    })
+  }))
 
   // ---- /warehouse page ----
   admin.get('/warehouse/dashboard', perm('warehouse.view'), wrap(async (req, res) => {

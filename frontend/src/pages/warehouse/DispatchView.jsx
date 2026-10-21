@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { staffFetch, staffJson } from '../../services/staffAuth.js'
 import { Icon, Pagination, dayLabel, telHref, timeLabel } from './shared.jsx'
 import { printSlips } from './OrdersView.jsx'
+import { printLabels } from './courierLabel.js'
 import ShipDialog, { METHOD_LABEL } from './ShipDialog.jsx'
 
 const TABS = [
@@ -181,6 +182,10 @@ export default function DispatchView({ say, onAuthError }) {
                 <Icon name="box" size={18} /> Start packing ({selected.size})
               </button>
             )}
+            <button type="button" className="wh-btn wh-btn--outline" disabled={!data.orders.length} title="4 × 6 inch courier labels for the thermal printer"
+              onClick={() => printLabels((selected.size ? data.orders.filter((o) => selected.has(o.id)) : data.orders).map((o) => o.id), say)}>
+              <Icon name="truck" size={18} /> Courier Labels{selected.size ? ` (${selected.size})` : ''}
+            </button>
             <button type="button" className="wh-btn wh-btn--outline" disabled={!data.orders.length}
               onClick={() => printSlips((selected.size ? data.orders.filter((o) => selected.has(o.id)) : data.orders).map((o) => o.id), say)}>
               <Icon name="print" size={18} /> Print Slips{selected.size ? ` (${selected.size})` : ''}
@@ -265,6 +270,9 @@ export default function DispatchView({ say, onAuthError }) {
                       {o.shipment.method ? 'Edit details' : 'Add details'}
                     </button>
                   )}
+                  <button type="button" className="wh-icon-btn" title="Print courier label (4 × 6 in)" aria-label={`Print courier label for ${o.orderNumber}`} onClick={() => printLabels([o.id], say)}>
+                    <Icon name="truck" size={17} />
+                  </button>
                   <button type="button" className="wh-icon-btn" title="Print packing slip" aria-label={`Print slip for ${o.orderNumber}`} onClick={() => printSlips([o.id], say)}>
                     <Icon name="print" size={18} />
                   </button>

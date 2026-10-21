@@ -1527,6 +1527,20 @@ test('Sales Daddy CRM: an ad sign-up who then buys loses "Not converted" and gai
   }
 })
 
+test('courier label: ship-to, items and the courier tracking number for the warehouse — no prices', async () => {
+  const { session } = await buy([{ id: 'alibaba', qty: 2 }], buyer({ name: 'Label Test', email: 'label@example.com', phone: '9600022222', city: 'Madurai' }))
+  const r = await api('GET', `/api/admin/orders/${session.orderId}/label`, { token: tokens.dispatch })
+  assert.equal(r.status, 200, JSON.stringify(r.body))
+  assert.equal(r.body.orderNumber, session.orderNumber)
+  assert.equal(r.body.name, 'Label Test')
+  assert.equal(r.body.address.city, 'Madurai')
+  assert.equal(r.body.paymentStatus, 'paid')
+  assert.deepEqual(r.body.items.map((i) => i.qty), [2])
+  assert.equal(r.body.shipment, null) // not dispatched yet: the label leaves the courier blank
+  assert.doesNotMatch(JSON.stringify(r.body), /price|paise|total/i)
+  assert.equal((await api('GET', `/api/admin/orders/${session.orderId}/label`)).status, 401)
+})
+
 test('order list: a cancelled, never-paid order is dated by when it was attempted', async () => {
   const s = await api('POST', '/api/checkout/session', {
     body: { ...buyer({ name: 'Never Paid', phone: '+91 90000 33333' }), items: [{ id: 'alibaba', qty: 1 }] },
