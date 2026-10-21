@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { staffJson } from '../../services/staffAuth.js'
 
 const MAIL_KIND = {
+  staff_digest: 'Daily summary',
   staff_new_order: 'New paid order',
   staff_order_cancelled: 'Order cancelled',
   staff_sla: 'Reminder: order waiting',
@@ -54,7 +55,8 @@ export default function AlertEmails({ say, onAuthError }) {
     <section className="wh-panel">
       <h2 className="wh-panel-title">Order alert emails</h2>
       <p className="wh-muted wh-small">
-        These addresses get an email for every new paid order and every cancellation, plus the delay and low-stock reminders.
+        These addresses get one summary email a day, at 9:00 am: the new paid orders (new or repeat customer, and where they came
+        from), cancellations, orders waiting too long, and low stock. Nothing new and nothing waiting means no email that day.
         One address per line. Leave it empty to use the default inbox.
       </p>
       <form onSubmit={save}>

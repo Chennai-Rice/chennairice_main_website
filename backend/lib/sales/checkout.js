@@ -15,9 +15,9 @@ import { tx, query } from '../db.js'
 import { createSessionWithFailover, getGateway } from '../gateways.js'
 import { priceCart, quoteShipping } from './catalog.js'
 import { deliveryTaxRateBp } from './tax.js'
-import { cleanAttribution, classify, SOURCES } from './attribution.js'
+import { cleanAttribution, classify } from './attribution.js'
 import { moveStock, releaseForOrder } from './stock.js'
-import { queueEmail, staffRecipients, templates, trackUrl } from './email.js'
+import { queueEmail, templates, trackUrl } from './email.js'
 import { queueOrderPlaced, sendWhatsAppMessages } from '../whatsapp.js'
 import {
   httpError, str, toRupees, getSettings, recordOrderStatus, newShipmentId, newOrderNumber, reserveId, linkId,
@@ -293,15 +293,7 @@ async function markOrderPaidTx({ paymentRowId, outcome, actor }) {
       attachments: [{ kind: 'invoice', orderId: order.id }], // GST invoice PDF, made when sent
     })
     await queueOrderPlaced(db, updated, trackUrl(updated))
-    // For the team's alert: is this a new customer, and where did they come from?
-    const { rows: [prior] } = await db.query(
-      `select count(*)::int as n from orders where customer_id = $1 and id <> $2 and payment_status in ('paid', 'partially_refunded')`,
-      [updated.customer_id, updated.id])
-    const forStaff = templates.newOrderForStaff(updated, items, {
-      source: SOURCES[updated.traffic_source || 'direct'] || updated.traffic_source,
-      campaign: updated.traffic_campaign, ad: updated.traffic_ad, earlierOrders: updated.customer_id ? prior.n : null,
-    })
-    await queueEmail(db, { to: await staffRecipients(db), ...forStaff, orderId: order.id, dedupeKey: 'staff-placed:' + order.id })
+    // The team hears about new orders in the daily 9 o'clock summary (digest.js), not one email each.
 
     return { order: updated, payment: paid, already: false, mismatch: problems.length > 0 && outcome.amountPaise !== Number(order.total_paise) }
   })

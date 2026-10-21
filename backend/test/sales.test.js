@@ -164,7 +164,7 @@ test('checkout: stock is held at session, order is placed when payment verifies'
   assert.equal(o.status, 'placed')
   assert.equal(o.payment_status, 'paid')
   const { rows: mail } = await db.query('select template, to_email from email_outbox where order_id = $1 order by template', [o.id])
-  assert.deepEqual(mail.map((m) => m.template), ['order_placed', 'staff_new_order'])
+  assert.deepEqual(mail.map((m) => m.template), ['order_placed']) // the team's mail is the daily 9 o'clock summary
 
   // GST inside Tamil Nadu: CGST + SGST, and the parts add up to the line total.
   const { rows: items } = await db.query('select * from order_items where order_id = $1', [o.id])
