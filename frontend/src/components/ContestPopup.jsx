@@ -50,8 +50,10 @@ export default function ContestPopup() {
   const [open, setOpen] = useState(false)
   const closeRef = useRef(null)
   const lastFocus = useRef(null)
-  const quiet = QUIET_PATHS.some((p) => pathname.startsWith(p))
   const [fromAd] = useState(isAdVisit)
+  // The sign-up form for ad and WhatsApp visitors comes first, even on the pack page they land on;
+  // the plain contest popup stays away from it (its button goes there).
+  const quiet = QUIET_PATHS.some((p) => pathname.startsWith(p) && !(fromAd && p === BUY_PATH))
 
   // The clock starts when the visitor arrives and keeps running as they move
   // between pages; it only waits while they are on a quiet page.
