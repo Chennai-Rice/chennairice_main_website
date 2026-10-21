@@ -217,7 +217,12 @@ export default function ProductDetailPage() {
               </Link>
             )}
             <span className="pdp-badge">Premium Quality</span>
-            <h1 className="pdp-title">{seo?.h1 || headName}</h1>
+            {/* The SEO heading ends in a pack size ("… – 26 kg"); it follows the size chosen below. */}
+            <h1 className="pdp-title">
+              {seo?.h1
+                ? (selected ? seo.h1.replace(/ – \d+ kg$/, ` – ${Number(selected.kg)} kg`) : seo.h1)
+                : headName}
+            </h1>
             <p className="pdp-subtitle">{category}</p>
             <p className="pdp-desc">{seo?.line || product.description}</p>
 
