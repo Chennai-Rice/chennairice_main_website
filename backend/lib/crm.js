@@ -7,7 +7,9 @@
 // abandoned checkout and every warehouse step after payment are queued in the
 // same transaction as the status change (queueOrderEvent, called from
 // recordOrderStatus) and land as notes on the customer's lead, so sales sees
-// where each order is without opening the warehouse page.
+// where each order is without opening the warehouse page. A paid order also
+// carries its payment (gateway, method, UPI id / bank / card, payment id, bank
+// reference, time) on the note and in the lead's custom fields.
 //
 //   SALESDADDY_API_KEY   the API key with the Leads scope (Secret Manager)
 //   SALESDADDY_BASE_URL  optional, defaults to https://api.salesdaddy.in
@@ -142,9 +144,26 @@ async function deliver(kind, payload, ref) {
       if (!accepted(added)) return added
     }
   }
+  if (kind === 'order_event' && payload.custom) await setLeadFields(leadId, payload.custom)
   if (payload.won) await markConverted(leadId, payload.won.value)
   else if (stage) await moveForward(leadId, stage)
   return lead
+}
+
+/**
+ * Writes `fields` into the lead's custom fields (the latest paid order's
+ * payment), keeping whatever else is there — the contest sign-up's campaign
+ * and ad, for example. Best effort: the note already carries the same details.
+ */
+async function setLeadFields(leadId, fields) {
+  try {
+    const got = await request('GET', leadPath(leadId))
+    const current = accepted(got) && got.data.lead?.custom && typeof got.data.lead.custom === 'object' ? got.data.lead.custom : {}
+    const r = await request('PATCH', leadPath(leadId), { custom: { ...current, ...fields } })
+    if (!accepted(r)) console.error('[crm] could not save payment fields:', r.status, r.data.error || '', r.data.message || '')
+  } catch (err) {
+    console.error('[crm] could not save payment fields:', err.message)
+  }
 }
 
 // Sales Daddy's pipeline stages, looked up from its masters and kept for 10
@@ -312,6 +331,69 @@ function shipmentLines(s) {
   return lines
 }
 
+const GATEWAY = { razorpay: 'Razorpay', zoho_payments: 'Zoho Payments' }
+const PAY_METHOD = { upi: 'UPI', card: 'Card', netbanking: 'Net banking', wallet: 'Wallet', emi: 'EMI', paylater: 'Pay later' }
+const istTime = (t) => new Date(t).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })
+
+/**
+ * How one paid payment was made, from the row the checkout saved (`raw` is the
+ * gateway's own record: Razorpay's payment, or Zoho's payment session). Only
+ * what a customer would quote back is kept — never more of a card than the
+ * last four digits, which is all the gateway ever sends.
+ */
+export function paymentDetails(p) {
+  if (!p) return null
+  const raw = p.raw || {}
+  const rp = p.gateway === 'razorpay' ? raw : {}
+  const zoho = p.gateway === 'zoho_payments' ? (raw.payments || []).find((x) => x.status === 'succeeded') || {} : {}
+  const method = p.method || zoho.payment_method || null
+  const card = rp.card || {}
+  const last4 = p.card_last4 || card.last4
+  const via = rp.vpa
+    || rp.bank
+    || rp.wallet
+    || (last4 ? [card.network, 'card ••' + last4].filter(Boolean).join(' ') : null)
+  const acq = rp.acquirer_data || {}
+  return {
+    gateway: GATEWAY[p.gateway] || p.gateway,
+    method: PAY_METHOD[String(method || '').toLowerCase()] || method || null,
+    via: via || null,
+    // The gateway's own id for the order (Razorpay order_…, Zoho payment session).
+    orderRef: p.gateway_order_ref || null,
+    paymentId: p.gateway_payment_id || null,
+    bankRef: acq.rrn || acq.bank_transaction_id || acq.upi_transaction_id || null,
+    amountPaise: Number(p.amount_paise) || 0,
+    paidAt: p.paid_at || null,
+  }
+}
+
+function paymentLines(d) {
+  const lines = [`Payment: ${[d.gateway, d.method].filter(Boolean).join(' · ')}${d.via ? ` (${d.via})` : ''}`]
+  if (d.orderRef) lines.push(`${d.gateway} order ID: ${d.orderRef}`)
+  if (d.paymentId) lines.push(`Payment ID: ${d.paymentId}`)
+  if (d.bankRef) lines.push(`Bank ref (RRN): ${d.bankRef}`)
+  if (d.paidAt) lines.push(`Paid at: ${istTime(d.paidAt)}`)
+  return lines
+}
+
+/** The lead's payment fields (Sales Daddy custom fields), for its latest paid order. */
+function paymentFields(orderNumber, d) {
+  const f = {
+    last_order_no: orderNumber,
+    last_order_amount: rupees(d.amountPaise),
+    payment_gateway: d.gateway,
+    payment_method: d.method,
+    payment_via: d.via,
+    razorpay_order_id: d.gateway === 'Razorpay' ? d.orderRef : null,
+    zoho_session_id: d.gateway === 'Zoho Payments' ? d.orderRef : null,
+    payment_id: d.paymentId,
+    payment_bank_ref: d.bankRef,
+    paid_at: d.paidAt ? istTime(d.paidAt) : null,
+  }
+  for (const k of Object.keys(f)) if (f[k] == null || f[k] === '') delete f[k]
+  return f
+}
+
 /**
  * The outbox payload for one order status change, or null when the change is
  * not worth telling sales about (an order being created and waiting for
@@ -341,6 +423,17 @@ export async function orderEventPayload(db, { orderId, from, to, reason }) {
     const place = [a.city, a.state || o.ship_state, a.pincode].filter(Boolean).join(', ')
     if (place) lines.push(`Ship to: ${place}`)
   }
+
+  // A paid order carries how it was paid, so sales can answer "I paid" from
+  // the lead: on the note, and as fields on the lead (sent by deliver()).
+  let payment = null
+  if (to === 'placed') {
+    const { rows: [p] } = await db.query(
+      `select gateway, gateway_order_ref, gateway_payment_id, amount_paise, method, card_last4, raw, paid_at
+         from payments where order_id = $1 and status = 'paid' order by paid_at desc nulls last limit 1`, [orderId])
+    payment = paymentDetails(p)
+    if (payment) lines.push(...paymentLines(payment))
+  }
   if (to === 'shipped') {
     const { rows: [s] } = await db.query(
       `select method, carrier_name, tracking_number, lr_number, tracking_url, vehicle_number, driver_name,
@@ -362,6 +455,8 @@ export async function orderEventPayload(db, { orderId, from, to, reason }) {
     note: lines.join('\n').slice(0, 2000),
     // Paid → the Converted stage with the order amount; unpaid checkout → "Checkout not paid".
     ...(to === 'placed' && { won: { value: Number(o.total_paise) / 100 } }),
+    // The latest paid order's payment, written onto the lead's own fields.
+    ...(payment && { custom: paymentFields(o.order_number, payment) }),
     ...(abandoned && { stage: 'checkoutNotPaid' }),
   }
 }
