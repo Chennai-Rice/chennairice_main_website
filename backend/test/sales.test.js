@@ -1700,7 +1700,8 @@ test('daily summary: tables in the email and the same lists as an Excel attachme
   const ExcelJS = (await import('exceljs')).default
   const wb = new ExcelJS.Workbook()
   await wb.xlsx.load(await digestWorkbook(d.attachments[0].data))
-  assert.deepEqual(wb.worksheets.map((w) => w.name), ['Summary', 'New paid orders', 'Cancelled', 'Waiting too long', 'Low stock'])
+  assert.deepEqual(wb.worksheets.map((w) => w.name), ['Summary', 'New paid orders', 'Cancelled', 'Waiting too long'])
+  assert.doesNotMatch(d.html + d.text + d.subject, /low stock/i) // left out of the summary (owner, 22 Oct 2026)
   const waiting = wb.getWorksheet('Waiting too long')
   assert.equal(waiting.getRow(1).getCell(1).value, 'Order')
   const found = []

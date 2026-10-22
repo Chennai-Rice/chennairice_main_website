@@ -1,6 +1,6 @@
 // The team's alert emails as ONE summary a day, at 9 o'clock India time, instead of an
 // email for every event: new paid orders (new or repeat customer, and where they came
-// from), cancellations, orders waiting too long at a step, and packs running low.
+// from), cancellations and orders waiting too long at a step.
 //
 // The 10-minute job (jobs.js) calls sendDailyDigest(); it sends once the clock passes 9:00
 // IST and the day's summary has not gone out yet. It covers everything since the last one.
@@ -54,16 +54,8 @@ export async function buildDigest(from, to, query = defaultQuery) {
     )
     for (const r of rows) waiting.push({ ...r, what: rule.what })
   }
-  const { rows: [alerts] } = await query(`select value from company_settings where key = 'low_stock_alerts'`)
-  const { rows: low } = alerts && alerts.value === 'off' ? { rows: [] } : await query(
-    `select p.name, v.pack_kg, v.reorder_level, coalesce(s.on_hand - s.reserved, 0) as available
-       from product_variants v join products p on p.id = v.product_id
-       left join stock_locations l on l.is_fulfilment
-       left join stock_levels s on s.variant_id = v.id and s.location_id = l.id
-      where v.is_active and p.is_active and v.reorder_level > 0 and coalesce(s.on_hand - s.reserved, 0) <= v.reorder_level
-      order by p.name, v.pack_kg`
-  )
-  if (!sales.length && !cancelled.length && !waiting.length && !low.length) return null
+  // Low stock is not in the summary (owner, 22 Oct 2026): the warehouse panel shows it.
+  if (!sales.length && !cancelled.length && !waiting.length) return null
 
   // One plain table per section, used for the email (HTML and text) and the Excel file.
   const rupees = (p) => Number(p) / 100
@@ -81,7 +73,6 @@ export async function buildDigest(from, to, query = defaultQuery) {
       reason: r.cancel_reason || '', refund: ['paid', 'partially_refunded'].includes(r.payment_status) ? 'PAID: check the refund' : '',
     })),
     waiting: waiting.map((r) => ({ order: r.order_number, customer: r.contact_name, phone: r.contact_phone, amount: rupees(r.total_paise), issue: r.what })),
-    low: low.map((r) => ({ product: r.name, packKg: Number(r.pack_kg), left: Number(r.available), reorderAt: Number(r.reorder_level) })),
   }
 
   const total = sales.reduce((n, r) => n + Number(r.total_paise), 0)
@@ -94,11 +85,9 @@ export async function buildDigest(from, to, query = defaultQuery) {
   for (const r of data.cancelled) lines.push(`- ${r.order}  ${r.customer} (${r.phone})  ₹${r.amount.toFixed(2)}${r.reason ? '  reason: ' + r.reason : ''}${r.refund ? '  | ' + r.refund : ''}`)
   lines.push('', `ORDERS WAITING TOO LONG: ${waiting.length}`)
   for (const r of data.waiting) lines.push(`- ${r.order}  ${r.customer} (${r.phone})  ₹${r.amount.toFixed(2)}  ${r.issue}`)
-  lines.push('', `LOW STOCK: ${low.length}`)
-  for (const r of data.low) lines.push(`- ${r.product} ${r.packKg} kg: ${r.left} left (reorder at ${r.reorderAt})`)
   lines.push('', 'The same lists are in the attached Excel file.', `Open the warehouse panel: ${PANEL}`)
 
-  const bits = [sales.length && `${sales.length} new order${sales.length === 1 ? '' : 's'}`, cancelled.length && `${cancelled.length} cancelled`, waiting.length && `${waiting.length} waiting`, low.length && `${low.length} low stock`].filter(Boolean)
+  const bits = [sales.length && `${sales.length} new order${sales.length === 1 ? '' : 's'}`, cancelled.length && `${cancelled.length} cancelled`, waiting.length && `${waiting.length} waiting`].filter(Boolean)
   return {
     subject: `Daily summary: ${bits.join(', ')}`,
     text: lines.join('\n'),
@@ -125,7 +114,7 @@ export function digestHtml(d, { total, fresh }) {
         ? rows.map((r, i) => `<tr style="background:${i % 2 ? '#fbf7f1' : '#ffffff'}">${cols.map((c) => `<td style="${cell}${c.right ? ';text-align:right;white-space:nowrap' : ''}${c.strong ? ';font-weight:600' : ''}">${c.html ? c.html(r) : esc(c.value(r))}</td>`).join('')}</tr>`).join('')
         : `<tr><td colspan="${cols.length}" style="${cell};color:#9a8a7a;text-align:center">${esc(empty)}</td></tr>`}
     </table>`
-  const box = (label, n, alert) => `<td style="width:25%;padding:6px"><div style="border:1px solid #eee3d6;border-radius:8px;padding:12px;text-align:center;background:${alert && n ? '#fdecec' : '#fbf7f1'}">
+  const box = (label, n, alert) => `<td style="width:33%;padding:6px"><div style="border:1px solid #eee3d6;border-radius:8px;padding:12px;text-align:center;background:${alert && n ? '#fdecec' : '#fbf7f1'}">
       <div style="font-size:24px;font-weight:700;color:${alert && n ? '#b42318' : MAROON};font-family:Arial,sans-serif">${n}</div>
       <div style="font-size:12px;color:#6b5b4b;font-family:Arial,sans-serif">${esc(label)}</div></div></td>`
   const order = { label: 'Order', value: (r) => r.order, strong: true }
@@ -140,7 +129,7 @@ export function digestHtml(d, { total, fresh }) {
     </div>
     <div style="background:#fff;border-radius:0 0 10px 10px;padding:14px 18px 22px">
       <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse"><tr>
-        ${box('New paid orders', d.sales.length)}${box('Cancelled', d.cancelled.length, true)}${box('Waiting too long', d.waiting.length, true)}${box('Low stock', d.low.length, true)}
+        ${box('New paid orders', d.sales.length)}${box('Cancelled', d.cancelled.length, true)}${box('Waiting too long', d.waiting.length, true)}
       </tr></table>
       ${table('New paid orders', d.sales.length, d.sales.length ? `Total ${inr(total / 100)} · ${fresh} new customer${fresh === 1 ? '' : 's'}` : '',
         [order, customer, phone, amount, { label: 'New / repeat', value: (r) => r.customerType }, { label: 'Came from', value: (r) => r.source }], d.sales, 'No new paid orders.')}
@@ -148,9 +137,6 @@ export function digestHtml(d, { total, fresh }) {
         [order, customer, phone, amount, { label: 'Reason', value: (r) => r.reason || '—' }, { label: 'Refund', html: (r) => r.refund ? `<b style="color:#b42318">${esc(r.refund)}</b>` : '—' }], d.cancelled, 'No cancellations.')}
       ${table('Orders waiting too long', d.waiting.length, '',
         [order, customer, phone, amount, { label: 'Waiting for', html: (r) => `<span style="color:#b42318">${esc(r.issue)}</span>` }], d.waiting, 'Nothing waiting.')}
-      ${table('Low stock', d.low.length, '',
-        [{ label: 'Product', value: (r) => r.product, strong: true }, { label: 'Pack', value: (r) => `${r.packKg} kg`, right: true },
-          { label: 'Left', html: (r) => `<b style="color:${r.left <= 0 ? '#b42318' : '#3a2a22'}">${r.left}</b>`, right: true }, { label: 'Reorder at', value: (r) => r.reorderAt, right: true }], d.low, 'All packs are above their reorder level.')}
       <p style="margin:24px 0 6px;font-size:13px;color:#6b5b4b">The same lists are in the attached Excel file.</p>
       <a href="${PANEL}" style="display:inline-block;background:${MAROON};color:#fff;text-decoration:none;padding:10px 18px;border-radius:999px;font-size:14px;font-weight:600">Open the warehouse panel</a>
     </div>
@@ -183,7 +169,7 @@ export async function digestWorkbook(d) {
   summary.addRows([
     { s: 'From', n: when(d.from) }, { s: 'To', n: when(d.to) },
     { s: 'New paid orders', n: d.sales.length }, { s: 'Cancelled orders', n: d.cancelled.length },
-    { s: 'Orders waiting too long', n: d.waiting.length }, { s: 'Low stock', n: d.low.length },
+    { s: 'Orders waiting too long', n: d.waiting.length },
   ])
   style(summary)
   const base = [
@@ -194,8 +180,6 @@ export async function digestWorkbook(d) {
     { header: 'Paid at', key: 'paidAt', width: 18 }], d.sales.map((r) => ({ ...r, paidAt: when(r.placedAt) })))
   sheet('Cancelled', [...base, { header: 'Reason', key: 'reason', width: 34 }, { header: 'Refund', key: 'refund', width: 24 }], d.cancelled)
   sheet('Waiting too long', [...base, { header: 'Waiting for', key: 'issue', width: 44 }], d.waiting)
-  sheet('Low stock', [{ header: 'Product', key: 'product', width: 30 }, { header: 'Pack (kg)', key: 'packKg', width: 10 },
-    { header: 'Left', key: 'left', width: 8 }, { header: 'Reorder at', key: 'reorderAt', width: 12 }], d.low)
   return Buffer.from(await wb.xlsx.writeBuffer())
 }
 
