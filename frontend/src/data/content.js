@@ -93,7 +93,7 @@ export const PRODUCTS = [
     packSize: '5 / 26 KG',
     riceType: '1 Year Aged Kitchidi Ponni',
     idealFor: 'Delicious Everyday Meals',
-    image: '/assets/shop/packs/kitchidi-ponni-rice.png',
+    image: '/assets/shop/packs/kitchidi-ponni-rice-v3.png',
     // Warm peach, from the right half of the pack.
     tint: '#FBEDE6',
   },
@@ -109,7 +109,7 @@ export const PRODUCTS = [
     packSize: '5 / 10 / 26 KG',
     riceType: 'SNR RNR Poompuhar Ponni',
     idealFor: 'Daily Family Dining',
-    image: '/assets/shop/packs/viruchagam-v2.png',
+    image: '/assets/shop/packs/viruchagam-v3.png',
     // Cool blue-grey, matching the pack's royal blue.
     tint: '#EAEFF6',
   },
@@ -122,7 +122,7 @@ export const PRODUCTS = [
     packSize: '5 / 10 / 26 KG',
     riceType: 'Super Aged Gel Cook Rice',
     idealFor: 'Daily Meals • Variety Rice',
-    image: '/assets/shop/packs/nayara-super-aged-v2.png',
+    image: '/assets/shop/packs/nayara-super-aged-v3.png',
     // Pale teal, from the pack's green and gold.
     tint: '#E8F2EF',
   },

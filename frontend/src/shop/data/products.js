@@ -153,7 +153,7 @@ const FALLBACK_PRODUCTS = [
     name: "Kitchidi Ponni Rice",
     description: "Kitchidi Ponni, aged for a year, in our Chennai Rice premium pack. From Mother's Hands to Your Heart.",
     packKg: 5,
-    image: "/assets/shop/packs/kitchidi-ponni-rice.png",
+    image: "/assets/shop/packs/kitchidi-ponni-rice-v3.png",
     alt: "Chennai Rice Kitchidi Ponni Rice — premium pack, 1 year aged",
   },
   {
@@ -171,7 +171,7 @@ const FALLBACK_PRODUCTS = [
     name: "Nayara Super Aged",
     description: "Super-aged gel cook rice that stays separate and firm on the plate.",
     packKg: 10,
-    image: "/assets/shop/packs/nayara-super-aged-v2.png",
+    image: "/assets/shop/packs/nayara-super-aged-v3.png",
     alt: "Nayara Super Aged — Gel cook rice, 10 kg pack",
   },
   {
@@ -180,7 +180,7 @@ const FALLBACK_PRODUCTS = [
     name: "Vijaya Nagaram",
     description: "Amman Ponni — HMT Ponni grain, milled for everyday South Indian meals.",
     packKg: 5,
-    image: "/assets/shop/packs/vijaya-nagaram-v2.png",
+    image: "/assets/shop/packs/vijaya-nagaram-v3.png",
     alt: "Vijaya Nagaram — HMT Ponni, 5 kg pack",
   },
   {
@@ -189,7 +189,7 @@ const FALLBACK_PRODUCTS = [
     name: "Vintage",
     description: "Our black-and-gold selection, milled and sealed at the Erode facility.",
     packKg: 10,
-    image: "/assets/shop/packs/vintage-v2.png",
+    image: "/assets/shop/packs/vintage-v3.png",
     alt: "Vintage — Ponni, 10 kg pack",
   },
   {
@@ -198,7 +198,7 @@ const FALLBACK_PRODUCTS = [
     name: "Viruchagam",
     description: "Poompuhar Ponni in the blue and gold pack, from SNR RNR paddy.",
     packKg: 10,
-    image: "/assets/shop/packs/viruchagam-v2.png",
+    image: "/assets/shop/packs/viruchagam-v3.png",
     alt: "Viruchagam — SNR RNR Poompuhar Ponni, 10 kg pack",
   },
   {

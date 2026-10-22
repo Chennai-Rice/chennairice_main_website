@@ -57,7 +57,7 @@ export const CHAT_PRODUCTS = [
     name: "Nayara Super Aged",
     packSize: "10 KG",
     blurb: "Super-aged gel cook rice that stays separate and firm on the plate.",
-    image: "/assets/shop/packs/nayara-super-aged-v2.png",
+    image: "/assets/shop/packs/nayara-super-aged-v3.png",
     keywords: ["nayara super aged","nayara","super","aged","cook","stays","separate","firm","plate"],
   },
   {
@@ -65,7 +65,7 @@ export const CHAT_PRODUCTS = [
     name: "Vijaya Nagaram",
     packSize: "5 KG",
     blurb: "Amman Ponni — HMT Ponni grain, milled for everyday South Indian meals.",
-    image: "/assets/shop/packs/vijaya-nagaram-v2.png",
+    image: "/assets/shop/packs/vijaya-nagaram-v3.png",
     keywords: ["vijaya nagaram","vijaya","nagaram","amman","grain","milled","everyday","south","indian"],
   },
   {
@@ -73,7 +73,7 @@ export const CHAT_PRODUCTS = [
     name: "Vintage",
     packSize: "10 KG",
     blurb: "Our black-and-gold selection, milled and sealed at the Erode facility.",
-    image: "/assets/shop/packs/vintage-v2.png",
+    image: "/assets/shop/packs/vintage-v3.png",
     keywords: ["vintage","vintage","black","gold","selection","milled","sealed","erode","facility"],
   },
   {
@@ -81,7 +81,7 @@ export const CHAT_PRODUCTS = [
     name: "Viruchagam",
     packSize: "10 KG",
     blurb: "Poompuhar Ponni in the blue and gold pack, from SNR RNR paddy.",
-    image: "/assets/shop/packs/viruchagam-v2.png",
+    image: "/assets/shop/packs/viruchagam-v3.png",
     keywords: ["viruchagam","viruchagam","poompuhar","blue","gold","paddy"],
   },
   {

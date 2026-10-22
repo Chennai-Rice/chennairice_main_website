@@ -84,7 +84,7 @@ const NEW_PRODUCTS = {
   'kitchidi-ponni-rice': {
     name: 'Kitchidi Ponni Rice', tag: '1 Year Aged',
     description: "Kitchidi Ponni, aged for a year, in our Chennai Rice premium pack. From Mother's Hands to Your Heart.",
-    image: '/assets/shop/packs/kitchidi-ponni-rice.png',
+    image: '/assets/shop/packs/kitchidi-ponni-rice-v3.png',
     displayOrder: 0,
   },
 }
