@@ -38,29 +38,8 @@ function queryString(status, sort, f, extra = {}) {
   return p.toString()
 }
 
+// The warehouse prints courier labels only (packing slips were dropped, Oct 2026).
 import { printLabels } from './courierLabel.js'
-
-/** Prints several packing slips in one window, one per page. */
-export async function printSlips(ids, say) {
-  const win = window.open('', '_blank')
-  if (!win) return say('Allow pop-ups for this site to print slips.', 'error')
-  try {
-    const pages = await Promise.all(ids.map((id) => staffFetch(`/api/admin/orders/${id}/packing-slip`).then((r) => r.text())))
-    const parser = new DOMParser()
-    const docs = pages.map((html) => parser.parseFromString(html, 'text/html'))
-    const style = docs[0]?.querySelector('style')?.textContent || ''
-    const bodies = docs.map((d) => `<section class="slip">${d.body.innerHTML}</section>`).join('')
-    win.document.open()
-    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Packing slips (${ids.length})</title>
-      <style>${style} .slip{page-break-after:always} .slip:last-child{page-break-after:auto}</style></head><body>${bodies}</body></html>`)
-    win.document.close()
-    win.focus()
-    window.setTimeout(() => win.print(), 300)
-  } catch (err) {
-    win.close()
-    say(err.message, 'error')
-  }
-}
 
 function ProductCell({ items }) {
   const [first, ...rest] = items
@@ -549,14 +528,6 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
               </button>
               <button
                 type="button"
-                className="wh-btn wh-btn--outline"
-                onClick={() => printSlips((chosen.length ? chosen : data.orders).map((o) => o.id), say)}
-                disabled={!data.orders.length}
-              >
-                <Icon name="print" size={18} /> Print Slips{chosen.length ? ` (${chosen.length})` : ''}
-              </button>
-              <button
-                type="button"
                 className="wh-btn wh-btn--outline wh-split-arrow"
                 aria-label="More bulk actions"
                 aria-expanded={printMenu}
@@ -566,14 +537,6 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
               </button>
               {printMenu && (
                 <div className="wh-menu wh-menu--right" role="menu" onMouseLeave={() => setPrintMenu(false)}>
-                  <button type="button" role="menuitem" disabled={!chosen.length}
-                    onClick={() => { setPrintMenu(false); printSlips(chosen.map((o) => o.id), say) }}>
-                    <Icon name="print" size={16} /> Print selected ({chosen.length})
-                  </button>
-                  <button type="button" role="menuitem" disabled={!data.orders.length}
-                    onClick={() => { setPrintMenu(false); printSlips(data.orders.map((o) => o.id), say) }}>
-                    <Icon name="print" size={16} /> Print all on this page ({data.orders.length})
-                  </button>
                   <button type="button" role="menuitem" disabled={!chosen.length}
                     onClick={() => { setPrintMenu(false); printLabels(chosen.map((o) => o.id), say) }}>
                     <Icon name="print" size={16} /> Courier labels for selected ({chosen.length})
@@ -670,8 +633,8 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
                   >
                     <Icon name={canUndo(o) ? 'check' : 'truck'} size={18} />
                   </button>}
-                  {!readOnly && <button type="button" className="wh-icon-btn" title="Print packing slip" aria-label={`Print slip for ${o.orderNumber}`}
-                    onClick={() => printSlips([o.id], say)}>
+                  {!readOnly && <button type="button" className="wh-icon-btn" title="Print courier label (4 × 6 in)" aria-label={`Print courier label for ${o.orderNumber}`}
+                    onClick={() => printLabels([o.id], say)}>
                     <Icon name="print" size={18} />
                   </button>}
                   <span className="wh-menu-wrap">
