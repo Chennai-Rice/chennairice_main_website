@@ -59,6 +59,8 @@ const pick = (o, keys) => {
   }
   return ''
 }
+// Like pick, but skips bare numbers (NeoDove's lead_status is a code such as "6", not a name).
+const pickText = (o, keys) => pick(Object.fromEntries(keys.map((k) => [k, pick(o, [k])]).filter(([, v]) => !/^\d+$/.test(v))), keys)
 
 /** Call results in a webhook payload: [{ mobile, name, disposition, remark, agent, at }]. */
 export function parseCallResults(payload) {
@@ -72,13 +74,18 @@ export function parseCallResults(payload) {
     const mobile = crmMobile(pick(it, ['mobile', 'phone', 'number', 'mobile_number', 'contact_number', 'phone_number', 'customer_number',
       'lead.mobile', 'lead.phone', 'lead.number', 'contact.mobile', 'contact.phone', 'customer.mobile', 'customer.phone']))
     if (!/^[6-9]\d{9}$/.test(mobile)) continue
+    // NeoDove's "Lead Create" trigger echoes back leads we sent: not a call, nothing to record.
+    if (/create/i.test(pick(it, ['event_name', 'event', 'type']))) continue
+    const connected = pick(it, ['call_connected', 'connected', 'call.connected']).toLowerCase()
     const at = pick(it, ['called_at', 'disposed_at', 'updated_at', 'timestamp', 'created_at', 'time', 'call.time'])
     const d = at ? new Date(/^\d+$/.test(at) ? Number(at) * (at.length <= 10 ? 1000 : 1) : at) : new Date()
     out.push({
       mobile,
       name: pick(it, ['name', 'lead_name', 'lead.name', 'contact.name', 'customer.name']).slice(0, 200) || null,
-      disposition: pick(it, ['disposition', 'disposition_name', 'dispositionName', 'disposition.name', 'sub_disposition', 'status', 'lead_status',
-        'call_status', 'outcome', 'result', 'stage', 'lead.disposition', 'lead.status', 'call.disposition']).slice(0, 120),
+      disposition: (pickText(it, ['disposition', 'disposition_name', 'dispositionName', 'disposition.name', 'sub_disposition', 'lead_stage_name',
+        'stage_name', 'status', 'lead_status', 'call_status', 'outcome', 'result', 'stage', 'lead.disposition', 'lead.status', 'call.disposition'])
+        || (connected === 'false' ? 'Not connected' : '')).slice(0, 120),
+      connected: connected === 'true' ? true : connected === 'false' ? false : null,
       remark: pick(it, ['remark', 'remarks', 'notes', 'note', 'comment', 'comments', 'feedback', 'lead.remark', 'call.remark']).slice(0, 1000),
       agent: pick(it, ['agent', 'agent_name', 'agentName', 'user', 'user_name', 'caller', 'caller_name', 'assigned_to', 'agent.name', 'user.name']).slice(0, 120),
       at: Number.isNaN(d.getTime()) ? new Date() : d,
@@ -118,7 +125,7 @@ export async function recordNeodoveWebhook(payload) {
       const lead = crmLead('call_result', { name: row.name || r.name || `Lead ${r.mobile}`, phone: r.mobile, email: row.email })
       if (!lead.name || lead.mobile.length < 10) continue
       const note = [
-        `NeoDove call: ${r.disposition || 'no disposition'}${verdict ? ' · ' + LABEL[verdict] : ''}`,
+        `NeoDove call: ${r.disposition || 'no disposition'}${verdict ? ' · ' + LABEL[verdict] : ''}${r.connected === false && r.disposition !== 'Not connected' ? ' (call not connected)' : ''}`,
         r.remark && `Remark: ${r.remark}`,
         [r.agent && `By ${r.agent}`, fmt(r.at)].filter(Boolean).join(', '),
       ].filter(Boolean).join('\n')

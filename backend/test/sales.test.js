@@ -1748,6 +1748,19 @@ test('NeoDove: not-converted sign-ups go to NeoDove once; call results come back
     out = await sdStatus()
     assert.deepEqual(out.moved, [S.notQualified])
 
+    // 3b. NeoDove's own format (from its Webhook Setup sample): the stage name is the result, the numeric
+    // lead_status code is ignored, and "Lead Create" echoes are not calls.
+    const { parseCallResults } = await import('../lib/neodove.js')
+    const sample = { name: 'Neodove', mobile: '9509624540', lead_id: 'ae8ef37e', campaign_id: 'be8ef37e', lead_status: '6', call_connected: 'false', lead_stage_name: 'Open', time: '1638806214940', event_name: 'LEAD_DISPOSE' }
+    assert.deepEqual(parseCallResults(sample).map((x) => [x.mobile, x.disposition, x.connected]), [['9509624540', 'Open', false]])
+    assert.equal(parseCallResults({ ...sample, lead_stage_name: '' })[0].disposition, 'Not connected')
+    assert.equal(parseCallResults({ ...sample, lead_stage_name: 'Interested', call_connected: 'true' })[0].disposition, 'Interested')
+    assert.deepEqual(parseCallResults({ ...sample, event_name: 'LEAD_CREATE' }), [])
+    await hook({ ...sample, mobile: '9500044444', lead_stage_name: 'Interested', call_connected: 'true' })
+    assert.equal((await db.query(`select status from lead_status where mobile = '9500044444'`)).rows[0].status, 'qualified')
+    out = await sdStatus()
+    assert.deepEqual(out.moved, [S.qualified])
+
     // 4. The team moved it on (Contacted): a call result no longer moves the stage.
     status = S.contacted
     await hook({ mobile: '9500044444', disposition: 'Interested' })
