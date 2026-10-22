@@ -143,6 +143,18 @@ export const PAGE_META = {
     description: 'The Privacy Policy of Chennai Rice Industries India Private Limited: what personal information we collect, how we use it and how we keep it safe.',
     h1: 'Privacy Policy',
   },
+  shipping: {
+    path: '/shipping',
+    title: 'Shipping Policy | Chennai Rice',
+    description: 'How Chennai Rice packs, ships and delivers website orders across India: dispatch in 1–2 working days, delivery charges shown before you pay, tracking and delivery attempts.',
+    h1: 'Shipping Policy',
+  },
+  refund: {
+    path: '/refund',
+    title: 'Return & Refund Policy | Chennai Rice',
+    description: 'Damaged, wrong, short-weight or quality issues with your Chennai Rice order: report within 48 hours or 7 days for a free replacement or full refund. Cancellations and refund timelines.',
+    h1: 'Return & Refund Policy',
+  },
   terms: {
     path: '/terms',
     title: 'Terms & Conditions | Chennai Rice',

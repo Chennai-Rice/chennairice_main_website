@@ -310,6 +310,8 @@ export const FOOTER = {
     { label: 'Contact', to: '/contact-us' },
     { label: 'Terms & Conditions', to: '/terms' },
     { label: 'Privacy Policy', to: '/privacy' },
+    { label: 'Shipping Policy', to: '/shipping' },
+    { label: 'Return & Refund Policy', to: '/refund' },
   ],
 
   newsletter: {
@@ -348,7 +350,8 @@ export const FOOTER = {
       links: [
         { label: 'FAQs', to: '/#faqs' },
         { label: 'Track Order', to: '/track-order' },
-        { label: 'Shipping & Delivery', to: '/shipping' },
+        { label: 'Shipping Policy', to: '/shipping' },
+        { label: 'Return & Refund Policy', to: '/refund' },
         { label: 'Terms & Conditions', to: '/terms' },
       ],
     },

@@ -25,6 +25,7 @@ import BulkOrderPage from './pages/BulkOrderPage.jsx'
 import LandingPage from './pages/LandingPage.jsx'
 import { LANDING_PAGES } from './data/landing.js'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage.jsx'
+import PolicyPage from './pages/PolicyPage.jsx'
 import TermsPage from './pages/TermsPage.jsx'
 import ProductsPage from './shop/pages/ProductsPage.jsx'
 import ProductDetailPage from './shop/pages/ProductDetailPage.jsx'
@@ -60,8 +61,6 @@ const PLACEHOLDER_PAGES = [
   { path: '/recipes', title: 'Recipes', blurb: 'Family recipes for biryani, pongal, idli and more are being collected and will be shared here.' },
   { path: '/csr', title: 'CSR', blurb: 'Our work with farming families and the community around Erode is being written up for this page.' },
   { path: '/downloads', title: 'Downloads', blurb: 'Product sheets, certifications and trade catalogues will be available to download here.' },
-  { path: '/shipping', title: 'Shipping & Delivery', blurb: 'Dispatch timelines, delivery areas and freight terms are on their way to this page.' },
-  { path: '/refund', title: 'Refund Policy', blurb: 'Our returns and refund process is being documented and will be published here shortly.' },
 ]
 
 /** Client routing keeps scroll position between pages; always open at the top,
@@ -194,6 +193,8 @@ export default function App() {
           }
         />
         <Route path="/terms" element={<TermsPage />} />
+        <Route path="/shipping" element={<PolicyPage kind="shipping" />} />
+        <Route path="/refund" element={<PolicyPage kind="refund" />} />
         {PLACEHOLDER_PAGES.map(page => (
           <Route
             key={page.path}

@@ -99,8 +99,95 @@
   text-align: center;
 }
 
+/* Policy pages: tables and numbered steps. */
+.legal-table-wrap {
+  margin: 14px 0 18px;
+  border: 1px solid rgba(198, 154, 63, 0.28);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.legal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #5f4c3c;
+}
+.legal-table th {
+  background: #7a1f2b;
+  color: #fff;
+  font-weight: 600;
+  text-align: left;
+  padding: 10px 14px;
+}
+.legal-table td {
+  padding: 10px 14px;
+  vertical-align: top;
+  border-top: 1px solid rgba(198, 154, 63, 0.18);
+}
+.legal-table tbody tr:nth-child(even) td {
+  background: #fbf5e9;
+}
+.legal-table td:first-child {
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.legal-section ol.legal-steps {
+  margin: 12px 0 16px;
+  padding-left: 22px;
+  display: grid;
+  gap: 8px;
+}
+.legal-section ol.legal-steps li {
+  padding-left: 4px;
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: #5f4c3c;
+}
+.legal-section ol.legal-steps li::before {
+  content: none;
+}
+
+.legal-link {
+  color: var(--gold-deep);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 @media (max-width: 900px) {
   .legal-body {
     padding: 30px 22px;
+  }
+}
+
+/* Phones: each table row becomes a small card with its column names. */
+@media (max-width: 640px) {
+  .legal-table thead {
+    display: none;
+  }
+  .legal-table tr {
+    display: block;
+    border-top: 1px solid rgba(198, 154, 63, 0.28);
+  }
+  .legal-table tr:first-child {
+    border-top: 0;
+  }
+  .legal-table td {
+    display: block;
+    border-top: 0;
+    padding: 4px 14px;
+  }
+  .legal-table td:first-child {
+    padding-top: 12px;
+  }
+  .legal-table td:last-child {
+    padding-bottom: 12px;
+  }
+  .legal-table td:not(:first-child)::before {
+    content: attr(data-label) ': ';
+    font-weight: 600;
+    color: #7a6a54;
   }
 }

@@ -104,6 +104,8 @@ const SCHEMA = {
   contest: [crumb('contest')],
   privacy: [crumb('privacy')],
   terms: [crumb('terms')],
+  shipping: [crumb('shipping')],
+  refund: [crumb('refund')],
 }
 
 // Landing pages (data/landing.js): their packs, their FAQs and a breadcrumb.

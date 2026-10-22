@@ -36,6 +36,8 @@ const STATIC_ROUTES = [
   ['/blog', 0.6, 'weekly'],
   ['/privacy', 0.3, 'yearly'],
   ['/terms', 0.3, 'yearly'],
+  ['/shipping', 0.3, 'yearly'],
+  ['/refund', 0.3, 'yearly'],
 ]
 
 /** Product slugs, read from the shop's own catalogue so the two cannot drift. */
