@@ -207,7 +207,7 @@ const FALLBACK_PRODUCTS = [
     name: "United",
     description: "The everyday United pack, in a 5 kg family size.",
     packKg: 5,
-    image: "/assets/shop/packs/united-5kg-v2.png",
+    image: "/assets/shop/packs/united-v3.png",
     alt: "United — Ponni, 5 kg pack",
   },
   {
@@ -216,7 +216,7 @@ const FALLBACK_PRODUCTS = [
     name: "Alibaba",
     description: "Premium Sappadu rice — 100% pure original quality, for full-flavoured meals.",
     packKg: 10,
-    image: "/assets/shop/packs/alibaba-v2.png",
+    image: "/assets/shop/packs/alibaba-v3.png",
     alt: "Alibaba — Sappadu rice, 10 kg pack",
   },
   {
@@ -225,7 +225,7 @@ const FALLBACK_PRODUCTS = [
     name: "Chennai Bullets",
     description: "Rajabhogam Ponni with a rich aroma, in our largest 26 kg trade pack.",
     packKg: 26,
-    image: "/assets/shop/packs/chennai-bullets-v2.png",
+    image: "/assets/shop/packs/chennai-bullets-v3.png",
     alt: "Chennai Bullets — Rajabhogam Ponni, 26 kg pack",
   },
   {
@@ -234,7 +234,7 @@ const FALLBACK_PRODUCTS = [
     name: "A1 Special Ponni",
     description: "Special Ponni rice, quality graded and packed at our Erode facility.",
     packKg: 5,
-    image: "/assets/shop/packs/a1-special-ponni.png",
+    image: "/assets/shop/packs/a1-special-ponni-v3.png",
     alt: "A1 Special Ponni — Ponni, 5 kg pack",
   },
   {
