@@ -65,39 +65,138 @@ export async function buildDigest(from, to, query = defaultQuery) {
   )
   if (!sales.length && !cancelled.length && !waiting.length && !low.length) return null
 
+  // One plain table per section, used for the email (HTML and text) and the Excel file.
+  const rupees = (p) => Number(p) / 100
+  const data = {
+    from: from.toISOString(),
+    to: to.toISOString(),
+    sales: sales.map((r) => ({
+      order: r.order_number, customer: r.contact_name, phone: r.contact_phone, amount: rupees(r.total_paise),
+      customerType: r.earlier === 0 ? 'New' : 'Repeat',
+      source: [SOURCES[r.traffic_source || 'direct'] || r.traffic_source, r.traffic_campaign && 'campaign ' + r.traffic_campaign, r.traffic_ad && 'ad ' + r.traffic_ad].filter(Boolean).join(' · '),
+      placedAt: new Date(r.placed_at).toISOString(),
+    })),
+    cancelled: cancelled.map((r) => ({
+      order: r.order_number, customer: r.contact_name, phone: r.contact_phone, amount: rupees(r.total_paise),
+      reason: r.cancel_reason || '', refund: ['paid', 'partially_refunded'].includes(r.payment_status) ? 'PAID: check the refund' : '',
+    })),
+    waiting: waiting.map((r) => ({ order: r.order_number, customer: r.contact_name, phone: r.contact_phone, amount: rupees(r.total_paise), issue: r.what })),
+    low: low.map((r) => ({ product: r.name, packKg: Number(r.pack_kg), left: Number(r.available), reorderAt: Number(r.reorder_level) })),
+  }
+
   const total = sales.reduce((n, r) => n + Number(r.total_paise), 0)
   const fresh = sales.filter((r) => r.earlier === 0).length
   const lines = []
   lines.push(`Summary since ${when(from)}.`, '')
-
   lines.push(`NEW PAID ORDERS: ${sales.length}${sales.length ? ` (${formatInr(total)}; ${fresh} new customer${fresh === 1 ? '' : 's'})` : ''}`)
-  for (const r of sales) {
-    const src = [SOURCES[r.traffic_source || 'direct'] || r.traffic_source, r.traffic_campaign && 'campaign ' + r.traffic_campaign, r.traffic_ad && 'ad ' + r.traffic_ad].filter(Boolean).join(' · ')
-    lines.push(`- ${r.order_number}  ${r.contact_name} (${r.contact_phone})  ${formatInr(r.total_paise)}  ${r.earlier === 0 ? 'NEW customer' : 'repeat customer'}  | from: ${src}`)
-  }
-  lines.push('')
-
-  lines.push(`CANCELLED ORDERS: ${cancelled.length}`)
-  for (const r of cancelled) {
-    const paid = ['paid', 'partially_refunded'].includes(r.payment_status)
-    lines.push(`- ${r.order_number}  ${r.contact_name} (${r.contact_phone})  ${formatInr(r.total_paise)}${r.cancel_reason ? '  reason: ' + r.cancel_reason : ''}${paid ? '  | PAID: check the refund' : ''}`)
-  }
-  lines.push('')
-
-  if (waiting.length) {
-    lines.push(`ORDERS WAITING TOO LONG: ${waiting.length}`)
-    for (const r of waiting) lines.push(`- ${r.order_number}  ${r.contact_name} (${r.contact_phone})  ${formatInr(r.total_paise)}  ${r.what}`)
-    lines.push('')
-  }
-  if (low.length) {
-    lines.push(`LOW STOCK: ${low.length}`)
-    for (const r of low) lines.push(`- ${r.name} ${r.pack_kg} kg: ${r.available} left (reorder at ${r.reorder_level})`)
-    lines.push('')
-  }
-  lines.push('Open the admin panel to act on these.')
+  for (const r of data.sales) lines.push(`- ${r.order}  ${r.customer} (${r.phone})  ₹${r.amount.toFixed(2)}  ${r.customerType === 'New' ? 'NEW customer' : 'repeat customer'}  | from: ${r.source}`)
+  lines.push('', `CANCELLED ORDERS: ${cancelled.length}`)
+  for (const r of data.cancelled) lines.push(`- ${r.order}  ${r.customer} (${r.phone})  ₹${r.amount.toFixed(2)}${r.reason ? '  reason: ' + r.reason : ''}${r.refund ? '  | ' + r.refund : ''}`)
+  lines.push('', `ORDERS WAITING TOO LONG: ${waiting.length}`)
+  for (const r of data.waiting) lines.push(`- ${r.order}  ${r.customer} (${r.phone})  ₹${r.amount.toFixed(2)}  ${r.issue}`)
+  lines.push('', `LOW STOCK: ${low.length}`)
+  for (const r of data.low) lines.push(`- ${r.product} ${r.packKg} kg: ${r.left} left (reorder at ${r.reorderAt})`)
+  lines.push('', 'The same lists are in the attached Excel file.', `Open the warehouse panel: ${PANEL}`)
 
   const bits = [sales.length && `${sales.length} new order${sales.length === 1 ? '' : 's'}`, cancelled.length && `${cancelled.length} cancelled`, waiting.length && `${waiting.length} waiting`, low.length && `${low.length} low stock`].filter(Boolean)
-  return { subject: `Daily summary: ${bits.join(', ')}`, text: lines.join('\n') }
+  return {
+    subject: `Daily summary: ${bits.join(', ')}`,
+    text: lines.join('\n'),
+    html: digestHtml(data, { total, fresh }),
+    attachments: [{ kind: 'digest', data }],
+  }
+}
+
+const PANEL = 'https://chennairiceindustries.com/warehouse'
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+const inr = (n) => '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+/** The summary as an email page: count boxes, then one table per section (inline styles for mail apps). */
+export function digestHtml(d, { total, fresh }) {
+  const MAROON = '#7a1f2b'
+  const cell = 'padding:8px 10px;border-bottom:1px solid #eee3d6;font-size:13px;color:#3a2a22;vertical-align:top'
+  const head = `padding:8px 10px;background:${MAROON};color:#fff;font-size:12px;font-weight:600;text-align:left;white-space:nowrap`
+  const table = (title, count, note, cols, rows, empty) => `
+    <h2 style="margin:26px 0 8px;font-size:16px;color:${MAROON};font-family:Arial,sans-serif">${esc(title)} <span style="color:#9a8a7a;font-weight:normal">(${count})</span></h2>
+    ${note ? `<p style="margin:0 0 8px;font-size:13px;color:#6b5b4b;font-family:Arial,sans-serif">${note}</p>` : ''}
+    <table role="table" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;border:1px solid #eee3d6">
+      <tr>${cols.map((c) => `<th style="${head}${c.right ? ';text-align:right' : ''}">${esc(c.label)}</th>`).join('')}</tr>
+      ${rows.length
+        ? rows.map((r, i) => `<tr style="background:${i % 2 ? '#fbf7f1' : '#ffffff'}">${cols.map((c) => `<td style="${cell}${c.right ? ';text-align:right;white-space:nowrap' : ''}${c.strong ? ';font-weight:600' : ''}">${c.html ? c.html(r) : esc(c.value(r))}</td>`).join('')}</tr>`).join('')
+        : `<tr><td colspan="${cols.length}" style="${cell};color:#9a8a7a;text-align:center">${esc(empty)}</td></tr>`}
+    </table>`
+  const box = (label, n, alert) => `<td style="width:25%;padding:6px"><div style="border:1px solid #eee3d6;border-radius:8px;padding:12px;text-align:center;background:${alert && n ? '#fdecec' : '#fbf7f1'}">
+      <div style="font-size:24px;font-weight:700;color:${alert && n ? '#b42318' : MAROON};font-family:Arial,sans-serif">${n}</div>
+      <div style="font-size:12px;color:#6b5b4b;font-family:Arial,sans-serif">${esc(label)}</div></div></td>`
+  const order = { label: 'Order', value: (r) => r.order, strong: true }
+  const customer = { label: 'Customer', value: (r) => r.customer }
+  const phone = { label: 'Phone', html: (r) => `<a href="tel:${esc(String(r.phone).replace(/[^\d+]/g, ''))}" style="color:${MAROON};text-decoration:none">${esc(r.phone)}</a>` }
+  const amount = { label: 'Amount', value: (r) => inr(r.amount), right: true }
+  return `<!doctype html><html><body style="margin:0;padding:0;background:#f6efdc">
+  <div style="max-width:760px;margin:0 auto;padding:20px 14px;font-family:Arial,sans-serif">
+    <div style="background:${MAROON};color:#fff;border-radius:10px 10px 0 0;padding:16px 20px">
+      <div style="font-size:20px;font-weight:700">Chennai Rice · Daily summary</div>
+      <div style="font-size:13px;opacity:.85;margin-top:4px">Since ${esc(when(d.from))}</div>
+    </div>
+    <div style="background:#fff;border-radius:0 0 10px 10px;padding:14px 18px 22px">
+      <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse"><tr>
+        ${box('New paid orders', d.sales.length)}${box('Cancelled', d.cancelled.length, true)}${box('Waiting too long', d.waiting.length, true)}${box('Low stock', d.low.length, true)}
+      </tr></table>
+      ${table('New paid orders', d.sales.length, d.sales.length ? `Total ${inr(total / 100)} · ${fresh} new customer${fresh === 1 ? '' : 's'}` : '',
+        [order, customer, phone, amount, { label: 'New / repeat', value: (r) => r.customerType }, { label: 'Came from', value: (r) => r.source }], d.sales, 'No new paid orders.')}
+      ${table('Cancelled orders', d.cancelled.length, '',
+        [order, customer, phone, amount, { label: 'Reason', value: (r) => r.reason || '—' }, { label: 'Refund', html: (r) => r.refund ? `<b style="color:#b42318">${esc(r.refund)}</b>` : '—' }], d.cancelled, 'No cancellations.')}
+      ${table('Orders waiting too long', d.waiting.length, '',
+        [order, customer, phone, amount, { label: 'Waiting for', html: (r) => `<span style="color:#b42318">${esc(r.issue)}</span>` }], d.waiting, 'Nothing waiting.')}
+      ${table('Low stock', d.low.length, '',
+        [{ label: 'Product', value: (r) => r.product, strong: true }, { label: 'Pack', value: (r) => `${r.packKg} kg`, right: true },
+          { label: 'Left', html: (r) => `<b style="color:${r.left <= 0 ? '#b42318' : '#3a2a22'}">${r.left}</b>`, right: true }, { label: 'Reorder at', value: (r) => r.reorderAt, right: true }], d.low, 'All packs are above their reorder level.')}
+      <p style="margin:24px 0 6px;font-size:13px;color:#6b5b4b">The same lists are in the attached Excel file.</p>
+      <a href="${PANEL}" style="display:inline-block;background:${MAROON};color:#fff;text-decoration:none;padding:10px 18px;border-radius:999px;font-size:14px;font-weight:600">Open the warehouse panel</a>
+    </div>
+  </div></body></html>`
+}
+
+/** The summary as an Excel workbook (Buffer): a Summary sheet and one sheet per section. */
+export async function digestWorkbook(d) {
+  const { default: ExcelJS } = await import('exceljs')
+  const wb = new ExcelJS.Workbook()
+  wb.creator = 'Chennai Rice'
+  const style = (ws) => {
+    const h = ws.getRow(1)
+    h.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    h.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7A1F2B' } }
+    h.alignment = { vertical: 'middle' }
+    ws.views = [{ state: 'frozen', ySplit: 1 }]
+    if (ws.rowCount > 1) ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: ws.columnCount } }
+  }
+  const sheet = (name, columns, rows) => {
+    const ws = wb.addWorksheet(name)
+    ws.columns = columns
+    for (const r of rows) ws.addRow(r)
+    if (columns.some((c) => c.key === 'amount')) ws.getColumn('amount').numFmt = '"₹"#,##0.00'
+    style(ws)
+    return ws
+  }
+  const summary = wb.addWorksheet('Summary')
+  summary.columns = [{ header: 'Section', key: 's', width: 28 }, { header: 'Count', key: 'n', width: 10 }]
+  summary.addRows([
+    { s: 'From', n: when(d.from) }, { s: 'To', n: when(d.to) },
+    { s: 'New paid orders', n: d.sales.length }, { s: 'Cancelled orders', n: d.cancelled.length },
+    { s: 'Orders waiting too long', n: d.waiting.length }, { s: 'Low stock', n: d.low.length },
+  ])
+  style(summary)
+  const base = [
+    { header: 'Order', key: 'order', width: 22 }, { header: 'Customer', key: 'customer', width: 26 },
+    { header: 'Phone', key: 'phone', width: 16 }, { header: 'Amount', key: 'amount', width: 12 },
+  ]
+  sheet('New paid orders', [...base, { header: 'Customer type', key: 'customerType', width: 14 }, { header: 'Came from', key: 'source', width: 40 },
+    { header: 'Paid at', key: 'paidAt', width: 18 }], d.sales.map((r) => ({ ...r, paidAt: when(r.placedAt) })))
+  sheet('Cancelled', [...base, { header: 'Reason', key: 'reason', width: 34 }, { header: 'Refund', key: 'refund', width: 24 }], d.cancelled)
+  sheet('Waiting too long', [...base, { header: 'Waiting for', key: 'issue', width: 44 }], d.waiting)
+  sheet('Low stock', [{ header: 'Product', key: 'product', width: 30 }, { header: 'Pack (kg)', key: 'packKg', width: 10 },
+    { header: 'Left', key: 'left', width: 8 }, { header: 'Reorder at', key: 'reorderAt', width: 12 }], d.low)
+  return Buffer.from(await wb.xlsx.writeBuffer())
 }
 
 /**

@@ -33,6 +33,17 @@ export async function queueEmail(db, { to, subject, text, html = null, template,
 async function buildAttachments(mail) {
   const files = []
   for (const a of mail.attachments || []) {
+    // The staff daily summary, as an Excel file built from the lists saved with the mail.
+    if (a.kind === 'digest' && a.data) {
+      const { digestWorkbook } = await import('./digest.js')
+      const day = new Date(new Date(a.data.to).getTime() + 330 * 60000).toISOString().slice(0, 10)
+      files.push({
+        filename: `Chennai Rice daily summary ${day}.xlsx`,
+        content: await digestWorkbook(a.data),
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      continue
+    }
     if (a.kind !== 'invoice') continue
     const { customerInvoice } = await import('./operations.js')
     const { invoicePdf } = await import('./invoice-pdf.js')

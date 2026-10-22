@@ -1646,6 +1646,30 @@ test('AskEva → WhatsApp contacts → Sales Daddy: webhook saves the contact, q
   }
 })
 
+test('daily summary: tables in the email and the same lists as an Excel attachment', async () => {
+  const { session } = await buy([{ id: 'alibaba', qty: 1 }], buyer({ name: 'Waiting Wilma', email: 'wilma@example.com', phone: '9600033333' }))
+  await db.query(`update orders set placed_at = now() - interval '5 hours' where id = $1`, [session.orderId])
+  const { buildDigest, digestWorkbook } = await import('../lib/sales/digest.js')
+  const d = await buildDigest(new Date(Date.now() - 24 * 3600000), new Date(), db.query)
+  assert.ok(d)
+  assert.match(d.html, /<table/)
+  assert.match(d.html, /Orders waiting too long/)
+  assert.ok(d.html.includes(session.orderNumber))
+  assert.match(d.text, new RegExp(session.orderNumber)) // plain-text copy kept
+  assert.equal(d.attachments[0].kind, 'digest')
+  assert.ok(d.attachments[0].data.waiting.some((r) => r.order === session.orderNumber && r.customer === 'Waiting Wilma'))
+
+  const ExcelJS = (await import('exceljs')).default
+  const wb = new ExcelJS.Workbook()
+  await wb.xlsx.load(await digestWorkbook(d.attachments[0].data))
+  assert.deepEqual(wb.worksheets.map((w) => w.name), ['Summary', 'New paid orders', 'Cancelled', 'Waiting too long', 'Low stock'])
+  const waiting = wb.getWorksheet('Waiting too long')
+  assert.equal(waiting.getRow(1).getCell(1).value, 'Order')
+  const found = []
+  waiting.eachRow((row, i) => { if (i > 1) found.push(row.getCell(1).value) })
+  assert.ok(found.includes(session.orderNumber))
+})
+
 test('order list: a cancelled, never-paid order is dated by when it was attempted', async () => {
   const s = await api('POST', '/api/checkout/session', {
     body: { ...buyer({ name: 'Never Paid', phone: '+91 90000 33333' }), items: [{ id: 'alibaba', qty: 1 }] },
