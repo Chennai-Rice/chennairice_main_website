@@ -1433,7 +1433,22 @@ test('Sales Daddy CRM: website orders land as notes on the customer lead — pai
     assert.match(selvi[0], new RegExp(`Website order ${session.orderNumber} paid: ₹`))
     assert.match(selvi[0], /2 x Rudra 25 kg/)
     assert.match(selvi[0], /Ship to: Salem/)
+    // How it was paid, from the payment the checkout saved (fake Razorpay: a card ending 1111).
+    const { rows: [pay] } = await db.query(`select gateway_order_ref, gateway_payment_id from payments where order_id = $1 and status = 'paid'`, [id])
+    assert.match(selvi[0], /Payment: Razorpay · Card \(card ••1111\)/)
+    assert.match(selvi[0], new RegExp(`Razorpay order ID: ${pay.gateway_order_ref}`))
+    assert.match(selvi[0], new RegExp(`Payment ID: ${pay.gateway_payment_id}`))
+    assert.match(selvi[0], /Paid at: /)
+    const paidPayload = queued.find((q) => q.payload.lead.mobile === '9443012121' && q.payload.won).payload
+    assert.equal(paidPayload.custom.last_order_no, session.orderNumber)
+    assert.equal(paidPayload.custom.payment_id, pay.gateway_payment_id)
+    assert.equal(paidPayload.custom.razorpay_order_id, pay.gateway_order_ref)
+    assert.equal(paidPayload.custom.zoho_session_id, undefined)
+    assert.equal(paidPayload.custom.payment_method, 'Card')
+    assert.equal(paidPayload.custom.payment_via, 'card ••1111')
+    assert.deepEqual(paidPayload.lead.custom, {}) // not on the lead's create call: set by PATCH, merged
     assert.match(selvi[1], /confirmed/)
+    assert.doesNotMatch(selvi[1], /Payment ID/)
     assert.match(selvi[2], /packed/)
     assert.match(selvi[3], /dispatched/)
     assert.match(selvi[3], /Tracking no: D555000111/)
@@ -1459,12 +1474,35 @@ test('Sales Daddy CRM: website orders land as notes on the customer lead — pai
     const { rows: [paidOrder] } = await db.query('select total_paise from orders where id = $1', [id])
     const won = got.filter((g) => g.path === '/v1/ext/leads/lead-77/status')
     assert.ok(won.some((g) => g.body.statusId === '2f9888a3-692b-467a-803b-2d685c5a6651' && g.body.convertedValue === Math.round(Number(paidOrder.total_paise) / 100)))
+    // The payment fields went onto the lead itself, once (only the paid step carries them).
+    const patched = got.filter((g) => g.method === 'PATCH' && g.path === '/v1/ext/leads/lead-77' && g.body.custom?.last_order_no === session.orderNumber)
+    assert.equal(patched.length, 1)
+    assert.equal(patched[0].body.custom.payment_gateway, 'Razorpay')
     const { rows: left } = await db.query(`select status from crm_outbox where kind = 'order_event' and status <> 'sent' and payload->'lead'->>'mobile' in ('9443012121', '9944001122')`)
     assert.equal(left.length, 0)
   } finally {
     for (const k of ['SALESDADDY_API_KEY', 'SALESDADDY_BASE_URL']) delete process.env[k]
     await new Promise((r) => fake.close(r))
   }
+})
+
+test('Sales Daddy CRM: payment details for the lead — Razorpay UPI with bank reference, net banking, Zoho', async () => {
+  const { paymentDetails } = await import('../lib/crm.js')
+  const upi = paymentDetails({
+    gateway: 'razorpay', gateway_payment_id: 'pay_UPI123', amount_paise: 42000, method: 'upi', card_last4: null,
+    raw: { vpa: 'selvi@okaxis', acquirer_data: { rrn: '429011223344', upi_transaction_id: 'AXIS77' } }, paid_at: '2026-10-22T08:45:00Z',
+  })
+  assert.deepEqual(
+    { gateway: upi.gateway, method: upi.method, via: upi.via, paymentId: upi.paymentId, bankRef: upi.bankRef },
+    { gateway: 'Razorpay', method: 'UPI', via: 'selvi@okaxis', paymentId: 'pay_UPI123', bankRef: '429011223344' })
+  const nb = paymentDetails({ gateway: 'razorpay', gateway_payment_id: 'pay_NB1', amount_paise: 100, method: 'netbanking', raw: { bank: 'HDFC', acquirer_data: { bank_transaction_id: 'HD998' } } })
+  assert.equal(nb.method, 'Net banking')
+  assert.equal(nb.via, 'HDFC')
+  assert.equal(nb.bankRef, 'HD998')
+  const zoho = paymentDetails({ gateway: 'zoho_payments', gateway_payment_id: 'zp_9', amount_paise: 100, method: null, raw: { payments: [{ status: 'succeeded', payment_method: 'upi' }] } })
+  assert.equal(zoho.gateway, 'Zoho Payments')
+  assert.equal(zoho.method, 'UPI')
+  assert.equal(paymentDetails(null), null)
 })
 
 test('Sales Daddy CRM: a repeat customer — the enquiry goes on their existing lead as a note', async () => {

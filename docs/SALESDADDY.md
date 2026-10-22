@@ -24,7 +24,7 @@ Website forms / shop / AskEva WhatsApp ──▶ Cloud SQL (crm_outbox, whatsapp
 | Bulk order form (and Distributorship) | website | New | buyer type, GSTIN, quantity, message |
 | Message to the business WhatsApp (AskEva webhook) | whatsapp | New | the message (at most one note a day) |
 | Pressed Pay, not paid in 30 min | website | Checkout not paid | order, items, "Worth a call" |
-| **Order paid** | website | **Converted** (won), value = order amount | order, items, ship-to |
+| **Order paid** | website | **Converted** (won), value = order amount | order, items, ship-to, payment (gateway, method, UPI id / bank / card, payment ID, bank ref, paid at) |
 | Confirmed / packed / dispatched / delivered / cancelled / returned | — | (unchanged) | one note per step; dispatch has courier, AWB/LR, vehicle |
 
 Rules:
@@ -38,6 +38,17 @@ Rules:
 - Sales Daddy refuses its own users' numbers (`own_number_not_allowed`) — test
   with other numbers.
 - Sign-up ↔ purchase are matched by **mobile number** only.
+
+## Payment on the lead
+
+A paid order also writes its payment into the lead's **custom fields** (the
+latest paid order wins; earlier orders stay in the notes): `last_order_no`,
+`last_order_amount`, `payment_gateway`, `payment_method`, `payment_via`
+(UPI id, bank, wallet or card ••last4), `razorpay_order_id` (Razorpay
+`order_…`; `zoho_session_id` instead for a Zoho Payments order), `payment_id` (Razorpay `pay_…`),
+`payment_bank_ref` (RRN) and `paid_at`. Other custom fields on the lead are
+kept. To show them as named fields, create custom fields with these keys in
+Sales Daddy (Settings → Custom fields).
 
 ## Set up in Sales Daddy (Settings → Pipelines & stages)
 
