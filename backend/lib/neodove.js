@@ -47,8 +47,10 @@ export const DISPOSITIONS = {
 export function classifyDisposition(text) {
   const t = String(text || '').toLowerCase()
   if (!t) return null
-  if (DISPOSITIONS.notQualified.some((w) => t.includes(w))) return 'not_qualified'
-  if (DISPOSITIONS.qualified.some((w) => t.includes(w))) return 'qualified'
+  // Whole words only, so a remark like "sent photo" is not "hot".
+  const has = (w) => new RegExp(`(^|[^a-z])${w.replace(/[-]/g, '\\-')}($|[^a-z])`).test(t)
+  if (DISPOSITIONS.notQualified.some(has)) return 'not_qualified'
+  if (DISPOSITIONS.qualified.some(has)) return 'qualified'
   return null
 }
 
@@ -81,12 +83,14 @@ export function parseCallResults(payload) {
     const d = at ? new Date(/^\d+$/.test(at) ? Number(at) * (at.length <= 10 ? 1000 : 1) : at) : new Date()
     out.push({
       mobile,
-      name: pick(it, ['name', 'lead_name', 'lead.name', 'contact.name', 'customer.name']).slice(0, 200) || null,
+      name: pick(it, ['name', 'lead_name', 'lead.name', 'contact.name', 'customer.name']).replace(/^(n\/?a|null|-+)$/i, '').slice(0, 200) || null,
       disposition: (pickText(it, ['disposition', 'disposition_name', 'dispositionName', 'disposition.name', 'sub_disposition', 'lead_stage_name',
         'stage_name', 'status', 'lead_status', 'call_status', 'outcome', 'result', 'stage', 'lead.disposition', 'lead.status', 'call.disposition'])
         || (connected === 'false' ? 'Not connected' : '')).slice(0, 120),
       connected: connected === 'true' ? true : connected === 'false' ? false : null,
-      remark: pick(it, ['remark', 'remarks', 'notes', 'note', 'comment', 'comments', 'feedback', 'lead.remark', 'call.remark']).slice(0, 1000),
+      followUp: pick(it, ['follow_up_date_time']).slice(0, 40),
+      campaign: pick(it, ['campaign_name']).slice(0, 120),
+      remark: pick(it, ['dispose_remarks', 'disposition_remarks', 'remark', 'remarks', 'notes', 'note', 'comment', 'comments', 'feedback', 'lead.remark', 'call.remark']).slice(0, 1000),
       agent: pick(it, ['agent', 'agent_name', 'agentName', 'user', 'user_name', 'caller', 'caller_name', 'assigned_to', 'agent.name', 'user.name']).slice(0, 120),
       at: Number.isNaN(d.getTime()) ? new Date() : d,
     })
@@ -106,7 +110,8 @@ export async function recordNeodoveWebhook(payload) {
   const summary = []
   try {
     for (const r of results) {
-      const verdict = classifyDisposition(r.disposition)
+      // The stage decides; if it doesn't (e.g. "Fresh Inquiry"), the agent's remark may ("invalid no").
+      const verdict = classifyDisposition(r.disposition) || classifyDisposition(r.remark)
       const { rows: [row] } = await defaultQuery(
         `insert into lead_status (mobile, name, status, last_disposition, last_remark, last_agent, last_called_at, calls)
          values ($1, $2, coalesce($3, 'not_converted'), $4, $5, $6, $7, 1)
@@ -127,6 +132,8 @@ export async function recordNeodoveWebhook(payload) {
       const note = [
         `NeoDove call: ${r.disposition || 'no disposition'}${verdict ? ' · ' + LABEL[verdict] : ''}${r.connected === false && r.disposition !== 'Not connected' ? ' (call not connected)' : ''}`,
         r.remark && `Remark: ${r.remark}`,
+        r.followUp && `Follow-up: ${r.followUp}`,
+        r.campaign && `Campaign: ${r.campaign}`,
         [r.agent && `By ${r.agent}`, fmt(r.at)].filter(Boolean).join(', '),
       ].filter(Boolean).join('\n')
       const stage = row.status === 'converted' ? null : verdict === 'qualified' ? 'qualified' : verdict === 'not_qualified' ? 'notQualified' : null

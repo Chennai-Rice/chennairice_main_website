@@ -1794,6 +1794,10 @@ test('NeoDove: not-converted sign-ups go to NeoDove once; call results come back
     assert.equal(parseCallResults({ ...sample, lead_stage_name: '' })[0].disposition, 'Not connected')
     assert.equal(parseCallResults({ ...sample, lead_stage_name: 'Interested', call_connected: 'true' })[0].disposition, 'Interested')
     assert.deepEqual(parseCallResults({ ...sample, event_name: 'LEAD_CREATE' }), [])
+    assert.equal(classifyDisposition('sent photo on whatsapp'), null)
+    // A real NeoDove call: name "N/A", remark in dispose_remarks; the remark decides when the stage doesn't.
+    const real = parseCallResults({ ...sample, name: 'N/A', lead_stage_name: 'Fresh Inquiry', call_connected: null, dispose_remarks: 'invalid no', follow_up_date_time: '23/10/2026, 00:59 pm', campaign_name: 'Campaign Oct 22', agent_name: 'Gayathri D' })[0]
+    assert.deepEqual([real.name, real.disposition, real.remark, real.agent, real.followUp], [null, 'Fresh Inquiry', 'invalid no', 'Gayathri D', '23/10/2026, 00:59 pm'])
     await hook({ ...sample, mobile: '9500044444', lead_stage_name: 'Interested', call_connected: 'true' })
     assert.equal((await db.query(`select status from lead_status where mobile = '9500044444'`)).rows[0].status, 'qualified')
     out = await sdStatus()
