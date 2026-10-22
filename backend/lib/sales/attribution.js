@@ -15,6 +15,7 @@
 import { httpError, str } from './util.js'
 import { otpEnabled, sendOtp, verifyOtp } from './otp.js'
 import { pushCrmLead } from '../crm.js'
+import { recordSignup, sendNeodoveLeads } from '../neodove.js'
 
 export const SOURCES = {
   meta_ads_facebook: 'Meta ad · Facebook',
@@ -281,6 +282,11 @@ export async function saveContestLead(db, body) {
     ].join('\n'),
     custom: { contest: 'Super Slogan Contest', came_from: label, campaign: campaign || '', ad: ad || '' },
   })
+  // Not a buyer: "not converted" in our database, and on to NeoDove for a call (once per mobile).
+  if (!bought) {
+    const id = await recordSignup(db, { name, phone, email, source, sourceLabel: label, campaign, ad, page: clip(body?.page || a?.landing, 200) })
+    if (id) await sendNeodoveLeads({ id }).catch(() => {})
+  }
   return { ok: true }
 }
 

@@ -35,6 +35,7 @@ import { invoiceHtml, packingSlipHtml } from './documents.js'
 import { recordVisit, sourcesReport, sourceOrders, saveContestLead, startContestLead, contestLeads } from './attribution.js'
 import { checkAutomationKey, automationContacts } from './automation.js'
 import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
+import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { accountsSummary, invoiceRegister, invoiceRegisterCsv, paymentsList, refundsList, period } from './accounts.js'
 import { invoicePdf } from './invoice-pdf.js'
@@ -114,6 +115,17 @@ export function createSalesRouter({ verifyIdToken } = {}) {
 
   // AskEva → WhatsApp contacts → Sales Daddy (askeva-inbound.js). The key is in
   // the webhook URL AskEva calls: /api/askeva/webhook?key=<ASKEVA_WEBHOOK_KEY>.
+  // NeoDove call results → our database → Sales Daddy (neodove.js). The key is in the
+  // X-API-Key header or the URL: /api/neodove/webhook?key=<NEODOVE_WEBHOOK_KEY>.
+  router.get('/api/neodove/webhook', wrap(async (req, res) => {
+    checkNeodoveKey(req)
+    res.json({ ok: true })
+  }))
+  router.post('/api/neodove/webhook', rateLimit({ windowMs: 60000, max: 600 }), wrap(async (req, res) => {
+    checkNeodoveKey(req)
+    res.json(await recordNeodoveWebhook(req.body))
+  }))
+
   router.get('/api/askeva/webhook', wrap(async (req, res) => {
     checkAskevaKey(req)
     res.json({ ok: true })

@@ -155,4 +155,10 @@ export async function recordOrderStatus(db, { orderId, from, to, actor, staffId 
   )
   // Tell the Sales Daddy CRM (a note on the customer's lead). Never throws.
   await queueOrderEvent(db, { orderId, from, to, reason })
+  // Paid: the mobile's sign-up is converted (neodove.js; no more calls). Never throws.
+  if (to === 'placed') {
+    const { rows: [o] } = await db.query('select contact_phone from orders where id = $1', [orderId])
+    const { markLeadConverted } = await import('../neodove.js')
+    if (o) await markLeadConverted(db, o.contact_phone)
+  }
 }

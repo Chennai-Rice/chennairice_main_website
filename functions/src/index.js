@@ -44,7 +44,9 @@ export const api = onRequest(
     // message (backend/lib/whatsapp.js).
     // ASKEVA_WEBHOOK_KEY: the secret in the URL AskEva calls with WhatsApp
     // messages (/api/askeva/webhook?key=…), backend/lib/askeva-inbound.js.
-    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY', 'AUTOMATION_API_KEY', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'ASKEVA_WEBHOOK_KEY'],
+    // NEODOVE_ENDPOINT: the NeoDove campaign's Custom Integration URL; NEODOVE_WEBHOOK_KEY:
+    // the secret NeoDove's webhook sends (backend/lib/neodove.js).
+    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY', 'AUTOMATION_API_KEY', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'ASKEVA_WEBHOOK_KEY', 'NEODOVE_ENDPOINT', 'NEODOVE_WEBHOOK_KEY'],
     // Runs as the backend account that phase1-setup.ps1 allowed into Cloud SQL
     // (Cloud SQL client) and nothing else.
     serviceAccount: 'api-backend@chennai-rice-website.iam.gserviceaccount.com',
@@ -64,7 +66,7 @@ import { runJobs } from '../../backend/lib/sales/jobs.js'
 export const salesJobs = onSchedule(
   {
     schedule: 'every 10 minutes', region: 'asia-south1', timeZone: 'Asia/Kolkata', memory: '256MiB', timeoutSeconds: 120,
-    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN'], // the database, queued emails, CRM and WhatsApp retries
+    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'NEODOVE_ENDPOINT'], // the database, queued emails, CRM, WhatsApp and NeoDove retries
     serviceAccount: 'api-backend@chennai-rice-website.iam.gserviceaccount.com',
   },
   async () => {

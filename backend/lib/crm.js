@@ -37,14 +37,20 @@ export function crmMobile(raw) {
  *   New                    enquiries, WhatsApp chats (Sales Daddy's default)
  *   Signed up – not bought the ad / WhatsApp-link sign-up form
  *   Checkout not paid      pressed Pay but never paid
+ *   Qualified              NeoDove call result (neodove.js)
+ *   Not qualified (lost)   NeoDove call result
  *   Converted (won)        a paid order, with the order amount (markConverted)
  * The website only ever moves a lead FORWARD along New → Signed up → Checkout
  * not paid, and never out of a stage the team has set (Contacted, Follow-up…).
+ * A NeoDove call result moves a lead from those stages, or between Qualified
+ * and Not qualified (a later call can change the answer).
  * Stages are found by name, so they can be renamed only with this list.
  */
 export const CRM_STAGES = {
   signedUp: /^signed up/i,
   checkoutNotPaid: /^checkout not paid/i,
+  qualified: /^qualified$/i,
+  notQualified: /^not qualified$/i,
 }
 
 /**
@@ -116,19 +122,21 @@ const leadPath = (id) => `/v1/ext/leads/${encodeURIComponent(id)}`
  * markConverted).
  */
 async function deliver(kind, payload, ref) {
+  // An event (order step, NeoDove call result) is { lead, note, stage? } and always adds its note.
+  const event = kind === 'order_event' || kind === 'call_result'
   // `stage` is ours, not a Sales Daddy field; `tags` may be left on rows queued before stages.
-  const { stage: leadStage, tags: _t, ...fields } = kind === 'order_event' ? payload.lead : payload
+  const { stage: leadStage, tags: _t, ...fields } = event ? payload.lead : payload
   const stage = payload.stage || leadStage
   const { note } = payload
   const lead = await post({ ...fields, clientRef: ref })
   if (!accepted(lead)) return lead
   const leadId = lead.data.leadId
   if (!leadId) {
-    return kind === 'order_event' || lead.data.duplicate
+    return event || lead.data.duplicate
       ? { status: 502, data: { error: 'no_lead_id', message: 'Sales Daddy did not return the lead' } }
       : lead
   }
-  if (kind === 'order_event' || lead.data.duplicate) {
+  if (event || lead.data.duplicate) {
     if (note) {
       const added = await post({ body: note }, `${leadPath(leadId)}/notes`)
       if (!accepted(added)) return added
@@ -154,6 +162,8 @@ async function stageIds() {
     new: (statuses.find((s) => /^new$/i.test(s.name)) || [...statuses].sort((a, b) => a.sort - b.sort)[0])?.id || null,
     signedUp: find(CRM_STAGES.signedUp),
     checkoutNotPaid: find(CRM_STAGES.checkoutNotPaid),
+    qualified: find(CRM_STAGES.qualified),
+    notQualified: find(CRM_STAGES.notQualified),
     won: won?.id || null,
   }
   stageCache.set(base(), { at: Date.now(), ids })
@@ -170,11 +180,17 @@ async function moveForward(leadId, key) {
     const ids = await stageIds()
     const target = ids[key]
     if (!target) return
-    const order = [ids.new, ids.signedUp, ids.checkoutNotPaid]
+    const order = [ids.new, ids.signedUp, ids.checkoutNotPaid].filter(Boolean)
+    const calls = [ids.qualified, ids.notQualified].filter(Boolean)
     const got = await request('GET', leadPath(leadId))
     if (!accepted(got)) return
-    const current = order.indexOf(got.data.lead?.status_id)
-    if (current < 0 || order.indexOf(target) <= current) return
+    const now = got.data.lead?.status_id
+    const allowed = calls.includes(target)
+      // a call result: from the website's early stages, or Qualified ↔ Not qualified
+      ? (order.includes(now) || calls.includes(now)) && now !== target
+      // the website's own stages: forward only, and only from them
+      : order.includes(now) && order.indexOf(target) > order.indexOf(now)
+    if (!allowed) return
     const r = await request('POST', `${leadPath(leadId)}/status`, { statusId: target })
     if (!accepted(r)) console.error('[crm] could not move stage:', r.status, r.data.error || '', r.data.message || '')
   } catch (err) {

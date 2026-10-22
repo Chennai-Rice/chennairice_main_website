@@ -1670,6 +1670,108 @@ test('daily summary: tables in the email and the same lists as an Excel attachme
   assert.ok(found.includes(session.orderNumber))
 })
 
+test('NeoDove: not-converted sign-ups go to NeoDove once; call results come back as Qualified / Not qualified and go on to Sales Daddy; a purchase converts', async () => {
+  const http = await import('node:http')
+  const neo = []
+  const fakeNeo = http.createServer((req, res) => {
+    let body = ''
+    req.on('data', (c) => (body += c)).on('end', () => { neo.push(JSON.parse(body)); res.end('OK') })
+  })
+  const S = { new: 'st-new', signedUp: 'st-su', qualified: 'st-q', notQualified: 'st-nq', contacted: 'st-c', won: 'st-won' }
+  const sd = []
+  let status = S.signedUp
+  const fakeSd = http.createServer((req, res) => {
+    let body = ''
+    req.on('data', (c) => (body += c)).on('end', () => {
+      sd.push({ method: req.method, path: req.url, body: body ? JSON.parse(body) : null })
+      res.setHeader('content-type', 'application/json')
+      if (req.url === '/v1/ext/masters') return res.end(JSON.stringify({ ok: true, statuses: [
+        { id: S.new, name: 'New', stage_class: 'open', sort: 0 }, { id: S.signedUp, name: 'Signed up – not bought', stage_class: 'open', sort: 1 },
+        { id: S.qualified, name: 'Qualified', stage_class: 'working', sort: 3 }, { id: S.contacted, name: 'Contacted', stage_class: 'working', sort: 4 },
+        { id: S.won, name: 'Converted', stage_class: 'won', sort: 7 }, { id: S.notQualified, name: 'Not qualified', stage_class: 'lost', sort: 10 }] }))
+      if (req.method === 'GET') return res.end(JSON.stringify({ ok: true, lead: { status_id: status, stage_class: status === S.won ? 'won' : 'open' } }))
+      if (req.url.endsWith('/status')) { status = JSON.parse(body).statusId; return res.end(JSON.stringify({ ok: true })) }
+      if (req.url.endsWith('/notes')) return res.end(JSON.stringify({ ok: true }))
+      res.end(JSON.stringify({ ok: true, leadId: 'lead-n', duplicate: true }))
+    })
+  })
+  await new Promise((r) => fakeNeo.listen(0, r))
+  await new Promise((r) => fakeSd.listen(0, r))
+  const { classifyDisposition } = await import('../lib/neodove.js')
+  const { sendCrmLeads } = await import('../lib/crm.js')
+  Object.assign(process.env, { NEODOVE_ENDPOINT: `http://127.0.0.1:${fakeNeo.address().port}/campaign/abc`, NEODOVE_WEBHOOK_KEY: 'neo-hook-test' })
+  const hook = (body, key = 'neo-hook-test') => api('POST', '/api/neodove/webhook', { body, headers: key ? { 'X-API-Key': key } : {} })
+  const sdStatus = async () => {
+    Object.assign(process.env, { SALESDADDY_API_KEY: 'sd_live_test', SALESDADDY_BASE_URL: `http://127.0.0.1:${fakeSd.address().port}` })
+    sd.length = 0
+    await sendCrmLeads({ query: db.query, limit: 1000 })
+    delete process.env.SALESDADDY_API_KEY
+    return { moved: sd.filter((g) => g.path.endsWith('/status')).map((g) => g.body.statusId), notes: sd.filter((g) => g.path.endsWith('/notes')).map((g) => g.body.body) }
+  }
+  try {
+    assert.equal(classifyDisposition('Not Interested'), 'not_qualified')
+    assert.equal(classifyDisposition('Interested - call back'), 'qualified')
+    assert.equal(classifyDisposition('Busy'), null)
+    await db.query(`update crm_outbox set status = 'failed' where status = 'queued'`)
+
+    // 1. A WhatsApp-link sign-up (not a buyer) → not_converted, sent to the NeoDove campaign once.
+    const signUp = () => api('POST', '/api/contest/lead', { body: { name: 'Divya R', phone: '9500044444', email: 'divya@example.com',
+      attribution: { utm_source: 'whatsapp', utm_campaign: 'Diwali' } }, headers: { 'X-Forwarded-For': '10.82.0.1' } })
+    assert.equal((await signUp()).status, 200)
+    assert.equal(neo.length, 1)
+    assert.deepEqual({ name: neo[0].name, mobile: neo[0].mobile, Source: neo[0].Source, Campaign: neo[0].Campaign }, { name: 'Divya R', mobile: '9500044444', Source: 'WhatsApp', Campaign: 'Diwali' })
+    const { rows: [ls] } = await db.query(`select status, neodove_sent_at from lead_status where mobile = '9500044444'`)
+    assert.equal(ls.status, 'not_converted')
+    assert.ok(ls.neodove_sent_at)
+    await signUp()
+    assert.equal(neo.length, 1) // never twice
+
+    // 2. Webhook: wrong key refused; "Interested" → qualified, note + Qualified stage in Sales Daddy.
+    assert.equal((await hook({ mobile: '9500044444', disposition: 'Interested' }, 'wrong')).status, 401)
+    assert.equal((await hook({ mobile: '9500044444', disposition: 'Interested' }, null)).status, 401)
+    const r = await hook({ data: { lead: { mobile: '+91 95000 44444', name: 'Divya R' }, disposition_name: 'Interested', remarks: 'Wants 26 kg next week', agent_name: 'Priya' } })
+    assert.equal(r.status, 200, JSON.stringify(r.body))
+    assert.equal(r.body.results, 1)
+    assert.equal((await db.query(`select status from lead_status where mobile = '9500044444'`)).rows[0].status, 'qualified')
+    let out = await sdStatus()
+    assert.deepEqual(out.moved, [S.qualified])
+    assert.ok(out.notes.some((n) => /NeoDove call: Interested · Qualified[\s\S]*Wants 26 kg next week[\s\S]*By Priya/.test(n)), JSON.stringify(out.notes))
+
+    // 3. A bare attempt (Busy) is noted, nothing changes; a later "Not interested" → not_qualified.
+    await hook({ mobile: '9500044444', disposition: 'Busy' })
+    assert.equal((await db.query(`select status, calls from lead_status where mobile = '9500044444'`)).rows[0].status, 'qualified')
+    out = await sdStatus()
+    assert.deepEqual(out.moved, [])
+    assert.ok(out.notes.some((n) => /NeoDove call: Busy/.test(n)))
+    await hook({ mobile: '9500044444', disposition: 'Not Interested', remark: 'Buys locally' })
+    assert.equal((await db.query(`select status from lead_status where mobile = '9500044444'`)).rows[0].status, 'not_qualified')
+    out = await sdStatus()
+    assert.deepEqual(out.moved, [S.notQualified])
+
+    // 4. The team moved it on (Contacted): a call result no longer moves the stage.
+    status = S.contacted
+    await hook({ mobile: '9500044444', disposition: 'Interested' })
+    out = await sdStatus()
+    assert.deepEqual(out.moved, [])
+
+    // 5. They buy with the same mobile → converted, and a later call cannot change that.
+    await buy([{ id: 'alibaba', qty: 1 }], buyer({ name: 'Divya R', email: 'divya@example.com', phone: '9500044444' }))
+    assert.equal((await db.query(`select status from lead_status where mobile = '9500044444'`)).rows[0].status, 'converted')
+    await hook({ mobile: '9500044444', disposition: 'Not interested' })
+    assert.equal((await db.query(`select status from lead_status where mobile = '9500044444'`)).rows[0].status, 'converted')
+
+    // 6. With no NeoDove link set, sign-ups wait in the queue.
+    delete process.env.NEODOVE_ENDPOINT
+    await api('POST', '/api/contest/lead', { body: { name: 'Queued Q', phone: '9500055555', email: 'queued@example.com', attribution: { utm_source: 'whatsapp' } }, headers: { 'X-Forwarded-For': '10.82.0.2' } })
+    assert.equal((await db.query(`select status from neodove_outbox where mobile = '9500055555'`)).rows[0].status, 'queued')
+    assert.ok((await db.query('select count(*)::int n from neodove_events')).rows[0].n >= 5) // the 2 refused calls are not stored
+  } finally {
+    for (const k of ['NEODOVE_ENDPOINT', 'NEODOVE_WEBHOOK_KEY', 'SALESDADDY_API_KEY', 'SALESDADDY_BASE_URL']) delete process.env[k]
+    await new Promise((r) => fakeNeo.close(r))
+    await new Promise((r) => fakeSd.close(r))
+  }
+})
+
 test('order list: a cancelled, never-paid order is dated by when it was attempted', async () => {
   const s = await api('POST', '/api/checkout/session', {
     body: { ...buyer({ name: 'Never Paid', phone: '+91 90000 33333' }), items: [{ id: 'alibaba', qty: 1 }] },

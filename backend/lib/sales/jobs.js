@@ -11,6 +11,7 @@ import { sendQueued } from './email.js'
 import { sendDailyDigest } from './digest.js'
 import { sendCrmLeads } from '../crm.js'
 import { sendWhatsAppMessages } from '../whatsapp.js'
+import { sendNeodoveLeads } from '../neodove.js'
 
 export async function runJobs() {
   const expired = await expireUnpaidOrders()
@@ -22,5 +23,8 @@ export async function runJobs() {
   const whatsapp = await sendWhatsAppMessages({ query })
   // Raw AskEva webhook calls are kept 90 days for checking, then dropped.
   await query("delete from askeva_events where received_at < now() - interval '90 days'").catch(() => {})
-  return { expired, digest, email, crm, whatsapp }
+  // Sign-ups NeoDove could not take at the time; its raw webhook calls kept 90 days.
+  const neodove = await sendNeodoveLeads({ query }).catch(() => ({}))
+  await query("delete from neodove_events where received_at < now() - interval '90 days'").catch(() => {})
+  return { expired, digest, email, crm, whatsapp, neodove }
 }
