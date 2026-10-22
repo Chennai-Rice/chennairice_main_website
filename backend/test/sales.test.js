@@ -1719,7 +1719,7 @@ test('NeoDove: not-converted sign-ups go to NeoDove once; call results come back
       attribution: { utm_source: 'whatsapp', utm_campaign: 'Diwali' } }, headers: { 'X-Forwarded-For': '10.82.0.1' } })
     assert.equal((await signUp()).status, 200)
     assert.equal(neo.length, 1)
-    assert.deepEqual({ name: neo[0].name, mobile: neo[0].mobile, Source: neo[0].Source, Campaign: neo[0].Campaign }, { name: 'Divya R', mobile: '9500044444', Source: 'WhatsApp', Campaign: 'Diwali' })
+    assert.deepEqual({ name: neo[0].name, mobile: neo[0].mobile, Source: neo[0].Source, Campaign: neo[0].Campaign }, { name: 'Divya R', mobile: 9500044444, Source: 'WhatsApp', Campaign: 'Diwali' })
     const { rows: [ls] } = await db.query(`select status, neodove_sent_at from lead_status where mobile = '9500044444'`)
     assert.equal(ls.status, 'not_converted')
     assert.ok(ls.neodove_sent_at)

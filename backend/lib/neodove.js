@@ -158,7 +158,8 @@ export async function recordSignup(db, { name, phone, email, source, sourceLabel
     )
     if (row.status === 'converted') return null
     const payload = {
-      name, mobile, email: email || '',
+      // NeoDove's own example sends the mobile as a number.
+      name, mobile: Number(mobile), email: email || '',
       Source: sourceLabel || source || '', Campaign: campaign || '', Ad: ad || '', Page: page || '',
       'Signed up': fmt(new Date()),
     }
