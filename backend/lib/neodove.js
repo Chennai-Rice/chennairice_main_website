@@ -127,7 +127,9 @@ export async function recordNeodoveWebhook(payload) {
       )
       summary.push({ mobile: r.mobile, disposition: r.disposition, result: row.status })
       // On to Sales Daddy: a note, and the Qualified / Not qualified stage (unless they bought).
-      const lead = crmLead('call_result', { name: row.name || r.name || `Lead ${r.mobile}`, phone: r.mobile, email: row.email })
+      // Tagged "NeoDove call" (CRM_TAGS). A number Sales Daddy does not have yet — one of the team's
+      // other NeoDove campaigns — is created with the Manual source, not Website.
+      const lead = crmLead('call_result', { name: row.name || r.name || `Lead ${r.mobile}`, phone: r.mobile, email: row.email, source: 'manual' })
       if (!lead.name || lead.mobile.length < 10) continue
       const note = [
         `NeoDove call: ${r.disposition || 'no disposition'}${verdict ? ' · ' + LABEL[verdict] : ''}${r.connected === false && r.disposition !== 'Not connected' ? ' (call not connected)' : ''}`,

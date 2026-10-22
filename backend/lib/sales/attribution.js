@@ -14,7 +14,7 @@
 // visit counts as an ad when the link says utm_medium=paid (or cpc, ads…).
 import { httpError, str } from './util.js'
 import { otpEnabled, sendOtp, verifyOtp } from './otp.js'
-import { pushCrmLead } from '../crm.js'
+import { pushCrmLead, CRM_TAGS } from '../crm.js'
 import { recordSignup, sendNeodoveLeads } from '../neodove.js'
 
 export const SOURCES = {
@@ -32,6 +32,13 @@ export const SOURCES = {
 
 // Sales Daddy: the lead source key for the platforms it knows (its own sources).
 const CRM_SOURCE = { meta_ads_instagram: 'instagram', meta_ads_facebook: 'facebook', whatsapp: 'whatsapp' }
+// The tag for each ad channel (they exist in Sales Daddy; see CRM_TAGS in crm.js).
+export const AD_TAG = {
+  meta_ads_instagram: 'Instagram ad',
+  meta_ads_facebook: 'Facebook ad',
+  meta_ads: 'Meta ad',
+  google_ads: 'Google ad',
+}
 
 const PAID = /^(paid|cpc|ppc|ads?|paid[_-]?social|paidsocial|paid[_-]?search|display|sponsored)$/i
 const clip = (v, n = 120) => str(String(v ?? '')).slice(0, n)
@@ -273,6 +280,7 @@ export async function saveContestLead(db, body) {
   await pushCrmLead('contest_signup', {
     name, phone, email,
     source: CRM_SOURCE[source],
+    tags: [AD_TAG[source], !bought && CRM_TAGS.notConverted].filter(Boolean),
     // "Signed up – not bought" stage, unless this mobile has already bought.
     stage: bought ? undefined : 'signedUp',
     note: [

@@ -56,10 +56,31 @@ export const CRM_STAGES = {
 }
 
 /**
+ * Tags on top of the stages (owner, 22 Oct 2026), so sales can filter each kind
+ * apart. Sales Daddy only keeps tags that already exist in the workspace
+ * (Settings → Tags); any other tag is dropped, so these exact names exist there.
+ */
+export const CRM_TAGS = {
+  contest_signup: 'Contest sign-up',
+  contact: 'Contact enquiry',
+  bulk_order: 'Bulk enquiry',
+  order_event: 'Website order',
+  abandoned: 'Abandoned checkout',
+  // Someone who messaged the business WhatsApp number (AskEva → askeva-inbound.js).
+  whatsapp_chat: 'whatsapp',
+  // A NeoDove call, on any of the team's NeoDove campaigns (neodove.js).
+  call_result: 'NeoDove call',
+  // On an ad sign-up until that mobile pays for an order (taken off by the paid note).
+  notConverted: 'Not converted',
+}
+
+/**
  * The lead in Sales Daddy's shape (POST /v1/ext/leads). `f.source` is a
  * Sales Daddy source key (instagram, facebook, whatsapp…), website by default.
+ * `f.onlyTags` replaces the kind's own tag (an abandoned checkout is not an order).
  */
 export function crmLead(kind, f) {
+  const tags = (f.onlyTags ? [] : [CRM_TAGS[kind]]).concat(f.tags || [])
   const lead = {
     name: clip(f.name, 200),
     mobile: crmMobile(f.phone),
@@ -68,6 +89,7 @@ export function crmLead(kind, f) {
     city: clip(f.city, 100),
     state: clip(f.state, 100),
     source: f.source || 'website',
+    tags: [...new Set(tags.map((t) => String(t ?? '').slice(0, 50)).filter(Boolean))].slice(0, 20),
     note: clip(f.note, 2000),
     custom: f.custom || {},
   }
@@ -116,6 +138,26 @@ const accepted = (r) => r.status >= 200 && r.status < 300 && r.data.ok !== false
 const leadPath = (id) => `/v1/ext/leads/${encodeURIComponent(id)}`
 
 /**
+ * Sales Daddy returns an existing lead as it is when the mobile is already
+ * known (duplicate), without the new tags. Adds them and takes off `remove`
+ * (a buyer is no longer "Not converted"), keeping the lead's other tags: read
+ * its tags, then write the result. Best effort — the note is what matters.
+ */
+async function updateTags(leadId, add = [], remove = []) {
+  if (!add.length && !remove.length) return
+  try {
+    const got = await request('GET', leadPath(leadId))
+    if (!accepted(got)) return
+    const have = (got.data.lead?.tags || []).map((t) => (typeof t === 'string' ? t : t?.name)).filter(Boolean)
+    const next = [...new Set([...have, ...add])].filter((t) => !remove.includes(t))
+    const changed = next.length !== have.length || next.some((t) => !have.includes(t))
+    if (changed) await request('PATCH', leadPath(leadId), { tags: next.slice(0, 20) })
+  } catch (err) {
+    console.error('[crm] could not update tags:', err.message)
+  }
+}
+
+/**
  * One outbox row to Sales Daddy. An enquiry is a lead with its note; when the
  * mobile already has a lead, the enquiry goes on it as a note. An order event
  * first finds (or creates) the customer's lead, since Sales Daddy matches by
@@ -126,8 +168,8 @@ const leadPath = (id) => `/v1/ext/leads/${encodeURIComponent(id)}`
 async function deliver(kind, payload, ref) {
   // An event (order step, NeoDove call result) is { lead, note, stage? } and always adds its note.
   const event = kind === 'order_event' || kind === 'call_result'
-  // `stage` is ours, not a Sales Daddy field; `tags` may be left on rows queued before stages.
-  const { stage: leadStage, tags: _t, ...fields } = event ? payload.lead : payload
+  // `stage` is ours, not a Sales Daddy field.
+  const { stage: leadStage, ...fields } = event ? payload.lead : payload
   const stage = payload.stage || leadStage
   const { note } = payload
   const lead = await post({ ...fields, clientRef: ref })
@@ -138,6 +180,8 @@ async function deliver(kind, payload, ref) {
       ? { status: 502, data: { error: 'no_lead_id', message: 'Sales Daddy did not return the lead' } }
       : lead
   }
+  // A lead created just now already has its tags; an existing one gets them added.
+  if (lead.data.duplicate) await updateTags(leadId, fields.tags || [], payload.untag || [])
   if (event || lead.data.duplicate) {
     if (note) {
       const added = await post({ body: note }, `${leadPath(leadId)}/notes`)
@@ -451,10 +495,12 @@ export async function orderEventPayload(db, { orderId, from, to, reason }) {
     lead: crmLead('order_event', {
       name: o.contact_name, phone: o.contact_phone, email: o.contact_email,
       city: a.city, state: a.state || o.ship_state,
+      ...(abandoned && { onlyTags: true, tags: [CRM_TAGS.abandoned] }),
     }),
     note: lines.join('\n').slice(0, 2000),
-    // Paid → the Converted stage with the order amount; unpaid checkout → "Checkout not paid".
-    ...(to === 'placed' && { won: { value: Number(o.total_paise) / 100 } }),
+    // Paid → the Converted stage with the order amount, and no longer "Not converted" /
+    // "Abandoned checkout"; unpaid checkout → "Checkout not paid".
+    ...(to === 'placed' && { untag: [CRM_TAGS.notConverted, CRM_TAGS.abandoned], won: { value: Number(o.total_paise) / 100 } }),
     // The latest paid order's payment, written onto the lead's own fields.
     ...(payment && { custom: paymentFields(o.order_number, payment) }),
     ...(abandoned && { stage: 'checkoutNotPaid' }),

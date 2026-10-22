@@ -1333,9 +1333,9 @@ test('Sales Daddy CRM: contest sign-ups and enquiries are sent as leads; failure
     assert.equal(contest.path, '/v1/ext/leads')
     assert.equal(contest.auth, 'Bearer sd_live_test')
     assert.equal(contest.lead.name, 'Lakshmi Devi')
-    // An Instagram ad sign-up: Sales Daddy's own Instagram source; told apart by stage, not tags.
+    // An Instagram ad sign-up: Sales Daddy's own Instagram source; a stage, and tags on top.
     assert.equal(contest.lead.source, 'instagram')
-    assert.equal(contest.lead.tags, undefined)
+    assert.deepEqual(contest.lead.tags, ['Contest sign-up', 'Instagram ad', 'Not converted'])
     assert.match(contest.lead.note, /Reel 3/)
     assert.ok(contest.lead.clientRef)
 
@@ -1357,7 +1357,7 @@ test('Sales Daddy CRM: contest sign-ups and enquiries are sent as leads; failure
     assert.deepEqual(await sendCrmLeads({ query: db.query }), { sent: 1, failed: 0 })
     const bulk = got.find((g) => g.lead.mobile === '9000012345')
     assert.equal(bulk.lead.company, 'Ravi Stores')
-    assert.equal(bulk.lead.tags, undefined)
+    assert.deepEqual(bulk.lead.tags, ['Bulk enquiry'])
     assert.equal(bulk.lead.source, 'website')
     const { rows: [done] } = await db.query(`select status, crm_lead_id from crm_outbox where payload->>'mobile' = '9000012345'`)
     assert.equal(done.status, 'sent')
@@ -1456,7 +1456,7 @@ test('Sales Daddy CRM: website orders land as notes on the customer lead — pai
     assert.match(arun.note, /checkout not completed/)
     // An abandoned checkout goes to the "Checkout not paid" stage; a paid order to Converted.
     assert.equal(arun.stage, 'checkoutNotPaid')
-    assert.equal(arun.lead.tags, undefined)
+    assert.deepEqual(arun.lead.tags, ['Abandoned checkout']) // not "Website order"
     assert.ok(queued.find((q) => q.payload.lead.mobile === '9443012121' && q.payload.won))
 
     // ...then sent: for each, the lead (found or created by mobile), then the note on it, oldest first.
@@ -1522,9 +1522,11 @@ test('Sales Daddy CRM: a repeat customer — the enquiry goes on their existing 
   try {
     const { pushCrmLead } = await import('../lib/crm.js')
     await pushCrmLead('bulk_order', { name: 'Meena', company: 'Meena Traders', phone: '9790012345', note: 'Bulk order enquiry: 40 bags' })
-    assert.deepEqual(got.map((g) => g.method + ' ' + g.path), ['POST /v1/ext/leads', 'POST /v1/ext/leads/lead-9/notes'])
-    assert.equal(got[0].body.tags, undefined) // stages, not tags
-    assert.match(got[1].body.body, /40 bags/)
+    // An existing lead: its tags are read and the new one added, then the note.
+    assert.deepEqual(got.map((g) => g.method + ' ' + g.path), ['POST /v1/ext/leads', 'GET /v1/ext/leads/lead-9', 'PATCH /v1/ext/leads/lead-9', 'POST /v1/ext/leads/lead-9/notes'])
+    assert.deepEqual(got[0].body.tags, ['Bulk enquiry'])
+    assert.deepEqual(got[2].body.tags, ['Bulk enquiry'])
+    assert.match(got[3].body.body, /40 bags/)
     const { rows: [r] } = await db.query(`select status from crm_outbox where payload->>'mobile' = '9790012345'`)
     assert.equal(r.status, 'sent')
   } finally {
@@ -1569,11 +1571,11 @@ test('Sales Daddy CRM: stages — sign-up → "Signed up – not bought", unpaid
     attribution: { utm_source: 'ig', utm_medium: 'paid_social', utm_campaign: 'Slogan', fbclid: true } }, headers: { 'X-Forwarded-For': '10.81.0.1' } })
   try {
     await db.query(`update crm_outbox set status = 'failed' where status = 'queued'`) // earlier tests' rows
-    // 1. Ad sign-up: New → "Signed up – not bought". No tags are sent.
+    // 1. Ad sign-up: New → "Signed up – not bought", with its tags.
     let moved = await step(signUp)
     assert.deepEqual(moved, [{ statusId: S.signedUp }])
     const lead = got.find((g) => g.method === 'POST' && g.path === '/v1/ext/leads').body
-    assert.equal(lead.tags, undefined)
+    assert.deepEqual(lead.tags, ['Contest sign-up', 'Instagram ad', 'Not converted'])
     assert.equal(lead.stage, undefined) // ours, never sent to Sales Daddy
     assert.equal(lead.source, 'instagram')
 
@@ -1642,7 +1644,7 @@ test('AskEva → WhatsApp contacts → Sales Daddy: webhook saves the contact, q
     const crm = async () => (await db.query(`select payload from crm_outbox where kind = 'whatsapp_chat' and payload->>'mobile' = '9751591220'`)).rows
     const [lead] = await crm()
     assert.equal(lead.payload.source, 'whatsapp')
-    assert.equal(lead.payload.tags, undefined)
+    assert.deepEqual(lead.payload.tags, ['whatsapp'])
     assert.match(lead.payload.note, /New WhatsApp chat[\s\S]*26 kg Ponni/)
 
     // More messages the same day: counted, but no second note to Sales Daddy.
@@ -1772,6 +1774,9 @@ test('NeoDove: not-converted sign-ups go to NeoDove once; call results come back
     assert.equal(r.status, 200, JSON.stringify(r.body))
     assert.equal(r.body.results, 1)
     assert.equal((await db.query(`select status from lead_status where mobile = '9500044444'`)).rows[0].status, 'qualified')
+    // Tagged "NeoDove call"; a number Sales Daddy does not have is created as Manual, not Website.
+    const { rows: [call] } = await db.query(`select payload from crm_outbox where kind = 'call_result' order by id desc limit 1`)
+    assert.deepEqual([call.payload.lead.tags, call.payload.lead.source], [['NeoDove call'], 'manual'])
     let out = await sdStatus()
     assert.deepEqual(out.moved, [S.qualified])
     assert.ok(out.notes.some((n) => /NeoDove call: Interested · Qualified[\s\S]*Wants 26 kg next week[\s\S]*By Priya/.test(n)), JSON.stringify(out.notes))
