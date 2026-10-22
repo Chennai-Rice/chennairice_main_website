@@ -1311,7 +1311,7 @@ test('Sales Daddy CRM: contest sign-ups and enquiries are sent as leads; failure
     req.on('data', (c) => (body += c)).on('end', () => {
       res.setHeader('content-type', 'application/json')
       if (down) { res.statusCode = 503; return res.end(JSON.stringify({ ok: false, error: 'server_error' })) }
-      got.push({ auth: req.headers.authorization, path: req.url, lead: JSON.parse(body) })
+      got.push({ auth: req.headers.authorization, path: req.url, lead: body ? JSON.parse(body) : {} })
       res.end(JSON.stringify({ ok: true, leadId: 'lead-' + got.length, duplicate: false }))
     })
   })
@@ -1333,9 +1333,9 @@ test('Sales Daddy CRM: contest sign-ups and enquiries are sent as leads; failure
     assert.equal(contest.path, '/v1/ext/leads')
     assert.equal(contest.auth, 'Bearer sd_live_test')
     assert.equal(contest.lead.name, 'Lakshmi Devi')
-    // An Instagram ad sign-up: Sales Daddy's own Instagram source, and tags to filter by.
+    // An Instagram ad sign-up: Sales Daddy's own Instagram source; told apart by stage, not tags.
     assert.equal(contest.lead.source, 'instagram')
-    assert.deepEqual(contest.lead.tags, ['Contest sign-up', 'Instagram ad', 'Not converted'])
+    assert.equal(contest.lead.tags, undefined)
     assert.match(contest.lead.note, /Reel 3/)
     assert.ok(contest.lead.clientRef)
 
@@ -1357,7 +1357,7 @@ test('Sales Daddy CRM: contest sign-ups and enquiries are sent as leads; failure
     assert.deepEqual(await sendCrmLeads({ query: db.query }), { sent: 1, failed: 0 })
     const bulk = got.find((g) => g.lead.mobile === '9000012345')
     assert.equal(bulk.lead.company, 'Ravi Stores')
-    assert.deepEqual(bulk.lead.tags, ['Bulk enquiry'])
+    assert.equal(bulk.lead.tags, undefined)
     assert.equal(bulk.lead.source, 'website')
     const { rows: [done] } = await db.query(`select status, crm_lead_id from crm_outbox where payload->>'mobile' = '9000012345'`)
     assert.equal(done.status, 'sent')
@@ -1439,9 +1439,10 @@ test('Sales Daddy CRM: website orders land as notes on the customer lead — pai
     assert.match(selvi[3], /Tracking no: D555000111/)
     const arun = queued.find((q) => q.payload.lead.mobile === '9944001122').payload
     assert.match(arun.note, /checkout not completed/)
-    // An abandoned checkout is tagged as that, not as an order.
-    assert.deepEqual(arun.lead.tags, ['Abandoned checkout'])
-    assert.deepEqual(queued.find((q) => q.payload.lead.mobile === '9443012121').payload.lead.tags, ['Website order'])
+    // An abandoned checkout goes to the "Checkout not paid" stage; a paid order to Converted.
+    assert.equal(arun.stage, 'checkoutNotPaid')
+    assert.equal(arun.lead.tags, undefined)
+    assert.ok(queued.find((q) => q.payload.lead.mobile === '9443012121' && q.payload.won))
 
     // ...then sent: for each, the lead (found or created by mobile), then the note on it, oldest first.
     Object.assign(process.env, { SALESDADDY_API_KEY: 'sd_live_test', SALESDADDY_BASE_URL: 'http://127.0.0.1:' + fake.address().port })
@@ -1466,7 +1467,7 @@ test('Sales Daddy CRM: website orders land as notes on the customer lead — pai
   }
 })
 
-test('Sales Daddy CRM: a repeat customer — the enquiry goes on their existing lead as a note, and its tag is added to theirs', async () => {
+test('Sales Daddy CRM: a repeat customer — the enquiry goes on their existing lead as a note', async () => {
   const http = await import('node:http')
   const got = []
   const fake = http.createServer((req, res) => {
@@ -1474,8 +1475,7 @@ test('Sales Daddy CRM: a repeat customer — the enquiry goes on their existing 
     req.on('data', (c) => (body += c)).on('end', () => {
       got.push({ method: req.method, path: req.url, body: body ? JSON.parse(body) : null })
       res.setHeader('content-type', 'application/json')
-      if (req.method === 'GET') return res.end(JSON.stringify({ ok: true, lead: { id: 'lead-9', tags: ['Website order'] } }))
-      if (req.method === 'PATCH' || req.url.endsWith('/notes')) return res.end(JSON.stringify({ ok: true }))
+      if (req.url.endsWith('/notes')) return res.end(JSON.stringify({ ok: true }))
       res.end(JSON.stringify({ ok: true, leadId: 'lead-9', duplicate: true }))
     })
   })
@@ -1483,12 +1483,10 @@ test('Sales Daddy CRM: a repeat customer — the enquiry goes on their existing 
   Object.assign(process.env, { SALESDADDY_API_KEY: 'sd_live_test', SALESDADDY_BASE_URL: 'http://127.0.0.1:' + fake.address().port })
   try {
     const { pushCrmLead } = await import('../lib/crm.js')
-    await pushCrmLead('bulk_order', { name: 'Meena', company: 'Meena Traders', phone: '9790012345', note: 'Bulk order enquiry: 40 bags', tags: ['Distributor'] })
-    assert.deepEqual(got.map((g) => g.method + ' ' + g.path), [
-      'POST /v1/ext/leads', 'GET /v1/ext/leads/lead-9', 'PATCH /v1/ext/leads/lead-9', 'POST /v1/ext/leads/lead-9/notes',
-    ])
-    assert.deepEqual(got[2].body.tags, ['Website order', 'Bulk enquiry', 'Distributor'])
-    assert.match(got[3].body.body, /40 bags/)
+    await pushCrmLead('bulk_order', { name: 'Meena', company: 'Meena Traders', phone: '9790012345', note: 'Bulk order enquiry: 40 bags' })
+    assert.deepEqual(got.map((g) => g.method + ' ' + g.path), ['POST /v1/ext/leads', 'POST /v1/ext/leads/lead-9/notes'])
+    assert.equal(got[0].body.tags, undefined) // stages, not tags
+    assert.match(got[1].body.body, /40 bags/)
     const { rows: [r] } = await db.query(`select status from crm_outbox where payload->>'mobile' = '9790012345'`)
     assert.equal(r.status, 'sent')
   } finally {
@@ -1497,43 +1495,76 @@ test('Sales Daddy CRM: a repeat customer — the enquiry goes on their existing 
   }
 })
 
-test('Sales Daddy CRM: an ad sign-up who then buys (same mobile) loses "Not converted", gains "Website order" and goes to the Converted stage; a repeat buyer is not moved again; a buyer signing up gets no "Not converted"', async () => {
+test('Sales Daddy CRM: stages — sign-up → "Signed up – not bought", unpaid checkout → "Checkout not paid", paid → Converted; only ever forward', async () => {
   const http = await import('node:http')
+  const S = { new: 'st-new', signedUp: 'st-su', checkout: 'st-cnp', contacted: 'st-c', won: '2f9888a3-692b-467a-803b-2d685c5a6651' }
   const got = []
-  let stage = 'open'
+  let status = S.new
   const fake = http.createServer((req, res) => {
     let body = ''
     req.on('data', (c) => (body += c)).on('end', () => {
       got.push({ method: req.method, path: req.url, body: body ? JSON.parse(body) : null })
       res.setHeader('content-type', 'application/json')
-      if (req.url === '/v1/ext/masters') return res.end(JSON.stringify({ ok: true, statuses: [{ id: '2f9888a3-692b-467a-803b-2d685c5a6651', name: 'Converted', stage_class: 'won' }] }))
-      if (req.method === 'GET') return res.end(JSON.stringify({ ok: true, lead: { tags: ['Contest sign-up', 'Instagram ad', 'Not converted'], stage_class: stage } }))
-      if (req.url.endsWith('/status')) { stage = 'won'; return res.end(JSON.stringify({ ok: true })) }
-      if (req.method === 'PATCH' || req.url.endsWith('/notes')) return res.end(JSON.stringify({ ok: true }))
-      res.end(JSON.stringify({ ok: true, leadId: 'lead-nc', duplicate: true }))
+      if (req.url === '/v1/ext/masters') return res.end(JSON.stringify({ ok: true, statuses: [
+        { id: S.new, name: 'New', stage_class: 'open', sort: 0 }, { id: S.signedUp, name: 'Signed up – not bought', stage_class: 'open', sort: 1 },
+        { id: S.checkout, name: 'Checkout not paid', stage_class: 'open', sort: 2 }, { id: S.contacted, name: 'Contacted', stage_class: 'working', sort: 3 },
+        { id: S.won, name: 'Converted', stage_class: 'won', sort: 8 }] }))
+      if (req.method === 'GET') return res.end(JSON.stringify({ ok: true, lead: { id: 'lead-s', status_id: status, stage_class: status === S.won ? 'won' : 'open' } }))
+      if (req.url.endsWith('/status')) { status = JSON.parse(body).statusId; return res.end(JSON.stringify({ ok: true })) }
+      if (req.url.endsWith('/notes')) return res.end(JSON.stringify({ ok: true }))
+      res.end(JSON.stringify({ ok: true, leadId: 'lead-s', duplicate: true }))
     })
   })
   await new Promise((r) => fake.listen(0, r))
   const { sendCrmLeads } = await import('../lib/crm.js')
-  try {
-    // The sign-up's buyer pays (queued with the order, sent below).
-    const { session } = await buy([{ id: 'alibaba', qty: 1 }], buyer({ name: 'Kavya', email: 'kavya@example.com', phone: '9566012345' }))
-    Object.assign(process.env, { SALESDADDY_API_KEY: 'sd_live_test', SALESDADDY_BASE_URL: 'http://127.0.0.1:' + fake.address().port })
-    await sendCrmLeads({ query: db.query, limit: 1000 })
-    const patch = got.find((g) => g.method === 'PATCH' && g.path === '/v1/ext/leads/lead-nc')
-    assert.deepEqual(patch.body.tags, ['Contest sign-up', 'Instagram ad', 'Website order'])
-    const moved = got.filter((g) => g.path === '/v1/ext/leads/lead-nc/status')
-    assert.equal(moved.length, 1) // once: the lead is then won, so later paid orders leave it there
-    assert.equal(moved[0].body.statusId, '2f9888a3-692b-467a-803b-2d685c5a6651')
-    assert.ok(got.some((g) => g.path.endsWith('/notes') && g.body.body.includes(session.orderNumber + ' paid')))
-
-    // Now the same mobile signs up from an Instagram ad: already a buyer, so no "Not converted".
+  const URL = 'http://127.0.0.1:' + fake.address().port
+  // Each step is queued with Sales Daddy switched off, then sent — so the order is exact.
+  const step = async (fn) => {
+    delete process.env.SALESDADDY_API_KEY
+    await fn()
+    Object.assign(process.env, { SALESDADDY_API_KEY: 'sd_live_test', SALESDADDY_BASE_URL: URL })
     got.length = 0
-    const r = await api('POST', '/api/contest/lead', { body: { name: 'Kavya', phone: '9566012345', email: 'kavya@example.com',
-      attribution: { utm_source: 'ig', utm_medium: 'paid_social', utm_campaign: 'Slogan', fbclid: true } } })
-    assert.equal(r.status, 200, JSON.stringify(r.body))
-    const lead = got.find((g) => g.method === 'POST' && g.path === '/v1/ext/leads')
-    assert.deepEqual(lead.body.tags, ['Contest sign-up', 'Instagram ad'])
+    await sendCrmLeads({ query: db.query, limit: 1000 })
+    return got.filter((g) => g.path === '/v1/ext/leads/lead-s/status').map((g) => g.body)
+  }
+  const signUp = () => api('POST', '/api/contest/lead', { body: { name: 'Kavya', phone: '9566012345', email: 'kavya@example.com',
+    attribution: { utm_source: 'ig', utm_medium: 'paid_social', utm_campaign: 'Slogan', fbclid: true } }, headers: { 'X-Forwarded-For': '10.81.0.1' } })
+  try {
+    await db.query(`update crm_outbox set status = 'failed' where status = 'queued'`) // earlier tests' rows
+    // 1. Ad sign-up: New → "Signed up – not bought". No tags are sent.
+    let moved = await step(signUp)
+    assert.deepEqual(moved, [{ statusId: S.signedUp }])
+    const lead = got.find((g) => g.method === 'POST' && g.path === '/v1/ext/leads').body
+    assert.equal(lead.tags, undefined)
+    assert.equal(lead.stage, undefined) // ours, never sent to Sales Daddy
+    assert.equal(lead.source, 'instagram')
+
+    // 2. Pressed Pay, never paid: → "Checkout not paid".
+    moved = await step(async () => {
+      const s = await api('POST', '/api/checkout/session', { body: { ...buyer({ name: 'Kavya', email: 'kavya@example.com', phone: '9566012345' }), items: [{ id: 'alibaba', qty: 1 }] }, headers: { 'X-Forwarded-For': '10.81.0.2' } })
+      await db.query(`update orders set reservation_expires_at = now() - interval '1 minute' where id = $1`, [s.body.orderId])
+      delete process.env.SALESDADDY_API_KEY
+      await api('POST', '/api/jobs/run', { headers: { 'X-Job-Token': 'job-token-for-tests' } })
+    })
+    assert.deepEqual(moved, [{ statusId: S.checkout }])
+
+    // 3. The team calls (Contacted); signing up again does not pull the lead back.
+    status = S.contacted
+    moved = await step(signUp)
+    assert.deepEqual(moved, [])
+
+    // 4. Pays: → Converted with the order amount, once; a second order leaves it there.
+    let order
+    moved = await step(async () => { order = (await buy([{ id: 'alibaba', qty: 1 }], buyer({ name: 'Kavya', email: 'kavya@example.com', phone: '9566012345' }))).session })
+    const { rows: [paid] } = await db.query('select total_paise from orders where id = $1', [order.orderId])
+    assert.deepEqual(moved, [{ statusId: S.won, convertedValue: Math.round(Number(paid.total_paise) / 100) }])
+    assert.ok(got.some((g) => g.path.endsWith('/notes') && g.body.body.includes(order.orderNumber + ' paid')))
+    moved = await step(() => buy([{ id: 'alibaba', qty: 1 }], buyer({ name: 'Kavya', email: 'kavya@example.com', phone: '9566012345' })))
+    assert.deepEqual(moved, [])
+
+    // 5. A buyer signing up is not put back to "Signed up – not bought".
+    moved = await step(signUp)
+    assert.deepEqual(moved, [])
   } finally {
     for (const k of ['SALESDADDY_API_KEY', 'SALESDADDY_BASE_URL']) delete process.env[k]
     await new Promise((r) => fake.close(r))
@@ -1573,7 +1604,7 @@ test('AskEva → WhatsApp contacts → Sales Daddy: webhook saves the contact, q
     const crm = async () => (await db.query(`select payload from crm_outbox where kind = 'whatsapp_chat' and payload->>'mobile' = '9751591220'`)).rows
     const [lead] = await crm()
     assert.equal(lead.payload.source, 'whatsapp')
-    assert.deepEqual(lead.payload.tags, ['WhatsApp chat'])
+    assert.equal(lead.payload.tags, undefined)
     assert.match(lead.payload.note, /New WhatsApp chat[\s\S]*26 kg Ponni/)
 
     // More messages the same day: counted, but no second note to Sales Daddy.

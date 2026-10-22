@@ -120,7 +120,6 @@ app.post('/api/bulk-order', async (req, res) => {
   await pushCrmLead('bulk_order', {
     name: row.representative_name, company: row.company_or_name, phone: row.phone, email: row.email,
     // Distributor / Wholesaler / Retailer as a tag (created in Sales Daddy); "Others" stays in the note.
-    tags: [{ distributor: 'Distributor', wholesaler: 'Wholesaler', retailer: 'Retailer' }[row.buyer_type]].filter(Boolean),
     note: [
       'Bulk order enquiry from the website.',
       'Buyer type: ' + (row.buyer_type === 'other' ? row.other_type || 'Other' : row.buyer_type),
