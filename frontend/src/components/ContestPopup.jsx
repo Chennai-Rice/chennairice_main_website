@@ -308,10 +308,10 @@ function AdSignup({ closeRef, close }) {
                 </label>
                 {error && <p className="contest-form-error" role="alert">{error}</p>}
                 <button data-focus type="submit" className="contest-pop-cta contest-form-submit" disabled={busy}>
-                  {busy ? 'Sending OTP…' : 'Send OTP'}
+                  {busy ? 'Submitting…' : 'Submit'}
                 </button>
                 <p className="contest-form-note">
-                  We will text an OTP to confirm your number. We use these details only for the contest.{' '}
+                  We use these details only for the contest.{' '}
                   <Link to="/privacy" target="_blank" rel="noopener">Privacy policy</Link>
                 </p>
               </form>
