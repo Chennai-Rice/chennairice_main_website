@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { keywordsFor } from "../../seo.js";
 
 const SITE = "https://chennairiceindustries.com";
 
@@ -30,7 +31,8 @@ export default function usePageMeta(title, description, { noindex = false } = {}
     if (description) setTag('meta[name="description"]', "name", "description", description);
     const url = SITE + (window.location.pathname.replace(/\/+$/, "") || "/");
     setTag('link[rel="canonical"]', "rel", "canonical", noindex ? null : url);
-    setTag('meta[name="robots"]', "name", "robots", noindex ? "noindex, follow" : null);
+    setTag('meta[name="robots"]', "name", "robots", noindex ? "noindex, follow" : "index, follow, max-image-preview:large");
+    setTag('meta[name="keywords"]', "name", "keywords", keywordsFor(window.location.pathname));
     if (title) setTag('meta[property="og:title"]', "property", "og:title", title);
     if (description) setTag('meta[property="og:description"]', "property", "og:description", description);
     setTag('meta[property="og:url"]', "property", "og:url", url);

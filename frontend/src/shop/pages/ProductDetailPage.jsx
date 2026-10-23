@@ -21,7 +21,7 @@ import { formatRupees } from "../utils/format.js";
 import { showCardPrices } from "../../config.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import { trackMetaEvent } from "../../services/metaPixel.js";
-import { PRODUCT_SEO, productIdFromSlug, productPath } from "../../seo.js";
+import { PRODUCT_SEO, productIdFromSlug, productName, productPath } from "../../seo.js";
 import { FOOTER } from "../../data/content.js";
 import "./productdetail.css";
 
@@ -64,7 +64,7 @@ export default function ProductDetailPage() {
     const data = {
       "@context": "https://schema.org",
       "@type": "Product",
-      name: (seo?.h1 || product.name).replace(/ – \d+ kg$/, ""),
+      name: productName(id) || product.name,
       description: seo?.description || product.description,
       image: product.image ? [new URL(product.image, site).href] : undefined,
       sku: product.id,
@@ -219,7 +219,7 @@ export default function ProductDetailPage() {
             )}
             <span className="pdp-badge">Premium Quality</span>
             {/* The SEO heading ends in a pack size ("… – 26 kg"); it follows the size chosen below. */}
-            <h1 className="pdp-title">
+            <h1 className={`pdp-title${(seo?.h1 || "").length > 32 ? " pdp-title--long" : ""}`}>
               {seo?.h1
                 ? (selected ? seo.h1.replace(/ – \d+ kg$/, ` – ${Number(selected.kg)} kg`) : seo.h1)
                 : headName}

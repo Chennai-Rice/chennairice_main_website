@@ -32,57 +32,66 @@ export const MOVED_PAGES = {
 export const PAGE_META = {
   home: {
     path: '/',
-    title: 'Chennai Rice | Ponni Rice & Idli Rice Manufacturer, Erode',
-    description: 'Chennai Rice Industries, Erode: Ponni, Idli & boiled rice in 5, 10 & 26 kg packs since the 1950s. For homes, retailers & distributors. Order online today.',
-    h1: 'Premium Ponni Rice & Idli Rice from Erode, Tamil Nadu',
+    title: 'Chennai Rice | Quality Ponni Rice for Every Home',
+    description: 'Discover Chennai Rice\'s range of Ponni rice and everyday rice varieties. Explore quality-focused rice for traditional Tamil meals and family dining.',
+    h1: 'Chennai Rice: Quality Rice for Every Tamil Kitchen',
+    keywords: 'Chennai Rice, Ponni rice, rice varieties, Tamil Nadu rice, idli rice, buy rice online',
   },
   products: {
     path: '/rice-products',
-    title: 'Buy Ponni & Idli Rice 26 kg Bags Online | Chennai Rice',
-    description: 'Shop the full Chennai Rice range: Ponni, Idli, aged and sappadu rice in 5, 10 and 26 kg bags. Mill-direct quality from Erode with doorstep delivery.',
-    h1: 'Our Rice Range – Ponni, Idli & Sappadu Rice',
+    title: 'Rice Varieties in Tamil Nadu | Chennai Rice',
+    description: 'Explore rice varieties from Chennai Rice, including Kitchidi Ponni, Nayara Super Aged, Special Rajabhogam and Viruchagam. Find rice for everyday meals.',
+    h1: 'Explore Rice Varieties for Every Meal',
+    keywords: 'rice varieties, Ponni rice, aged rice, Kitchidi Ponni, Nayara Super Aged, Special Rajabhogam, Viruchagam',
   },
   about: {
     path: '/about-us',
-    title: 'About Us | Chennai Rice Industries, Rice Mill in Erode',
-    description: 'Since the 1950s, Chennai Rice Industries has milled quality rice in Erode, Tamil Nadu. ~1,000 tonnes a day, paddy sourced from 5 states, 6 warehouses.',
-    h1: 'About Chennai Rice Industries – Rice Millers in Erode Since the 1950s',
+    title: 'About Chennai Rice Industries | Our Story & Quality',
+    description: 'Discover Chennai Rice Industries, our rice heritage, sourcing practices, processing capabilities and commitment to consistent rice quality.',
+    h1: 'About Chennai Rice Industries',
+    keywords: 'Chennai Rice Industries, rice company Tamil Nadu, rice mill Erode',
   },
   infrastructure: {
     path: '/infrastructure',
-    title: 'Modern Rice Mill in Erode – 2,44,000 MTPA | Chennai Rice',
-    description: 'Inside the Chennai Rice plant in Erode: 2,44,000 MTPA milling capacity, 31 silos holding 61,500 MT of paddy and a 10-stage process for consistent rice.',
-    h1: 'Our Rice Milling Infrastructure in Erode',
+    title: 'Rice Processing Infrastructure | Chennai Rice Industries',
+    description: 'Learn about Chennai Rice Industries\' rice processing facility, milling technology, quality checks, storage and production capabilities.',
+    h1: 'Rice Processing Infrastructure at Chennai Rice Industries',
+    keywords: 'rice processing company, rice mill, rice milling infrastructure, paddy storage',
   },
   contact: {
     path: '/contact-us',
-    title: 'Contact Chennai Rice Industries, Erode | Call 70666 46667',
-    description: 'Contact Chennai Rice Industries, Nasiyanur, Erode – 638102. Call 70666 46667 or email support@chennairiceindustries.com for orders and enquiries.',
+    title: 'Contact Chennai Rice Industries | Sales & Enquiries',
+    description: 'Contact Chennai Rice Industries for product enquiries, bulk orders, distribution opportunities and customer support. Reach our team through the available contact options.',
     h1: 'Contact Chennai Rice Industries',
+    keywords: 'contact Chennai Rice Industries, rice enquiries, bulk rice orders',
   },
   blog: {
     path: '/blog',
-    title: 'Rice Tips, Recipes & Buying Guides | Chennai Rice Blog',
-    description: 'Guides on choosing, cooking and storing rice, idli batter tips, Ponni vs other rice, and rice prices in Tamil Nadu from the Chennai Rice team.',
-    h1: 'Chennai Rice Blog – Rice Guides, Tips & Recipes',
+    title: 'Rice Guides, Tips & Updates | Chennai Rice Blog',
+    description: 'Explore rice varieties, cooking tips, rice knowledge, product updates and stories from Chennai Rice Industries.',
+    h1: 'Rice Guides, Cooking Tips and Stories From Chennai Rice',
+    keywords: 'rice knowledge, rice recipes, cooking tips, Ponni rice guide',
   },
   bulkOrder: {
     path: '/bulk-order',
-    title: 'Wholesale & Bulk Rice Supply, Tamil Nadu | Chennai Rice',
-    description: 'Order rice in bulk from Chennai Rice, Erode. Wholesale Ponni, Idli & sappadu rice for retailers, hotels, caterers & institutions. Send your enquiry today.',
-    h1: 'Wholesale & Bulk Rice Supply – Direct from Our Erode Mill',
+    title: 'Wholesale Rice Supplier in Tamil Nadu | Chennai Rice',
+    description: 'Looking for a wholesale rice supplier? Explore bulk rice purchasing and business enquiry options from Chennai Rice Industries for retailers and distributors.',
+    h1: 'Wholesale Rice Supplier for Retailers and Distributors',
+    keywords: 'wholesale rice supplier, bulk rice, rice distributor, rice supplier Tamil Nadu',
   },
   founder: {
     path: '/founder',
-    title: 'Our Founder – The Story Behind Chennai Rice Industries',
-    description: 'Meet M. S. Tamilselvan, Founder & Chairman of Chennai Rice Industries, and the family legacy of rice milling in Tamil Nadu since the 1950s.',
-    h1: 'M. S. Tamilselvan – Founder, Chennai Rice Industries',
+    title: 'Our Founder & Rice Heritage | Chennai Rice Industries',
+    description: 'Discover the story, vision and legacy behind Chennai Rice Industries and its commitment to bringing quality rice to households.',
+    h1: 'The Vision and Legacy Behind Chennai Rice Industries',
+    keywords: 'Chennai Rice founder, Chennai Rice Industries history, M. S. Tamilselvan',
   },
   contest: {
     path: '/contest',
-    title: 'Chennai Rice Slogan Contest – Write & Win Exciting Prizes',
-    description: 'Write a slogan for Chennai Rice and win exciting prizes. Buy a Kitchidi Ponni Rice 5 kg or 26 kg bag, scan the coupon inside and register to enter.',
+    title: 'Chennai Rice Super Slogan Contest 2026 | Prizes',
+    description: 'Chennai Rice Super Slogan Contest 2026. Check participation instructions, eligibility, terms and conditions, and official contest updates.',
     h1: 'Chennai Rice Super Slogan Contest 2026',
+    keywords: 'Chennai Rice Super Slogan Contest, slogan contest 2026, Chennai Rice contest prizes',
   },
   // Phase 2 landing pages (data/landing.js). lang and alternate drive the
   // hreflang links between each English page and its Tamil version.
@@ -92,6 +101,7 @@ export const PAGE_META = {
     title: 'Ponni Rice 26 kg – Aged Ponni Rice Online | Chennai Rice',
     description: 'Buy Ponni rice 26 kg from Chennai Rice, Erode. Aged Ponni varieties that cook soft and non-sticky for everyday meals. See prices and order online.',
     h1: 'Ponni Rice – 26 kg Packs from Chennai Rice',
+    keywords: 'Ponni rice, Ponni rice 26 kg, aged Ponni rice',
   },
   idli: {
     path: '/idli-rice',
@@ -99,12 +109,14 @@ export const PAGE_META = {
     title: 'Idli Rice 26 kg for Soft Idli & Dosa | Chennai Rice',
     description: 'Chennai Rice Special Idly Rice in 26 kg packs: grinds smooth, ferments well and steams into soft, fluffy idlis and crisp dosas. Order for home or wholesale.',
     h1: 'Idli Rice for Soft Idlis & Crisp Dosas – 26 kg',
+    keywords: 'idli rice, idly rice, idli rice 26 kg',
   },
   distributor: {
     path: '/rice-distributorship',
     title: 'Rice Distributorship in Tamil Nadu | Join Chennai Rice',
     description: 'Become a Chennai Rice distributor. A rice brand since the 1950s, steady supply from our Erode mill and 13 rice packs to sell. Apply online today.',
     h1: 'Become a Chennai Rice Distributor',
+    keywords: 'rice distributorship, rice distributor Tamil Nadu',
   },
   taHome: {
     path: '/ta',
@@ -139,8 +151,8 @@ export const PAGE_META = {
   },
   privacy: {
     path: '/privacy',
-    title: 'Privacy Policy | Chennai Rice',
-    description: 'The Privacy Policy of Chennai Rice Industries India Private Limited: what personal information we collect, how we use it and how we keep it safe.',
+    title: 'Privacy Policy | Chennai Rice Industries',
+    description: 'Read the Chennai Rice Industries privacy policy to understand how personal information is collected, used, stored and protected.',
     h1: 'Privacy Policy',
   },
   shipping: {
@@ -197,9 +209,10 @@ export const PRODUCT_SEO = {
     line: 'Cooks separate and firm, perfect for lemon rice and lunch boxes.',
     dishes: ['Lemon Rice', 'Tamarind Rice', 'Lunch Boxes'],
     slug: 'nayara-super-aged-rice',
-    h1: 'Nayara Super Aged Rice – 26 kg',
-    title: 'Nayara Super Aged Rice 26 kg – Buy Online | Chennai Rice',
-    description: 'Buy Nayara Super Aged Rice 26 kg from Chennai Rice, Erode. Gel cook rice that cooks separate and firm, never sticky. Home & wholesale delivery.',
+    h1: 'Nayara Super Aged Rice for Everyday Cooking',
+    title: 'Nayara Super Aged Rice | Chennai Rice',
+    description: 'Discover Nayara Super Aged Rice from Chennai Rice, suitable for everyday meals and variety rice preparations. Explore available pack sizes.',
+    keywords: 'Nayara Super Aged rice',
   },
   'rudra': {
     about: "Rudra brings original taste and a rich aroma that fills the kitchen as the rice finishes cooking. It suits larger families and homes that host relatives, festivals and weekend gatherings. Enjoy it with sambar, kara kuzhambu, mor kuzhambu or simple rasam for a satisfying everyday meal. Store in a cool, dry place and keep the bag sealed after opening.",
@@ -217,9 +230,10 @@ export const PRODUCT_SEO = {
     line: 'Everyday rice in our signature red pack for comforting home meals.',
     dishes: ['Sambar Rice', 'Vathal Kuzhambu Rice', 'Rasam Rice'],
     slug: 'special-rajabhogam-rice',
-    h1: 'Special Rajabhogam Rice – 26 kg',
-    title: 'Special Rajabhogam Rice 26 kg – Buy Online | Chennai Rice',
-    description: 'Buy Special Rajabhogam Rice 26 kg from Chennai Rice, Erode. Kitchidi Ponni in our red pack for daily family meals. Home & wholesale delivery.',
+    h1: 'Special Rajabhogam Rice for Family Meals',
+    title: 'Special Rajabhogam Rice | Chennai Rice',
+    description: 'Discover Special Rajabhogam Rice from Chennai Rice for everyday family meals. Explore the available pack sizes and product details.',
+    keywords: 'Special Rajabhogam rice',
   },
   'thaaram': {
     about: "A good nei kitchadi needs rice that will not break down in the pot. Thaaram has strong grains with superior taste and rich aroma, made for ghee rich kitchadi, ven pongal and sakkarai pongal. Cook it for Pongal and Margazhi mornings, Sunday breakfasts, poojas at home or any day you want a festive dish on the table. Adjust water to the texture your family likes.",
@@ -267,9 +281,10 @@ export const PRODUCT_SEO = {
     line: 'Everyday rice for traditional Tamil lunch and dinner.',
     dishes: ['Kuzhambu Rice', 'Rasam Rice', 'Curd Rice'],
     slug: 'viruchagam-ponni-rice',
-    h1: 'Viruchagam Ponni Rice – 26 kg',
-    title: 'Viruchagam Ponni Rice 26 kg – Buy Online | Chennai Rice',
-    description: 'Buy Viruchagam Ponni Rice 26 kg from Chennai Rice, Erode. Poompuhar Ponni from RNR paddy for traditional Tamil meals. Home & wholesale delivery.',
+    h1: 'Viruchagam Ponni Rice for Traditional Meals',
+    title: 'Viruchagam Ponni Rice | Chennai Rice',
+    description: 'Explore Viruchagam Ponni Rice from Chennai Rice, made for traditional family meals. View product details and available pack sizes.',
+    keywords: 'Viruchagam Ponni rice',
   },
   'chennai-bullets': {
     about: "Chennai Bullets is aromatic rice made for big kitchens and bigger gatherings. It is ideal for joint families, homes that cook for many every day, and occasions such as poojas, housewarmings, family functions and festival feasts. Serve it with sambar, kara kuzhambu and a full spread of sides, and enjoy rich aroma in every meal.",
@@ -287,9 +302,10 @@ export const PRODUCT_SEO = {
     line: 'Everyday rice for real veettu saapadu, lunch and dinner.',
     dishes: ['Veettu Saapadu', 'Sambar Rice', 'Curd Rice'],
     slug: 'kitchidi-ponni-rice',
-    h1: 'Kitchidi Ponni Rice – 26 kg',
-    title: 'Kitchidi Ponni Rice 26 kg – Buy Online | Chennai Rice',
-    description: 'Buy Kitchidi Ponni Rice 26 kg from Chennai Rice, Erode. Aged for a year, soft and non-sticky for everyday meals. Home & wholesale delivery.',
+    h1: 'Kitchidi Ponni Rice for Everyday South Indian Meals',
+    title: 'Kitchidi Ponni Rice | Chennai Rice',
+    description: 'Explore Chennai Rice Kitchidi Ponni, an aged rice variety for everyday South Indian meals. View available pack sizes and ordering options.',
+    keywords: 'Kitchidi Ponni rice',
   },
   'special-idly-rice': {
     about: "Soft idlis start with the right rice. Special Idly Rice, in the pink pack, is made for grinding batter at home with urad dal. Steam it into soft, fluffy idlis, spread it into crisp golden dosas, or use it for kuzhi paniyaram and uthappam. Perfect for weekday breakfasts, Sunday tiffin and evening dinners. Adjust soaking and fermentation time to suit your kitchen and weather.",
@@ -306,6 +322,23 @@ export const PRODUCT_SEO = {
 const ID_BY_SLUG = Object.fromEntries(Object.entries(PRODUCT_SEO).map(([id, s]) => [s.slug, id]))
 
 /** The public URL of a product page, from its shop ID. */
+/** The product's plain name ("Kitchidi Ponni Rice") for breadcrumbs and Product data, whatever its H1 says. */
+export function productName(id) {
+  const p = PRODUCT_SEO[id]
+  if (!p) return ''
+  if (/ – \d+ kg$/.test(p.h1)) return p.h1.replace(/ – \d+ kg$/, '')
+  return /rice$/i.test(p.name) ? p.name : `${p.name} Rice`
+}
+
+/** The page's keywords (SEO Optimization Plan) for a path, or the home page's. */
+export function keywordsFor(pathname) {
+  const path = pathname.replace(/\/+$/, '') || '/'
+  const page = Object.values(PAGE_META).find((p) => p.path === path)
+  if (page) return page.keywords || PAGE_META.home.keywords
+  const id = Object.keys(PRODUCT_SEO).find((k) => productPath(k) === path)
+  return (id && (PRODUCT_SEO[id].keywords || `${productName(id)}, Chennai Rice, buy rice online`)) || PAGE_META.home.keywords
+}
+
 export function productPath(id) {
   return `/products/${PRODUCT_SEO[id]?.slug || id}`
 }

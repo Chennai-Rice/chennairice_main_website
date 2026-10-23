@@ -23,7 +23,7 @@ const DIST = join(ROOT, 'dist')
 const SITE = 'https://chennairiceindustries.com'
 const src = (p) => pathToFileURL(join(ROOT, 'frontend', 'src', p)).href
 
-const { PAGE_META, PRODUCT_SEO, productPath } = await import(src('seo.js'))
+const { PAGE_META, PRODUCT_SEO, productPath, productName, keywordsFor } = await import(src('seo.js'))
 const { FOOTER } = await import(src('data/content.js'))
 const { LANDING } = await import(src('data/landing.js'))
 
@@ -87,7 +87,7 @@ function breadcrumb(...trail) {
 }
 const crumb = (key) => breadcrumb([PAGE_META[key].h1, PAGE_META[key].path])
 
-const productNames = Object.entries(PRODUCT_SEO).map(([id, p]) => [p.h1.replace(/ – \d+ kg$/, ''), productPath(id)])
+const productNames = Object.keys(PRODUCT_SEO).map((id) => [productName(id), productPath(id)])
 
 const SCHEMA = {
   home: [organization, localBusiness, website],
@@ -114,7 +114,7 @@ for (const [key, page] of Object.entries(LANDING)) {
   const packs = (page.productIds || []).filter((id) => PRODUCT_SEO[id])
   if (packs.length) {
     items.push({ '@type': 'ItemList', name: page.productsHeading, itemListElement: packs.map((id, i) => ({
-      '@type': 'ListItem', position: i + 1, name: PRODUCT_SEO[id].h1.replace(/ – \d+ kg$/, ''), url: abs(productPath(id)),
+      '@type': 'ListItem', position: i + 1, name: productName(id), url: abs(productPath(id)),
     })) })
   }
   if (page.faqs?.length) {
@@ -158,9 +158,12 @@ function render({ path, title, description, noindex, image, lang, schema = [] })
   swap(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${esc(title)}" />`)
   swap(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/>/, `<meta property="og:description" content="${esc(description)}" />`)
   swap(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${esc(url)}" />`)
+  // Robots and keywords on every page (index.html carries the defaults).
+  swap(/<meta name="robots" content="[^"]*" \/>/, `<meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large'}" />`)
+  swap(/<meta name="keywords" content="[^"]*" \/>/, `<meta name="keywords" content="${esc(keywordsFor(path))}" />`)
   if (image) swap(/<meta property="og:image" content="[^"]*" \/>/, `<meta property="og:image" content="${esc(SITE + image)}" />`)
   const extra = [
-    noindex ? '<meta name="robots" content="noindex, follow" />' : `<link rel="canonical" href="${esc(url)}" />`,
+    noindex ? '' : `<link rel="canonical" href="${esc(url)}" />`,
     ...(ALTERNATE[path] ? [
       `<link rel="alternate" hreflang="en" href="${esc(abs(ALTERNATE[path].en))}" />`,
       `<link rel="alternate" hreflang="ta" href="${esc(abs(ALTERNATE[path].ta))}" />`,
@@ -185,7 +188,7 @@ for (const [id, p] of Object.entries(PRODUCT_SEO)) {
   written.push(render({
     path, title: p.title, description: p.description, image: IMAGE[id],
     // The Product schema with live prices is added by the product page itself.
-    schema: [breadcrumb([PAGE_META.products.h1, PAGE_META.products.path], [p.h1.replace(/ – \d+ kg$/, ''), path])],
+    schema: [breadcrumb([PAGE_META.products.h1, PAGE_META.products.path], [productName(id), path])],
   }))
 }
 console.log(`prerender-head: ${written.length} pages`)

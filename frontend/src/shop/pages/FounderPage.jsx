@@ -82,6 +82,7 @@ export default function FounderPage() {
               <h1 id="founder-heading" className="fp-hero-title">
                 {/* "Meet Our Founder" over the founder's name, so the H1
                     names him (SEO sheet, Oct 2026). */}
+                <span className="visually-hidden">The Vision and Legacy Behind Chennai Rice Industries: </span>
                 <span className="fp-hero-title-lead">{titleLead} {titleLast}</span>
                 <span className="fp-hero-title-strong">{FOUNDER.name}</span>
               </h1>
