@@ -148,6 +148,8 @@ writeFileSync(join(DIST, 'app.html'), shell)
 function render({ path, title, description, noindex, image, lang, schema = [] }) {
   const url = abs(path)
   let html = shell
+  // The first-paint headline (index.html #boot) belongs to the home page only.
+  if (path !== '/') html = html.replace(/<div id="boot"[\s\S]*?<\/p>\s*<\/div>/, '')
   if (lang && lang !== 'en') html = html.replace('<html lang="en">', `<html lang="${lang}">`)
   const swap = (re, value) => {
     if (!re.test(html)) throw new Error(`prerender-head: ${re} not found in index.html`)
