@@ -550,3 +550,26 @@ button.contest-form-note { background: none; border: 0; cursor: pointer; text-de
 }
 .expo-chip.is-on { color: #fff; background: var(--cp-maroon); border-color: var(--cp-maroon); font-weight: 600; }
 .expo-chip:focus-visible { outline: 3px solid rgba(217, 184, 102, 0.6); outline-offset: 2px; }
+
+/* Expo form, wide layout: two columns on desktop so it fits without a scrollbar. */
+.contest-pop.contest-pop--form.contest-pop--expo {
+  width: min(760px, 100%);
+  scrollbar-width: none; /* no scrollbar; it still scrolls on a short screen */
+}
+.contest-pop--expo::-webkit-scrollbar { display: none; }
+.contest-pop--expo .contest-pop-body { padding: 30px 44px 22px; gap: 8px; }
+.contest-pop--expo .contest-form-title { font-size: clamp(1.7rem, 3vw, 2.1rem); }
+.contest-pop--expo .contest-form {
+  max-width: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 18px;
+}
+.contest-pop--expo .contest-form > .expo-wide,
+.contest-pop--expo .contest-form > .contest-form-error,
+.contest-pop--expo .contest-form > .contest-form-submit,
+.contest-pop--expo .contest-form > .contest-form-note { grid-column: 1 / -1; }
+@media (max-width: 720px) {
+  .contest-pop.contest-pop--form.contest-pop--expo { width: min(460px, 100%); }
+  .contest-pop--expo .contest-pop-body { padding: 26px 20px calc(20px + env(safe-area-inset-bottom)); }
+  .contest-pop--expo .contest-form { grid-template-columns: 1fr; gap: 10px; }
+}

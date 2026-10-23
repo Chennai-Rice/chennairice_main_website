@@ -142,7 +142,7 @@ function ExpoForm({ firstRef, onClose }) {
                   <input required autoComplete="address-level2" maxLength={100} placeholder="City / area" value={form.location} onChange={set('location')} />
                 </label>
 
-                <div className="contest-form-field">
+                <div className="contest-form-field expo-wide">
                   <span>I am a</span>
                   <div className="expo-chips" role="group" aria-label="I am a">
                     {WHO.map((t) => (
@@ -153,7 +153,7 @@ function ExpoForm({ firstRef, onClose }) {
                   </div>
                 </div>
 
-                <div className="contest-form-field">
+                <div className="contest-form-field expo-wide">
                   <span>Requirement</span>
                   <div className="expo-chips" role="group" aria-label="Requirement">
                     {NEEDS.map((n) => (
