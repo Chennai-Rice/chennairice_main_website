@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { staffJson } from '../../services/staffAuth.js'
 import { Confirm, Icon } from './shared.jsx'
+import AnalystOverview from './AnalystOverview.jsx'
 import './analyst.css'
+import './analyst-overview.css'
 
 // The Analyst page (owner and IT team): the KPIs of "Sales Dashboard KPIs"
 // (Oct 2026) — sales, leads and conversion, campaigns, delivery and location,
@@ -16,6 +18,7 @@ const SOURCE = {
   expo: 'Expo QR', other_website: 'Other website', direct: 'Direct / typed the address',
 }
 const TABS = [
+  { key: 'overview', label: 'Overview' },
   { key: 'ceo', label: 'CEO / MD report' },
   { key: 'sales', label: 'Sales' },
   { key: 'leads', label: 'Leads & conversion' },
@@ -475,7 +478,7 @@ function SettingsTab({ settings, period, say, onAuthError, reload }) {
 
 export default function AnalystView({ say, onAuthError, name = '' }) {
   const firstName = String(name || '').trim().split(/\s+/)[0]
-  const [tab, setTab] = useState('ceo')
+  const [tab, setTab] = useState('overview')
   const [range, setRange] = useState('month')
   const [period, setPeriod] = useState(() => preset('month'))
   const [rice, setRice] = useState('')
@@ -541,6 +544,7 @@ export default function AnalystView({ say, onAuthError, name = '' }) {
       {tab === 'settings'
         ? (settings ? <SettingsTab settings={settings} period={period} say={say} onAuthError={onAuthError} reload={reload} /> : <p className="wh-empty">Loading…</p>)
         : !data ? <p className="wh-empty">Loading…</p>
+          : tab === 'overview' ? <AnalystOverview data={data} go={setTab} periodLabel={`${dayFmt(period.from)} – ${dayFmt(period.to)}`} />
           : tab === 'ceo' ? <CeoReport ceo={data.ceo} />
             : tab === 'sales' ? <SalesTab data={data} rice={rice} />
               : tab === 'leads' ? <LeadsTab data={data} />

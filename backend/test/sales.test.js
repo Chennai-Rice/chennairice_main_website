@@ -1944,6 +1944,8 @@ test('Analyst: owner sees sales, leads, campaigns and delivery KPIs; rice type, 
   const ig = a.leads.bySource.find((s) => s.source === 'Instagram')
   assert.ok(ig.won >= 1, JSON.stringify(a.leads.bySource))
   assert.equal(a.leads.funnel[0].stage, 'New lead')
+  assert.ok(a.leads.perDay.length === 1 && a.leads.perDay[0].leads >= 1 && a.leads.perDay[0].won >= 1)
+  assert.ok(a.recentOrders.some((o) => o.customer === 'Analyst Anu' && o.amount > 0 && / kg/.test(o.items)))
   const camp = a.campaigns.byCampaign.find((c) => c.campaign === 'Diwali Reels')
   assert.ok(camp && camp.spend === 500 && camp.leads >= 1 && camp.costPerLead > 0, JSON.stringify(a.campaigns))
   assert.ok(a.ceo.monthToDate.orders >= 1 && 'pendingDispatch' in a.ceo)

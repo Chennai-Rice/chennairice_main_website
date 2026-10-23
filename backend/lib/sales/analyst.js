@@ -167,10 +167,35 @@ async function leadJourneys(p) {
     { stage: 'Won (paid order)', n: won.length },
   ]
   const allDays = won.map((r) => Math.max(0, (new Date(r.won_at) - new Date(r.created_at)) / 86400000))
+  // Leads per day, and how many of them became a paid order (the overview chart).
+  const byDay = new Map()
+  for (const r of rows) {
+    const day = new Date(new Date(r.created_at).getTime() + IST).toISOString().slice(0, 10)
+    const d = byDay.get(day) || { leads: 0, won: 0 }
+    d.leads += 1
+    if (r.won_at) d.won += 1
+    byDay.set(day, d)
+  }
+  const perDay = Array.from({ length: p.days }, (_, i) => {
+    const day = addDays(p.from, i)
+    return { day, leads: byDay.get(day)?.leads || 0, won: byDay.get(day)?.won || 0 }
+  })
   return {
-    bySource, funnel,
+    bySource, funnel, perDay,
     daysToConvert: allDays.length ? Math.round((allDays.reduce((a, c) => a + c, 0) / allDays.length) * 10) / 10 : null,
   }
+}
+
+/** The period's orders, newest first (the overview's order table). */
+async function recentOrders(p) {
+  const { rows } = await query(
+    `select o.order_number as "order", o.contact_name as customer, o.status, o.payment_status as payment,
+            o.total_paise, o.placed_at as "placedAt", coalesce(o.shipping_address->>'city', '') as city,
+            (select string_agg(i.quantity || ' × ' || i.product_name || ' ' || (i.pack_kg::float)::text || ' kg', ', ' order by i.product_name)
+               from order_items i where i.order_id = o.id) as items
+       from orders o where o.placed_at >= $1 and o.placed_at < $2
+      order by o.placed_at desc limit 100`, [p.fromTs, p.toTs])
+  return rows.map((r) => ({ ...r, amount: rupees(r.total_paise), total_paise: undefined }))
 }
 
 /** NeoDove: people called in the period, by caller. */
@@ -346,6 +371,7 @@ export async function analystReport(q = {}) {
     sales(p, rice), newLeads(p), leadJourneys(p), contacted(p), overdueFollowUps(), lostReasons(p),
     campaigns(p), delivery(p), leadsByLocation(p), monthlyTarget(),
   ])
+  const recent = await recentOrders(p)
   // Kg against the monthly target: this month so far, whatever period is shown.
   const today = istToday()
   const month = await sales(analystPeriod({ from: today.slice(0, 8) + '01', to: today }), rice, false)
@@ -365,10 +391,11 @@ export async function analystReport(q = {}) {
     leads: {
       newLeads: leads, contacted: called,
       conversion: pct(s.orders, leads.total),
-      bySource: journeys.bySource, funnel: journeys.funnel, daysToConvert: journeys.daysToConvert,
+      bySource: journeys.bySource, funnel: journeys.funnel, perDay: journeys.perDay, daysToConvert: journeys.daysToConvert,
       overdue, lost, byLocation,
     },
     campaigns: camp,
+    recentOrders: recent,
     delivery: del,
     ceo: await ceoNumbers(overdue.total, del.pendingDispatch.total),
   }
