@@ -79,7 +79,7 @@ export default function AboutPage() {
             <div className="ab-heritage-intro">
               <figure className="ab-heritage-photo reveal reveal--left">
                 <img
-                  src="/assets/about/heritage-generations.png"
+                  src="/assets/about/heritage-generations.webp"
                   alt="Three generations of the family, from grandfather to grandson, each holding rice or paddy in the fields"
                   loading="lazy"
                 />
@@ -123,7 +123,7 @@ export default function AboutPage() {
             <figure className="ab-storage-photo reveal reveal--left">
               <div className="ab-storage-photo-frame">
                 <img
-                  src="/assets/about/silos.png"
+                  src="/assets/about/silos.webp"
                   alt="Aerial view of the paddy storage silo farm"
                   loading="lazy"
                 />

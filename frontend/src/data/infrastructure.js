@@ -7,21 +7,21 @@
    ============================================================ */
 
 export const INFRA_ASSETS = {
-  heroImage: '/assets/infrastructure/hero-aerial.png',
-  facilityAerial: '/assets/infrastructure/facility-aerial.png',
-  paddyMacro: '/assets/infrastructure/paddy-macro.png',
-  paddySelection: '/assets/infrastructure/paddy-selection.png',
-  qualityInspection: '/assets/infrastructure/quality-inspection.png',
-  procurement: '/assets/infrastructure/procurement.png',
-  transportation: '/assets/infrastructure/transportation.png',
+  heroImage: '/assets/infrastructure/hero-aerial.webp',
+  facilityAerial: '/assets/infrastructure/facility-aerial.webp',
+  paddyMacro: '/assets/infrastructure/paddy-macro.webp',
+  paddySelection: '/assets/infrastructure/paddy-selection.webp',
+  qualityInspection: '/assets/infrastructure/quality-inspection.webp',
+  procurement: '/assets/infrastructure/procurement.webp',
+  transportation: '/assets/infrastructure/transportation.webp',
   siloAerial: '/assets/infrastructure/silo-aerial.jpg',
   warehouse: '/assets/infrastructure/warehouse.jpg',
   truck: '/assets/infrastructure/truck.jpg',
   fieldLandscape: '/assets/infrastructure/field-landscape.jpg',
   /* showcase section — existing photography reused, no new files needed */
-  processingUnit: '/assets/about/plant.png',
-  siloYard: '/assets/about/silos.png',
-  packagingUnit: '/assets/about/factory.png',
+  processingUnit: '/assets/about/plant.webp',
+  siloYard: '/assets/about/silos.webp',
+  packagingUnit: '/assets/about/factory.webp',
   processing: {
     'raw-paddy': '/assets/infrastructure/process-raw-paddy.jpg',
     'pre-cleaning': '/assets/infrastructure/process-pre-cleaning.jpg',
@@ -163,16 +163,16 @@ export const SILO_LOCATIONS = [
 export const PACKAGING_PRODUCTS = [
   {
     name: 'White Ponni Rice',
-    image: '/assets/products/product-2.png',
-    fallback: '/assets/shop/pack-red.png',
+    image: '/assets/products/product-2.webp',
+    fallback: '/assets/shop/pack-red.webp',
   },
   {
     name: 'Idly Rice',
-    image: { src: '/assets/products/product-4.png', fallback: '/assets/products/product-1.png' },
+    image: { src: '/assets/products/product-4.webp', fallback: '/assets/products/product-1.webp' },
   },
   {
     name: 'Special Rajabhogam',
-    image: '/assets/shop/pack-premium.png',
+    image: '/assets/shop/pack-premium.webp',
   },
 ]
 

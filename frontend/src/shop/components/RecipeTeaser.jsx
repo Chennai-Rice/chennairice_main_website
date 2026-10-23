@@ -5,7 +5,7 @@ const DEFAULT_DISHES = ["Curd Rice", "Sambar Rice", "Idly"];
 
 // Photos we have, matched to each dish by what's on the plate.
 const PHOTOS = [
-  { match: /idl|dosa|uthappam/i, image: "/assets/about/idly.png" },
+  { match: /idl|dosa|uthappam/i, image: "/assets/about/idly.webp" },
   { match: /curd/i, image: "/assets/about/curd-rice.webp" },
   { match: /pongal|kitchadi|banana|festival|pooja|gathering|feast/i, image: "/assets/about/food.jpg" },
   { match: /sambar|rasam|kuzhambu|saapadu|joint family/i, image: "/assets/about/sambar.jpg" },

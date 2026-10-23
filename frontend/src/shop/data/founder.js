@@ -10,7 +10,7 @@ export const FOUNDER = {
   name: "M. S. Tamilselvan",
   title: "Founder & Chairman",
   company: "Chennai Rice Industries India (P) Ltd",
-  photo: "/assets/about/founder-nobg.png",
+  photo: "/assets/about/founder-nobg.webp",
   photoAlt: "M. S. Tamilselvan, Founder and Chairman of Chennai Rice Industries",
 
   heroStatsEyebrow: "The Scale of His Vision",
