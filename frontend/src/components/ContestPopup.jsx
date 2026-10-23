@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { currentAttribution, isAdVisit } from '../services/attribution.js'
+import { currentAttribution, isAdVisit, isExpoVisit } from '../services/attribution.js'
 import { trackMetaEvent } from '../services/metaPixel.js'
 import './contestpopup.css'
 
@@ -46,6 +46,12 @@ function hideFor(ms) {
  * with the ad they came from (see AdSignup below).
  */
 export default function ContestPopup() {
+  // Visitors from the expo QR code get the expo form (ExpoPopup) instead.
+  if (isExpoVisit()) return null
+  return <ContestPopupInner />
+}
+
+function ContestPopupInner() {
   const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
   const closeRef = useRef(null)
