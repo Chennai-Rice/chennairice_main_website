@@ -21,13 +21,13 @@ const VARIETY_WORDS = /\b(ponni|sappadu|rajabhogam|kitchadi|kitchidi)\b/i;
 // verified copy, reused rather than re-described for the product page.
 // The journey shown on every product page (order set by the owner, Oct 2026).
 export const GRAIN_JOURNEY = [
-  { num: "01", title: "Paddy Selection", text: "Paddy is chosen batch by batch from growing regions known for the varieties we mill.", image: "/assets/infrastructure/paddy-selection.png" },
-  { num: "02", title: "Procurement", text: "Each lot is bought and recorded so varieties stay separate and traceable from purchase onwards.", image: "/assets/infrastructure/procurement.png" },
-  { num: "03", title: "Quality Testing", text: "Moisture, purity and grain condition are tested on arrival; only lots that pass move forward.", image: "/assets/infrastructure/quality-inspection.png" },
-  { num: "04", title: "Storage", text: "Paddy rests in our silos under monitored, temperature-controlled conditions until it is milled.", image: "/assets/about/silos.png" },
-  { num: "05", title: "Parboiled", text: "Paddy is soaked, steamed and dried so the grain stays firm, cooks separate and keeps its goodness.", image: "/assets/infrastructure/paddy-macro.png" },
-  { num: "06", title: "Milling", text: "Cleaning, husking, polishing, grading and colour sorting on our milling line at Erode.", image: "/assets/about/factory.png" },
-  { num: "07", title: "Packing", text: "Finished rice is checked once more, then packed and sealed in our bags for dispatch.", image: "/assets/shop/pack-premium.png" },
+  { num: "01", title: "Paddy Selection", text: "Paddy is chosen batch by batch from growing regions known for the varieties we mill.", image: "/assets/infrastructure/paddy-selection.webp" },
+  { num: "02", title: "Procurement", text: "Each lot is bought and recorded so varieties stay separate and traceable from purchase onwards.", image: "/assets/infrastructure/procurement.webp" },
+  { num: "03", title: "Quality Testing", text: "Moisture, purity and grain condition are tested on arrival; only lots that pass move forward.", image: "/assets/infrastructure/quality-inspection.webp" },
+  { num: "04", title: "Storage", text: "Paddy rests in our silos under monitored, temperature-controlled conditions until it is milled.", image: "/assets/about/silos.webp" },
+  { num: "05", title: "Parboiled", text: "Paddy is soaked, steamed and dried so the grain stays firm, cooks separate and keeps its goodness.", image: "/assets/infrastructure/paddy-macro.webp" },
+  { num: "06", title: "Milling", text: "Cleaning, husking, polishing, grading and colour sorting on our milling line at Erode.", image: "/assets/about/factory.webp" },
+  { num: "07", title: "Packing", text: "Finished rice is checked once more, then packed and sealed in our bags for dispatch.", image: "/assets/shop/pack-premium.webp" },
   { num: "08", title: "Customer", text: "From our mill in Erode to family kitchens and tables across Tamil Nadu.", image: "/assets/about/food.jpg" },
 ];
 

@@ -30,7 +30,7 @@ export default function PromiseCta() {
 
         <figure className="ab-cta-media reveal reveal--right d1">
           <img
-            src="/assets/about/team-silhouette.png"
+            src="/assets/about/team-silhouette.webp"
             alt="Chennai Rice Industries' workforce standing together in a paddy field, with the city skyline behind them"
             loading="lazy"
           />

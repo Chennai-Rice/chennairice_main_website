@@ -161,7 +161,7 @@ export default function FounderPage() {
         <section className="fp-quote-banner fp-shell reveal">
           <img
             className="fp-quote-banner-media"
-            src="/assets/about/3dhand.png"
+            src="/assets/about/3dhand.webp"
             alt=""
             aria-hidden="true"
           />
