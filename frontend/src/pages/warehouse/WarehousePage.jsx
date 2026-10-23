@@ -14,6 +14,7 @@ import InventoryView from './InventoryView.jsx'
 import TrackerView from './TrackerView.jsx'
 import { CustomersView, ReportsView, SettingsView } from './OtherViews.jsx'
 import AccountsView from './AccountsView.jsx'
+import AnalystView from './AnalystView.jsx'
 import './warehouse.css'
 import './warehouse-pages.css'
 
@@ -33,11 +34,12 @@ const NAV = [
   { id: 'accounts', label: 'Accounts', icon: 'print', perm: 'accounts.view' },
   { id: 'customers', label: 'Customers', icon: 'users', perm: 'warehouse.view' },
   { id: 'reports', label: 'Reports', icon: 'calendar', perm: 'warehouse.view' },
+  { id: 'analyst', label: 'Analyst', icon: 'reports', perm: 'analyst.view' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
 ]
 const TITLES = {
   dashboard: 'Dashboard', orders: 'Orders', dispatch: 'Dispatch', deliveries: 'Deliveries', tracker: 'Tracker Upload', returns: 'Returns & Issues',
-  inventory: 'Products & Inventory', accounts: 'Accounts', customers: 'Customers', reports: 'Reports', settings: 'Settings',
+  inventory: 'Products & Inventory', accounts: 'Accounts', customers: 'Customers', reports: 'Reports', analyst: 'Analyst', settings: 'Settings',
 }
 // Letters only, so "Owner (local)" gives "OL", not "O(".
 const initials = (name) =>
@@ -375,6 +377,7 @@ export default function WarehousePage() {
             <InventoryView say={say} onAuthError={onAuthError} permissions={me.permissions || []} initialTab={sub || undefined} />
           )}
           {shown === 'customers' && <CustomersView say={say} onAuthError={onAuthError} onOpenOrders={openOrders} />}
+          {shown === 'analyst' && <AnalystView say={say} onAuthError={onAuthError} />}
           {shown === 'reports' && <ReportsView say={say} onAuthError={onAuthError} money={money} canDeleteExpo={perms.includes('expo.delete')} />}
           {shown === 'settings' && (
             <SettingsView me={me} prefs={prefs} setPrefs={setPrefs} location={fulfilment?.name} onSignOut={signOut} say={say} onAuthError={onAuthError} />

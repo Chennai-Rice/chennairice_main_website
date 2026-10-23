@@ -34,6 +34,7 @@ import { listIssuedIds, issuedIdsCsv, checkRegister } from './idregister.js'
 import { invoiceHtml, packingSlipHtml } from './documents.js'
 import { recordVisit, sourcesReport, sourceOrders, saveContestLead, startContestLead, contestLeads } from './attribution.js'
 import { saveExpoLead, listExpoLeads, deleteExpoLead } from './expo.js'
+import { analystReport, analystSettings, setRiceType, setMonthlyTarget, addAdSpend, deleteAdSpend } from './analyst.js'
 import { checkAutomationKey, automationContacts } from './automation.js'
 import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
@@ -383,6 +384,27 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/warehouse/reports', perm('warehouse.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await warehouseReport(req.query))
+  }))
+  // The Analyst page: KPIs for a period (?from&to as India dates, ?rice=raw|idli|boiled), and its settings.
+  admin.get('/analyst', perm('analyst.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await analystReport(req.query))
+  }))
+  admin.get('/analyst/settings', perm('analyst.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await analystSettings(req.query))
+  }))
+  admin.put('/analyst/rice-type', perm('analyst.view'), wrap(async (req, res) => {
+    res.json(await setRiceType(req.staff, req.body?.slug, req.body?.riceType))
+  }))
+  admin.put('/analyst/target', perm('analyst.view'), wrap(async (req, res) => {
+    res.json(await setMonthlyTarget(req.staff, req.body?.kgPerMonth))
+  }))
+  admin.post('/analyst/ad-spend', perm('analyst.view'), wrap(async (req, res) => {
+    res.status(201).json(await addAdSpend(req.staff, req.body))
+  }))
+  admin.delete('/analyst/ad-spend/:id', perm('analyst.view'), wrap(async (req, res) => {
+    res.json(await deleteAdSpend(req.staff, req.params.id))
   }))
   admin.get('/warehouse/orders.csv', permAny('warehouse.view', 'accounts.view'), wrap(async (req, res) => {
     assertTab(req.query.tab)

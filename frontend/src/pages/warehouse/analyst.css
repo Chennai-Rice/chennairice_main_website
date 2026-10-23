@@ -1,0 +1,90 @@
+/* The Analyst page (AnalystView.jsx). Builds on the panel's own wh-* pieces
+   (KPI tiles, panels, tabs, bars, chart); these are the extras it needs. */
+
+.an-page { display: grid; gap: 16px; min-width: 0; }
+
+.an-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 18px;
+}
+.an-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.an-dates { display: flex; flex-wrap: wrap; gap: 10px; }
+.an-period { margin-left: auto; align-self: center; }
+.an-tabs { margin: 0; }
+
+.an-kpis { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+
+.an-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.an-panel { min-width: 0; }
+.an-panel--wide { grid-column: 1 / -1; }
+.an-note { margin: -4px 0 12px; }
+
+.an-table-wrap { overflow-x: auto; }
+.an-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.an-table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--wh-muted, #7a6a5a);
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(110, 20, 32, 0.12);
+  white-space: nowrap;
+}
+.an-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(110, 20, 32, 0.06);
+  vertical-align: top;
+  color: #3a2a22;
+}
+.an-table .is-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.an-table tr.is-alert td { color: var(--wh-bad, #b42318); font-weight: 600; }
+.an-ceo td:nth-child(3), .an-ceo td:nth-child(4) { font-weight: 700; }
+.an-bad { color: var(--wh-bad, #b42318); font-weight: 600; }
+
+.an-share { display: inline-flex; align-items: center; gap: 8px; }
+.an-share > span { display: inline-block; height: 8px; border-radius: 0 4px 4px 0; min-width: 2px; max-width: 70px; }
+
+.an-bars .wh-hbar-label { overflow-wrap: anywhere; }
+
+.an-trend { margin: 4px 0 0; }
+.an-trend-x { display: flex; justify-content: space-between; font-size: 12px; color: var(--wh-muted, #7a6a5a); padding: 4px 0 0 44px; }
+
+.an-target {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid rgba(110, 20, 32, 0.1);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+.an-target-track { height: 10px; background: rgba(110, 20, 32, 0.08); border-radius: 999px; overflow: hidden; }
+.an-target-track > span { display: block; height: 100%; border-radius: 999px; }
+.an-target-value { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.an-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  align-items: end;
+  gap: 10px 12px;
+  margin-bottom: 14px;
+}
+.an-form--row { grid-template-columns: minmax(160px, 260px) auto; justify-content: start; }
+.an-add { margin-top: 12px; }
+
+@media (max-width: 900px) {
+  .an-grid { grid-template-columns: 1fr; }
+  .an-period { margin-left: 0; }
+  .an-target { grid-template-columns: 1fr; }
+}
+.an-filters .wh-select { min-width: 140px; max-width: 200px; }
+.an-share > span { max-width: none; }

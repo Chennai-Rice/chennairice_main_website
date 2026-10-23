@@ -37,6 +37,8 @@ const PERMISSIONS = {
   'order.resolve': ['owner', 'admin', 'it', 'sales'],
   // Deleting a cancelled, never-paid order for good: owner and IT team only.
   'order.delete': ['owner', 'it'],
+  // The Analyst page (sales, leads, campaigns, delivery KPIs; ad spend, rice types, kg target): owner and IT team only.
+  'analyst.view': ['owner', 'it'],
   // Deleting an expo QR lead (a test or a mistake): owner and IT team only.
   'expo.delete': ['owner', 'it'],
   // The website's contact and bulk-order enquiries (/admin → Enquiries).

@@ -1920,3 +1920,47 @@ test('expo leads: only the owner and IT team can delete one; a second delete say
   const { rows: log } = await db.query(`select details from staff_audit_log where action = 'expo.lead.delete' order by id desc limit 1`)
   assert.equal(log[0].details.phone, '9876522077')
 })
+
+test('Analyst: owner sees sales, leads, campaigns and delivery KPIs; rice type, kg target and ad spend are editable; other roles are refused', async () => {
+  assert.equal((await api('GET', '/api/admin/analyst', { token: tokens.sales })).status, 403)
+  // A sign-up from an Instagram ad campaign who then buys.
+  const signup = await api('POST', '/api/contest/lead', { body: { name: 'Analyst Anu', phone: '9500077777', email: 'anu@example.com',
+    attribution: { utm_source: 'ig', utm_medium: 'paid_social', utm_campaign: 'Diwali Reels', utm_content: 'Reel A', fbclid: true } }, headers: { 'X-Forwarded-For': '10.90.0.1' } })
+  assert.equal(signup.status, 200)
+  await buy([{ id: 'alibaba', qty: 1 }], buyer({ name: 'Analyst Anu', email: 'anu@example.com', phone: '9500077777' }))
+  const today = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
+  assert.equal((await api('POST', '/api/admin/analyst/ad-spend', { token: OWNER, body: { spentOn: today, platform: 'meta', campaign: 'Diwali Reels', ad: 'Reel A', amount: 500 } })).status, 201)
+  assert.equal((await api('PUT', '/api/admin/analyst/target', { token: OWNER, body: { kgPerMonth: 1000 } })).status, 200)
+
+  const r = await api('GET', `/api/admin/analyst?from=${today}&to=${today}`, { token: OWNER })
+  assert.equal(r.status, 200, JSON.stringify(r.body))
+  const a = r.body
+  assert.ok(a.sales.orders >= 1 && a.sales.revenue > 0 && a.sales.kg > 0)
+  assert.ok(a.sales.byRice.find((x) => x.riceType === 'boiled').orders >= 1) // everything but Special Idly Rice starts as Boiled
+  assert.ok(a.sales.byProduct.some((p) => p.slug === 'alibaba'))
+  assert.equal(a.sales.perDay.length, 1)
+  assert.equal(a.target.kgPerMonth, 1000)
+  assert.ok(a.leads.newLeads.bySource.Instagram >= 1)
+  const ig = a.leads.bySource.find((s) => s.source === 'Instagram')
+  assert.ok(ig.won >= 1, JSON.stringify(a.leads.bySource))
+  assert.equal(a.leads.funnel[0].stage, 'New lead')
+  const camp = a.campaigns.byCampaign.find((c) => c.campaign === 'Diwali Reels')
+  assert.ok(camp && camp.spend === 500 && camp.leads >= 1 && camp.costPerLead > 0, JSON.stringify(a.campaigns))
+  assert.ok(a.ceo.monthToDate.orders >= 1 && 'pendingDispatch' in a.ceo)
+  assert.ok(a.delivery.pendingDispatch.total >= 1)
+
+  // Only Boiled: the split follows the rice type; changing a product's type moves it.
+  const boiled = (await api('GET', `/api/admin/analyst?from=${today}&to=${today}&rice=boiled`, { token: OWNER })).body
+  assert.ok(boiled.sales.orders >= 1)
+  assert.equal((await api('PUT', '/api/admin/analyst/rice-type', { token: OWNER, body: { slug: 'alibaba', riceType: 'raw' } })).status, 200)
+  const raw = (await api('GET', `/api/admin/analyst?from=${today}&to=${today}&rice=raw`, { token: OWNER })).body
+  assert.ok(raw.sales.byProduct.some((p) => p.slug === 'alibaba'))
+  assert.equal((await api('PUT', '/api/admin/analyst/rice-type', { token: OWNER, body: { slug: 'alibaba', riceType: 'boiled' } })).status, 200)
+  assert.equal((await api('PUT', '/api/admin/analyst/rice-type', { token: OWNER, body: { slug: 'special-idly-rice', riceType: 'basmati' } })).status, 400)
+
+  const settings = (await api('GET', `/api/admin/analyst/settings?from=${today}&to=${today}`, { token: OWNER })).body
+  assert.ok(settings.products.length >= 10)
+  const entry = settings.adSpend.find((s) => s.campaign === 'Diwali Reels')
+  assert.equal(entry.amount, 500)
+  assert.equal((await api('DELETE', `/api/admin/analyst/ad-spend/${entry.id}`, { token: OWNER })).status, 200)
+})
