@@ -139,8 +139,10 @@ export default function BulkOrderPage() {
         </div>
         <h1 className="page-title">{PAGE_META.bulkOrder.h1}</h1>
         <p className="page-text">
-          Tell us who you are and how much rice you need, and our trade team will get back
-          to you with pricing and availability.
+          Looking for a rice supplier for your business? Chennai Rice Industries offers a range of
+          rice products for business enquiries and bulk purchasing. We welcome enquiries from
+          retailers, distributors, wholesalers and institutional buyers seeking information about
+          our products and supply options.
         </p>
 
         <div className="contact-grid">

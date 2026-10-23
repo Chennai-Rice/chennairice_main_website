@@ -4,6 +4,7 @@ import FeatureStrip from '../components/FeatureStrip.jsx'
 import Celebrities from '../components/Celebrities.jsx'
 import Testimonials from '../components/Testimonials.jsx'
 import HomeFaq from '../components/HomeFaq.jsx'
+import { HomeIntro, HomeBulk } from '../components/HomeIntro.jsx'
 import { showAmbassadors } from '../config.js'
 import usePageMeta from '../shop/hooks/usePageMeta.js'
 import { PAGE_META } from '../seo.js'
@@ -13,6 +14,7 @@ export default function HomePage() {
   return (
     <main>
       <Hero />
+      <HomeIntro />
       <ProductsShowcase />
       <FeatureStrip />
       {/* Brand Ambassadors is behind a switch rather than deleted — the
@@ -20,6 +22,7 @@ export default function HomePage() {
           it back is a change of one environment variable. */}
       {showAmbassadors && <Celebrities />}
       <Testimonials />
+      <HomeBulk />
       <HomeFaq />
     </main>
   )

@@ -85,6 +85,13 @@ export default function ContestPage() {
             carries its own heading (its alt text repeats the three steps). On
             phones the same three steps as stacked cards, so nothing scrolls
             sideways or shrinks past reading size. */}
+        {/* SEO Optimization Plan, Oct 2026. */}
+        <p className="contest-intro">
+          Have a great slogan for Chennai Rice? Take part in the Chennai Rice Super Slogan Contest 2026 and
+          share your creativity. Eligible promotional packs contain a coupon code that participants can use
+          to submit their entry through the official contest portal or designated WhatsApp participation
+          channel.
+        </p>
         <section className="contest-howto" aria-label="How to Participate">
           <img
             className="contest-howto-art"

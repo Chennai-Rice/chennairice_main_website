@@ -22,8 +22,9 @@ export default function Hero() {
           product page for the same search. */}
       <h1 id="hero-heading">{PAGE_META.products.h1}</h1>
       <p className="hero-sub">
-        Rice for every meal, milled and sealed at our own Erode facility. From everyday lunch and dinner to idli
-        batter, variety rice and festival feasts, find the right rice for your home.
+        Discover rice varieties from Chennai Rice Industries for everyday cooking and traditional South Indian
+        meals. Whether you are looking for Ponni rice for daily dining or aged rice for firm, separate grains,
+        explore our product range and compare the available options.
       </p>
     </section>
   );

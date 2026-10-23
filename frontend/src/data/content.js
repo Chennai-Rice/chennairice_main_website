@@ -136,6 +136,28 @@ export const STATS = [
   { target: 100, suffix: '%', label: 'Quality Assured' },
 ]
 
+/* Home page copy (SEO Optimization Plan, Oct 2026): the intro under the hero
+   (HomeIntro) and the business-buyer band before the FAQs (HomeBulk). */
+export const HOME_INTRO = {
+  label: 'Our Rice',
+  title: 'Discover Rice Varieties for Everyday Cooking',
+  paragraphs: [
+    'Bring home the goodness of quality rice for everyday meals with Chennai Rice. From traditional Ponni rice to aged rice varieties, discover rice made for the comfort, flavour and familiarity of home-cooked food. Explore our range for daily meals, family dining and the recipes you love.',
+    "Every meal starts with the right rice. Explore the Chennai Rice range, including Kitchidi Ponni, Nayara Super Aged, Special Rajabhogam and Viruchagam. Find a variety suited to your family's cooking preferences, from everyday rice meals to traditional South Indian dishes.",
+  ],
+  links: [
+    { label: 'Explore Rice Varieties', to: '/rice-products' },
+    { label: 'Shop Kitchidi Ponni Rice', to: '/products/kitchidi-ponni-rice' },
+    { label: 'Enquire About Bulk Orders', to: '/bulk-order' },
+  ],
+}
+
+export const HOME_BULK = {
+  title: 'Looking for a Rice Supplier for Your Business?',
+  text: 'Chennai Rice Industries serves business customers seeking rice products for retail and bulk purchasing. Retailers, distributors and institutional buyers can contact our team to discuss product availability, pack sizes and supply requirements.',
+  button: 'Enquire About Bulk Orders',
+}
+
 export const SHOWCASE = {
   introTitle: 'Four Signature Varieties',
   introText: 'Milled, polished and packed with the same care since 1950.',

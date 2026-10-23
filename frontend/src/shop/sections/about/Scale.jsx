@@ -34,6 +34,14 @@ export default function Scale() {
             It needs scroll distance to scrub against, which is why it lives
             here rather than in the hero (nothing scrolls above the hero). */}
         <h1 className="ab-scale-h1">{PAGE_META.about.h1}</h1>
+        {/* SEO Optimization Plan, Oct 2026. */}
+        <p className="ab-scale-lead">
+          Chennai Rice Industries is committed to bringing quality rice to households and business
+          customers. Our focus is on sourcing, processing and supplying rice varieties suited to the
+          food traditions and everyday cooking needs of our customers. From selecting paddy to
+          processing, quality assessment and packing, we work to maintain consistency across our
+          products.
+        </p>
         <ScrollReveal
           as="h2"
           containerClassName="ab-scroll-reveal"

@@ -1482,3 +1482,7 @@ main {
   .stage.will-animate .lineup-item { opacity: 1; }
   .stage.will-animate.is-visible .lineup-item { animation: none; }
 }
+
+/* Cart intro (SEO Optimization Plan). */
+.cart-page h1:has(+ .cart-intro) { margin-bottom: var(--s-3); }
+.cart-intro { margin: 0 0 var(--s-8); color: var(--ink-700); max-width: 62ch; line-height: 1.7; }

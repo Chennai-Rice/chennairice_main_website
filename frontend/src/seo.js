@@ -213,6 +213,7 @@ export const PRODUCT_SEO = {
     title: 'Nayara Super Aged Rice | Chennai Rice',
     description: 'Discover Nayara Super Aged Rice from Chennai Rice, suitable for everyday meals and variety rice preparations. Explore available pack sizes.',
     keywords: 'Nayara Super Aged rice',
+    intro: 'Discover Nayara Super Aged Rice from Chennai Rice, a variety intended for daily meals and preparations where a firmer, more separate grain texture is preferred. Follow the pack instructions and adjust water ratio to your preferred texture.',
   },
   'rudra': {
     about: "Rudra brings original taste and a rich aroma that fills the kitchen as the rice finishes cooking. It suits larger families and homes that host relatives, festivals and weekend gatherings. Enjoy it with sambar, kara kuzhambu, mor kuzhambu or simple rasam for a satisfying everyday meal. Store in a cool, dry place and keep the bag sealed after opening.",
@@ -234,6 +235,7 @@ export const PRODUCT_SEO = {
     title: 'Special Rajabhogam Rice | Chennai Rice',
     description: 'Discover Special Rajabhogam Rice from Chennai Rice for everyday family meals. Explore the available pack sizes and product details.',
     keywords: 'Special Rajabhogam rice',
+    intro: 'Bring Chennai Rice Special Rajabhogam to your everyday dining table. This rice variety is an option for families looking for rice for lunch, dinner and traditional South Indian accompaniments.',
   },
   'thaaram': {
     about: "A good nei kitchadi needs rice that will not break down in the pot. Thaaram has strong grains with superior taste and rich aroma, made for ghee rich kitchadi, ven pongal and sakkarai pongal. Cook it for Pongal and Margazhi mornings, Sunday breakfasts, poojas at home or any day you want a festive dish on the table. Adjust water to the texture your family likes.",
@@ -285,6 +287,7 @@ export const PRODUCT_SEO = {
     title: 'Viruchagam Ponni Rice | Chennai Rice',
     description: 'Explore Viruchagam Ponni Rice from Chennai Rice, made for traditional family meals. View product details and available pack sizes.',
     keywords: 'Viruchagam Ponni rice',
+    intro: 'Discover Viruchagam from Chennai Rice, a Ponni rice offering for everyday family dining. Explore the product variety, pack options and preparation recommendations before purchasing.',
   },
   'chennai-bullets': {
     about: "Chennai Bullets is aromatic rice made for big kitchens and bigger gatherings. It is ideal for joint families, homes that cook for many every day, and occasions such as poojas, housewarmings, family functions and festival feasts. Serve it with sambar, kara kuzhambu and a full spread of sides, and enjoy rich aroma in every meal.",
@@ -306,6 +309,7 @@ export const PRODUCT_SEO = {
     title: 'Kitchidi Ponni Rice | Chennai Rice',
     description: 'Explore Chennai Rice Kitchidi Ponni, an aged rice variety for everyday South Indian meals. View available pack sizes and ordering options.',
     keywords: 'Kitchidi Ponni rice',
+    intro: 'Make everyday meals feel like home with Chennai Rice Kitchidi Ponni. This rice variety is intended for familiar home cooking, including everyday meals enjoyed with sambar, rasam, kuzhambu and other traditional accompaniments. Explore product details and available pack sizes.',
   },
   'special-idly-rice': {
     about: "Soft idlis start with the right rice. Special Idly Rice, in the pink pack, is made for grinding batter at home with urad dal. Steam it into soft, fluffy idlis, spread it into crisp golden dosas, or use it for kuzhi paniyaram and uthappam. Perfect for weekday breakfasts, Sunday tiffin and evening dinners. Adjust soaking and fermentation time to suit your kitchen and weather.",

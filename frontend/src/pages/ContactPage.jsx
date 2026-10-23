@@ -100,7 +100,8 @@ export default function ContactPage() {
         </div>
         <h1 className="page-title">{PAGE_META.contact.h1}</h1>
         <p className="page-text">
-          Tell us what you need and our team will get back to you.
+          Have a question about our rice products, bulk purchasing or distribution opportunities?
+          Contact Chennai Rice Industries and let our team guide you to the right information.
         </p>
 
         <div className="contact-grid">

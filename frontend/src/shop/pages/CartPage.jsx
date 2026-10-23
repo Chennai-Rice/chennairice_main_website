@@ -27,6 +27,10 @@ export default function CartPage() {
       <section className="cart-page">
         <p className="eyebrow">Order review</p>
         <h1 id="cart-heading">Your Chennai Rice Shopping Cart</h1>
+        <p className="cart-intro">
+          Review the Chennai Rice products you have selected before proceeding to checkout. Check product
+          quantities, pack sizes and order total to ensure everything is correct.
+        </p>
 
         {/* Rendering one branch or the other replaces the original's
             hidden-attribute toggle, so the summary can never appear beside the

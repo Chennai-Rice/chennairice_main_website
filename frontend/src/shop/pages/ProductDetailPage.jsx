@@ -225,7 +225,7 @@ export default function ProductDetailPage() {
                 : headName}
             </h1>
             <p className="pdp-subtitle">{category}</p>
-            <p className="pdp-desc">{seo?.line || product.description}</p>
+            <p className="pdp-desc">{seo?.intro || seo?.line || product.description}</p>
 
             {/* While prices are unpublished this reads "Price on request" and
                 points at the sales team, rather than showing the ₹0 that every

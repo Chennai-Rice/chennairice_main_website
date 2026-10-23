@@ -743,3 +743,16 @@
 
 /* The contest title is the page's H1. */
 h1.kb-title { margin: 0; }
+
+/* Contest intro copy (SEO Optimization Plan), between the hero and How to Participate. */
+.contest-intro {
+  position: relative;
+  z-index: 1;
+  max-width: 760px;
+  margin: var(--s-12) auto 0;
+  padding: 0 var(--s-6);
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.8;
+  color: #5f4c3c;
+}

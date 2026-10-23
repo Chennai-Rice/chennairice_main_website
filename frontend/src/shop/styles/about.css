@@ -1041,3 +1041,12 @@
 /* About Us → Bulk Order (SEO plan, internal linking). */
 .ab-storage-bulk { margin-top: 1rem; font-size: 0.92rem; opacity: 0.9; }
 .ab-storage-bulk a { color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+/* The About page's opening copy (SEO Optimization Plan), under the H1 label. */
+.about-page .ab-scale-lead {
+  max-width: 62ch;
+  margin: 0 0 1.6rem;
+  font-size: 1rem;
+  line-height: 1.8;
+  color: rgba(244, 230, 205, 0.86);
+}

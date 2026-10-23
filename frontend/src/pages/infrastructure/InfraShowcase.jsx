@@ -276,7 +276,10 @@ export default function InfraShowcase() {
               Stronger Promise.
             </h2>
             <p className="ish-band-text">
-              Our infrastructure is the backbone of our promise to deliver the finest rice, always.
+              At Chennai Rice Industries, our processing infrastructure supports the handling, milling,
+              sorting and packing of rice products. Our facility in Erode, Tamil Nadu, uses automated
+              processing equipment and established quality-control procedures to support consistent
+              production.
             </p>
             <p className="ish-band-text ish-band-links">
               Read <Link to="/about-us">about Chennai Rice Industries</Link> or{' '}

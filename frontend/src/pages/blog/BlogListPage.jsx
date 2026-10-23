@@ -51,7 +51,9 @@ export default function BlogListPage() {
         </div>
         <h1 className="page-title">{PAGE_META.blog.h1}</h1>
         <p className="page-text">
-          Notes from the fields, the mill floor and the kitchen.
+          Explore helpful articles about rice varieties, cooking techniques, traditional South Indian
+          meals and the role of rice in everyday food culture. The Chennai Rice blog brings together
+          practical information for households, product guides and brand updates.
         </p>
 
         {error && <p className="blog-alert" role="alert">{error}</p>}
