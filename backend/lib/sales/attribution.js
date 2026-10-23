@@ -26,6 +26,7 @@ export const SOURCES = {
   instagram: 'Instagram (not an ad)',
   google_search: 'Google search',
   whatsapp: 'WhatsApp',
+  expo: 'Expo QR',
   other_website: 'Other website',
   direct: 'Direct / typed the address',
 }
@@ -101,6 +102,8 @@ export function classify(a) {
   if (fbHost || a.fbclid) return { source: 'facebook', campaign, ad }
   if (/(^|\.)google\.[a-z.]+$/.test(host) || isGoogle) return { source: 'google_search', campaign, ad }
   if (/whatsapp|^wa\.me$/.test(host) || /whatsapp|^wa$/.test(s)) return { source: 'whatsapp', campaign, ad }
+  // The QR code at an expo opens /expo, which tags the visit utm_source=expo.
+  if (s === 'expo') return { source: 'expo', campaign, ad }
   if (host && !/chennairiceindustries\.com$|localhost/.test(host)) return { source: 'other_website', campaign, ad }
   if (s) return { source: 'other_website', campaign, ad }
   return { source: 'direct', campaign, ad }

@@ -45,6 +45,17 @@ function isWhatsApp(a) {
   return /^(whatsapp|wa)$/.test(s) || /(^|\.)(whatsapp\.com|wa\.me)$/.test(host)
 }
 
+const FROM_EXPO = 'cr.attribution.fromExpo'
+
+/** Did this browsing session start from the QR code at an expo? */
+export function isExpoVisit() {
+  try {
+    return window.sessionStorage.getItem(FROM_EXPO) === '1'
+  } catch {
+    return false
+  }
+}
+
 /** Did this browsing session start from a Meta or Google ad, or a WhatsApp link? */
 export function isAdVisit() {
   try {
@@ -72,6 +83,16 @@ export function captureAttribution() {
   for (const p of PARAMS) {
     const v = url.searchParams.get(p)
     if (v) a[p] = v.slice(0, 120)
+  }
+  // The QR code at an expo opens /expo: that visit (and any order after it) counts as "Expo QR".
+  if (url.pathname.replace(/\/+$/, '') === '/expo' && !a.utm_source) {
+    a.utm_source = 'expo'
+    a.utm_medium = 'qr'
+    a.utm_campaign = (url.searchParams.get('c') || 'expo').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 60) || 'expo'
+  }
+  // A visit from the expo QR code is remembered for this browsing session: it gets the expo lead popup.
+  if ((a.utm_source || '').toLowerCase() === 'expo') {
+    try { window.sessionStorage.setItem(FROM_EXPO, '1') } catch { /* the popup stays off */ }
   }
   if (url.searchParams.get('fbclid')) a.fbclid = true
   if (url.searchParams.get('gclid') || url.searchParams.get('gbraid') || url.searchParams.get('wbraid')) a.gclid = true

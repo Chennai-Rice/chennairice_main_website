@@ -1863,3 +1863,45 @@ test('/admin enquiries: owner, admin, IT and sales only; empty when Supabase is 
   assert.match(bad.body.error, /spam/)
   assert.equal(bad.status, 400)
 })
+
+test('expo QR lead form: validated, one row per mobile, goes to the CRM outbox, and is listed with the customers as Expo QR', async () => {
+  const good = { name: 'Ramesh Kumar', phone: '98765 22001', email: '', location: 'Coimbatore', buyerType: 'horeca', requirements: ['raw_rice', 'idly_rice'], campaign: 'Expo Oct!' }
+  for (const [bad, message] of [
+    [{ ...good, name: '' }, /name/i],
+    [{ ...good, phone: '12345' }, /10-digit/],
+    [{ ...good, email: 'nope' }, /email/i],
+    [{ ...good, location: '' }, /city or area/i],
+    [{ ...good, buyerType: 'wholesaler' }, /Distributor, HORECA/],
+    [{ ...good, requirements: [] }, /rice you need/],
+  ]) {
+    const r = await api('POST', '/api/expo/lead', { body: bad })
+    assert.equal(r.status, 400)
+    assert.match(r.body.error, message)
+  }
+
+  assert.deepEqual((await api('POST', '/api/expo/lead', { body: good })).body, { ok: true })
+  // The same mobile again updates its row instead of adding one.
+  await api('POST', '/api/expo/lead', { body: { ...good, buyerType: 'distributor', requirements: ['boiled_rice'] } })
+  const { rows } = await db.query(`select * from expo_leads where phone = '9876522001'`)
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].buyer_type, 'distributor')
+  assert.deepEqual(rows[0].requirements, ['boiled_rice'])
+  assert.equal(rows[0].submissions, 2)
+  assert.equal(rows[0].campaign, 'expooct') // tidied
+
+  const { rows: queued } = await db.query(`select payload from crm_outbox where kind = 'expo_lead' and payload->>'mobile' = '9876522001'`)
+  assert.ok(queued.length >= 1)
+  assert.match(queued[0].payload.note, /Expo QR lead/)
+  assert.match(queued[0].payload.note, /Needs: /)
+
+  // The Customers page lists them as not converted, from the Expo QR.
+  const list = await api('GET', '/api/admin/warehouse/customers?source=Expo%20QR', { token: OWNER })
+  assert.equal(list.status, 200)
+  const row = list.body.customers.find((c) => c.phone === '9876522001')
+  assert.ok(row)
+  assert.equal(row.source, 'Expo QR')
+  assert.equal(row.converted, false)
+  assert.equal(row.city, 'Coimbatore')
+  const csv = await api('GET', '/api/admin/warehouse/expo-leads.csv', { token: OWNER })
+  assert.match(csv.body, /Ramesh Kumar/)
+})

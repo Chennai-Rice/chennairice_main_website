@@ -22,6 +22,7 @@ import ComingSoonPage from './pages/ComingSoonPage.jsx'
 import ContactPage from './pages/ContactPage.jsx'
 import TrackOrderPage from './pages/TrackOrderPage.jsx'
 import BulkOrderPage from './pages/BulkOrderPage.jsx'
+import ExpoPopup from './components/ExpoPopup.jsx'
 import LandingPage from './pages/LandingPage.jsx'
 import { LANDING_PAGES } from './data/landing.js'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage.jsx'
@@ -157,6 +158,9 @@ export default function App() {
         <Route path="/contact-us" element={<ContactPage />} />
         <Route path="/track-order" element={<TrackOrderPage />} />
         <Route path="/bulk-order" element={<BulkOrderPage />} />
+        {/* The QR code at an expo opens /expo: the visit is tagged (services/attribution.js) and the site's
+            home page opens with the expo lead popup (ExpoPopup). */}
+        <Route path="/expo" element={<Navigate to="/" replace />} />
         {/* Topic landing pages and the Tamil pages (SEO sheet Phase 2). */}
         {LANDING_PAGES.map(({ path, key }) => (
           <Route key={path} path={path} element={<LandingPage key={key} id={key} />} />
@@ -244,6 +248,8 @@ export default function App() {
       {isStorefront && <CookieBanner />}
       {/* Appears 8 seconds into the visit; once closed, not again for a day. */}
       {isStorefront && <ContestPopup />}
+      {/* Only for visitors from the expo QR code: opens 2 seconds into the visit. */}
+      {isStorefront && <ExpoPopup />}
       </WishlistProvider>
     </CartProvider>
     </CookieConsentProvider>

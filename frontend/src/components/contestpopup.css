@@ -530,3 +530,23 @@ button.contest-form-note { background: none; border: 0; cursor: pointer; text-de
   cursor: pointer;
 }
 .contest-form-link:disabled { color: #8a7a72; text-decoration: none; cursor: default; }
+
+/* ---- Expo QR lead form (ExpoPopup): taller than the ad sign-up, so it scrolls inside the dialog. ---- */
+.contest-pop.contest-pop--expo { max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }
+.expo-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.expo-chip {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 16px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--cp-maroon);
+  background: #fffdf8;
+  border: 1.5px solid #e2c98f;
+  border-radius: 999px;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.expo-chip.is-on { color: #fff; background: var(--cp-maroon); border-color: var(--cp-maroon); font-weight: 600; }
+.expo-chip:focus-visible { outline: 3px solid rgba(217, 184, 102, 0.6); outline-offset: 2px; }
