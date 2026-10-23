@@ -62,10 +62,16 @@
     <meta name="theme-color" content="#6E1B22" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- The font stylesheet no longer blocks the first paint: the text shows in a fallback font and swaps. -->
     <link
+      rel="preload"
+      as="style"
       href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..600&family=Jost:ital,wght@0,300..700;1,300..500&family=Mrs+Saint+Delafield&display=swap"
-      rel="stylesheet"
+      onload="this.onload=null;this.rel='stylesheet'"
     />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..600&family=Jost:ital,wght@0,300..700;1,300..500&family=Mrs+Saint+Delafield&display=swap" rel="stylesheet" />
+    </noscript>
   </head>
   <body>
     <!-- Google Tag Manager (noscript) -->
