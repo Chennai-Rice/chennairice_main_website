@@ -163,12 +163,12 @@ export const SILO_LOCATIONS = [
 export const PACKAGING_PRODUCTS = [
   {
     name: 'White Ponni Rice',
-    image: '/assets/products/product-2.png',
+    image: '/assets/products/product-2.webp',
     fallback: '/assets/shop/pack-red.png',
   },
   {
     name: 'Idly Rice',
-    image: { src: '/assets/products/product-4.png', fallback: '/assets/products/product-1.png' },
+    image: { src: '/assets/products/product-4.webp', fallback: '/assets/products/product-1.webp' },
   },
   {
     name: 'Special Rajabhogam',
