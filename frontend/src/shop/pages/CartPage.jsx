@@ -18,7 +18,7 @@ export default function CartPage() {
   const { items, count } = useCart();
   const { subtotal, shipping, total, error } = useCartQuote();
 
-  usePageMeta("Your Cart — Chennai Rice", "Your cart — Chennai Rice Industries.", { noindex: true });
+  usePageMeta("Shopping Cart | Chennai Rice", "Review your selected Chennai Rice products and continue to checkout when you are ready.", { noindex: true });
 
   const isEmpty = items.length === 0;
 
@@ -26,7 +26,7 @@ export default function CartPage() {
     <SiteLayout skipTo="cart-heading" skipLabel="Skip to cart" cartIsCurrent>
       <section className="cart-page">
         <p className="eyebrow">Order review</p>
-        <h1 id="cart-heading">Your cart</h1>
+        <h1 id="cart-heading">Your Chennai Rice Shopping Cart</h1>
 
         {/* Rendering one branch or the other replaces the original's
             hidden-attribute toggle, so the summary can never appear beside the

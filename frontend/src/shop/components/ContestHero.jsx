@@ -102,7 +102,7 @@ export default function ContestHero() {
           {/* The page's H1; "Chennai Rice" is for search and screen readers,
               the artwork shows the contest's own name. */}
           <h1 className="kb-title">
-            <span className="visually-hidden">Chennai Rice </span>Super Slogan Contest
+            <span className="visually-hidden">Chennai Rice </span>Super Slogan Contest<span className="visually-hidden"> 2026</span>
           </h1>
           <Divider />
         </div>

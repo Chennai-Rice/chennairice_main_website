@@ -584,3 +584,8 @@ h1.infra-eyebrow--h1 {
   font-family: inherit;
   line-height: 1.5;
 }
+
+/* Internal links under the closing band (SEO plan: Infrastructure → About Us and Bulk Order). */
+.ish-band-links { margin-top: 10px; }
+.ish-band-links a { color: #f4e6cd; text-decoration: underline; text-underline-offset: 3px; }
+.ish-band-links a:hover { color: #fff; }

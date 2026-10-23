@@ -82,7 +82,7 @@ export const PAGE_META = {
     path: '/contest',
     title: 'Chennai Rice Slogan Contest – Write & Win Exciting Prizes',
     description: 'Write a slogan for Chennai Rice and win exciting prizes. Buy a Kitchidi Ponni Rice 5 kg or 26 kg bag, scan the coupon inside and register to enter.',
-    h1: 'Chennai Rice Slogan Contest',
+    h1: 'Chennai Rice Super Slogan Contest 2026',
   },
   // Phase 2 landing pages (data/landing.js). lang and alternate drive the
   // hreflang links between each English page and its Tamil version.

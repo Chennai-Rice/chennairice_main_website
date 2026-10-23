@@ -416,6 +416,10 @@ export const HOME_FAQS = [
     a: 'Aged rice is stored for several months after harvest before it is sold. During ageing the grain loses moisture and firms up, so it absorbs more water, swells more and cooks into fluffy, separate grains instead of turning sticky.',
   },
   {
+    q: 'How can I enquire about bulk rice orders?',
+    a: 'Retailers, distributors, hotels, caterers and institutions can send a bulk order enquiry from our Bulk Order page with the rice variety, pack size and quantity they need, or call us on +91 70666 46667. Our team will get back to you with availability and supply details.',
+  },
+  {
     q: 'How do I identify good quality rice?',
     a: 'Good quality rice has grains of uniform size and colour, very few broken grains, and no stones, husk or dust. It should smell fresh and natural, with no musty odour. Rice that is graded and colour sorted during milling, like Chennai Rice, meets these standards consistently.',
   },

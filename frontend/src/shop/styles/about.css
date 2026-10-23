@@ -1037,3 +1037,7 @@
   text-transform: uppercase;
   color: var(--gold-light);
 }
+
+/* About Us → Bulk Order (SEO plan, internal linking). */
+.ab-storage-bulk { margin-top: 1rem; font-size: 0.92rem; opacity: 0.9; }
+.ab-storage-bulk a { color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }

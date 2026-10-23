@@ -278,6 +278,10 @@ export default function InfraShowcase() {
             <p className="ish-band-text">
               Our infrastructure is the backbone of our promise to deliver the finest rice, always.
             </p>
+            <p className="ish-band-text ish-band-links">
+              Read <Link to="/about-us">about Chennai Rice Industries</Link> or{' '}
+              <Link to="/bulk-order">enquire about bulk rice supply</Link>.
+            </p>
           </div>
 
           <Link className="ish-band-cta" to="/rice-products">

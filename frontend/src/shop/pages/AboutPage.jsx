@@ -158,6 +158,9 @@ export default function AboutPage() {
                 Explore Our Storage
                 <span aria-hidden="true">&rarr;</span>
               </Link>
+              <p className="ab-storage-bulk">
+                Buying for a shop or business? <Link to="/bulk-order">Send a bulk order enquiry</Link>
+              </p>
             </div>
           </div>
         </div>
