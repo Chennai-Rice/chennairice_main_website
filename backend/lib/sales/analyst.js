@@ -198,6 +198,38 @@ async function recentOrders(p) {
   return rows.map((r) => ({ ...r, amount: rupees(r.total_paise), total_paise: undefined }))
 }
 
+/**
+ * Every new lead of the period, one row each: website sign-ups, expo QR leads
+ * and new WhatsApp chats, with what happened next (called, result, bought).
+ */
+async function leadList(p) {
+  const { rows } = await query(
+    `with l as (
+       select 'signup' as kind, c.name, c.phone, c.email, c.source, nullif(c.campaign, '') as campaign, nullif(c.ad, '') as ad,
+              null::text as detail, c.created_at
+         from contest_leads c where c.created_at >= $1 and c.created_at < $2
+       union all
+       select 'expo', e.name, e.phone, e.email, 'expo', nullif(e.campaign, ''), null,
+              concat_ws(' · ', e.location, initcap(e.buyer_type), array_to_string(e.requirements, ', ')), e.created_at
+         from expo_leads e where e.created_at >= $1 and e.created_at < $2
+       union all
+       select 'whatsapp', w.name, w.phone, null, 'whatsapp', null, null, left(w.first_message, 160), coalesce(w.first_message_at, w.created_at)
+         from whatsapp_contacts w where w.source = 'webhook'
+          and coalesce(w.first_message_at, w.created_at) >= $1 and coalesce(w.first_message_at, w.created_at) < $2)
+     select l.*, s.calls, s.status as lead_status, s.last_disposition, s.last_agent,
+            (select min(o.placed_at) from orders o where ${key10('o.contact_phone')} = ${key10('l.phone')} and ${WON}
+                and o.placed_at >= l.created_at - interval '1 day') as bought_at
+       from l left join lead_status s on s.mobile = ${key10('l.phone')}
+      order by l.created_at desc limit 500`, [p.fromTs, p.toTs])
+  return rows.map((r) => ({
+    kind: r.kind, name: r.name, phone: r.phone, email: r.email || null, source: r.source,
+    campaign: r.campaign, ad: r.ad, detail: r.detail, at: r.created_at,
+    calls: r.calls || 0, result: r.last_disposition || null, caller: r.last_agent || null,
+    status: r.bought_at ? 'bought' : r.lead_status === 'qualified' ? 'qualified' : r.lead_status === 'not_qualified' ? 'not_qualified' : r.calls ? 'called' : 'new',
+    boughtAt: r.bought_at,
+  }))
+}
+
 /** NeoDove: people called in the period, by caller. */
 async function contacted(p) {
   const { rows } = await query(
@@ -371,7 +403,7 @@ export async function analystReport(q = {}) {
     sales(p, rice), newLeads(p), leadJourneys(p), contacted(p), overdueFollowUps(), lostReasons(p),
     campaigns(p), delivery(p), leadsByLocation(p), monthlyTarget(),
   ])
-  const recent = await recentOrders(p)
+  const [recent, list] = await Promise.all([recentOrders(p), leadList(p)])
   // Kg against the monthly target: this month so far, whatever period is shown.
   const today = istToday()
   const month = await sales(analystPeriod({ from: today.slice(0, 8) + '01', to: today }), rice, false)
@@ -392,7 +424,7 @@ export async function analystReport(q = {}) {
       newLeads: leads, contacted: called,
       conversion: pct(s.orders, leads.total),
       bySource: journeys.bySource, funnel: journeys.funnel, perDay: journeys.perDay, daysToConvert: journeys.daysToConvert,
-      overdue, lost, byLocation,
+      overdue, lost, byLocation, list,
     },
     campaigns: camp,
     recentOrders: recent,

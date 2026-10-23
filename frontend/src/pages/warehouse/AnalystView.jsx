@@ -264,6 +264,60 @@ function SalesTab({ data, rice }) {
   )
 }
 
+/** Every new lead of the period, one row each: sign-ups, expo QR leads and WhatsApp chats. */
+const KIND = { signup: 'Sign-up', expo: 'Expo QR', whatsapp: 'WhatsApp chat' }
+const LEAD_STATUS = { new: ['Not called yet', 'grey'], called: ['Called', 'blue'], qualified: ['Qualified', 'amber'], not_qualified: ['Not qualified', 'red'], bought: ['Bought', 'green'] }
+function LeadList({ list }) {
+  const [kind, setKind] = useState('')
+  const [q, setQ] = useState('')
+  const counts = list.reduce((a, l) => ({ ...a, [l.kind]: (a[l.kind] || 0) + 1 }), {})
+  const rows = list.filter((l) => (!kind || l.kind === kind)
+    && (!q || `${l.name} ${l.phone} ${l.email || ''} ${l.campaign || ''} ${l.detail || ''}`.toLowerCase().includes(q.trim().toLowerCase())))
+  function download() {
+    const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const csv = [['Type', 'Name', 'Mobile', 'Email', 'Came from', 'Campaign', 'Ad', 'Details', 'Date', 'Status', 'Calls', 'Last call result', 'Caller'],
+      ...rows.map((l) => [KIND[l.kind], l.name, l.phone, l.email, SOURCE[l.source] || l.source, l.campaign, l.ad, l.detail, when(l.at), LEAD_STATUS[l.status][0], l.calls, l.result, l.caller])]
+      .map((r) => r.map(cell).join(',')).join('\r\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }))
+    a.download = `leads-${kind || 'all'}.csv`
+    document.body.appendChild(a); a.click(); a.remove()
+  }
+  return (
+    <Panel title="New leads — one by one" note="Everyone counted in New leads: website sign-ups, expo QR leads and new WhatsApp chats, with what happened next." wide>
+      <div className="an-leadbar">
+        <div className="an-seg" role="group" aria-label="Lead type">
+          {[['', 'All', list.length], ['signup', 'Sign-ups', counts.signup || 0], ['expo', 'Expo QR', counts.expo || 0], ['whatsapp', 'WhatsApp chats', counts.whatsapp || 0]].map(([k, l, n]) => (
+            <button key={k || 'all'} type="button" className={`wh-tab${kind === k ? ' is-active' : ''}`} aria-pressed={kind === k} onClick={() => setKind(k)}>{l} ({n})</button>
+          ))}
+        </div>
+        <div className="an-leadtools">
+          <input className="an-search" type="search" placeholder="Search name, mobile, campaign…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search leads" />
+          <button type="button" className="wh-btn wh-btn--outline wh-btn--small" onClick={download} disabled={!rows.length}>Download CSV</button>
+        </div>
+      </div>
+      <Table cols={[
+        { label: 'Date', value: (l) => <span className="an-nowrap">{when(l.at)}</span> },
+        { label: 'Type', value: (l) => <span className={`an-kind is-${l.kind}`}>{KIND[l.kind]}</span> },
+        { label: 'Name', value: (l) => <><strong>{l.name || '—'}</strong>{l.email && <span className="an-sub">{l.email}</span>}</> },
+        { label: 'Mobile', value: (l) => <a className="an-nowrap" href={`tel:${String(l.phone).replace(/[^\d+]/g, '')}`}>{l.phone}</a> },
+        { label: 'Came from / details', value: (l) => (
+          <span className="an-detail">
+            {l.kind === 'signup' ? [SOURCE[l.source] || l.source, l.campaign && `campaign ${l.campaign}`, l.ad && `ad ${l.ad}`].filter(Boolean).join(' · ') : l.detail || '—'}
+          </span>
+        ) },
+        { label: 'Status', value: (l) => (
+          <>
+            <span className={`an-status is-${LEAD_STATUS[l.status][1]}`}><i />{LEAD_STATUS[l.status][0]}</span>
+            {(l.result || l.calls > 0) && <span className="an-sub">{[l.result, l.calls ? `${l.calls} call${l.calls === 1 ? '' : 's'}` : null, l.caller].filter(Boolean).join(' · ')}</span>}
+          </>
+        ) },
+      ]} rows={rows.slice(0, 300)} empty={list.length ? 'No leads match.' : 'No new leads in this period.'} />
+      {rows.length > 300 && <p className="wh-muted wh-small">Showing the newest 300 of {rows.length}. Download the CSV for all of them.</p>}
+    </Panel>
+  )
+}
+
 function LeadsTab({ data }) {
   const l = data.leads
   const nl = l.newLeads
@@ -279,6 +333,7 @@ function LeadsTab({ data }) {
         <Tile label="Overdue follow-ups" value={count(l.overdue.total)} note="Follow-up date passed · target 0" alert={l.overdue.total > 0} icon="returns" />
       </section>
       <div className="an-grid">
+        <LeadList list={l.list || []} />
         <Panel title="New leads by source">
           <Bars rows={sources} value={(r) => r.n} label={(r) => r.source} />
         </Panel>

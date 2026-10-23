@@ -260,3 +260,23 @@
 /* One column that never grows past the screen; long pill rows scroll inside it. */
 .an-page { grid-template-columns: minmax(0, 1fr); }
 .an-head > div, .an-controls { min-width: 0; max-width: 100%; }
+
+/* New leads, one by one. */
+.an-leadbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0 12px; }
+.an-leadbar .an-seg { margin: 0; }
+.an-leadtools { display: flex; flex-wrap: wrap; gap: 8px; }
+.an-search { font: inherit; font-size: 14px; border: 1px solid var(--an-line); border-radius: 999px; padding: 9px 16px; min-width: 220px; max-width: 100%; }
+.an-search:focus { outline: 2px solid var(--an-brand-2); outline-offset: 1px; }
+.an-nowrap { white-space: nowrap; }
+.an-sub { display: block; font-size: 12px; color: var(--an-muted); }
+.an-detail { display: block; max-width: 340px; color: var(--an-ink-2); }
+.an-kind { display: inline-block; white-space: nowrap; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 3px 10px; background: var(--an-soft); color: var(--an-ink-2); }
+.an-kind.is-signup { background: #fbeef0; color: #8a2433; }
+.an-kind.is-expo { background: #eef2fb; color: #2f55a8; }
+.an-kind.is-whatsapp { background: #e7f5ec; color: #1f7a3d; }
+.an-status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-weight: 500; }
+.an-status i { width: 7px; height: 7px; border-radius: 50%; background: #9a8f86; }
+.an-status.is-green i { background: #1f9a4d; }
+.an-status.is-amber i { background: #e0a200; }
+.an-status.is-blue i { background: #2f6fd6; }
+.an-status.is-red i { background: #d0342c; }
