@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 /* ============================================================
    /admin — analyst dashboard.
 
@@ -977,3 +978,79 @@
   .ad-el-selector { max-width: 22ch; }
   .ad-hm-legend { margin-left: 0; }
 }
+
+/* ============================================================
+   The Analyst look across all of /admin (owner, Oct 2026): Inter
+   everywhere, soft rounded white cards, pill controls with a dark
+   active state, and the first number card in the brand maroon —
+   the same design as the Analyst dashboard.
+   ============================================================ */
+
+.ad-shell {
+  --ad-bg: #f6f3ee;
+  --ad-ink: #1f1a17;
+  --ad-line: #ece5dc;
+  --ad-radius: 22px;
+  --ad-radius-sm: 14px;
+  --ad-shadow: none;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+.ad-shell h1, .ad-shell h2, .ad-shell h3, .ad-shell h4,
+.ad-shell .ad-page-title, .ad-shell .ad-card-title, .ad-shell .ad-login-title, .ad-shell .ad-journey-title {
+  font-family: inherit;
+  letter-spacing: -0.01em;
+}
+
+/* Top bar: page title like the Analyst greeting. */
+.ad-topbar { background: rgba(246, 243, 238, 0.9); border-bottom-color: transparent; padding: 18px 28px 12px; }
+.ad-page-title { font-size: clamp(1.4rem, 1.1rem + 0.9vw, 1.9rem); font-weight: 600; }
+.ad-topbar-title .ad-small { font-size: 14px; }
+.ad-main { padding: 18px 28px 64px; gap: 16px; }
+
+/* Pill controls. */
+.ad-shell .ad-btn { border-radius: 999px; min-height: 42px; padding: 0 18px; font-weight: 500; }
+.ad-shell .ad-btn-primary { background: var(--ad-ink); border-color: var(--ad-ink); color: #fff; }
+.ad-shell .ad-btn-primary:hover:not(:disabled) { background: #3a302a; }
+.ad-shell .ad-select { border-radius: 999px; min-height: 42px; padding-left: 16px; }
+.ad-shell .ad-input { border-radius: 999px; min-height: 42px; padding-left: 16px; }
+.ad-segmented { border-radius: 999px; padding: 4px; background: #fff; border: 1px solid var(--ad-line); }
+.ad-seg { border-radius: 999px; }
+.ad-seg.is-active { background: var(--ad-ink); color: #fff; box-shadow: none; }
+
+/* Sidebar: rounded items, dark active pill. */
+.ad-nav-item { border-radius: 999px; }
+.ad-nav-item.is-active { background: var(--ad-ink); color: #fff; }
+.ad-nav-item.is-active .ad-nav-icon { color: #fff; }
+
+/* Cards. */
+.ad-card, .ad-metric { border-radius: var(--ad-radius); box-shadow: none; border-color: var(--ad-line); }
+.ad-card { padding: 20px 22px; }
+.ad-card-title { font-size: 18px; font-weight: 600; }
+.ad-card-sub { font-size: 14px; }
+.ad-kpis { gap: 14px; }
+.ad-metric { padding: 18px 20px; gap: 10px; }
+.ad-metric-label { font-size: 15px; color: #5c5048; }
+.ad-metric-icon { width: 34px; height: 34px; border-radius: 50%; background: #f6f2ec; color: #5c5048; }
+.ad-metric-value { font-size: clamp(1.6rem, 1.3rem + 0.9vw, 2.1rem); font-weight: 600; }
+.ad-metric-foot { font-size: 13px; }
+/* The first number card is the highlight, as on the Analyst page. */
+.ad-kpis > .ad-metric:first-child {
+  background: linear-gradient(150deg, #b3313f 0%, #7a1f2b 100%);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 10px 26px rgba(122, 31, 43, 0.22);
+}
+.ad-kpis > .ad-metric:first-child .ad-metric-label,
+.ad-kpis > .ad-metric:first-child .ad-metric-foot { color: rgba(255, 255, 255, 0.86); }
+.ad-kpis > .ad-metric:first-child .ad-metric-icon { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.ad-kpis > .ad-metric:first-child .ad-delta { background: rgba(255, 255, 255, 0.2); color: #fff; }
+
+/* Tables and bars. */
+.ad-table-wrap { border-radius: 14px; }
+.ad-table th { background: #f6f2ec; font-weight: 500; }
+.ad-bar-track, .ad-stage-track, .ad-scroll-track { border-radius: 999px; }
+.ad-bar-fill, .ad-stage-fill, .ad-scroll-fill { border-radius: 999px; }
+
+/* The embedded staff sections (Analyst, Ad campaigns, Enquiries) sit flush. */
+.ad-main .wh-embed .an-page { gap: 16px; }
+.ad-shell .ad-page-title, .ad-shell .ad-card-title { color: var(--ad-ink); }
