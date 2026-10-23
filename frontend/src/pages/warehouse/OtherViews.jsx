@@ -293,7 +293,7 @@ function DispatchChart({ perDay, days }) {
   )
 }
 
-export function ReportsView({ say, onAuthError, money = false }) {
+export function ReportsView({ say, onAuthError, money = false, canDeleteExpo = false }) {
   const [days, setDays] = useState(30)
   const { data, loading } = useLoad(`/api/admin/warehouse/reports?days=${days}`, say, onAuthError)
   const mix = data?.statusMix || {}
@@ -349,7 +349,7 @@ export function ReportsView({ say, onAuthError, money = false }) {
 
       {money && <SourcesReport say={say} onAuthError={onAuthError} />}
 
-      <ExpoLeads say={say} onAuthError={onAuthError} />
+      <ExpoLeads say={say} onAuthError={onAuthError} canDelete={canDeleteExpo} />
     </>
   )
 }

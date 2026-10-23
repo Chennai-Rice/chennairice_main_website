@@ -1897,3 +1897,18 @@ test('expo QR lead form: validated, one row per mobile, goes to the CRM outbox, 
   const csv = await api('GET', '/api/admin/warehouse/expo-leads.csv', { token: OWNER })
   assert.match(csv.body, /Ramesh Kumar/)
 })
+
+test('expo leads: only the owner and IT team can delete one; a second delete says it is gone', async () => {
+  await api('POST', '/api/expo/lead', { body: { name: 'Delete Me', phone: '9876522077', location: 'Salem', buyerType: 'consumer', requirements: ['boiled_rice'] } })
+  const listed = await api('GET', '/api/admin/warehouse/expo-leads', { token: OWNER })
+  const lead = listed.body.leads.find((l) => l.phone === '9876522077')
+  assert.ok(lead?.id)
+  // Sales can see leads but not delete them.
+  assert.equal((await api('DELETE', '/api/admin/warehouse/expo-leads/' + lead.id, { token: tokens.sales })).status, 403)
+  assert.equal((await api('DELETE', '/api/admin/warehouse/expo-leads/' + lead.id, { token: OWNER })).status, 200)
+  assert.equal((await api('DELETE', '/api/admin/warehouse/expo-leads/' + lead.id, { token: OWNER })).status, 404)
+  const { rows } = await db.query(`select 1 from expo_leads where phone = '9876522077'`)
+  assert.equal(rows.length, 0)
+  const { rows: log } = await db.query(`select details from staff_audit_log where action = 'expo.lead.delete' order by id desc limit 1`)
+  assert.equal(log[0].details.phone, '9876522077')
+})

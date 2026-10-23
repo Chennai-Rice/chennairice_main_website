@@ -1,16 +1,32 @@
 import { useEffect, useState } from 'react'
 import { staffFetch, staffJson } from '../../services/staffAuth.js'
-import { telHref } from './shared.jsx'
+import { Confirm, telHref } from './shared.jsx'
 
 // The leads from the QR code at the expo (the /expo form): who, where, what they are and what rice they need.
-export default function ExpoLeads({ say, onAuthError }) {
+export default function ExpoLeads({ say, onAuthError, canDelete = false }) {
   const [leads, setLeads] = useState(null)
+  const [confirm, setConfirm] = useState(null) // the lead about to be deleted
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     staffJson('/api/admin/warehouse/expo-leads?days=366')
       .then((r) => setLeads(r.leads))
       .catch((err) => { setLeads([]); if (!onAuthError(err)) say(err.message, 'error') })
   }, [onAuthError, say])
+
+  async function remove() {
+    setBusy(true)
+    try {
+      await staffJson(`/api/admin/warehouse/expo-leads/${confirm.id}`, { method: 'DELETE' })
+      setLeads((rows) => rows.filter((l) => l.id !== confirm.id))
+      say('Lead deleted.')
+      setConfirm(null)
+    } catch (err) {
+      if (!onAuthError(err)) say(err.message, 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function download() {
     try {
@@ -40,16 +56,32 @@ export default function ExpoLeads({ say, onAuthError }) {
       <p className="wh-muted wh-small">People who scanned the QR code at the expo and filled in the form. They also go to Sales Daddy.</p>
       <div className="wh-expo-list" role="table" aria-label="Expo leads">
         {(leads || []).map((l) => (
-          <div className="wh-expo-row" role="row" key={l.phone}>
+          <div className={`wh-expo-row${canDelete ? ' wh-expo-row--del' : ''}`} role="row" key={l.id}>
             <span role="cell"><strong>{l.name}</strong><br /><span className="wh-muted wh-small">{l.location}</span></span>
             <span role="cell"><a className="wh-phone" href={telHref(l.phone)}>{l.phone}</a>{l.email && <><br /><span className="wh-muted wh-small">{l.email}</span></>}</span>
             <span role="cell"><span className="wh-badge wh-badge--pay-refunded">{l.buyerType}</span></span>
             <span role="cell" className="wh-small">{l.requirement}</span>
             <span role="cell" className="wh-small wh-muted">{new Date(l.at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+            {canDelete && (
+              <span role="cell">
+                <button type="button" className="wh-btn wh-btn--outline wh-btn--small" onClick={() => setConfirm(l)}>Delete</button>
+              </span>
+            )}
           </div>
         ))}
         {leads && !leads.length && <p className="wh-empty">No expo leads yet. They appear here as people submit the form.</p>}
       </div>
+      {confirm && (
+        <Confirm
+          title="Delete this lead?"
+          body={`${confirm.name} (${confirm.phone}) is removed from the expo list. If it was already sent to Sales Daddy, it stays there and has to be deleted there.`}
+          confirmLabel="Delete"
+          danger
+          busy={busy}
+          onConfirm={remove}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
     </section>
   )
 }

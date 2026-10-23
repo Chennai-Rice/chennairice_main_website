@@ -33,7 +33,7 @@ import { processTrackerUpload, listTrackerUploads, trackerTemplate, courierRedir
 import { listIssuedIds, issuedIdsCsv, checkRegister } from './idregister.js'
 import { invoiceHtml, packingSlipHtml } from './documents.js'
 import { recordVisit, sourcesReport, sourceOrders, saveContestLead, startContestLead, contestLeads } from './attribution.js'
-import { saveExpoLead, listExpoLeads } from './expo.js'
+import { saveExpoLead, listExpoLeads, deleteExpoLead } from './expo.js'
 import { checkAutomationKey, automationContacts } from './automation.js'
 import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
@@ -355,6 +355,7 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.set('Cache-Control', 'no-store')
     res.json({ leads: await listExpoLeads({ query }, req.query) })
   }))
+  admin.delete('/warehouse/expo-leads/:id', perm('expo.delete'), wrap(async (req, res) => res.json(await deleteExpoLead({ query }, req.staff, req.params.id))))
   admin.get('/warehouse/expo-leads.csv', perm('warehouse.view'), wrap(async (req, res) => {
     const leads = await listExpoLeads({ query }, { ...req.query, days: req.query.days || 366 })
     const cell = (v) => {
