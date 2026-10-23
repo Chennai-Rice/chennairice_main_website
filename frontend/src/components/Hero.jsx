@@ -23,7 +23,21 @@ const FADE_SECONDS = 0.7
 export default function Hero() {
   const [videoFailed, setVideoFailed] = useState(false)
   const [outro, setOutro] = useState(false)
+  // The film is about 7 MB. It starts only after the page has loaded (so the text, images and scripts
+  // arrive first and the page is usable sooner), and never on a data-saver or very slow connection,
+  // where the warm gradient behind the headline stays.
+  const [videoSrc, setVideoSrc] = useState(null)
   const videoRef = useRef(null)
+
+  useEffect(() => {
+    const net = navigator.connection
+    if (net?.saveData || /(^|-)2g$/.test(net?.effectiveType || '')) return undefined
+    let timer
+    const start = () => { timer = window.setTimeout(() => setVideoSrc(ASSETS.heroVideo), 500) }
+    if (document.readyState === 'complete') start()
+    else window.addEventListener('load', start, { once: true })
+    return () => { window.clearTimeout(timer); window.removeEventListener('load', start) }
+  }, [])
 
   useEffect(() => {
     const video = videoRef.current
@@ -61,10 +75,9 @@ export default function Hero() {
           loop
           playsInline
           preload="auto"
-          onError={() => setVideoFailed(true)}
-        >
-          <source src={ASSETS.heroVideo} type="video/mp4" />
-        </video>
+          src={videoSrc || undefined}
+          onError={() => { if (videoSrc) setVideoFailed(true) }}
+        />
       )}
       {videoFailed && <div className="hero-fallback" />}
 

@@ -25,8 +25,8 @@ export const ASSETS = {
      always plays muted — and faststart so it begins playing before it has
      fully downloaded. 6.7 MB, same 44.9 s length. */
   heroVideo: '/assets/hero-v2.mp4',
-  wheatLeft: '/assets/decor/wheat-left.png',
-  wheatRight: '/assets/decor/wheat-right.png',
+  wheatLeft: '/assets/decor/wheat-left.webp',
+  wheatRight: '/assets/decor/wheat-right.webp',
   riceBowl: '/assets/decor/rice-bowl.png',
   grainsGold: '/assets/decor/grains-gold.png',
   paddySpray: '/assets/decor/paddy-spray.png',
