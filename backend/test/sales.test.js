@@ -1446,6 +1446,7 @@ test('Sales Daddy CRM: website orders land as notes on the customer lead — pai
     assert.equal(paidPayload.custom.zoho_session_id, undefined)
     assert.equal(paidPayload.custom.payment_method, 'Card')
     assert.equal(paidPayload.custom.payment_via, 'card ••1111')
+    assert.match(paidPayload.custom.last_product, / kg/) // the "Last Product" column
     assert.deepEqual(paidPayload.lead.custom, {}) // not on the lead's create call: set by PATCH, merged
     assert.match(selvi[1], /confirmed/)
     assert.doesNotMatch(selvi[1], /Payment ID/)
@@ -1777,6 +1778,7 @@ test('NeoDove: not-converted sign-ups go to NeoDove once; call results come back
     // Tagged "NeoDove call"; a number Sales Daddy does not have is created as Manual, not Website.
     const { rows: [call] } = await db.query(`select payload from crm_outbox where kind = 'call_result' order by id desc limit 1`)
     assert.deepEqual([call.payload.lead.tags, call.payload.lead.source], [['NeoDove call'], 'manual'])
+    assert.deepEqual(call.payload.custom, { neodove_agent: 'Priya', neodove_result: 'Interested · Qualified' }) // NeoDove Agent / Result columns
     let out = await sdStatus()
     assert.deepEqual(out.moved, [S.qualified])
     assert.ok(out.notes.some((n) => /NeoDove call: Interested · Qualified[\s\S]*Wants 26 kg next week[\s\S]*By Priya/.test(n)), JSON.stringify(out.notes))

@@ -139,8 +139,10 @@ export async function recordNeodoveWebhook(payload) {
         [r.agent && `By ${r.agent}`, fmt(r.at)].filter(Boolean).join(', '),
       ].filter(Boolean).join('\n')
       const stage = row.status === 'converted' ? null : verdict === 'qualified' ? 'qualified' : verdict === 'not_qualified' ? 'notQualified' : null
+      // The agent and result as the lead's own fields ("NeoDove Agent" / "NeoDove Result" columns).
+      const custom = { ...(r.agent && { neodove_agent: r.agent }), ...(r.disposition && { neodove_result: verdict ? `${r.disposition} · ${LABEL[verdict]}` : r.disposition }) }
       const { rows: [o] } = await defaultQuery(`insert into crm_outbox (kind, payload) values ('call_result', $1) returning id`,
-        [{ lead, note, ...(stage && { stage }) }])
+        [{ lead, note, ...(stage && { stage }), ...(Object.keys(custom).length && { custom }) }])
       toSend.push(o.id)
     }
     await defaultQuery('update neodove_events set handled = true, result = $2 where id = $1', [ev.id, JSON.stringify(summary).slice(0, 1000)])

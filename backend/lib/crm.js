@@ -188,7 +188,7 @@ async function deliver(kind, payload, ref) {
       if (!accepted(added)) return added
     }
   }
-  if (kind === 'order_event' && payload.custom) await setLeadFields(leadId, payload.custom)
+  if (event && payload.custom) await setLeadFields(leadId, payload.custom)
   if (payload.won) await markConverted(leadId, payload.won.value)
   else if (stage) await moveForward(leadId, stage)
   return lead
@@ -204,9 +204,9 @@ async function setLeadFields(leadId, fields) {
     const got = await request('GET', leadPath(leadId))
     const current = accepted(got) && got.data.lead?.custom && typeof got.data.lead.custom === 'object' ? got.data.lead.custom : {}
     const r = await request('PATCH', leadPath(leadId), { custom: { ...current, ...fields } })
-    if (!accepted(r)) console.error('[crm] could not save payment fields:', r.status, r.data.error || '', r.data.message || '')
+    if (!accepted(r)) console.error('[crm] could not save lead fields:', r.status, r.data.error || '', r.data.message || '')
   } catch (err) {
-    console.error('[crm] could not save payment fields:', err.message)
+    console.error('[crm] could not save lead fields:', err.message)
   }
 }
 
@@ -459,10 +459,13 @@ export async function orderEventPayload(db, { orderId, from, to, reason }) {
     ? `Website checkout not completed: order ${o.order_number} for ${rupees(o.total_paise)} was not paid in time. Worth a call.`
     : ORDER_NOTE[to](o)]
 
+  // What they bought (or tried to): for the note, and the lead's "Last Product" field.
+  let lastProduct = null
   if (to === 'placed' || abandoned) {
     const { rows: items } = await db.query(
       'select product_name, pack_kg, quantity from order_items where order_id = $1 order by product_name', [orderId])
     for (const i of items) lines.push(`${i.quantity} x ${i.product_name} ${Number(i.pack_kg)} kg`)
+    lastProduct = items.map((i) => `${i.product_name} ${Number(i.pack_kg)} kg${i.quantity > 1 ? ' x ' + i.quantity : ''}`).join(', ').slice(0, 200) || null
     const a = o.shipping_address || {}
     const place = [a.city, a.state || o.ship_state, a.pincode].filter(Boolean).join(', ')
     if (place) lines.push(`Ship to: ${place}`)
@@ -501,8 +504,9 @@ export async function orderEventPayload(db, { orderId, from, to, reason }) {
     // Paid → the Converted stage with the order amount, and no longer "Not converted" /
     // "Abandoned checkout"; unpaid checkout → "Checkout not paid".
     ...(to === 'placed' && { untag: [CRM_TAGS.notConverted, CRM_TAGS.abandoned], won: { value: Number(o.total_paise) / 100 } }),
-    // The latest paid order's payment, written onto the lead's own fields.
-    ...(payment && { custom: paymentFields(o.order_number, payment) }),
+    // The latest paid order's payment and the product, written onto the lead's own fields
+    // (columns in Sales Daddy once the fields exist: Settings → Custom fields).
+    ...((payment || lastProduct) && { custom: { ...(payment ? paymentFields(o.order_number, payment) : {}), ...(lastProduct && { last_product: lastProduct }) } }),
     ...(abandoned && { stage: 'checkoutNotPaid' }),
   }
 }
