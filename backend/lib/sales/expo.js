@@ -5,6 +5,7 @@
 // Saved once per mobile number, then sent to the Sales Daddy CRM as a lead with the
 // details in its note.
 import { cleanMobile } from './attribution.js'
+import { audit } from './staff.js'
 import { pushCrmLead } from '../crm.js'
 import { httpError, str } from './util.js'
 
@@ -67,14 +68,22 @@ export async function saveExpoLead(db, body) {
 export async function listExpoLeads(db, { days = 90 } = {}) {
   const span = Math.min(366, Math.max(1, Number(days) || 90))
   const { rows } = await db.query(
-    `select name, phone, email, location, buyer_type, requirements, campaign, submissions, created_at, updated_at
+    `select id, name, phone, email, location, buyer_type, requirements, campaign, submissions, created_at, updated_at
        from expo_leads where updated_at >= now() - ($1::int * interval '1 day') order by updated_at desc limit 5000`,
     [span]
   )
   return rows.map((r) => ({
-    name: r.name, phone: r.phone, email: r.email || '', location: r.location,
+    id: r.id, name: r.name, phone: r.phone, email: r.email || '', location: r.location,
     buyerType: BUYER_TYPES[r.buyer_type] || r.buyer_type,
     requirement: r.requirements.map((k) => REQUIREMENTS[k] || k).join(', '),
     campaign: r.campaign, submissions: r.submissions, at: r.updated_at,
   }))
+}
+
+/** Deletes one expo lead from the website's list (a test or a mistake). The Sales Daddy lead, if sent, stays there. */
+export async function deleteExpoLead(db, staff, id) {
+  const { rows: [gone] } = await db.query('delete from expo_leads where id::text = $1 returning name, phone', [str(id)])
+  if (!gone) throw httpError('Not found', { status: 404, publicMessage: 'That lead is already gone.' })
+  await audit(db, staff, 'expo.lead.delete', 'expo_lead', id, { name: gone.name, phone: gone.phone })
+  return { ok: true }
 }
