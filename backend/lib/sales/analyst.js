@@ -349,8 +349,17 @@ export async function analystReport(q = {}) {
   // Kg against the monthly target: this month so far, whatever period is shown.
   const today = istToday()
   const month = await sales(analystPeriod({ from: today.slice(0, 8) + '01', to: today }), rice, false)
+  // The same number of days just before, for the "↑ 7% vs previous period" badges.
+  const prev = analystPeriod({ from: addDays(p.from, -p.days), to: addDays(p.from, -1) })
+  const [ps, pl] = await Promise.all([sales(prev, rice, false), newLeads(prev)])
+  const change = (now, before) => (before ? Math.round(((now - before) / before) * 1000) / 10 : null)
   return {
     period: { from: p.from, to: p.to, days: p.days }, rice,
+    previous: {
+      from: prev.from, to: prev.to,
+      revenue: change(s.revenue, ps.revenue), orders: change(s.orders, ps.orders), kg: change(s.kg, ps.kg),
+      aov: change(s.aov || 0, ps.aov || 0), newLeads: change(leads.total, pl.total),
+    },
     sales: s,
     target: { kgPerMonth: target, kgThisMonth: month.kg, percent: target ? pct(month.kg, target) : null },
     leads: {

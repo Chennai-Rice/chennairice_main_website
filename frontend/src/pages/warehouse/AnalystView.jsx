@@ -44,13 +44,31 @@ const kg = (n) => (n == null ? '—' : n >= 1000 ? `${(n / 1000).toLocaleString(
 const pct = (n) => (n == null ? '—' : `${n}%`)
 const count = (n) => (n == null ? '—' : Number(n).toLocaleString('en-IN'))
 const dayFmt = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+function greeting() {
+  const h = new Date(Date.now() + IST).getUTCHours()
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
+}
 const when = (iso) => new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })
 
-function Tile({ label, value, note, tone = 'blue', icon = 'reports', alert = false }) {
+/** A stat card: label and icon on top, the number, then a change badge and a note. */
+function Tile({ label, value, note, icon = 'reports', alert = false, hero = false, delta, goodWhenDown = false }) {
+  const dir = delta == null ? null : delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat'
+  const good = dir === 'flat' ? null : (dir === 'up') !== goodWhenDown
   return (
-    <div className={`wh-kpi wh-kpi--${alert ? 'rose' : tone}`}>
-      <span className="wh-kpi-icon"><Icon name={icon} size={24} /></span>
-      <span className="wh-kpi-text"><strong>{value}</strong><span className="wh-kpi-label">{label}</span>{note && <span className="wh-kpi-note">{note}</span>}</span>
+    <div className={`an-stat${hero ? ' is-hero' : ''}${alert ? ' is-alert' : ''}`}>
+      <div className="an-stat-top">
+        <span className="an-stat-label">{label}</span>
+        <span className="an-stat-icon" aria-hidden="true"><Icon name={icon} size={18} /></span>
+      </div>
+      <strong className="an-stat-value">{value}</strong>
+      <div className="an-stat-foot">
+        {dir && (
+          <span className={`an-delta ${good === null ? '' : good ? 'is-good' : 'is-bad'}`} title="Against the same number of days just before">
+            {dir === 'up' ? '↑' : dir === 'down' ? '↓' : '→'} {Math.abs(delta)}%
+          </span>
+        )}
+        {note && <span className="an-stat-note">{note}</span>}
+      </div>
     </div>
   )
 }
@@ -126,8 +144,8 @@ function Table({ cols, rows, empty = 'Nothing in this period.', rowClass }) {
 
 function Panel({ title, note, children, wide }) {
   return (
-    <section className={`wh-panel an-panel${wide ? ' an-panel--wide' : ''}`}>
-      <h2 className="wh-panel-title">{title}</h2>
+    <section className={`an-card an-panel${wide ? ' an-panel--wide' : ''}`}>
+      <h2 className="an-card-title">{title}</h2>
       {note && <p className="wh-muted wh-small an-note">{note}</p>}
       {children}
     </section>
@@ -150,7 +168,22 @@ function CeoReport({ ceo }) {
     ['Cost per order', y.costPerOrder == null ? '—' : inr(y.costPerOrder), m.costPerOrder == null ? (m.adSpend ? 'No orders yet' : 'Enter ad spend') : inr(m.costPerOrder)],
     ['Orders pending dispatch (now)', count(ceo.pendingDispatch), count(ceo.pendingDispatch)],
   ]
+  // The 8 numbers as cards: this month so far, with yesterday under it.
+  const cards = [
+    { label: 'Revenue', value: inr(m.revenue), note: `Yesterday ${inr(y.revenue)}`, icon: 'reports', hero: true },
+    { label: 'Orders', value: count(m.orders), note: `Yesterday ${count(y.orders)}`, icon: 'orders' },
+    { label: 'Kg sold', value: kg(m.kg), note: target ? `${Math.round((m.kg / target) * 100)}% of ${kg(target)} target · yesterday ${kg(y.kg)}` : `Yesterday ${kg(y.kg)} · set a target in Settings`, icon: 'box' },
+    { label: 'New leads', value: count(m.newLeads), note: `Yesterday ${count(y.newLeads)}`, icon: 'users' },
+    { label: 'Conversion rate', value: pct(m.conversion), note: `Yesterday ${pct(y.conversion)} · orders ÷ new leads`, icon: 'check' },
+    { label: 'Overdue follow-ups', value: count(ceo.overdueFollowUps), note: 'Right now · target 0', icon: 'returns', alert: ceo.overdueFollowUps > 0 },
+    { label: 'Cost per order', value: m.costPerOrder == null ? '—' : inr(m.costPerOrder), note: m.costPerOrder == null ? (m.adSpend ? 'No campaign orders yet' : 'Enter ad spend in Settings') : `Yesterday ${y.costPerOrder == null ? '—' : inr(y.costPerOrder)}`, icon: 'print' },
+    { label: 'Pending dispatch', value: count(ceo.pendingDispatch), note: 'Paid, not yet shipped · right now', icon: 'truck', alert: ceo.pendingDispatch > 0 },
+  ]
   return (
+    <>
+      <section className="an-stats an-stats--4">
+        {cards.map((c) => <Tile key={c.label} {...c} />)}
+      </section>
     <Panel title="Daily CEO / MD report" note={`Yesterday (${dayFmt(y.day)}) and this month so far (${dayFmt(m.from)} – ${dayFmt(m.to)}). The same 8 numbers every morning.`} wide>
       <div className="an-table-wrap">
         <table className="an-table an-ceo">
@@ -165,6 +198,7 @@ function CeoReport({ ceo }) {
         </table>
       </div>
     </Panel>
+    </>
   )
 }
 
@@ -174,14 +208,14 @@ function SalesTab({ data, rice }) {
   const t = data.target
   return (
     <>
-      <section className="wh-kpis an-kpis">
-        <Tile label="Total revenue" value={inr(s.revenue)} note={rice ? 'Item value (no delivery)' : 'Paid orders, with delivery'} tone="green" icon="reports" />
-        <Tile label="Total orders" value={count(s.orders)} note="Paid, not cancelled" icon="orders" />
-        <Tile label="Revenue per day" value={inr(s.revenuePerDay)} note={`Over ${data.period.days} day${data.period.days === 1 ? '' : 's'}`} tone="pink" icon="calendar" />
-        <Tile label="Orders per day" value={s.ordersPerDay} note={`Over ${data.period.days} day${data.period.days === 1 ? '' : 's'}`} tone="blue" icon="calendar" />
-        <Tile label="Average order value" value={inr(s.aov)} note="Revenue ÷ orders" tone="green" icon="print" />
-        <Tile label="Kg sold" value={kg(s.kg)} note={t.kgPerMonth ? `This month ${kg(t.kgThisMonth)} of ${kg(t.kgPerMonth)} (${t.percent}%)` : 'Set a monthly target in Settings'} tone="pink" icon="box" />
-        <Tile label="Repeat customers" value={pct(s.repeat.percent)} note={`${s.repeat.repeat} of ${s.repeat.customers} buyers have 2+ orders`} tone="blue" icon="users" />
+      <section className="an-stats">
+        <Tile hero label="Total revenue" value={inr(s.revenue)} delta={data.previous?.revenue} note={rice ? 'Item value, no delivery' : 'Paid orders, with delivery'} icon="reports" />
+        <Tile label="Total orders" value={count(s.orders)} delta={data.previous?.orders} note="Paid, not cancelled" icon="orders" />
+        <Tile label="Revenue per day" value={inr(s.revenuePerDay)} note={`Over ${data.period.days} day${data.period.days === 1 ? '' : 's'}`} icon="calendar" />
+        <Tile label="Orders per day" value={s.ordersPerDay} note={`Over ${data.period.days} day${data.period.days === 1 ? '' : 's'}`} icon="calendar" />
+        <Tile label="Average order value" value={inr(s.aov)} delta={data.previous?.aov} note="Revenue ÷ orders" icon="print" />
+        <Tile label="Kg sold" value={kg(s.kg)} delta={data.previous?.kg} note={t.kgPerMonth ? `This month ${kg(t.kgThisMonth)} of ${kg(t.kgPerMonth)} (${t.percent}%)` : 'Set a monthly target in Settings'} icon="box" />
+        <Tile label="Repeat customers" value={pct(s.repeat.percent)} note={`${s.repeat.repeat} of ${s.repeat.customers} buyers have 2+ orders`} icon="users" />
       </section>
       {t.kgPerMonth ? (
         <div className="an-target" title={`${kg(t.kgThisMonth)} of ${kg(t.kgPerMonth)}`}>
@@ -234,12 +268,12 @@ function LeadsTab({ data }) {
   if (nl.whatsappChats) sources.push({ source: 'WhatsApp chats (AskEva)', n: nl.whatsappChats })
   return (
     <>
-      <section className="wh-kpis an-kpis">
-        <Tile label="New leads" value={count(nl.total)} note="Sign-ups, expo QR, WhatsApp chats" icon="users" />
-        <Tile label="Contacted leads" value={count(l.contacted.total)} note="Called on NeoDove in this period" tone="green" icon="truck" />
-        <Tile label="Conversion rate" value={pct(l.conversion)} note="Paid orders ÷ new leads" tone="pink" icon="reports" />
+      <section className="an-stats">
+        <Tile hero label="New leads" value={count(nl.total)} delta={data.previous?.newLeads} note="Sign-ups, expo QR, WhatsApp chats" icon="users" />
+        <Tile label="Contacted leads" value={count(l.contacted.total)} note="Called on NeoDove in this period" icon="truck" />
+        <Tile label="Conversion rate" value={pct(l.conversion)} note="Paid orders ÷ new leads" icon="reports" />
         <Tile label="Time to convert" value={l.daysToConvert == null ? '—' : `${l.daysToConvert} days`} note="Lead to first paid order" icon="calendar" />
-        <Tile label="Overdue follow-ups" value={count(l.overdue.total)} note="Follow-up date passed · target 0" alert={l.overdue.total > 0} tone="green" icon="returns" />
+        <Tile label="Overdue follow-ups" value={count(l.overdue.total)} note="Follow-up date passed · target 0" alert={l.overdue.total > 0} icon="returns" />
       </section>
       <div className="an-grid">
         <Panel title="New leads by source">
@@ -300,10 +334,10 @@ function CampaignsTab({ data, onAdd }) {
   ]
   return (
     <>
-      <section className="wh-kpis an-kpis">
-        <Tile label="Ad spend" value={inr(c.totalSpend)} note="Entered under Settings" icon="print" />
-        <Tile label="Cost per lead" value={c.totalSpend && totals.leads ? inr(c.totalSpend / totals.leads) : '—'} note={`${count(totals.leads)} leads from campaigns with spend`} tone="green" icon="users" />
-        <Tile label="Cost per order" value={c.totalSpend && totals.orders ? inr(c.totalSpend / totals.orders) : '—'} note={`${count(totals.orders)} orders from campaigns with spend`} tone="pink" icon="orders" />
+      <section className="an-stats">
+        <Tile hero label="Ad spend" value={inr(c.totalSpend)} note="Entered under Settings" icon="print" />
+        <Tile label="Cost per lead" value={c.totalSpend && totals.leads ? inr(c.totalSpend / totals.leads) : '—'} note={`${count(totals.leads)} leads from campaigns with spend`} icon="users" />
+        <Tile label="Cost per order" value={c.totalSpend && totals.orders ? inr(c.totalSpend / totals.orders) : '—'} note={`${count(totals.orders)} orders from campaigns with spend`} icon="orders" />
         <Tile label="ROAS" value={c.totalSpend ? `${(totals.revenue / c.totalSpend).toFixed(2)}×` : '—'} note="Revenue ÷ spend · above 1 earns more than it costs" icon="reports" />
       </section>
       <div className="an-grid">
@@ -337,9 +371,9 @@ function DeliveryTab({ data }) {
   const loc = data.leads.byLocation
   return (
     <>
-      <section className="wh-kpis an-kpis">
-        <Tile label="Average delivery days" value={d.avgDeliveryDays == null ? '—' : `${d.avgDeliveryDays} days`} note="Payment to delivery, delivered in this period" icon="delivered" />
-        <Tile label="Orders pending dispatch" value={count(d.pendingDispatch.total)} note="Paid, not yet shipped (now)" alert={d.pendingDispatch.total > 0} tone="green" icon="truck" />
+      <section className="an-stats">
+        <Tile hero label="Average delivery days" value={d.avgDeliveryDays == null ? '—' : `${d.avgDeliveryDays} days`} note="Payment to delivery, delivered in this period" icon="delivered" />
+        <Tile label="Orders pending dispatch" value={count(d.pendingDispatch.total)} note="Paid, not yet shipped (now)" alert={d.pendingDispatch.total > 0} icon="truck" />
       </section>
       <div className="an-grid">
         <Panel title="Location-wise sales" note="Paid orders in this period, by delivery city." wide>
@@ -439,7 +473,8 @@ function SettingsTab({ settings, period, say, onAuthError, reload }) {
 
 /* ------------------------------------------------------------------ page */
 
-export default function AnalystView({ say, onAuthError }) {
+export default function AnalystView({ say, onAuthError, name = '' }) {
+  const firstName = String(name || '').trim().split(/\s+/)[0]
   const [tab, setTab] = useState('ceo')
   const [range, setRange] = useState('month')
   const [period, setPeriod] = useState(() => preset('month'))
@@ -471,29 +506,35 @@ export default function AnalystView({ say, onAuthError }) {
 
   return (
     <div className="an-page">
-      <div className="an-filters">
-        <div className="an-seg" role="group" aria-label="Period">
-          {[['today', 'Today'], ['yesterday', 'Yesterday'], ['week', 'This week'], ['month', 'This month'], ['30', 'Last 30 days'], ['custom', 'Custom']].map(([k, l]) => (
-            <button key={k} type="button" className={`wh-tab${range === k ? ' is-active' : ''}`} aria-pressed={range === k} onClick={() => choose(k)}>{l}</button>
-          ))}
+      <header className="an-head">
+        <div>
+          <h1 className="an-hello">{greeting()}{firstName ? `, ${firstName}` : ''}</h1>
+          <p className="an-sub">Sales, leads, campaigns and delivery for {dayFmt(period.from)} – {dayFmt(period.to)}{rice ? ` · ${RICE[rice]} rice` : ''}.</p>
         </div>
-        {range === 'custom' && (
-          <div className="an-dates">
-            <label className="wh-filter"><span>From</span><input className="wh-input" type="date" value={period.from} max={period.to} onChange={(e) => e.target.value && setPeriod((p) => ({ ...p, from: e.target.value }))} /></label>
-            <label className="wh-filter"><span>To</span><input className="wh-input" type="date" value={period.to} min={period.from} max={today()} onChange={(e) => e.target.value && setPeriod((p) => ({ ...p, to: e.target.value }))} /></label>
+        <div className="an-controls">
+          <div className="an-pills" role="group" aria-label="Period">
+            {[['today', 'Today'], ['yesterday', 'Yesterday'], ['week', 'This week'], ['month', 'This month'], ['30', '30 days'], ['custom', 'Custom']].map(([k, l]) => (
+              <button key={k} type="button" className={`an-pill${range === k ? ' is-active' : ''}`} aria-pressed={range === k} onClick={() => choose(k)}>{l}</button>
+            ))}
           </div>
-        )}
-        <label className="wh-filter"><span>Rice type</span>
-          <span className="wh-select"><select value={rice} onChange={(e) => setRice(e.target.value)}>
-            <option value="">All</option><option value="raw">Raw</option><option value="idli">Idli</option><option value="boiled">Boiled</option>
-          </select></span>
-        </label>
-        <span className="wh-muted wh-small an-period">{dayFmt(period.from)} – {dayFmt(period.to)}{rice ? ` · ${RICE[rice]} only (sales)` : ''}</span>
-      </div>
+          <label className="an-rice">
+            <span className="visually-hidden">Rice type</span>
+            <select value={rice} onChange={(e) => setRice(e.target.value)}>
+              <option value="">All rice</option><option value="raw">Raw</option><option value="idli">Idli</option><option value="boiled">Boiled</option>
+            </select>
+          </label>
+        </div>
+      </header>
+      {range === 'custom' && (
+        <div className="an-dates">
+          <label className="wh-filter"><span>From</span><input className="wh-input" type="date" value={period.from} max={period.to} onChange={(e) => e.target.value && setPeriod((p) => ({ ...p, from: e.target.value }))} /></label>
+          <label className="wh-filter"><span>To</span><input className="wh-input" type="date" value={period.to} min={period.from} max={today()} onChange={(e) => e.target.value && setPeriod((p) => ({ ...p, to: e.target.value }))} /></label>
+        </div>
+      )}
 
-      <nav className="wh-tabs an-tabs" aria-label="Analyst sections">
+      <nav className="an-pills an-nav" aria-label="Analyst sections">
         {TABS.map((t) => (
-          <button key={t.key} type="button" className={`wh-tab${tab === t.key ? ' is-active' : ''}`} aria-pressed={tab === t.key} onClick={() => setTab(t.key)}>{t.label}</button>
+          <button key={t.key} type="button" className={`an-pill${tab === t.key ? ' is-active' : ''}`} aria-pressed={tab === t.key} onClick={() => setTab(t.key)}>{t.label}</button>
         ))}
       </nav>
 

@@ -377,7 +377,7 @@ export default function WarehousePage() {
             <InventoryView say={say} onAuthError={onAuthError} permissions={me.permissions || []} initialTab={sub || undefined} />
           )}
           {shown === 'customers' && <CustomersView say={say} onAuthError={onAuthError} onOpenOrders={openOrders} />}
-          {shown === 'analyst' && <AnalystView say={say} onAuthError={onAuthError} />}
+          {shown === 'analyst' && <AnalystView say={say} onAuthError={onAuthError} name={me.fullName} />}
           {shown === 'reports' && <ReportsView say={say} onAuthError={onAuthError} money={money} canDeleteExpo={perms.includes('expo.delete')} />}
           {shown === 'settings' && (
             <SettingsView me={me} prefs={prefs} setPrefs={setPrefs} location={fulfilment?.name} onSignOut={signOut} say={say} onAuthError={onAuthError} />
