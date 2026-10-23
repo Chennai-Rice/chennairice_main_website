@@ -19,6 +19,7 @@ import {
 import JournalPanel from '../blog/JournalPanel.jsx'
 import CampaignsPanel from './CampaignsPanel.jsx'
 import EnquiriesPanel from './EnquiriesPanel.jsx'
+import AnalystPanel from './AnalystPanel.jsx'
 import { LoadingRegion } from './components/ui.jsx'
 import {
   BehaviourView,
@@ -57,6 +58,7 @@ const ANALYTICS_NAV = [
   { id: 'heatmap', label: 'Heatmap', subtitle: 'Where visitors click on a page', icon: 'target' },
   { id: 'scroll', label: 'Scroll depth', subtitle: 'How far down pages are read', icon: 'depth' },
   { id: 'realtime', label: 'Realtime', subtitle: 'Who is on the site now', icon: 'pulse' },
+  { id: 'analyst', label: 'Analyst', subtitle: 'Sales, leads, campaigns and delivery — the KPI dashboard', icon: 'grid' },
   { id: 'campaigns', label: 'Ad campaigns', subtitle: 'Orders from Meta ads, Google Ads and direct visits', icon: 'target' },
   { id: 'enquiries', label: 'Enquiries', subtitle: 'Contact and bulk-order enquiries from the website', icon: 'mail' },
 ]
@@ -445,7 +447,7 @@ function Dashboard({ session, access, onSignOut }) {
           </div>
 
           <div className="ad-topbar-actions">
-            {view !== 'realtime' && view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && (
+            {view !== 'realtime' && view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && (
               <label className="ad-select-wrap">
                 <span className="ad-sr">Date range</span>
                 <select className="ad-select" value={rangeId} onChange={(e) => setRangeId(e.target.value)}>
@@ -455,7 +457,7 @@ function Dashboard({ session, access, onSignOut }) {
                 </select>
               </label>
             )}
-            {view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && (
+            {view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && (
               <button type="button" className="ad-btn ad-btn-quiet" onClick={refresh} disabled={loading}>
                 {loading ? 'Refreshing…' : 'Refresh'}
               </button>
@@ -469,6 +471,8 @@ function Dashboard({ session, access, onSignOut }) {
               it shares nothing with the analytics queries. */}
           {view === 'journal' ? (
             <JournalPanel author={access.author} />
+          ) : view === 'analyst' ? (
+            <AnalystPanel />
           ) : view === 'campaigns' ? (
             <CampaignsPanel />
           ) : view === 'enquiries' ? (
