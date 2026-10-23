@@ -2,6 +2,9 @@
    Wide screens: sidebar + table. Below 1100px the table becomes cards; below
    1024px the sidebar becomes a drawer behind a menu button. */
 
+/* The staff panel uses Inter everywhere (the shop keeps its own fonts). */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 .wh-app,
 .wh-signin,
 .wh-embed {
@@ -21,6 +24,9 @@
   --wh-blue-bg: #e7f0fb;
   --wh-bad: #b23a3a;
   --wh-bad-bg: #fbe7e7;
+  /* Inter for headings and text alike, in place of the shop's Bodoni / Jost. */
+  --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --serif: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-family: var(--sans);
   color: var(--wh-ink);
 }
