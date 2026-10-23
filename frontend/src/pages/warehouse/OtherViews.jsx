@@ -1,6 +1,7 @@
 import TeamView from './TeamView.jsx'
 import SourcesReport from './SourcesReport.jsx'
 import AlertEmails from './AlertEmails.jsx'
+import ExpoLeads from './ExpoLeads.jsx'
 import { useEffect, useMemo, useState } from 'react'
 import { staffFetch, staffJson } from '../../services/staffAuth.js'
 import { Icon, Pagination, dayLabel, telHref, writePrefs } from './shared.jsx'
@@ -347,6 +348,8 @@ export function ReportsView({ say, onAuthError, money = false }) {
       </div>
 
       {money && <SourcesReport say={say} onAuthError={onAuthError} />}
+
+      <ExpoLeads say={say} onAuthError={onAuthError} />
     </>
   )
 }

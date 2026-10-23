@@ -33,6 +33,7 @@ import { processTrackerUpload, listTrackerUploads, trackerTemplate, courierRedir
 import { listIssuedIds, issuedIdsCsv, checkRegister } from './idregister.js'
 import { invoiceHtml, packingSlipHtml } from './documents.js'
 import { recordVisit, sourcesReport, sourceOrders, saveContestLead, startContestLead, contestLeads } from './attribution.js'
+import { saveExpoLead, listExpoLeads } from './expo.js'
 import { checkAutomationKey, automationContacts } from './automation.js'
 import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
@@ -104,6 +105,11 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   }))
   router.post('/api/contest/lead', rateLimit({ windowMs: 10 * 60000, max: 10 }), wrap(async (req, res) => {
     res.json(await saveContestLead({ query }, req.body))
+  }))
+
+  // The lead form at /expo, opened from the QR code at an expo.
+  router.post('/api/expo/lead', rateLimit({ windowMs: 10 * 60000, max: 20 }), wrap(async (req, res) => {
+    res.json(await saveExpoLead({ query }, req.body))
   }))
 
   // Feed for the email-automation tool: contest sign-ups, behind an API key.
@@ -344,6 +350,22 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/warehouse/contest-leads', perm('money.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json({ leads: await contestLeads({ query }, req.query) })
+  }))
+  admin.get('/warehouse/expo-leads', perm('warehouse.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json({ leads: await listExpoLeads({ query }, req.query) })
+  }))
+  admin.get('/warehouse/expo-leads.csv', perm('warehouse.view'), wrap(async (req, res) => {
+    const leads = await listExpoLeads({ query }, { ...req.query, days: req.query.days || 366 })
+    const cell = (v) => {
+      let t = String(v ?? '')
+      if (/^[=+\-@]/.test(t)) t = "'" + t // never a spreadsheet formula
+      return '"' + t.replace(/"/g, '""') + '"'
+    }
+    const lines = [['Date', 'Name', 'Mobile', 'Email', 'Location', 'Customer type', 'Requirement', 'Expo', 'Times submitted']]
+      .concat(leads.map((l) => [new Date(l.at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }), l.name, l.phone, l.email, l.location, l.buyerType, l.requirement, l.campaign, l.submissions]))
+    res.set('Cache-Control', 'no-store')
+    res.type('text/csv').attachment('expo-leads.csv').send('﻿' + lines.map((r) => r.map(cell).join(',')).join('\r\n'))
   }))
   admin.get('/warehouse/contest-leads.csv', perm('money.view'), wrap(async (req, res) => {
     const leads = await contestLeads({ query }, req.query)

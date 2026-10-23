@@ -255,7 +255,7 @@ export async function listWarehouseCustomers(f = {}, { maxLimit = 100 } = {}) {
   // Converted = has paid for an order. Everyone else (a sign-up who has not bought, or a buyer whose
   // payment never went through) is "not converted".
   const status = f.status === 'converted' ? 'converted' : f.status === 'not_converted' ? 'not_converted' : ''
-  const SOURCE_LABELS = ['Meta', 'Google Ads', 'Google search', 'WhatsApp', 'Other website', 'Direct']
+  const SOURCE_LABELS = ['Meta', 'Google Ads', 'Google search', 'WhatsApp', 'Expo QR', 'Other website', 'Direct']
   const source = SOURCE_LABELS.includes(f.source) ? f.source : ''
   let sourceSql = ''
   if (source) {
@@ -293,12 +293,21 @@ export async function listWarehouseCustomers(f = {}, { maxLimit = 100 } = {}) {
         join order_items i on i.order_id = o.id
        where o.status <> 'pending_payment'
        group by c.id
-    ), signups as (
+    ), signups_all as (
       select l.id::text as id, l.name, l.phone, l.email, null::text as city, null::text as state,
              0 as orders, 0 as packs, null::timestamptz as last_order_at, null::timestamptz as first_order_at,
              l.source, false as converted, right(regexp_replace(l.phone, '[^0-9]', '', 'g'), 10) as pkey, l.updated_at
         from contest_leads l
-       where right(regexp_replace(l.phone, '[^0-9]', '', 'g'), 10) not in (select pkey from buyers)
+      union all
+      select e.id::text, e.name, e.phone, coalesce(e.email, ''), e.location, null::text,
+             0, 0, null::timestamptz, null::timestamptz,
+             'expo', false, right(regexp_replace(e.phone, '[^0-9]', '', 'g'), 10), e.updated_at
+        from expo_leads e
+    ), signups as (
+      -- A mobile that signed up more than once (contest and expo) is listed once, by its latest sign-up.
+      select distinct on (pkey) * from signups_all
+       where pkey not in (select pkey from buyers)
+       order by pkey, updated_at desc
     ), everyone as (
       select id, name, phone, email, city, state, orders, packs, last_order_at, first_order_at, source, converted,
              'customer' as kind, recent
@@ -313,6 +322,7 @@ export async function listWarehouseCustomers(f = {}, { maxLimit = 100 } = {}) {
                when source = 'google_ads' then 'Google Ads'
                when source = 'google_search' then 'Google search'
                when source = 'whatsapp' then 'WhatsApp'
+               when source = 'expo' then 'Expo QR'
                when source = 'other_website' then 'Other website'
                else 'Direct' end as src_label
         from everyone

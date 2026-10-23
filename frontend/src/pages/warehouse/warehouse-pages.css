@@ -387,3 +387,10 @@
 .wh-alert-list { list-style: none; margin: 8px 0 0; padding: 0; }
 .wh-alert-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--wh-line, #e8dfd6); }
 .wh-alert-list li span { overflow-wrap: anywhere; }
+
+/* Expo QR leads (Reports). */
+.wh-expo-list { display: grid; margin-top: 8px; }
+.wh-expo-row { display: grid; grid-template-columns: minmax(150px, 1.2fr) minmax(130px, 1fr) 110px minmax(120px, 1fr) 110px; gap: 12px; padding: 10px 0; border-top: 1px solid var(--wh-line, #e8dfd6); align-items: start; }
+@media (max-width: 720px) {
+  .wh-expo-row { grid-template-columns: 1fr; gap: 4px; }
+}

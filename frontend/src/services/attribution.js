@@ -73,6 +73,12 @@ export function captureAttribution() {
     const v = url.searchParams.get(p)
     if (v) a[p] = v.slice(0, 120)
   }
+  // The QR code at an expo opens /expo: that visit (and any order after it) counts as "Expo QR".
+  if (url.pathname.replace(/\/+$/, '') === '/expo' && !a.utm_source) {
+    a.utm_source = 'expo'
+    a.utm_medium = 'qr'
+    a.utm_campaign = (url.searchParams.get('c') || 'expo').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 60) || 'expo'
+  }
   if (url.searchParams.get('fbclid')) a.fbclid = true
   if (url.searchParams.get('gclid') || url.searchParams.get('gbraid') || url.searchParams.get('wbraid')) a.gclid = true
   let ref = ''
