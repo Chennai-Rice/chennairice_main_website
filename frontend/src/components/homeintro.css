@@ -41,56 +41,84 @@
   }
 }
 
-/* Chennai Rice Varieties (home, under Our Bestseller Rice). */
-.home-var { padding: clamp(40px, 6vw, 80px) 0; }
-.home-var-inner { max-width: 1180px; margin: 0 auto; padding: 0 20px; text-align: center; }
-.home-var-title {
-  margin: 0;
-  font-family: var(--display, var(--serif));
-  font-weight: 500;
-  font-size: clamp(2rem, 1.4rem + 2vw, 3rem);
-  color: var(--heading, #5b1a1f);
-}
-.home-var-intro { margin: 10px auto 0; max-width: 640px; font-size: 1.05rem; color: #5f4c3c; }
-.home-var-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
-  margin-top: 30px;
-  text-align: left;
-}
+/* Chennai Rice Varieties (home, under Our Bestseller Rice): five cards, each
+   with its bags fanned on a warm stage, a number, the text and product links. */
+.home-var { padding: clamp(48px, 7vw, 96px) 0; background: linear-gradient(180deg, #faf4e8 0%, #f4ead8 100%); }
+.home-var-inner { max-width: 1240px; margin: 0 auto; padding: 0 20px; text-align: center; }
+.home-var-eyebrow { margin: 0 0 6px; font-size: 13px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-deep, #a8802e); }
+.home-var-title { margin: 0; font-family: var(--display, var(--serif)); font-weight: 500; font-size: clamp(2rem, 1.4rem + 2vw, 3.1rem); color: var(--heading, #4a1c1c); }
+.home-var-intro { margin: 10px auto 0; max-width: 640px; font-size: 1.05rem; color: #6b5444; }
+
+.home-var-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; margin-top: 36px; text-align: left; }
+@media (min-width: 1100px) { .home-var-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+
 .home-var-card {
-  display: flex; flex-direction: column; gap: 10px;
-  background: #fffdf8;
-  border: 1px solid rgba(198, 154, 63, 0.3);
-  border-radius: 18px;
-  padding: 22px 22px 20px;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  display: flex; flex-direction: column; overflow: hidden;
+  background: #fff; border-radius: 22px;
+  border: 1px solid rgba(168, 128, 46, 0.22);
+  box-shadow: 0 6px 18px rgba(90, 50, 20, 0.06);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
-.home-var-card:hover { box-shadow: 0 12px 28px rgba(90, 60, 30, 0.1); transform: translateY(-2px); }
-.home-var-card h3 {
-  margin: 0;
-  font-family: var(--display, var(--serif));
-  font-weight: 500;
-  font-size: 1.35rem;
-  color: var(--maroon-600, #7a1f2b);
+.home-var-card:hover { transform: translateY(-4px); box-shadow: 0 18px 36px rgba(90, 50, 20, 0.14); }
+
+.home-var-stage {
+  position: relative; height: 190px; display: flex; align-items: flex-end; justify-content: center;
+  background: radial-gradient(85% 70% at 50% 100%, #f3e3c3 0%, #faf3e6 60%, #fdf9f2 100%);
+  border-bottom: 1px solid rgba(168, 128, 46, 0.18);
+  padding-bottom: 14px;
 }
-.home-var-card p { margin: 0; font-size: 0.98rem; line-height: 1.7; color: #4a3b30; flex: 1; }
-.home-var-chips { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-.home-var-chips a {
-  display: inline-block; padding: 6px 14px; border-radius: 999px;
-  background: #f6efe2; color: #5b1a1f; font-size: 0.88rem; font-weight: 600; text-decoration: none;
-  border: 1px solid rgba(198, 154, 63, 0.35);
-}
-.home-var-chips a:hover { background: #7a1f2b; color: #fff; border-color: #7a1f2b; }
+.home-var-stage img { height: 150px; width: auto; filter: drop-shadow(0 10px 12px rgba(60, 30, 10, 0.22)); transition: transform 0.3s ease; }
+.home-var-stage.n2 img:nth-child(1) { transform: translateX(14px) rotate(-6deg); }
+.home-var-stage.n2 img:nth-child(2) { transform: translateX(-14px) rotate(6deg); }
+.home-var-stage.n3 img { height: 132px; }
+.home-var-stage.n3 img:nth-child(1) { transform: translateX(26px) rotate(-9deg); }
+.home-var-stage.n3 img:nth-child(2) { position: relative; z-index: 2; height: 150px; }
+.home-var-stage.n3 img:nth-child(3) { transform: translateX(-26px) rotate(9deg); }
+.home-var-card:hover .home-var-stage.n2 img:nth-child(1) { transform: translateX(4px) rotate(-9deg); }
+.home-var-card:hover .home-var-stage.n2 img:nth-child(2) { transform: translateX(-4px) rotate(9deg); }
+.home-var-card:hover .home-var-stage.n3 img:nth-child(1) { transform: translateX(14px) rotate(-12deg); }
+.home-var-card:hover .home-var-stage.n3 img:nth-child(3) { transform: translateX(-14px) rotate(12deg); }
+.home-var-card:hover .home-var-stage.n1 img { transform: translateY(-4px) scale(1.04); }
+.home-var-num { position: absolute; top: 12px; left: 16px; font-family: var(--display, var(--serif)); font-size: 1.5rem; color: rgba(168, 128, 46, 0.75); }
+
+.home-var-body { display: flex; flex-direction: column; gap: 10px; padding: 18px 18px 20px; flex: 1; }
+.home-var-body h3 { margin: 0; font-family: var(--display, var(--serif)); font-weight: 500; font-size: 1.3rem; line-height: 1.2; color: var(--maroon-600, #7a1f2b); }
+.home-var-body p { margin: 0; font-size: 0.95rem; line-height: 1.65; color: #4a3b30; flex: 1; }
+.home-var-chips { list-style: none; margin: 6px 0 0; padding: 10px 0 0; display: flex; flex-direction: column; gap: 2px; border-top: 1px dashed rgba(168, 128, 46, 0.3); }
+.home-var-chips a { display: flex; justify-content: space-between; align-items: center; padding: 6px 2px; color: #3a2a22; font-size: 0.92rem; font-weight: 600; text-decoration: none; }
+.home-var-chips a span { color: var(--gold-deep, #a8802e); transition: transform 0.2s ease; }
+.home-var-chips a:hover { color: var(--maroon-600, #7a1f2b); }
+.home-var-chips a:hover span { transform: translateX(4px); color: var(--maroon-600, #7a1f2b); }
+
 .home-var-all {
-  display: inline-flex; align-items: center; gap: 8px; margin-top: 28px;
-  font-weight: 700; color: #7a1f2b; text-decoration: none; border-bottom: 2px solid rgba(122, 31, 43, 0.3); padding-bottom: 2px;
+  display: inline-flex; align-items: center; gap: 10px; margin-top: 34px; min-height: 50px; padding: 0 28px; border-radius: 999px;
+  background: var(--maroon-600, #7a1f2b); color: #fff; font-weight: 600; text-decoration: none; box-shadow: 0 8px 20px rgba(122, 31, 43, 0.25);
 }
-.home-var-all:hover { border-bottom-color: #7a1f2b; }
-/* Five cards: three on top, two below on wide screens. */
-@media (min-width: 900px) {
-  .home-var-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  .home-var-card { grid-column: span 2; }
-  .home-var-card:nth-child(4), .home-var-card:nth-child(5) { grid-column: span 3; }
+.home-var-all:hover { background: var(--maroon-500, #93283a); }
+@media (max-width: 600px) {
+  .home-var-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .home-var-stage { height: 140px; }
+  .home-var-stage img { height: 110px; }
+  .home-var-stage.n3 img { height: 96px; }
+  .home-var-stage.n3 img:nth-child(2) { height: 110px; }
+  .home-var-body { padding: 14px 12px 16px; }
+  .home-var-body h3 { font-size: 1.08rem; }
+  .home-var-body p { font-size: 0.85rem; }
+  .home-var-chips a { font-size: 0.82rem; }
+}
+/* Three bags: a little smaller and closer, so they sit inside the card and clear the number. */
+.home-var-stage { padding: 30px 10px 14px; overflow: hidden; }
+.home-var-stage.n3 img { height: 112px; }
+.home-var-stage.n3 img:nth-child(2) { height: 132px; }
+.home-var-stage.n3 img:nth-child(1) { transform: translateX(30px) rotate(-8deg); }
+.home-var-stage.n3 img:nth-child(3) { transform: translateX(-30px) rotate(8deg); }
+.home-var-card:hover .home-var-stage.n3 img:nth-child(1) { transform: translateX(22px) rotate(-11deg); }
+.home-var-card:hover .home-var-stage.n3 img:nth-child(3) { transform: translateX(-22px) rotate(11deg); }
+.home-var-num { z-index: 3; }
+@media (max-width: 600px) {
+  .home-var-stage { padding-top: 26px; }
+  .home-var-stage.n3 img { height: 82px; }
+  .home-var-stage.n3 img:nth-child(2) { height: 98px; }
+  .home-var-stage.n3 img:nth-child(1) { transform: translateX(22px) rotate(-8deg); }
+  .home-var-stage.n3 img:nth-child(3) { transform: translateX(-22px) rotate(8deg); }
 }

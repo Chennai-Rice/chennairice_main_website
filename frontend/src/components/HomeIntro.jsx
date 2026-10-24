@@ -18,23 +18,32 @@ export function HomeBulk() {
   )
 }
 
-/** "Chennai Rice Varieties": the range by kind of cooking, each product linked. */
+/** "Chennai Rice Varieties": the range by kind of cooking — each card shows its bags, each product linked. */
 export function HomeVarieties() {
   return (
     <section className="home-var" aria-labelledby="home-var-title">
       <div className="container home-var-inner">
+        <p className="home-var-eyebrow">Our range</p>
         <h2 id="home-var-title" className="home-var-title">{VARIETIES.title}</h2>
         <p className="home-var-intro">{VARIETIES.intro}</p>
         <div className="home-var-grid">
-          {VARIETIES.groups.map((g) => (
+          {VARIETIES.groups.map((g, i) => (
             <article key={g.name} className="home-var-card">
-              <h3>{g.name}</h3>
-              <p>{g.text}</p>
-              <ul className="home-var-chips">
-                {g.products.map(([id, label]) => (
-                  <li key={id}><Link to={productPath(id)}>{label}</Link></li>
+              <div className={`home-var-stage n${Math.min(g.products.length, 3)}`} aria-hidden="true">
+                {g.products.slice(0, 3).map(([id]) => (
+                  <img key={id} src={`/assets/shop/thumbs/${id}.webp`} alt="" loading="lazy" width="200" height="300" />
                 ))}
-              </ul>
+                <span className="home-var-num">{String(i + 1).padStart(2, '0')}</span>
+              </div>
+              <div className="home-var-body">
+                <h3>{g.name}</h3>
+                <p>{g.text}</p>
+                <ul className="home-var-chips">
+                  {g.products.map(([id, label]) => (
+                    <li key={id}><Link to={productPath(id)}>{label} <span aria-hidden="true">→</span></Link></li>
+                  ))}
+                </ul>
+              </div>
             </article>
           ))}
         </div>
