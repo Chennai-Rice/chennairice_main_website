@@ -324,7 +324,7 @@ export default function ProductsShowcase() {
         {/* Heading rides inside the pinned frame, so it stays above the
             products the whole way through the carousel. */}
         <div className="showcase-header">
-          <SectionHead label="Finest Rice, Finest Life" title="Our Bestselling Rice" />
+          <SectionHead label="Finest Rice, Finest Life" title="Our Bestseller Rice" />
         </div>
 
         {SHOW_INTRO_AND_CTA_SLIDES && (
