@@ -208,6 +208,35 @@ export async function sourceOrders(db, { days = 30, source, campaign = '', ad = 
   return rows.map((r) => ({ ...r, total: Number(r.total_paise) / 100 }))
 }
 
+/**
+ * Everyone who checked out in the period from the given sources (paid or not),
+ * one row per order, with who they are and which campaign / ad brought them.
+ * `sources` is a comma list of source keys; empty means every source.
+ */
+export async function sourcePeople(db, { days = 30, sources = '', product = '' } = {}) {
+  const span = Math.min(366, Math.max(1, Number(days) || 30))
+  const list = String(sources || '').split(',').map((s) => s.trim()).filter((s) => SOURCES[s])
+  const { rows } = await db.query(
+    `select o.order_number, o.created_at, o.placed_at, o.contact_name, o.contact_phone, o.contact_email, o.total_paise,
+            o.status, o.payment_status, coalesce(o.traffic_source, 'direct') as source,
+            coalesce(o.traffic_campaign, '') as campaign, coalesce(o.traffic_ad, '') as ad,
+            (o.shipping_address->>'city') as city,
+            (select string_agg(i.product_name || ' ' || trim(to_char(i.pack_kg, 'FM999')) || ' kg × ' || i.quantity, ', ')
+               from order_items i where i.order_id = o.id) as items
+       from orders o
+      where (o.created_at at time zone 'Asia/Kolkata')::date >= (now() at time zone 'Asia/Kolkata')::date - ($1::int - 1)
+        and (cardinality($2::text[]) = 0 or coalesce(o.traffic_source, 'direct') = any($2))
+        and ($3 = '' or exists (select 1 from order_items i join product_variants v on v.id = i.variant_id
+                                 join products p on p.id = v.product_id where i.order_id = o.id and p.slug = $3))
+      order by o.created_at desc limit 500`,
+    [span, list, str(product)]
+  )
+  return rows.map((r) => ({
+    ...r, total: Number(r.total_paise) / 100, total_paise: undefined,
+    paid: PAID_STATUSES.includes(r.payment_status), label: SOURCES[r.source] || r.source,
+  }))
+}
+
 // ---- Super Slogan Contest sign-ups (the popup form shown to ad visitors) ----
 
 const NAME = /^[\p{L}][\p{L} .'-]{1,79}$/u

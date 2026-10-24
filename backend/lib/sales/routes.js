@@ -32,7 +32,7 @@ import { listIssues, getIssue, createIssue, updateIssue } from './issues.js'
 import { processTrackerUpload, listTrackerUploads, trackerTemplate, courierRedirect, dispatchBatchSheet } from './tracker.js'
 import { listIssuedIds, issuedIdsCsv, checkRegister } from './idregister.js'
 import { invoiceHtml, packingSlipHtml } from './documents.js'
-import { recordVisit, sourcesReport, sourceOrders, saveContestLead, startContestLead, contestLeads } from './attribution.js'
+import { recordVisit, sourcesReport, sourceOrders, sourcePeople, saveContestLead, startContestLead, contestLeads } from './attribution.js'
 import { saveExpoLead, listExpoLeads, deleteExpoLead } from './expo.js'
 import { analystReport, analystSettings, setRiceType, setMonthlyTarget, addAdSpend, deleteAdSpend } from './analyst.js'
 import { checkAutomationKey, automationContacts } from './automation.js'
@@ -343,6 +343,10 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/warehouse/sources', perm('money.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await sourcesReport({ query }, req.query))
+  }))
+  admin.get('/warehouse/sources/people', perm('money.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json({ people: await sourcePeople({ query }, req.query) })
   }))
   admin.get('/warehouse/sources/orders', perm('money.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')

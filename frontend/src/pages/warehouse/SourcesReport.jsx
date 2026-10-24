@@ -17,6 +17,18 @@ const TONE = {
   facebook: '#7aa7f5', instagram: '#f08ac8', google_search: '#8bc79a', whatsapp: '#25d366', other_website: '#b49a6a', direct: '#8a7766',
 }
 
+// The channel filter: each button stands for these source keys.
+const CHANNELS = [
+  { key: '', label: 'All' },
+  { key: 'meta', label: 'Meta ads', sources: ['meta_ads_instagram', 'meta_ads_facebook', 'meta_ads'] },
+  { key: 'google', label: 'Google', sources: ['google_ads', 'google_search'] },
+  { key: 'whatsapp', label: 'WhatsApp', sources: ['whatsapp'] },
+  { key: 'social', label: 'Instagram / Facebook (not ads)', sources: ['instagram', 'facebook'] },
+  { key: 'direct', label: 'Direct', sources: ['direct'] },
+  { key: 'other', label: 'Other (websites, Expo QR)', sources: ['other_website', 'expo'] },
+]
+const inChannel = (channel, source) => !channel || (CHANNELS.find((c) => c.key === channel)?.sources || []).includes(source)
+
 function CopyLine({ label, text }) {
   const [done, setDone] = useState(false)
   return (
@@ -37,6 +49,8 @@ export default function SourcesReport({ say, onAuthError }) {
   const [data, setData] = useState(null)
   const [open, setOpen] = useState(null) // { row, orders }
   const [help, setHelp] = useState(false)
+  const [channel, setChannel] = useState('')
+  const [find, setFind] = useState('')
 
   useEffect(() => {
     fetch('/api/catalog').then((r) => r.json()).then((d) => setProducts(d.products || [])).catch(() => {})
@@ -63,7 +77,12 @@ export default function SourcesReport({ say, onAuthError }) {
     }
   }
 
-  const totalRevenue = (data?.sources || []).reduce((t, s) => t + s.revenue, 0)
+  // The chosen channel, and a campaign / ad search, applied to the cards and the table.
+  const cards = (data?.sources || []).filter((x) => inChannel(channel, x.source))
+  const needle = find.trim().toLowerCase()
+  const rows = (data?.campaigns || []).filter((r) => inChannel(channel, r.source)
+    && (!needle || `${r.label} ${r.campaign} ${r.ad}`.toLowerCase().includes(needle)))
+  const totalRevenue = cards.reduce((t, s) => t + s.revenue, 0)
 
   return (
     <>
@@ -99,10 +118,20 @@ export default function SourcesReport({ say, onAuthError }) {
         </div>
       )}
 
+      <div className="wh-src-channels">
+        <div className="wh-src-pills" role="group" aria-label="Channel">
+          {CHANNELS.map((c) => (
+            <button key={c.key || 'all'} type="button" className={`wh-src-pill${channel === c.key ? ' is-active' : ''}`} aria-pressed={channel === c.key}
+              onClick={() => { setChannel(c.key); setOpen(null) }}>{c.label}</button>
+          ))}
+        </div>
+        <input className="wh-src-find" type="search" placeholder="Search campaign or ad…" value={find} onChange={(e) => setFind(e.target.value)} aria-label="Search campaign or ad" />
+      </div>
+
       {!data ? <p className="wh-empty">Loading…</p> : (
         <>
           <div className="wh-src-cards">
-            {data.sources.map((s) => (
+            {cards.map((s) => (
               <div key={s.source} className="wh-src-card" style={{ '--tone': TONE[s.source] || '#8a7766' }}>
                 <span className="wh-src-card-label">{s.label}</span>
                 <strong>{rupees(s.revenue)}</strong>
@@ -110,10 +139,10 @@ export default function SourcesReport({ say, onAuthError }) {
                 <span className="wh-src-share"><span style={{ width: totalRevenue ? `${(s.revenue / totalRevenue) * 100}%` : 0 }} /></span>
               </div>
             ))}
-            {!data.sources.length && <p className="wh-empty">No visits or orders from any source in this period yet.</p>}
+            {!cards.length && <p className="wh-empty">No visits or orders from {channel ? 'this channel' : 'any source'} in this period yet.</p>}
           </div>
 
-          {data.campaigns.length > 0 && (
+          {rows.length > 0 && (
             <div className="wh-table wh-table--src" role="table" aria-label="By campaign and ad">
               <div className="wh-tr wh-th" role="row">
                 <span role="columnheader">Source</span>
@@ -126,7 +155,7 @@ export default function SourcesReport({ say, onAuthError }) {
                 <span role="columnheader">Packs</span>
                 <span role="columnheader">Revenue</span>
               </div>
-              {data.campaigns.map((r) => (
+              {rows.map((r) => (
                 <div key={`${r.source}|${r.campaign}|${r.ad}`}>
                   <button type="button" className={`wh-tr wh-src-row${open?.row === r ? ' is-open' : ''}`} role="row" onClick={() => showOrders(r)}
                     disabled={!r.orders} title={r.orders ? 'Show these orders' : 'No paid orders'}>
@@ -160,13 +189,73 @@ export default function SourcesReport({ say, onAuthError }) {
         </>
       )}
     </section>
-    <ContestLeads days={days} say={say} onAuthError={onAuthError} />
+    <SourcePeople days={days} product={product} channel={channel} say={say} onAuthError={onAuthError} />
+    <ContestLeads days={days} channel={channel} say={say} onAuthError={onAuthError} />
     </>
   )
 }
 
+/** Everyone who checked out from the chosen channel, one by one (paid or not). */
+function SourcePeople({ days, product, channel, say, onAuthError }) {
+  const [people, setPeople] = useState(null)
+  const [paidOnly, setPaidOnly] = useState(false)
+  useEffect(() => {
+    let live = true
+    setPeople(null)
+    const sources = (CHANNELS.find((c) => c.key === channel)?.sources || []).join(',')
+    staffJson(`/api/admin/warehouse/sources/people?days=${days}&product=${encodeURIComponent(product)}&sources=${sources}`)
+      .then((d) => live && setPeople(d.people))
+      .catch((err) => { if (!onAuthError(err)) say(err.message, 'error') })
+    return () => { live = false }
+  }, [days, product, channel, say, onAuthError])
+  const list = (people || []).filter((p) => !paidOnly || p.paid)
+  const name = CHANNELS.find((c) => c.key === channel)?.label
+  function downloadCsv() {
+    const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const csv = [['Order', 'Name', 'Mobile', 'Email', 'City', 'Items', 'Amount', 'Paid', 'Came from', 'Campaign', 'Ad', 'Date'],
+      ...list.map((p) => [p.order_number, p.contact_name, p.contact_phone, p.contact_email, p.city, p.items, p.total, p.paid ? 'Paid' : 'Not paid', p.label, p.campaign, p.ad, dayLabel(p.created_at).text])]
+      .map((r) => r.map(cell).join(',')).join('\r\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' }))
+    a.download = `buyers-${channel || 'all'}.csv`
+    document.body.appendChild(a); a.click(); a.remove()
+  }
+  return (
+    <section className="wh-panel wh-src">
+      <header className="wh-src-head">
+        <div>
+          <h2 className="wh-panel-title">People who checked out{channel ? ` — ${name}` : ''}</h2>
+          <p className="wh-muted wh-small">Each buyer one by one: who, mobile, what they ordered, paid or not, and the campaign and ad that brought them{people ? ` · ${list.length} in this period` : ''}.</p>
+        </div>
+        <div className="wh-src-filters">
+          <label className="wh-src-check"><input type="checkbox" checked={paidOnly} onChange={(e) => setPaidOnly(e.target.checked)} /> Paid only</label>
+          <button type="button" className="wh-btn wh-btn--outline" onClick={downloadCsv} disabled={!list.length}>Download CSV</button>
+        </div>
+      </header>
+      {!people ? <p className="wh-empty">Loading…</p> : !list.length ? (
+        <p className="wh-empty">No checkouts from {channel ? 'this channel' : 'any source'} in this period.</p>
+      ) : (
+        <ul className="wh-src-orders wh-src-people">
+          {list.map((p) => (
+            <li key={p.order_number}>
+              <strong className="wh-mono">{p.order_number}</strong>
+              <span><strong>{p.contact_name}</strong>{p.city ? `, ${p.city}` : ''}</span>
+              <a className="wh-mono" href={`tel:${String(p.contact_phone).replace(/[^\d+]/g, '')}`}>{p.contact_phone}</a>
+              <span className="wh-muted wh-small">{p.items}</span>
+              <span><i className="wh-src-dot" style={{ background: TONE[p.source] || '#8a7766' }} />{p.label}{p.campaign ? ` · ${p.campaign}` : ''}{p.ad ? ` · ${p.ad}` : ''}</span>
+              <span className="wh-muted wh-small">{dayLabel(p.created_at).text}</span>
+              <span className={`wh-src-paid${p.paid ? ' is-paid' : ''}`}>{p.paid ? 'Paid' : 'Not paid'}</span>
+              <strong>{rupees(p.total)}</strong>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 /** Sign-ups from the contest popup form shown to Meta and Google ad visitors. */
-function ContestLeads({ days, say, onAuthError }) {
+function ContestLeads({ days, channel = '', say, onAuthError }) {
   const [leads, setLeads] = useState(null)
 
   useEffect(() => {
@@ -206,11 +295,11 @@ function ContestLeads({ days, say, onAuthError }) {
         </div>
         <button type="button" className="wh-btn wh-btn--outline" onClick={downloadCsv} disabled={!leads?.length}>Download CSV</button>
       </header>
-      {!leads ? <p className="wh-empty">Loading…</p> : !leads.length ? (
+      {!leads ? <p className="wh-empty">Loading…</p> : !leads.filter((l) => inChannel(channel, l.source)).length ? (
         <p className="wh-empty">No sign-ups in this period yet.</p>
       ) : (
         <ul className="wh-src-orders wh-src-leads">
-          {leads.map((l) => (
+          {leads.filter((l) => inChannel(channel, l.source)).map((l) => (
             <li key={l.phone}>
               <strong>{l.name}</strong>
               <a className="wh-mono" href={`tel:+91${l.phone}`}>{l.phone}</a>

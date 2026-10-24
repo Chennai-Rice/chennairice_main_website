@@ -1968,3 +1968,16 @@ test('Analyst: owner sees sales, leads, campaigns and delivery KPIs; rice type, 
   assert.equal(entry.amount, 500)
   assert.equal((await api('DELETE', `/api/admin/analyst/ad-spend/${entry.id}`, { token: OWNER })).status, 200)
 })
+
+test('Ad campaigns: people from a source — every checkout (paid or not) with name, mobile and campaign; filtered by source', async () => {
+  const { session } = await buy([{ id: 'alibaba', qty: 1 }], buyer({ name: 'Source Sara', email: 'sara@example.com', phone: '9500088888' }))
+  await db.query(`update orders set traffic_source = 'google_ads', traffic_campaign = 'Idli Search', traffic_ad = 'Soft idli' where id = $1`, [session.orderId])
+  assert.equal((await api('GET', '/api/admin/warehouse/sources/people?days=30', { token: tokens.sales })).status, 403)
+  const g = await api('GET', '/api/admin/warehouse/sources/people?days=30&sources=google_ads,google_search', { token: OWNER })
+  assert.equal(g.status, 200, JSON.stringify(g.body))
+  const sara = g.body.people.find((p) => p.contact_name === 'Source Sara')
+  assert.ok(sara && sara.paid && sara.campaign === 'Idli Search' && sara.label === 'Google Ads' && sara.total > 0 && /kg/.test(sara.items))
+  assert.ok(g.body.people.every((p) => ['google_ads', 'google_search'].includes(p.source)))
+  const meta = await api('GET', '/api/admin/warehouse/sources/people?days=30&sources=meta_ads_instagram', { token: OWNER })
+  assert.ok(!meta.body.people.some((p) => p.contact_name === 'Source Sara'))
+})
