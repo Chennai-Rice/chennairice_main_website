@@ -412,3 +412,10 @@
 .wh-src-paid.is-paid { background: #e7f5ec; color: #1f7a3d; }
 @media (max-width: 1100px) { .wh-src-orders.wh-src-people li { grid-template-columns: 1fr 1fr; gap: 4px 12px; } }
 @media (max-width: 600px) { .wh-src-orders.wh-src-people li { grid-template-columns: 1fr; } .wh-src-pills { border-radius: 18px; } }
+
+/* Ad campaigns table grouped by channel. */
+.wh-src-group { border-top: 1px solid #ece5dc; }
+.wh-src-grouphead { background: #f6f2ec; cursor: pointer; width: 100%; border: 0; font: inherit; text-align: left; }
+.wh-src-grouphead:hover { background: #efe8df; }
+.wh-src-caret { display: inline-block; width: 16px; color: #5c5048; }
+.wh-src-untagged { display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 600; color: #8a5a12; background: #fbf2e2; border-radius: 999px; padding: 1px 8px; white-space: nowrap; }

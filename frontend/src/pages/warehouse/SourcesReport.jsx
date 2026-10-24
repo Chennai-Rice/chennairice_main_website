@@ -28,6 +28,12 @@ const CHANNELS = [
   { key: 'other', label: 'Other (websites, Expo QR)', sources: ['other_website', 'expo'] },
 ]
 const inChannel = (channel, source) => !channel || (CHANNELS.find((c) => c.key === channel)?.sources || []).includes(source)
+// A Meta campaign ID (e.g. 120251768166180156) means the visit came from a Meta ad, even
+// when the ad's link said "facebook" / "instagram" without utm_medium=paid.
+const META_ID = /^\d{12,}$/
+const isUntaggedMetaAd = (r) => ['facebook', 'instagram'].includes(r.source) && META_ID.test(r.campaign || '')
+/** The channel a campaign row belongs to. */
+const channelOf = (r) => (isUntaggedMetaAd(r) ? 'meta' : CHANNELS.find((c) => c.sources?.includes(r.source))?.key || 'other')
 
 function CopyLine({ label, text }) {
   const [done, setDone] = useState(false)
@@ -51,6 +57,7 @@ export default function SourcesReport({ say, onAuthError }) {
   const [help, setHelp] = useState(false)
   const [channel, setChannel] = useState('')
   const [find, setFind] = useState('')
+  const [shut, setShut] = useState({}) // channel key -> collapsed
 
   useEffect(() => {
     fetch('/api/catalog').then((r) => r.json()).then((d) => setProducts(d.products || [])).catch(() => {})
@@ -80,8 +87,15 @@ export default function SourcesReport({ say, onAuthError }) {
   // The chosen channel, and a campaign / ad search, applied to the cards and the table.
   const cards = (data?.sources || []).filter((x) => inChannel(channel, x.source))
   const needle = find.trim().toLowerCase()
-  const rows = (data?.campaigns || []).filter((r) => inChannel(channel, r.source)
+  const rows = (data?.campaigns || []).filter((r) => (!channel || channelOf(r) === channel)
     && (!needle || `${r.label} ${r.campaign} ${r.ad}`.toLowerCase().includes(needle)))
+  // The table, grouped by channel, each group with its totals; within a group, most revenue first.
+  const groups = CHANNELS.filter((c) => c.key).map((c) => {
+    const list = rows.filter((r) => channelOf(r) === c.key)
+      .sort((a, b) => b.revenue - a.revenue || b.orders - a.orders || (b.visits || 0) - (a.visits || 0))
+    const sum = (k) => list.reduce((t, r) => t + (Number(r[k]) || 0), 0)
+    return { ...c, list, visits: sum('visits'), checkouts: sum('checkouts'), orders: sum('orders'), packs: sum('packs'), revenue: sum('revenue') }
+  }).filter((g) => g.list.length)
   const totalRevenue = cards.reduce((t, s) => t + s.revenue, 0)
 
   return (
@@ -155,11 +169,28 @@ export default function SourcesReport({ say, onAuthError }) {
                 <span role="columnheader">Packs</span>
                 <span role="columnheader">Revenue</span>
               </div>
-              {rows.map((r) => (
+              {groups.map((g) => {
+                const closed = shut[g.key] ?? (!channel && !g.orders && !needle)
+                return (
+                <div key={g.key} className="wh-src-group">
+                  <button type="button" className={`wh-tr wh-src-grouphead${closed ? '' : ' is-open'}`} role="row" aria-expanded={!closed}
+                    onClick={() => setShut((x) => ({ ...x, [g.key]: !closed }))}>
+                    <span role="cell"><span className="wh-src-caret" aria-hidden="true">{closed ? '▸' : '▾'}</span><strong>{g.label}</strong></span>
+                    <span role="cell" className="wh-muted">{g.list.length} {g.list.length === 1 ? 'row' : 'rows'}</span>
+                    <span role="cell" />
+                    <span role="cell"><span className="wh-k">Visits</span>{g.visits}</span>
+                    <span role="cell"><span className="wh-k">Checkouts</span>{g.checkouts}</span>
+                    <span role="cell"><span className="wh-k">Orders</span><strong>{g.orders}</strong></span>
+                    <span role="cell"><span className="wh-k">Ordered</span>{g.visits ? pct(g.orders, g.visits) : '—'}</span>
+                    <span role="cell"><span className="wh-k">Packs</span>{g.packs}</span>
+                    <span role="cell"><span className="wh-k">Revenue</span><strong>{rupees(g.revenue)}</strong></span>
+                  </button>
+                  {!closed && g.list.map((r) => (
                 <div key={`${r.source}|${r.campaign}|${r.ad}`}>
                   <button type="button" className={`wh-tr wh-src-row${open?.row === r ? ' is-open' : ''}`} role="row" onClick={() => showOrders(r)}
                     disabled={!r.orders} title={r.orders ? 'Show these orders' : 'No paid orders'}>
-                    <span role="cell"><i className="wh-src-dot" style={{ background: TONE[r.source] }} />{r.label}</span>
+                    <span role="cell"><i className="wh-src-dot" style={{ background: TONE[r.source] }} />{r.label}
+                      {isUntaggedMetaAd(r) && <span className="wh-src-untagged" title="This link has a Meta campaign ID but no utm_medium=paid, so the ad is counted under Meta ads here.">ad link not tagged paid</span>}</span>
                     <span role="cell">{r.campaign || <span className="wh-muted">—</span>}</span>
                     <span role="cell">{r.ad || <span className="wh-muted">—</span>}</span>
                     <span role="cell"><span className="wh-k">Visits</span>{r.visits ?? '—'}</span>
@@ -183,7 +214,10 @@ export default function SourcesReport({ say, onAuthError }) {
                     </ul>
                   )}
                 </div>
-              ))}
+                  ))}
+                </div>
+                )
+              })}
             </div>
           )}
         </>
