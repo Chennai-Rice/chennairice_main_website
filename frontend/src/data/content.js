@@ -389,6 +389,9 @@ export const FOOTER = {
       label: 'Chennai Rice Industries on Facebook',
       href: 'https://www.facebook.com/profile.php?id=61593389732476&sk=about',
     },
+    // LinkedIn and YouTube: shown as soon as their page addresses are filled in.
+    { key: 'linkedin', label: 'Chennai Rice Industries on LinkedIn', href: '' },
+    { key: 'youtube', label: 'Chennai Rice Industries on YouTube', href: '' },
   ],
 
   phone: '+91 70666 46667',
@@ -405,6 +408,10 @@ export const FOOTER = {
     'Erode, Tamil Nadu – 638102',
   ],
   copyright: 'Chennai Rice Industries India Private Limited',
+  // The company block above the bottom bar (owner, Oct 2026).
+  company: 'Chennai Rice – Chennai Rice Industries India Private Limited',
+  gstin: '33AAFCC1691K1ZM',
+  brand: 'Chennai Rice',
 }
 
 

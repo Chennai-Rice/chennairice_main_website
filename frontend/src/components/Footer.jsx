@@ -20,6 +20,18 @@ const Social = {
       fill="currentColor"
     />
   ),
+  linkedin: (
+    <>
+      <rect x="5" y="5" width="14" height="14" rx="2.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      <path d="M8.6 10.6v5M8.6 8.2v.1M11.4 15.6v-5m0 2.4c0-1.5.9-2.6 2.2-2.6s1.9.9 1.9 2.4v2.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </>
+  ),
+  youtube: (
+    <>
+      <rect x="3.8" y="6.5" width="16.4" height="11" rx="3.2" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      <path d="M10.5 9.6v4.8l4.1-2.4z" fill="currentColor" />
+    </>
+  ),
 }
 
 export default function Footer() {
@@ -109,7 +121,7 @@ export default function Footer() {
           <h2 className="foot-title">Follow Us</h2>
           <span className="foot-rule" aria-hidden="true" />
           <ul className="foot-social">
-            {FOOTER.social.map(({ key, href, label }) => (
+            {FOOTER.social.filter((s) => s.href).map(({ key, href, label }) => (
               <li key={key}>
                 <a
                   className="foot-soc"
@@ -143,13 +155,31 @@ export default function Footer() {
 
       <img className="foot-sprig" src="/assets/footer-sprig.png" alt="" aria-hidden="true" />
 
+      {/* The company: name, registered address, contact and registrations. */}
+      <div className="container foot-company">
+        <p className="foot-company-name">{FOOTER.company}</p>
+        <p>{FOOTER.address.join(' ')}</p>
+        <p>
+          Phone: <a href={`tel:${FOOTER.phone.replace(/\s/g, '')}`}>{FOOTER.phone.replace('+91 ', '')}</a>
+          <span className="foot-bar-sep" aria-hidden="true">·</span>
+          Email: <a href={`mailto:${FOOTER.email}`}>{FOOTER.email}</a>
+        </p>
+        <p>GSTIN {FOOTER.gstin}<span className="foot-bar-sep" aria-hidden="true">·</span>FSSAI {FOOTER.fssai}</p>
+        <p className="foot-company-social">
+          {FOOTER.social.filter((s) => s.href).map((s, i) => (
+            <span key={s.key}>
+              {i > 0 && <span className="foot-bar-sep" aria-hidden="true">·</span>}
+              <a href={s.href} target="_blank" rel="noopener noreferrer">{s.key[0].toUpperCase() + s.key.slice(1).replace('linkedin', 'LinkedIn').replace('youtube', 'YouTube')}</a>
+            </span>
+          ))}
+        </p>
+      </div>
+
       <div className="foot-bar">
         <div className="container foot-bar-inner">
           {/* Year from the clock, so it never goes stale. */}
           <p>
-            &copy; {new Date().getFullYear()} {FOOTER.copyright}
-            <span className="foot-bar-sep" aria-hidden="true">|</span>
-            All rights reserved.
+            &copy; {new Date().getFullYear()} {FOOTER.brand}. All rights reserved.
           </p>
           <button type="button" className="foot-cookie" onClick={reopen}>
             Cookie Preferences
