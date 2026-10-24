@@ -23,6 +23,7 @@ import usePageMeta from "../hooks/usePageMeta.js";
 import { trackMetaEvent } from "../../services/metaPixel.js";
 import { PRODUCT_SEO, productIdFromSlug, productName, productPath } from "../../seo.js";
 import { FOOTER } from "../../data/content.js";
+import { flyToCart } from "../utils/flyToCart.js";
 import "./productdetail.css";
 
 export default function ProductDetailPage() {
@@ -156,6 +157,10 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = (event) => {
     spawnRipple(event);
+    // The bag picture flies down into the cart bar (not when "Buy now" is leaving the page anyway).
+    if (event?.currentTarget?.classList?.contains("pdp-add-btn")) {
+      flyToCart(document.querySelector(".pdp-gallery-main img:not(.pdp-peek-mascot)"));
+    }
     for (let i = 0; i < qty; i += 1) add(cartProduct);
   };
 

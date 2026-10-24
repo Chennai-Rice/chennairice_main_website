@@ -1590,6 +1590,22 @@
   border-radius: 50%;
 }
 
+/* With a pack picture: the bag alone on the bar, no tile behind it (the flying bag lands on it). */
+.shop-scope .checkout-bar-icon.has-thumb {
+  width: 2.5rem;
+  height: 2.5rem;
+  background: none;
+  border-radius: 0;
+  padding: 0;
+}
+.shop-scope .checkout-bar-icon.has-thumb img {
+  width: auto;
+  height: 2.5rem;
+  max-width: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45));
+}
+
 .shop-scope .checkout-bar-text {
   flex: 1;
   min-width: 0;

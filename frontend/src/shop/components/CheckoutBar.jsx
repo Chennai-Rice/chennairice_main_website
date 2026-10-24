@@ -27,7 +27,7 @@ const ChevronRight = () => (
  * without scrolling back up to the header's cart icon.
  */
 export default function CheckoutBar() {
-  const { count } = useCart();
+  const { count, lastAdded } = useCart();
 
   if (count === 0) return null;
 
@@ -36,8 +36,9 @@ export default function CheckoutBar() {
       {/* To the cart, so the basket can be reviewed before paying; the cart
           page carries on to checkout. */}
       <Link className="checkout-bar-link" to="/cart">
-        <span className="checkout-bar-icon" aria-hidden="true">
-          <BagGlyph />
+        {/* The pack added last, small; the plain bag icon when it has no picture. */}
+        <span className={`checkout-bar-icon${lastAdded?.image ? " has-thumb" : ""}`} aria-hidden="true">
+          {lastAdded?.image ? <img src={lastAdded.image} alt="" width="40" height="40" /> : <BagGlyph />}
         </span>
         <span className="checkout-bar-text">
           <strong>Proceed to cart</strong>
