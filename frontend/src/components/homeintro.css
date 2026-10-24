@@ -40,3 +40,57 @@
     margin: 0 16px;
   }
 }
+
+/* Chennai Rice Varieties (home, under Our Bestseller Rice). */
+.home-var { padding: clamp(40px, 6vw, 80px) 0; }
+.home-var-inner { max-width: 1180px; margin: 0 auto; padding: 0 20px; text-align: center; }
+.home-var-title {
+  margin: 0;
+  font-family: var(--display, var(--serif));
+  font-weight: 500;
+  font-size: clamp(2rem, 1.4rem + 2vw, 3rem);
+  color: var(--heading, #5b1a1f);
+}
+.home-var-intro { margin: 10px auto 0; max-width: 640px; font-size: 1.05rem; color: #5f4c3c; }
+.home-var-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 30px;
+  text-align: left;
+}
+.home-var-card {
+  display: flex; flex-direction: column; gap: 10px;
+  background: #fffdf8;
+  border: 1px solid rgba(198, 154, 63, 0.3);
+  border-radius: 18px;
+  padding: 22px 22px 20px;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.home-var-card:hover { box-shadow: 0 12px 28px rgba(90, 60, 30, 0.1); transform: translateY(-2px); }
+.home-var-card h3 {
+  margin: 0;
+  font-family: var(--display, var(--serif));
+  font-weight: 500;
+  font-size: 1.35rem;
+  color: var(--maroon-600, #7a1f2b);
+}
+.home-var-card p { margin: 0; font-size: 0.98rem; line-height: 1.7; color: #4a3b30; flex: 1; }
+.home-var-chips { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.home-var-chips a {
+  display: inline-block; padding: 6px 14px; border-radius: 999px;
+  background: #f6efe2; color: #5b1a1f; font-size: 0.88rem; font-weight: 600; text-decoration: none;
+  border: 1px solid rgba(198, 154, 63, 0.35);
+}
+.home-var-chips a:hover { background: #7a1f2b; color: #fff; border-color: #7a1f2b; }
+.home-var-all {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 28px;
+  font-weight: 700; color: #7a1f2b; text-decoration: none; border-bottom: 2px solid rgba(122, 31, 43, 0.3); padding-bottom: 2px;
+}
+.home-var-all:hover { border-bottom-color: #7a1f2b; }
+/* Five cards: three on top, two below on wide screens. */
+@media (min-width: 900px) {
+  .home-var-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .home-var-card { grid-column: span 2; }
+  .home-var-card:nth-child(4), .home-var-card:nth-child(5) { grid-column: span 3; }
+}

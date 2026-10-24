@@ -436,3 +436,23 @@ export const HOME_FAQS = [
     a: 'Good quality rice has grains of uniform size and colour, very few broken grains, and no stones, husk or dust. It should smell fresh and natural, with no musty odour. Rice that is graded and colour sorted during milling, like Chennai Rice, meets these standards consistently.',
   },
 ]
+
+/* Home: Chennai Rice Varieties, under "Our Bestseller Rice" (owner, Oct 2026).
+   Each group's products link to their pages (ids are shop product ids). */
+export const VARIETIES = {
+  title: 'Chennai Rice Varieties',
+  intro: 'Every Chennai Rice variety is made for a specific kind of Tamil cooking.',
+  groups: [
+    { name: 'Chennai Rice Ponni', text: 'Soft, non-sticky everyday rice for sambar, rasam and curd rice.',
+      products: [['viruchagam', 'Viruchagam'], ['vijaya-nagaram', 'Vijayanagaram'], ['united-5kg', 'United'], ['a1-special-ponni', 'A1 Special'], ['kitchidi-ponni-rice', 'Kitchidi Ponni']] },
+    { name: 'Chennai Rice Idli Rice', text: 'Special Idly Rice that grinds smooth and ferments well, for soft idlis and crisp dosas.',
+      products: [['special-idly-rice', 'Special Idly Rice']] },
+    { name: 'Rajabhogam Ponni', text: 'Rich aroma and original taste.',
+      products: [['rudra', 'Rudra Ponni'], ['chennai-bullets', 'Chennai Bullets'], ['special-rajabhogam', 'Special Rajabhogam']] },
+    { name: 'Aged & Premium Rice', text: 'Nayara Super Aged for firm, separate grains; Vintage Special Ponni for festive meals.',
+      products: [['nayara-super-aged', 'Nayara Super Aged'], ['vintage', 'Vintage Special Ponni']] },
+    { name: 'Sappadu & Kitchadi Rice', text: 'Alibaba Sappadu Rice for a full Tamil meal; Thaaram for nei kitchadi and pongal.',
+      products: [['alibaba', 'Alibaba Sappadu Rice'], ['thaaram', 'Thaaram']] },
+  ],
+  all: { label: 'See all Chennai Rice products', to: '/rice-products' },
+}
