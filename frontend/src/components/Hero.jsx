@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ASSETS, HERO, PRODUCTS } from '../data/content.js'
 import './hero.css'
 
@@ -84,14 +85,15 @@ export default function Hero() {
       <div className="hero-overlay" />
 
       <div className={`hero-content${outro ? ' is-outro' : ''}`}>
-        {/* The big display line is decorative; the page heading (H1) sits under it. */}
-        <p className="hero-title">
-          {HERO.titleLines.map(line => (
-            <span key={line}>{line}</span>
-          ))}
-        </p>
+        {/* A small styled line, then the page heading (H1), the brand intro and the two ways in. */}
+        <p className="hero-tagline">{HERO.tagline}</p>
         <h1 className="home-hero-h1">{HERO.h1}</h1>
-        <p className="home-hero-sub">{HERO.subtitle}</p>
+        <p className="home-hero-sub">{HERO.intro}</p>
+        <div className="hero-ctas">
+          {HERO.ctas.map((c) => (
+            <Link key={c.to} to={c.to} className={`hero-cta${c.primary ? ' is-primary' : ''}`}>{c.label}</Link>
+          ))}
+        </div>
       </div>
 
       <div className="hero-estd">

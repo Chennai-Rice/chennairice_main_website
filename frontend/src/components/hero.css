@@ -113,32 +113,56 @@
   }
 }
 
-/* The page heading, set small under the display line. */
-.home-hero-h1 {
-  margin: 22px auto 0;
-  max-width: 760px;
-  font-family: var(--sans);
-  font-size: 17px;
-  font-weight: 500;
-  line-height: 1.45;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+/* Owner, 24 Oct 2026: a small styled line, the page heading as the big
+   display line, the brand intro, and two buttons. */
+.hero-tagline {
+  margin: 0 auto 14px;
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 22px;
+  letter-spacing: 0.01em;
   color: var(--gold-soft);
-  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.55);
 }
-@media (max-width: 600px) {
-  .home-hero-h1 {
-    margin-top: 14px;
-    font-size: 12.5px;
-    letter-spacing: 0.12em;
-  }
+.home-hero-h1 {
+  margin: 0 auto;
+  max-width: 980px;
+  font-family: var(--display);
+  font-weight: 500;
+  font-variation-settings: 'opsz' 18;
+  font-size: clamp(40px, 4.6vw, 68px);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: #f8f2e3;
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.55);
 }
-
 .home-hero-sub {
-  margin-top: 18px;
-  font-size: 16px;
+  margin: 20px auto 0;
+  max-width: 720px;
+  font-size: 17px;
+  line-height: 1.65;
   font-weight: 400;
-  color: #e6dac0;
+  color: #efe4cc;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6);
+}
+.hero-ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 28px; }
+.hero-cta {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 50px; padding: 0 26px; border-radius: 999px;
+  font-family: var(--sans); font-size: 15px; font-weight: 600; letter-spacing: 0.02em; text-decoration: none;
+  color: #f8f2e3; border: 1.5px solid rgba(248, 242, 227, 0.85); background: rgba(20, 12, 6, 0.25);
+  backdrop-filter: blur(2px);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.hero-cta:hover { background: rgba(248, 242, 227, 0.16); transform: translateY(-1px); }
+.hero-cta.is-primary { background: var(--maroon-600, #7a1f2b); border-color: var(--maroon-600, #7a1f2b); color: #fff; }
+.hero-cta.is-primary:hover { background: var(--maroon-500, #93283a); }
+.hero-cta:focus-visible { outline: 2px solid var(--gold-soft); outline-offset: 3px; }
+@media (max-width: 600px) {
+  .hero-tagline { font-size: 17px; margin-bottom: 10px; }
+  .home-hero-h1 { font-size: clamp(30px, 8.4vw, 38px); }
+  .home-hero-sub { font-size: 15px; line-height: 1.6; }
+  .hero-ctas { flex-direction: column; align-items: stretch; max-width: 320px; margin: 22px auto 0; }
 }
 
 /* --- ESTD badge --- */
@@ -291,4 +315,15 @@
   /* The badge used to be lifted to 234px here to clear the headline. Now that
      it sits down by the wave there is nothing above it to collide with, so it
      keeps the same offset as every other phone. */
+}
+
+/* A soft dark wash behind the centred text, so the intro reads over the bright silos. */
+.hero-overlay {
+  background:
+    radial-gradient(60% 55% at 50% 45%, rgba(14, 8, 3, 0.55) 0%, rgba(14, 8, 3, 0.25) 60%, rgba(14, 8, 3, 0) 100%),
+    linear-gradient(180deg, rgba(18, 10, 4, 0.25) 0%, rgba(18, 10, 4, 0.1) 40%, rgba(24, 12, 6, 0.35) 100%);
+}
+/* Phones: the Estd badge would sit on the buttons, so it tucks into the corner, smaller. */
+@media (max-width: 600px) {
+  .hero-estd { right: 14px; bottom: 76px; --estd-scale: 0.62; }
 }

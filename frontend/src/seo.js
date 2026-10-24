@@ -34,7 +34,7 @@ export const PAGE_META = {
     path: '/',
     title: 'Chennai Rice | Quality Ponni Rice for Every Home',
     description: 'Discover Chennai Rice\'s range of Ponni rice and everyday rice varieties. Explore quality-focused rice for traditional Tamil meals and family dining.',
-    h1: 'Chennai Rice: Quality Rice for Every Tamil Kitchen',
+    h1: 'Chennai Rice – Premium Ponni & Idli Rice from Erode',
     keywords: 'Chennai Rice, Ponni rice, rice varieties, Tamil Nadu rice, idli rice, buy rice online',
   },
   products: {

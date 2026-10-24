@@ -57,9 +57,14 @@ export const NAV_CTA = { label: 'Bulk Order', to: '/bulk-order' }
 export const HERO = {
   // Curly quotes rather than the straight " character: this is display
   // typography, and a straight quote reads as an inch mark at 4rem.
-  titleLines: ['“RICE”', 'The White Gold', 'Among Foods.'],
-  h1: 'Chennai Rice: Quality Rice for Every Tamil Kitchen', // SEO Optimization Plan, Oct 2026
-  subtitle: 'The simplicity of cooking rice is the most culturally satisfying experience.',
+  // Owner, 24 Oct 2026: the old display line is now a small styled line above the heading.
+  tagline: '“RICE” — The White Gold Among Foods.',
+  h1: 'Chennai Rice – Premium Ponni & Idli Rice from Erode',
+  intro: 'Chennai Rice is the rice brand of Chennai Rice Industries, Erode, milling Ponni, Idli and aged rice for Tamil kitchens since the 1950s. Mill-fresh, aged for better cooking, and packed in 26 kg bags for homes, shops and hotels.',
+  ctas: [
+    { label: 'Shop Chennai Rice', to: '/rice-products', primary: true },
+    { label: 'Bulk & Distributor Enquiry', to: '/bulk-order' },
+  ],
   estd: "1950's",
 }
 
