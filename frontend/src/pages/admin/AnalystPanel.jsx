@@ -1,22 +1,20 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import AnalystView from '../warehouse/AnalystView.jsx'
 import StaffGate from './StaffGate.jsx'
-import { staffJson } from '../../services/staffAuth.js'
 
 /**
  * /admin → Analyst: the Sales Dashboard KPIs (sales, leads, campaigns,
  * delivery, CEO / MD numbers). Owner and IT team only, through the staff
- * Google sign-in that StaffGate asks for once.
+ * Google sign-in that StaffGate asks for once. The greeting says "Analyst",
+ * not the signed-in person's name (owner, Oct 2026).
  */
 function Analyst({ onAuthError }) {
   const [error, setError] = useState('')
-  const [name, setName] = useState('')
   const say = useCallback((message, tone) => { setError(tone === 'error' ? message : '') }, [])
-  useEffect(() => { staffJson('/api/admin/me').then((me) => setName(me.fullName || '')).catch(() => {}) }, [])
   return (
     <div className="wh-embed">
       {error && <p className="ad-alert" role="alert">{error}</p>}
-      <AnalystView say={say} onAuthError={onAuthError} name={name} />
+      <AnalystView say={say} onAuthError={onAuthError} name="Analyst" />
     </div>
   )
 }
