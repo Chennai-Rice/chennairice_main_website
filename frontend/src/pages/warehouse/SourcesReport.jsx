@@ -31,9 +31,41 @@ const inChannel = (channel, source) => !channel || (CHANNELS.find((c) => c.key =
 // A Meta campaign ID (e.g. 120251768166180156) means the visit came from a Meta ad, even
 // when the ad's link said "facebook" / "instagram" without utm_medium=paid.
 const META_ID = /^\d{12,}$/
-const isUntaggedMetaAd = (r) => ['facebook', 'instagram'].includes(r.source) && META_ID.test(r.campaign || '')
+// Names for the Meta campaign and ad IDs that ad links carry (from Meta Ads Manager, Oct 2026).
+// New ads tagged with the parameters under "How to tag your ads" send their names directly.
+const AD_NAMES = {
+  '120251724928590156': { campaign: 'OVERVIEW CREATIVE 14/10' },
+  '120251724928570156': { campaign: 'OVERVIEW CREATIVE 14/10', ad: 'slogan contest' },
+  '120251713475410156': { campaign: 'SLOGAN READY TRAFFIC - 13/10' },
+  '120251713475400156': { campaign: 'SLOGAN READY TRAFFIC - 13/10', ad: 'Single image' },
+  '120251712405340156': { campaign: 'COUPON VANTHACHI - 13-10-26 | Awareness' },
+  '120251712405330156': { campaign: 'COUPON VANTHACHI - 13-10-26 | Awareness', ad: 'Creative' },
+  '120251768166170156': { campaign: 'Sales - Kichadi Ponni Rice' },
+  '120251768166180156': { campaign: 'Sales - Kichadi Ponni Rice', ad: 'New Sales ad' },
+}
+const isMetaId = (v) => META_ID.test(v || '') || Boolean(AD_NAMES[v])
+const isUntaggedMetaAd = (r) => ['facebook', 'instagram'].includes(r.source) && (isMetaId(r.campaign) || isMetaId(r.ad))
+// Links whose placeholders were never filled in (<campaign-name>, {{campaign.id}}…).
+const isTestLink = (r) => /\{\{|<(campaign|ad)[-_ ]?(name|id)>/i.test(`${r.campaign}${r.ad}`)
 /** The channel a campaign row belongs to. */
-const channelOf = (r) => (isUntaggedMetaAd(r) ? 'meta' : CHANNELS.find((c) => c.sources?.includes(r.source))?.key || 'other')
+const channelOf = (r) => (isTestLink(r) ? 'test' : isUntaggedMetaAd(r) ? 'meta' : CHANNELS.find((c) => c.sources?.includes(r.source))?.key || 'other')
+const pretty = (v) => String(v || '').replace(/[<>]/g, '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim()
+const shortId = (v) => `…${String(v).slice(-4)}`
+/** The campaign a row belongs to, by name where we know it. */
+function campaignName(r) {
+  const known = AD_NAMES[r.campaign]?.campaign || AD_NAMES[r.ad]?.campaign
+  if (known) return known
+  if (META_ID.test(r.campaign || '')) return `Meta campaign ${shortId(r.campaign)}`
+  if (r.campaign) return pretty(r.campaign)
+  return r.ad && r.source !== 'direct' ? `${r.label} · ${pretty(r.ad)}` : r.label
+}
+/** What a row adds under its campaign: where it ran and which ad / placement. */
+function rowDetail(r) {
+  const ad = AD_NAMES[r.ad]?.ad || (META_ID.test(r.ad || '') ? `ad ${shortId(r.ad)}` : pretty(r.ad))
+  const viaAd = !AD_NAMES[r.ad] && AD_NAMES[r.campaign]?.ad ? AD_NAMES[r.campaign].ad : ''
+  return [r.label.replace(' (not an ad)', ''), viaAd, ad].filter(Boolean).join(' · ')
+}
+const GROUP_LABEL = { test: 'Test or broken links (not real ads)' }
 
 function CopyLine({ label, text }) {
   const [done, setDone] = useState(false)
@@ -84,19 +116,29 @@ export default function SourcesReport({ say, onAuthError }) {
     }
   }
 
-  // The chosen channel, and a campaign / ad search, applied to the cards and the table.
-  const cards = (data?.sources || []).filter((x) => inChannel(channel, x.source))
+  // Rows filtered by channel and search, then rolled up: channel → campaign (by name) → the ad / placement rows.
   const needle = find.trim().toLowerCase()
-  const rows = (data?.campaigns || []).filter((r) => (!channel || channelOf(r) === channel)
-    && (!needle || `${r.label} ${r.campaign} ${r.ad}`.toLowerCase().includes(needle)))
-  // The table, grouped by channel, each group with its totals; within a group, most revenue first.
-  const groups = CHANNELS.filter((c) => c.key).map((c) => {
-    const list = rows.filter((r) => channelOf(r) === c.key)
-      .sort((a, b) => b.revenue - a.revenue || b.orders - a.orders || (b.visits || 0) - (a.visits || 0))
-    const sum = (k) => list.reduce((t, r) => t + (Number(r[k]) || 0), 0)
-    return { ...c, list, visits: sum('visits'), checkouts: sum('checkouts'), orders: sum('orders'), packs: sum('packs'), revenue: sum('revenue') }
+  const all = (data?.campaigns || []).map((r) => ({ ...r, channel: channelOf(r), name: campaignName(r), detail: rowDetail(r) }))
+  const rows = all.filter((r) => (!channel || r.channel === channel)
+    && (!needle || `${r.name} ${r.detail} ${r.campaign} ${r.ad}`.toLowerCase().includes(needle)))
+  const add = (t, r) => ({ visits: t.visits + (r.visits || 0), checkouts: t.checkouts + r.checkouts, orders: t.orders + r.orders, revenue: t.revenue + r.revenue })
+  const zero = { visits: 0, checkouts: 0, orders: 0, revenue: 0 }
+  const byRevenue = (a, b) => b.revenue - a.revenue || b.orders - a.orders || b.visits - a.visits
+  const groups = [...CHANNELS.filter((c) => c.key), { key: 'test', label: GROUP_LABEL.test }].map((c) => {
+    const mine = rows.filter((r) => r.channel === c.key)
+    const camps = new Map()
+    for (const r of mine) {
+      const k = r.name.toLowerCase()
+      const x = camps.get(k) || { name: r.name, rows: [], ...zero }
+      camps.set(k, { ...x, ...add(x, r), rows: [...x.rows, r] })
+    }
+    const list = [...camps.values()].map((x) => ({ ...x, rows: x.rows.sort(byRevenue) })).sort(byRevenue)
+    return { ...c, list, ...mine.reduce(add, zero) }
   }).filter((g) => g.list.length)
-  const totalRevenue = cards.reduce((t, s) => t + s.revenue, 0)
+  // The channel cards: every channel's totals (search and channel filter aside).
+  const channelCards = CHANNELS.filter((c) => c.key).map((c) => ({ ...c, ...all.filter((r) => r.channel === c.key).reduce(add, zero) }))
+    .filter((c) => c.visits || c.orders)
+  const totalRevenue = channelCards.reduce((t, c) => t + c.revenue, 0)
 
   return (
     <>
@@ -133,93 +175,100 @@ export default function SourcesReport({ say, onAuthError }) {
       )}
 
       <div className="wh-src-channels">
-        <div className="wh-src-pills" role="group" aria-label="Channel">
-          {CHANNELS.map((c) => (
-            <button key={c.key || 'all'} type="button" className={`wh-src-pill${channel === c.key ? ' is-active' : ''}`} aria-pressed={channel === c.key}
-              onClick={() => { setChannel(c.key); setOpen(null) }}>{c.label}</button>
-          ))}
-        </div>
+        <span className="src-hint">{channel ? <>Showing <strong>{CHANNELS.find((c) => c.key === channel)?.label}</strong> · <button type="button" className="src-link" onClick={() => { setChannel(''); setOpen(null) }}>show all channels</button></> : 'Tap a channel card to see only that channel.'}</span>
         <input className="wh-src-find" type="search" placeholder="Search campaign or ad…" value={find} onChange={(e) => setFind(e.target.value)} aria-label="Search campaign or ad" />
       </div>
 
       {!data ? <p className="wh-empty">Loading…</p> : (
         <>
-          <div className="wh-src-cards">
-            {cards.map((s) => (
-              <div key={s.source} className="wh-src-card" style={{ '--tone': TONE[s.source] || '#8a7766' }}>
-                <span className="wh-src-card-label">{s.label}</span>
-                <strong>{rupees(s.revenue)}</strong>
-                <span className="wh-small wh-muted">{s.orders} orders · {s.packs} packs · {s.visits || 0} visits</span>
-                <span className="wh-src-share"><span style={{ width: totalRevenue ? `${(s.revenue / totalRevenue) * 100}%` : 0 }} /></span>
-              </div>
+          <div className="src-cards">
+            {channelCards.map((c) => (
+              <button key={c.key} type="button" className={`src-card${channel === c.key ? ' is-active' : ''}`} aria-pressed={channel === c.key}
+                onClick={() => { setChannel(channel === c.key ? '' : c.key); setOpen(null) }}>
+                <span className="src-card-label">{c.label}</span>
+                <strong className="src-card-value">{rupees(c.revenue)}</strong>
+                <span className="src-card-note">{c.orders} order{c.orders === 1 ? '' : 's'} · {c.visits.toLocaleString('en-IN')} visits</span>
+                <span className="src-card-bar"><span style={{ width: totalRevenue ? `${(c.revenue / totalRevenue) * 100}%` : 0 }} /></span>
+              </button>
             ))}
-            {!cards.length && <p className="wh-empty">No visits or orders from {channel ? 'this channel' : 'any source'} in this period yet.</p>}
+            {!channelCards.length && <p className="wh-empty">No visits or orders in this period yet.</p>}
           </div>
 
-          {rows.length > 0 && (
-            <div className="wh-table wh-table--src" role="table" aria-label="By campaign and ad">
-              <div className="wh-tr wh-th" role="row">
-                <span role="columnheader">Source</span>
-                <span role="columnheader">Campaign</span>
-                <span role="columnheader">Ad</span>
-                <span role="columnheader">Visits</span>
-                <span role="columnheader">Checkouts</span>
-                <span role="columnheader">Orders</span>
-                <span role="columnheader">Ordered</span>
-                <span role="columnheader">Packs</span>
-                <span role="columnheader">Revenue</span>
-              </div>
-              {groups.map((g) => {
-                const closed = shut[g.key] ?? (!channel && !g.orders && !needle)
-                return (
-                <div key={g.key} className="wh-src-group">
-                  <button type="button" className={`wh-tr wh-src-grouphead${closed ? '' : ' is-open'}`} role="row" aria-expanded={!closed}
-                    onClick={() => setShut((x) => ({ ...x, [g.key]: !closed }))}>
-                    <span role="cell"><span className="wh-src-caret" aria-hidden="true">{closed ? '▸' : '▾'}</span><strong>{g.label}</strong></span>
-                    <span role="cell" className="wh-muted">{g.list.length} {g.list.length === 1 ? 'row' : 'rows'}</span>
-                    <span role="cell" />
-                    <span role="cell"><span className="wh-k">Visits</span>{g.visits}</span>
-                    <span role="cell"><span className="wh-k">Checkouts</span>{g.checkouts}</span>
-                    <span role="cell"><span className="wh-k">Orders</span><strong>{g.orders}</strong></span>
-                    <span role="cell"><span className="wh-k">Ordered</span>{g.visits ? pct(g.orders, g.visits) : '—'}</span>
-                    <span role="cell"><span className="wh-k">Packs</span>{g.packs}</span>
-                    <span role="cell"><span className="wh-k">Revenue</span><strong>{rupees(g.revenue)}</strong></span>
-                  </button>
-                  {!closed && g.list.map((r) => (
-                <div key={`${r.source}|${r.campaign}|${r.ad}`}>
-                  <button type="button" className={`wh-tr wh-src-row${open?.row === r ? ' is-open' : ''}`} role="row" onClick={() => showOrders(r)}
-                    disabled={!r.orders} title={r.orders ? 'Show these orders' : 'No paid orders'}>
-                    <span role="cell"><i className="wh-src-dot" style={{ background: TONE[r.source] }} />{r.label}
-                      {isUntaggedMetaAd(r) && <span className="wh-src-untagged" title="This link has a Meta campaign ID but no utm_medium=paid, so the ad is counted under Meta ads here.">ad link not tagged paid</span>}</span>
-                    <span role="cell">{r.campaign || <span className="wh-muted">—</span>}</span>
-                    <span role="cell">{r.ad || <span className="wh-muted">—</span>}</span>
-                    <span role="cell"><span className="wh-k">Visits</span>{r.visits ?? '—'}</span>
-                    <span role="cell"><span className="wh-k">Checkouts</span>{r.checkouts}</span>
-                    <span role="cell"><span className="wh-k">Orders</span><strong>{r.orders}</strong></span>
-                    <span role="cell"><span className="wh-k">Ordered</span>{r.visits ? pct(r.orders, r.visits) : '—'}</span>
-                    <span role="cell"><span className="wh-k">Packs</span>{r.packs}</span>
-                    <span role="cell"><span className="wh-k">Revenue</span><strong>{rupees(r.revenue)}</strong></span>
-                  </button>
-                  {open?.row === r && (
-                    <ul className="wh-src-orders">
-                      {open.orders.map((o) => (
-                        <li key={o.order_number}>
-                          <strong className="wh-mono">{o.order_number}</strong>
-                          <span>{o.contact_name}{o.city ? `, ${o.city}` : ''}</span>
-                          <span className="wh-muted wh-small">{o.items}</span>
-                          <span className="wh-muted wh-small">{o.placed_at ? dayLabel(o.placed_at).text : ''}</span>
-                          <strong>{rupees(o.total)}</strong>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                  ))}
-                </div>
-                )
-              })}
-            </div>
-          )}
+          {groups.map((g) => {
+            const closed = shut[g.key] ?? (g.key === 'test' || (!channel && !g.orders && !needle))
+            const many = shut[g.key + ':all'] ? g.list : g.list.slice(0, 5)
+            return (
+              <section key={g.key} className={`src-group${g.key === 'test' ? ' is-test' : ''}`}>
+                <button type="button" className="src-group-head" aria-expanded={!closed} onClick={() => setShut((x) => ({ ...x, [g.key]: !closed }))}>
+                  <span className="src-caret" aria-hidden="true">{closed ? '▸' : '▾'}</span>
+                  <strong>{g.label}</strong>
+                  <span className="src-group-sum">{rupees(g.revenue)} · {g.orders} order{g.orders === 1 ? '' : 's'} · {g.visits.toLocaleString('en-IN')} visits · {g.list.length} campaign{g.list.length === 1 ? '' : 's'}</span>
+                </button>
+                {!closed && (
+                  <div className="src-table-wrap">
+                    <table className="src-table">
+                      <thead>
+                        <tr><th>Campaign</th><th className="is-num">Visits</th><th className="is-num">Checkouts</th><th className="is-num">Orders</th><th className="is-num">Visit → order</th><th className="is-num">Revenue</th></tr>
+                      </thead>
+                      <tbody>
+                        {many.map((c) => {
+                          const key = g.key + '|' + c.name
+                          const isOpen = shut[key]
+                          return [
+                            <tr key={key} className={`src-camp${isOpen ? ' is-open' : ''}`} onClick={() => setShut((x) => ({ ...x, [key]: !isOpen }))}>
+                              <td>
+                                <span className="src-caret" aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
+                                <button type="button" className="src-camp-name" aria-expanded={Boolean(isOpen)}>{c.name}</button>
+                                {c.rows.length > 1 && <span className="src-sub">{c.rows.length} ads / placements</span>}
+                              </td>
+                              <td className="is-num">{c.visits.toLocaleString('en-IN') || '—'}</td>
+                              <td className="is-num">{c.checkouts}</td>
+                              <td className="is-num"><strong>{c.orders}</strong></td>
+                              <td className="is-num">{c.visits ? pct(c.orders, c.visits) : '—'}</td>
+                              <td className="is-num"><strong>{rupees(c.revenue)}</strong></td>
+                            </tr>,
+                            ...(isOpen ? c.rows.map((r) => (
+                              <tr key={key + '|' + r.source + '|' + r.campaign + '|' + r.ad} className="src-row">
+                                <td>
+                                  <i className="wh-src-dot" style={{ background: TONE[r.source] || '#8a7766' }} />{r.detail}
+                                  {isUntaggedMetaAd(r) && <span className="wh-src-untagged" title="The ad's link has no utm_medium=paid, so it was recorded as a normal visit.">link not tagged as ad</span>}
+                                  {r.orders > 0 && (
+                                    <button type="button" className="src-show" onClick={(e) => { e.stopPropagation(); showOrders(r) }}>
+                                      {open?.row === r ? 'Hide orders' : 'Show orders'}
+                                    </button>
+                                  )}
+                                  {open?.row === r && (
+                                    <ul className="src-orders">
+                                      {open.orders.map((o) => (
+                                        <li key={o.order_number}>
+                                          <strong className="wh-mono">{o.order_number}</strong> · {o.contact_name}{o.city ? `, ${o.city}` : ''} · <span className="wh-muted">{o.items}</span> · <strong>{rupees(o.total)}</strong>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </td>
+                                <td className="is-num">{r.visits ?? '—'}</td>
+                                <td className="is-num">{r.checkouts}</td>
+                                <td className="is-num">{r.orders}</td>
+                                <td className="is-num">{r.visits ? pct(r.orders, r.visits) : '—'}</td>
+                                <td className="is-num">{rupees(r.revenue)}</td>
+                              </tr>
+                            )) : []),
+                          ]
+                        })}
+                      </tbody>
+                    </table>
+                    {g.list.length > 5 && (
+                      <button type="button" className="src-more" onClick={() => setShut((x) => ({ ...x, [g.key + ':all']: !x[g.key + ':all'] }))}>
+                        {shut[g.key + ':all'] ? 'Show fewer' : `Show all ${g.list.length} campaigns`}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </section>
+            )
+          })}
+          {data && !groups.length && channelCards.length > 0 && <p className="wh-empty">Nothing matches this filter.</p>}
         </>
       )}
     </section>
