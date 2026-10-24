@@ -97,6 +97,15 @@ export default function Footer() {
               Thank you — saved. No mailing list is connected yet, so nothing was sent.
             </p>
           )}
+
+          {/* The company: name, registered address, contact and registrations (owner, Oct 2026). */}
+          <address className="foot-company">
+            <strong className="foot-company-name">{FOOTER.company}</strong>
+            <span>{FOOTER.address.join(' ')}</span>
+            <span>Phone: <a href={`tel:${FOOTER.phone.replace(/\s/g, '')}`}>{FOOTER.phone.replace('+91 ', '')}</a></span>
+            <span>Email: <a href={`mailto:${FOOTER.email}`}>{FOOTER.email}</a></span>
+            <span>GSTIN {FOOTER.gstin} · FSSAI {FOOTER.fssai}</span>
+          </address>
         </div>
 
         <div className="foot-cols">
@@ -154,26 +163,6 @@ export default function Footer() {
       </div>
 
       <img className="foot-sprig" src="/assets/footer-sprig.png" alt="" aria-hidden="true" />
-
-      {/* The company: name, registered address, contact and registrations. */}
-      <div className="container foot-company">
-        <p className="foot-company-name">{FOOTER.company}</p>
-        <p>{FOOTER.address.join(' ')}</p>
-        <p>
-          Phone: <a href={`tel:${FOOTER.phone.replace(/\s/g, '')}`}>{FOOTER.phone.replace('+91 ', '')}</a>
-          <span className="foot-bar-sep" aria-hidden="true">·</span>
-          Email: <a href={`mailto:${FOOTER.email}`}>{FOOTER.email}</a>
-        </p>
-        <p>GSTIN {FOOTER.gstin}<span className="foot-bar-sep" aria-hidden="true">·</span>FSSAI {FOOTER.fssai}</p>
-        <p className="foot-company-social">
-          {FOOTER.social.filter((s) => s.href).map((s, i) => (
-            <span key={s.key}>
-              {i > 0 && <span className="foot-bar-sep" aria-hidden="true">·</span>}
-              <a href={s.href} target="_blank" rel="noopener noreferrer">{s.key[0].toUpperCase() + s.key.slice(1).replace('linkedin', 'LinkedIn').replace('youtube', 'YouTube')}</a>
-            </span>
-          ))}
-        </p>
-      </div>
 
       <div className="foot-bar">
         <div className="container foot-bar-inner">
