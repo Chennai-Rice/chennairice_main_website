@@ -28,6 +28,8 @@ function readStorage() {
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState(readStorage);
+  // The pack added last: the "Proceed to cart" bar shows its picture. Not saved; falls back to the newest line.
+  const [lastAddedId, setLastAddedId] = useState(null);
 
   // Persist on every change; swap this for an API call when a backend exists.
   useEffect(() => {
@@ -52,6 +54,7 @@ export function CartProvider({ children }) {
     // than once, which would record duplicate events for a single add.
     // Best-effort and gated on analytics consent inside trackAddToCart.
     trackAddToCart(product);
+    setLastAddedId(product.id);
     trackMetaEvent("AddToCart", {
       content_ids: [product.id], content_name: product.name, content_type: "product",
       value: product.price, currency: "INR",
@@ -79,6 +82,7 @@ export function CartProvider({ children }) {
   }, []);
 
   const setQty = useCallback((id, qty) => {
+    if (qty >= 1) setLastAddedId(id);
     setItems((current) =>
       qty < 1
         ? current.filter((item) => item.id !== id)
@@ -115,8 +119,9 @@ export function CartProvider({ children }) {
   const value = useMemo(() => {
     const count = items.reduce((total, item) => total + item.qty, 0);
     const subtotal = items.reduce((total, item) => total + item.price * item.qty, 0);
-    return { items, count, subtotal, add, setQty, remove, clear, syncPrices };
-  }, [items, add, setQty, remove, clear, syncPrices]);
+    const lastAdded = items.find((item) => item.id === lastAddedId) || items[items.length - 1] || null;
+    return { items, count, subtotal, lastAdded, add, setQty, remove, clear, syncPrices };
+  }, [items, lastAddedId, add, setQty, remove, clear, syncPrices]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

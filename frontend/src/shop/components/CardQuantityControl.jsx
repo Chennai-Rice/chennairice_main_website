@@ -1,6 +1,10 @@
 import React, { useEffect, useRef } from "react";
 import { useCart } from "../hooks/useCart.jsx";
 import { useRipple } from "../hooks/useRipple.js";
+import { flyToCart } from "../utils/flyToCart.js";
+
+/** The picture of the card the button sits in (the product page's related products too). */
+const cardPicture = (button) => button.closest("article")?.querySelector(".card-media-link img, .pdp-related-card img, img");
 
 /**
  * Sits where "Add to cart" is until the item is actually in the cart, then
@@ -22,6 +26,7 @@ export default function CardQuantityControl({ product }) {
         type="button"
         onClick={(event) => {
           spawnRipple(event);
+          flyToCart(cardPicture(event.currentTarget));
           add(product);
         }}
       >
@@ -45,7 +50,10 @@ export default function CardQuantityControl({ product }) {
         className="qty-btn"
         type="button"
         aria-label="Increase quantity"
-        onClick={() => setQty(line.id, line.qty + 1)}
+        onClick={(event) => {
+          flyToCart(cardPicture(event.currentTarget));
+          setQty(line.id, line.qty + 1);
+        }}
       >
         +
       </button>
