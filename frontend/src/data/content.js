@@ -411,6 +411,43 @@ export const FOOTER = {
 /* Home page FAQs (Chennai Rice SEO - Homepage, Oct 2026). Also published as
    FAQPage structured data by HomeFaq. */
 export const HOME_FAQS = [
+  // Chennai Rice – Frequently Asked Questions (owner, Oct 2026). `link` adds a link under the answer.
+  {
+    q: 'What is Chennai Rice?',
+    a: 'Chennai Rice is the rice brand of Chennai Rice Industries India Private Limited, a rice manufacturer in Erode, Tamil Nadu. We make Ponni, Idli, Rajabhogam and aged rice in 26 kg packs.',
+  },
+  {
+    q: 'Where is Chennai Rice made?',
+    a: 'All Chennai Rice is milled and packed at our plant in Nasiyanur, Erode, Tamil Nadu – 638102.',
+  },
+  {
+    q: 'Which Chennai Rice is best for everyday meals?',
+    a: 'For daily lunch and dinner, most families choose Chennai Rice United Ponni, Vijayanagaram or Kitchidi Ponni. They cook soft and non-sticky.',
+  },
+  {
+    q: 'Which Chennai Rice is best for idli?',
+    a: 'Chennai Rice Special Idly Rice. It grinds into a smooth batter and ferments well for soft idlis.',
+    link: { to: '/products/special-idly-rice', label: 'See Special Idly Rice' },
+  },
+  {
+    q: 'What is the price of Chennai Rice 26 kg?',
+    a: 'Prices depend on the variety. See current prices on our products page. Shops and hotels can request wholesale rates.',
+    link: { to: '/rice-products', label: 'See current prices' },
+  },
+  {
+    q: 'Can I buy Chennai Rice online?',
+    a: 'Yes. Order on this website or on WhatsApp at 70666 46667.',
+    link: { href: 'https://wa.me/917066646667', label: 'Order on WhatsApp' },
+  },
+  {
+    q: 'How do I become a Chennai Rice distributor?',
+    a: 'Apply on our distributorship page. Our sales team will call you to discuss your area.',
+    link: { to: '/rice-distributorship', label: 'Apply for distributorship' },
+  },
+  {
+    q: 'Is Chennai Rice FSSAI certified?',
+    a: 'Yes. Chennai Rice Industries India Pvt Ltd holds FSSAI Licence No. 12415007000253.',
+  },
   {
     q: 'What is Ponni rice?',
     a: 'Ponni rice is a medium grain white rice widely grown and eaten across Tamil Nadu. It cooks soft and light, absorbs the flavour of sambar, rasam and kuzhambu well, and is the most popular choice for everyday South Indian meals, curd rice and lunch boxes.',
