@@ -58,7 +58,7 @@ export const HERO = {
   // Curly quotes rather than the straight " character: this is display
   // typography, and a straight quote reads as an inch mark at 4rem.
   // Owner, 24 Oct 2026: the old display line is now a small styled line above the heading.
-  tagline: 'The White Gold Among Foods.',
+  tagline: 'South India’s Largest Rice Mill with Paddy Storage',
   h1: 'Chennai Rice – Premium Ponni & Idli Rice from Erode',
   intro: 'Chennai Rice is the rice brand of Chennai Rice Industries, Erode, milling Ponni, Idli and aged rice for Tamil kitchens since the 1950s. Mill-fresh, aged for better cooking, and packed in 26 kg bags for homes, shops and hotels.',
   ctas: [
