@@ -4,7 +4,7 @@ import FeatureStrip from '../components/FeatureStrip.jsx'
 import Celebrities from '../components/Celebrities.jsx'
 import Testimonials from '../components/Testimonials.jsx'
 import HomeFaq from '../components/HomeFaq.jsx'
-import { HomeBulk, HomeVarieties } from '../components/HomeIntro.jsx'
+import { HomeBulk } from '../components/HomeIntro.jsx'
 import { showAmbassadors } from '../config.js'
 import usePageMeta from '../shop/hooks/usePageMeta.js'
 import { PAGE_META } from '../seo.js'
@@ -15,7 +15,6 @@ export default function HomePage() {
     <main>
       <Hero />
       <ProductsShowcase />
-      <HomeVarieties />
       <FeatureStrip />
       {/* Brand Ambassadors is behind a switch rather than deleted — the
           section, its copy and its portraits all stay in the repo, so putting
