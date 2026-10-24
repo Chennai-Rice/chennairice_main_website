@@ -70,6 +70,35 @@ export default function AboutPage() {
           <SectionCurve place="bottom" tone="rice" variant={1} />
         </div>
 
+        {/* About Chennai Rice (owner, Oct 2026): who we are, how we work, why it matters. */}
+        <div className="ab-flow-block ab-flow-block--rice">
+          <section className="about-shell ab-intro" aria-labelledby="ab-intro-title">
+            <p className="eyebrow">Who we are</p>
+            <h2 id="ab-intro-title" className="ab-intro-title">About Chennai Rice</h2>
+            <span className="ab-heritage-rule" aria-hidden="true" />
+            <div className="ab-intro-body">
+              <p>
+                Chennai Rice began as a family rice mill in Tamil Nadu in the 1950s. More than 75 years later,
+                Chennai Rice Industries India Private Limited runs one of the region’s larger modern rice plants at
+                Nasiyanur, Erode, processing around 1,000 tonnes of paddy every day.
+              </p>
+              <p>
+                We buy paddy from farmers and traders across five states, so we can choose the right grain for every
+                variety in every season. Each batch is cleaned, processed, colour-sorted, aged and packed under one
+                roof, then stored across six warehouses before it reaches you.
+              </p>
+              <p>
+                That’s why a bag of Chennai Rice cooks the same way every time. Families get soft, separate grains at
+                every meal. Shops and distributors get a brand customers ask for by name, with supply that doesn’t
+                run dry.
+              </p>
+            </div>
+            <p className="ab-intro-values">
+              {['Quality', 'Technology', 'Scale', 'Trust'].map((w) => <span key={w}>{w}.</span>)}
+            </p>
+          </section>
+        </div>
+
         <div className="ab-flow-block ab-flow-block--rice">
           {/* photo beside the heading, with the full company description
               stacked directly under it in the same column — plain

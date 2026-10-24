@@ -1050,3 +1050,27 @@
   line-height: 1.8;
   color: rgba(244, 230, 205, 0.86);
 }
+
+/* About Chennai Rice — the company in three paragraphs (owner, Oct 2026). */
+.ab-intro { padding: clamp(48px, 7vw, 96px) 0 clamp(24px, 4vw, 48px); text-align: center; }
+.ab-intro .eyebrow { justify-content: center; }
+.ab-intro-title {
+  margin: 8px 0 14px;
+  font-family: var(--serif, var(--display));
+  font-weight: 500;
+  font-size: clamp(2rem, 1.4rem + 2vw, 3.2rem);
+  line-height: 1.15;
+  color: var(--maroon-600, #7a1f2b);
+}
+.ab-intro .ab-heritage-rule { margin-inline: auto; }
+.ab-intro-body { max-width: 760px; margin: 22px auto 0; display: grid; gap: 16px; }
+.ab-intro-body p { margin: 0; font-size: 1.06rem; line-height: 1.85; color: #4a3b30; }
+.ab-intro-values {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 22px;
+  margin: 30px 0 0;
+  font-family: var(--serif, var(--display));
+  font-size: clamp(1.3rem, 1rem + 1vw, 1.8rem);
+  color: var(--maroon-600, #7a1f2b);
+}
+.ab-intro-values span:nth-child(even) { color: var(--gold-deep, #a8802e); }
+.ab-intro { padding-left: 20px; padding-right: 20px; }
