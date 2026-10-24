@@ -22,7 +22,7 @@ export const COMPANY = {
   gstin: '33AAFCC1691K1ZM',
   state: 'Tamil Nadu',
   stateCode: '33',
-  phone: '04242555556, 8012501262, 8012501251',
+  phone: '70666 46667',
   email: 'support@chennairiceindustries.com',
 }
 

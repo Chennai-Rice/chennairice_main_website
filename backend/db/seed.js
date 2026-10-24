@@ -49,7 +49,7 @@ const SETTINGS = {
   seller_state: 'Tamil Nadu',
   seller_state_code: '33',
   seller_gstin: '33AAFCC1691K1ZM',
-  seller_phone: '04242555556, 8012501262, 8012501251',
+  seller_phone: '70666 46667',
   seller_email: 'support@chennairiceindustries.com',
   invoice_prefix: 'CRI',
   reservation_minutes: '30',
