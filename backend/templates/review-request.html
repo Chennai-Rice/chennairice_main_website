@@ -55,7 +55,7 @@
       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td bgcolor="#e6f4ea" style="background-color:#e6f4ea; border-radius:999px; padding:6px 14px; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:16px; font-weight:bold; color:#1f7a3f;">
-            &#10003;&nbsp; Delivered on {{Delivered Date}}
+            &#10003;&nbsp; Delivered<!-- IF Delivered Date --> on {{Delivered Date}}<!-- END IF Delivered Date -->
           </td>
         </tr>
       </table>
@@ -66,7 +66,7 @@
         Vanakkam {{Customer Name}},
       </p>
       <p style="margin:10px 0 0; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:24px; color:#2b1d17;">
-        Your order <strong style="font-family:'Courier New', Courier, monospace;">{{Order ID}}</strong> was delivered on <strong>{{Delivered Date}}</strong>.
+        Your order <strong style="font-family:'Courier New', Courier, monospace;">{{Order ID}}</strong> <!-- IF Delivered Date -->was delivered on <strong>{{Delivered Date}}</strong>.<!-- END IF Delivered Date --><!-- IF Not Dated -->has been delivered.<!-- END IF Not Dated -->
       </p>
     </td>
   </tr>

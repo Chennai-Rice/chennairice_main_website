@@ -297,11 +297,15 @@ export const templates = {
   reviewRequest(order, items = [], deliveredAt = new Date()) {
     const reviewUrl = process.env.REVIEW_URL || 'https://share.google/W8gy3NAFUbgfYHrdC'
     const whatsappUrl = 'https://wa.me/917066646667'
-    const delivered = new Date(deliveredAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' })
+    // No date (null) when it is not reliable, e.g. orders marked delivered in a batch.
+    const delivered = deliveredAt
+      ? new Date(deliveredAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' })
+      : ''
     const vars = {
       'Customer Name': order.contact_name,
       'Order ID': order.order_number,
       'Delivered Date': delivered,
+      'Not Dated': delivered ? '' : 'yes',
       'Review URL': reviewUrl,
       'WhatsApp URL': whatsappUrl,
       'Support Number': process.env.SUPPORT_PHONE || '+91 70666 46667',
@@ -317,7 +321,7 @@ export const templates = {
       subject: `How was your Chennai Rice, ${order.contact_name}? 🍚`,
       text:
         `Vanakkam ${order.contact_name},\n\n` +
-        `Your order ${order.order_number} was delivered on ${delivered}:\n` +
+        `Your order ${order.order_number} ${delivered ? 'was delivered on ' + delivered : 'has been delivered'}:\n` +
         `${items.map((i) => `  • ${i.quantity} × ${i.product_name} ${Number(i.pack_kg)} kg`).join('\n')}\n\n` +
         `We hope it cooked soft and tasted just right. Would you tell us how it was?\n\n` +
         `⭐ Write a Google Review: ${reviewUrl}\n\n` +
