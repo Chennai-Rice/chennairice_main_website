@@ -104,7 +104,7 @@ export default function Footer() {
             <span>{FOOTER.address.join(' ')}</span>
             <span>Phone: <a href={`tel:${FOOTER.phone.replace(/\s/g, '')}`}>{FOOTER.phone.replace('+91 ', '')}</a></span>
             <span>Email: <a href={`mailto:${FOOTER.email}`}>{FOOTER.email}</a></span>
-            <span>GSTIN {FOOTER.gstin} · FSSAI {FOOTER.fssai}</span>
+            <span>GSTIN {FOOTER.gstin}</span>
           </address>
         </div>
 
