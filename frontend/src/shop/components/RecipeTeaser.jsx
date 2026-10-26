@@ -3,12 +3,24 @@ import { Link } from "react-router-dom";
 
 const DEFAULT_DISHES = ["Curd Rice", "Sambar Rice", "Idly"];
 
-// Photos we have, matched to each dish by what's on the plate.
+// One photo per dish (owner's dish photos, Oct 2026), matched by name — the
+// more specific names first (Sakkarai before Pongal, Kuzhambu before Rice).
+const D = "/assets/dishes/";
 const PHOTOS = [
-  { match: /idl|dosa|uthappam/i, image: "/assets/about/idly.webp" },
-  { match: /curd/i, image: "/assets/about/curd-rice.webp" },
-  { match: /pongal|kitchadi|banana|festival|pooja|gathering|feast/i, image: "/assets/about/food.jpg" },
-  { match: /sambar|rasam|kuzhambu|saapadu|joint family/i, image: "/assets/about/sambar.jpg" },
+  { match: /sakkarai/i, image: D + "sakkarai-pongal.webp" },
+  { match: /ven pongal|pongal/i, image: D + "ven-pongal.webp" },
+  { match: /kitchadi|kichadi|khichdi/i, image: D + "nei-kitchadi.webp" },
+  { match: /kuzhambu/i, image: D + "kuzhambu-rice.webp" },
+  { match: /sambar/i, image: D + "sambar-rice.webp" },
+  { match: /rasam/i, image: D + "rasam-rice.webp" },
+  { match: /curd/i, image: D + "curd-rice.webp" },
+  { match: /lemon/i, image: D + "lemon-rice.webp" },
+  { match: /tamarind|puli/i, image: D + "tamarind-rice.webp" },
+  { match: /uthappam/i, image: D + "uthappam.webp" },
+  { match: /dosa/i, image: D + "dosa.webp" },
+  { match: /idl/i, image: D + "idli.webp" },
+  { match: /lunch box/i, image: D + "lunch-box.webp" },
+  { match: /saapadu|banana|festival|feast|pooja|gathering|family|daily/i, image: D + "tamil-saapadu.webp" },
 ];
 const FALLBACK_PHOTO = "/assets/shop/gallery/rice-bowl-cooked.jpg";
 
