@@ -408,6 +408,11 @@ export const FOOTER = {
     'Erode, Tamil Nadu – 638102',
   ],
   copyright: 'Chennai Rice Industries India Private Limited',
+  // "Reach Us": the Google Business Profile, and the map of the mill.
+  maps: {
+    profile: 'https://share.google/W8gy3NAFUbgfYHrdC',
+    embed: 'https://maps.google.com/maps?q=Chennai%20Rice%20Industries%2C%20Nasiyanur%2C%20Erode%2C%20Tamil%20Nadu%20638102&z=14&output=embed',
+  },
   // The company block above the bottom bar (owner, Oct 2026).
   company: 'Chennai Rice – Chennai Rice Industries India Private Limited',
   gstin: '33AAFCC1691K1ZM',
