@@ -35,10 +35,7 @@ const Social = {
 }
 
 export default function Footer() {
-  const { reopen, allowMarketing } = useCookieConsent()
-  // The Google map sets Google cookies: shown straight away once cookies are accepted, otherwise on a tap.
-  const [showMap, setShowMap] = useState(false)
-  const mapOn = allowMarketing || showMap
+  const { reopen } = useCookieConsent()
   const [email, setEmail] = useState('')
   const [state, setState] = useState(null) // 'ok' | 'bad'
 
@@ -167,23 +164,12 @@ export default function Footer() {
           <h2 className="foot-title foot-title--map">Reach Us</h2>
           <span className="foot-rule" aria-hidden="true" />
           <div className="foot-map">
-            {mapOn ? (
-              <iframe
-                title="Chennai Rice Industries on Google Maps"
-                src={FOOTER.maps.embed}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-            ) : (
-              <button type="button" className="foot-map-placeholder" onClick={() => setShowMap(true)}>
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" fill="#b3313f" />
-                  <circle cx="12" cy="10" r="2.6" fill="#fff" />
-                </svg>
-                <span>Nasiyanur, Erode</span>
-                <strong>Show map</strong>
-              </button>
-            )}
+            <iframe
+              title="Chennai Rice Industries on Google Maps"
+              src={FOOTER.maps.embed}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
             <a className="foot-map-open" href={FOOTER.maps.profile} target="_blank" rel="noopener noreferrer">
               Open in Google Maps
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
