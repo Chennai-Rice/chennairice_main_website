@@ -736,3 +736,31 @@
 .sk-order-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .sk-order-btn { display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid #d9cdbf; background: #fff; color: #3a2a22; font-weight: 600; font-size: 12.5px; text-decoration: none; }
 .sk-order-btn.is-primary { background: #7a1f2b; border-color: #7a1f2b; color: #fff; }
+
+/* Phase 2 — shopping in the chat: pack sizes, price and Add to cart on the
+   product card; the delivery check card; Reorder on the order card. */
+.sk-product-card { align-items: flex-start; max-width: 86%; }
+.sk-product-thumb { width: 60px; height: 78px; }
+.sk-pack-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sk-pack { min-height: 30px; padding: 0 11px; border-radius: 999px; border: 1px solid #d9cdbf; background: #fff; color: #3a2a22; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.sk-pack.is-on { border-color: var(--sk-burgundy); background: var(--sk-burgundy); color: #fff; }
+.sk-pack.is-out:not(.is-on) { color: #a59a91; text-decoration: line-through; }
+.sk-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-top: 8px; font-size: 12px; color: var(--sk-muted); }
+.sk-price strong { font-size: 16px; color: var(--sk-ink); }
+.sk-price-out { color: #b42318; font-weight: 700; }
+.sk-price-ask { font-weight: 600; }
+.sk-product-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 10px; }
+.sk-add { min-height: 34px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--sk-burgundy); color: #fff; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.sk-add:hover { filter: brightness(1.1); }
+.sk-product-actions .sk-product-link { margin-top: 0; }
+.sk-product-view { margin-top: 10px; }
+.sk-pack:focus-visible, .sk-add:focus-visible { outline: 2px solid var(--sk-gold); outline-offset: 2px; }
+
+.sk-delivery-yes { width: 100%; color: #1f7a3f; font-size: 14px; }
+.sk-delivery-title { margin: 4px 0 6px; font-weight: 700; }
+.sk-delivery-list { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; }
+.sk-delivery-list li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: 10px; background: #fff; }
+.sk-delivery-note { margin: 0 0 12px; color: #8b7f76; font-size: 12px; }
+
+.sk-reorder-result { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #1f7a3f; font-weight: 600; line-height: 1.5; }
+.sk-reorder-result span { color: #8b5a12; font-weight: 500; }

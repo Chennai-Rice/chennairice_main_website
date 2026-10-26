@@ -3,6 +3,7 @@
 // Public (the storefront):
 //   GET  /api/catalog                         packs, prices, in stock
 //   POST /api/checkout/quote                  price a cart (nothing is held)
+//   GET  /api/delivery?pincode=               do we deliver there, and the charge per pack size
 //   POST /api/checkout/session                create order, hold stock, open payment
 //   POST /api/checkout/verify                 confirm payment
 //   POST /api/orders/track                    { orderNumber, phone } → status
@@ -11,7 +12,7 @@
 //
 // Staff (/api/admin/*, Firebase ID token, permissions per role — staff.js).
 import express from 'express'
-import { listCatalog } from './catalog.js'
+import { listCatalog, checkDelivery } from './catalog.js'
 import { createCheckoutSession, confirmCheckout, quoteCart } from './checkout.js'
 import { handleRazorpayWebhook } from './webhooks.js'
 import { runJobs } from './jobs.js'
@@ -143,6 +144,12 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   }))
 
   router.post('/api/checkout/quote', wrap(async (req, res) => res.json(await quoteCart(req.body))))
+
+  // Soru Kutty's delivery check: region and delivery charge per pack size for a PIN code.
+  router.get('/api/delivery', rateLimit({ windowMs: 60000, max: 30 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=300')
+    res.json(await checkDelivery({ query }, req.query.pincode))
+  }))
 
   router.post('/api/checkout/session', rateLimit({ windowMs: 60000, max: 20 }), wrap(async (req, res) => {
     res.json({ ok: true, ...(await createCheckoutSession(req.body)) })

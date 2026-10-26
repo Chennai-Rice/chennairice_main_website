@@ -90,7 +90,15 @@ export const TruckIcon = props => (
   </svg>
 )
 
+export const PinIcon = props => (
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+    <path d="M12 21s-6.5-6.2-6.5-11.2a6.5 6.5 0 0 1 13 0C18.5 14.8 12 21 12 21z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+    <circle cx="12" cy="9.8" r="2.3" stroke="currentColor" strokeWidth="1.5" />
+  </svg>
+)
+
 export const QUICK_ACTION_ICONS = {
+  pin: PinIcon,
   search: SearchIcon,
   leaf: LeafIcon,
   pot: PotIcon,

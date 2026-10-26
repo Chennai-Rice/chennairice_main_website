@@ -35,6 +35,8 @@ import { createCheckoutSession, confirmCheckout } from '../lib/checkout.js'
 import { availableGateways } from '../lib/gateways.js'
 import { hasDatabase } from '../lib/db.js'
 import { createSalesRouter } from '../lib/sales/routes.js'
+import { listCatalog } from '../lib/sales/catalog.js'
+import { query } from '../lib/db.js'
 
 export const app = express()
 app.use(cors())
@@ -199,6 +201,20 @@ app.post('/api/track/interactions', async (req, res) => {
   }
 })
 
+// The shop's live catalog for Soru Kutty's prices, read at most once a minute.
+let chatCatalog = { at: 0, products: null }
+async function catalogForChat() {
+  if (!hasDatabase()) return null
+  if (Date.now() - chatCatalog.at < 60000) return chatCatalog.products
+  try {
+    chatCatalog = { at: Date.now(), products: await listCatalog({ query }) }
+  } catch (err) {
+    console.error('Chat catalog error:', err.message)
+    chatCatalog = { at: Date.now(), products: null }
+  }
+  return chatCatalog.products
+}
+
 app.post('/api/chat', async (req, res) => {
   if (!GROQ_API_KEY) {
     return res.status(500).json({ error: 'GROQ_API_KEY is not configured on the server.' })
@@ -210,7 +226,7 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
-    const reply = await callGroq({ apiKey: GROQ_API_KEY, model: GROQ_MODEL, messages })
+    const reply = await callGroq({ apiKey: GROQ_API_KEY, model: GROQ_MODEL, messages, catalog: await catalogForChat() })
     res.json({ reply })
   } catch (err) {
     console.error('Chat proxy error:', err)

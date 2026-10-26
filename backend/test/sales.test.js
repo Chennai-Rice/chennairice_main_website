@@ -303,6 +303,8 @@ test('dispatch flow: confirm → pack → ship → deliver, with roles, stock, i
   assert.equal(track.body.email, undefined)
   assert.equal(track.body.total, undefined)
   assert.equal(track.body.items[0].lineTotal, undefined)
+  // The cart line id, for "Reorder these items" in the chat.
+  assert.match(track.body.items[0].id, /^[a-z0-9-]+-\d+(\.\d+)?kg$/)
   assert.equal((await api('POST', '/api/orders/track', { body: { orderNumber: 'CR-20000101-0000' } })).status, 404)
   // The shipment ID is its own code, unrelated to the order number, and the
   // first shipment carries it. Pasted in any case, inside other text, it finds
@@ -977,6 +979,13 @@ test('delivery charge: by PIN code region, per pack, with its GST on the invoice
     assert.equal(delhi.status, 422)
     assert.match(delhi.body.error, /do not deliver to PIN code 110001/)
     assert.equal((await quote('744101', 1)).status, 422) // Andaman: never
+
+    // Soru Kutty's delivery check: the region and the charge per pack size.
+    const chat = await api('GET', '/api/delivery?pincode=641%20001')
+    assert.equal(chat.status, 200, JSON.stringify(chat.body))
+    assert.deepEqual(chat.body, { pincode: '641001', delivers: true, region: { code: 'TN', name: 'Tamil Nadu' }, charges: [{ packKg: 10, from: 210, to: 210 }] })
+    assert.equal((await api('GET', '/api/delivery?pincode=110001')).body.delivers, false)
+    assert.equal((await api('GET', '/api/delivery?pincode=12')).status, 400)
 
     const noPin = await quote('', 1)
     assert.equal(noPin.status, 200)

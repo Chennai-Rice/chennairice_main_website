@@ -691,7 +691,10 @@ export async function trackOrder({ orderNumber, orderId }) {
   if (orderId && String(orderId).toLowerCase() !== order.id) throw notFound
 
   const [{ rows: items }, { rows: history }, { rows: shipments }] = await Promise.all([
-    query('select product_name, pack_kg, quantity from order_items where order_id = $1 order by product_name', [order.id]),
+    query(
+      `select i.product_name, i.pack_kg, i.quantity, p.slug
+         from order_items i join product_variants v on v.id = i.variant_id join products p on p.id = v.product_id
+        where i.order_id = $1 order by i.product_name`, [order.id]),
     query('select to_status, created_at from order_status_history where order_id = $1 order by created_at, id', [order.id]),
     query(
       `select shipment_number, method, carrier_name, tracking_number, lr_number, tracking_url, status, expected_delivery, shipped_at, delivered_at
@@ -704,7 +707,8 @@ export async function trackOrder({ orderNumber, orderId }) {
     paymentStatus: order.payment_status,
     placedAt: order.placed_at,
     city: order.shipping_address.city,
-    items: items.map((i) => ({ name: i.product_name, packKg: i.pack_kg, qty: i.quantity })),
+    // id is the cart line id ("rudra-25kg"), for "Reorder" in the chat.
+    items: items.map((i) => ({ id: i.slug + '-' + Number(i.pack_kg) + 'kg', name: i.product_name, packKg: i.pack_kg, qty: i.quantity })),
     timeline: history.map((h) => ({ status: h.to_status, at: h.created_at })),
     shipments: shipments.map((s) => ({
       shipmentId: s.shipment_number,

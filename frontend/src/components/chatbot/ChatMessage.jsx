@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import ProductCard from './ProductCard.jsx'
 import OrderCard from './OrderCard.jsx'
+import DeliveryCard from './DeliveryCard.jsx'
 import { FALLBACK_MESSAGE } from '../../data/chatbot.js'
 
 export default function ChatMessage({ message }) {
@@ -29,7 +30,8 @@ export default function ChatMessage({ message }) {
         </div>
       </div>
       {message.order && <OrderCard order={message.order} lang={message.lang} />}
-      {message.product && <ProductCard product={message.product} />}
+      {message.delivery && <DeliveryCard delivery={message.delivery} lang={message.lang} />}
+      {message.products?.map((p) => <ProductCard key={p.id} product={p} lang={message.lang} />)}
     </>
   )
 }

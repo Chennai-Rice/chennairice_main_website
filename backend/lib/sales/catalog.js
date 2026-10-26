@@ -202,6 +202,34 @@ async function regionalPrices(db, variantIds, pincode) {
 }
 
 /**
+ * "Do you deliver to my PIN code?" (Soru Kutty): the region and, per pack
+ * size, the delivery charge there (lowest to highest across the packs of that
+ * size). Nothing is held; checkout prices the real cart again.
+ */
+export async function checkDelivery(db, pincode) {
+  const pin = str(pincode).replace(/\s+/g, '')
+  if (!/^[1-9]\d{5}$/.test(pin)) throw httpError('Please send a 6-digit PIN code.')
+  const code = regionForPincode(pin)
+  const { rows: [zone] } = code
+    ? await db.query('select code, name from shipping_zones where code = $1 and is_active', [code])
+    : { rows: [] }
+  if (!zone) return { pincode: pin, delivers: false, region: null, charges: [] }
+  const { rows } = await db.query(
+    `select v.pack_kg, min(rp.delivery_paise) as lo, max(rp.delivery_paise) as hi
+       from variant_region_prices rp
+       join product_variants v on v.id = rp.variant_id and v.is_active and v.price_paise is not null
+       join products p on p.id = v.product_id and p.is_active
+      where rp.region = $1
+      group by v.pack_kg order by v.pack_kg`, [code])
+  return {
+    pincode: pin,
+    delivers: true,
+    region: { code, name: REGIONS[code] || zone.name },
+    charges: rows.map((r) => ({ packKg: Number(r.pack_kg), from: toRupees(r.lo), to: toRupees(r.hi) })),
+  }
+}
+
+/**
  * Delivery charge by state, for catalogs without regional prices: the
  * matching (or default) shipping zone's rate per kg. Regional pricing works
  * out its own delivery in priceCart.
