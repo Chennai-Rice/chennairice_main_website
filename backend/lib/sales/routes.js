@@ -35,6 +35,7 @@ import { listIssuedIds, issuedIdsCsv, checkRegister } from './idregister.js'
 import { invoiceHtml, packingSlipHtml } from './documents.js'
 import { recordVisit, sourcesReport, sourceOrders, sourcePeople, saveContestLead, startContestLead, contestLeads } from './attribution.js'
 import { saveExpoLead, listExpoLeads, deleteExpoLead } from './expo.js'
+import { askAssistant } from './assistant.js'
 import { analystReport, analystSettings, setRiceType, setMonthlyTarget, addAdSpend, deleteAdSpend } from './analyst.js'
 import { checkAutomationKey, automationContacts } from './automation.js'
 import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
@@ -278,6 +279,11 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/warehouse/dashboard', perm('warehouse.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await warehouseDashboard({ money: can(req.staff, 'money.view') }))
+  }))
+  // The assistant in the dashboard's Quick actions card: questions answered from live data.
+  admin.post('/warehouse/assistant', perm('warehouse.view'), rateLimit({ windowMs: 60000, max: 20 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await askAssistant(req.staff, req.body, { money: can(req.staff, 'money.view') }))
   }))
   admin.get('/warehouse/shipments', perm('warehouse.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')

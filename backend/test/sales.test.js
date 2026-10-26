@@ -1993,3 +1993,41 @@ test('Ad campaigns: people from a source — every checkout (paid or not) with n
   const meta = await api('GET', '/api/admin/warehouse/sources/people?days=30&sources=meta_ads_instagram', { token: OWNER })
   assert.ok(!meta.body.people.some((p) => p.contact_name === 'Source Sara'))
 })
+
+test('warehouse assistant: answers through the live-data tools; amounts only for roles with money', async () => {
+  const wh = 'store@x.test|uid-store'
+  const realFetch = globalThis.fetch
+  const sent = []
+  process.env.STAFF_GROQ_API_KEY = 'test-key'
+  // Stand-in for Groq: first asks for search_orders, then answers from what the tool returned.
+  globalThis.fetch = async (url, opts) => {
+    if (!String(url).includes('api.groq.com')) return realFetch(url, opts)
+    const body = JSON.parse(opts.body)
+    sent.push(body)
+    const tool = body.messages.find((m) => m.role === 'tool')
+    const message = tool
+      ? { role: 'assistant', content: 'Found ' + JSON.parse(tool.content).shown + ' orders.' }
+      : { role: 'assistant', content: '', tool_calls: [{ id: 'c1', type: 'function', function: { name: 'search_orders', arguments: '{"tab":"all"}' } }] }
+    return new Response(JSON.stringify({ choices: [{ message }] }), { headers: { 'Content-Type': 'application/json' } })
+  }
+  try {
+    const ask = (token) => api('POST', '/api/admin/warehouse/assistant', { token, body: { messages: [{ role: 'user', content: 'How many orders?' }] } })
+    const staff = await ask(wh)
+    assert.equal(staff.status, 200, JSON.stringify(staff.body))
+    assert.match(staff.body.reply, /^Found \d+ orders\.$/)
+    assert.deepEqual(staff.body.used, ['search_orders'])
+    const toolData = JSON.parse(sent[1].messages.find((m) => m.role === 'tool').content)
+    assert.ok(toolData.orders.length > 0 && toolData.orders.every((o) => o.total === undefined))
+    assert.match(sent[0].messages[0].content, /may NOT see prices/)
+
+    sent.length = 0
+    assert.equal((await ask(OWNER)).status, 200)
+    assert.ok(JSON.parse(sent[1].messages.find((m) => m.role === 'tool').content).orders.some((o) => o.total > 0))
+
+    assert.equal((await api('POST', '/api/admin/warehouse/assistant', { body: { messages: [] } })).status, 401)
+    assert.equal((await api('POST', '/api/admin/warehouse/assistant', { token: wh, body: { messages: [] } })).status, 400)
+  } finally {
+    globalThis.fetch = realFetch
+    delete process.env.STAFF_GROQ_API_KEY
+  }
+})

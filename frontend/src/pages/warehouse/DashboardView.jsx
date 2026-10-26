@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { staffJson } from '../../services/staffAuth.js'
 import { Icon, STATUS, STATUS_KEY, dayLabel, timeLabel } from './shared.jsx'
+import AssistantCard from './AssistantCard.jsx'
 import './warehouse-dash.css'
 
 /*
   Dashboard (Oct 2026, owner's reference): a greeting, four cards with the
   last 7 days as small bars and the change against the week before, then
-  Recent Orders · Low Stock · Order Status, then Quick actions · the orders
-  trend · Top Products. White cards on grey, black and red accents.
+  Recent Orders · Low Stock · Order Status, then the assistant (ask about
+  live data) · the orders trend · Top Products. White cards on grey, black and red accents.
 */
 
 // Order status this month: one bar split by status, each part named with its
@@ -79,9 +80,8 @@ function TrendChart({ days }) {
   )
 }
 
-export default function DashboardView({ say, onAuthError, go, money, me, onSearch }) {
+export default function DashboardView({ say, onAuthError, go, money, me }) {
   const [d, setD] = useState(null)
-  const [q, setQ] = useState('')
   useEffect(() => {
     let live = true
     const load = () => staffJson('/api/admin/warehouse/dashboard')
@@ -212,24 +212,7 @@ export default function DashboardView({ say, onAuthError, go, money, me, onSearc
 
       {/* ---- Quick actions · trend · Top Products ---- */}
       <div className="wd-row">
-        <section className="wd-panel wd-quick">
-          <h3>Quick actions</h3>
-          <div className="wd-quick-chips">
-            <button type="button" onClick={() => go('dispatch')}>Dispatch orders ({d.counts.toDispatch})</button>
-            <button type="button" onClick={() => go('tracker')}>Upload tracker</button>
-            <button type="button" onClick={() => go('returns')}>Returns ({d.counts.openIssues})</button>
-          </div>
-          {onSearch && (
-            <form className="wd-quick-search" role="search" onSubmit={(e) => { e.preventDefault(); if (q.trim()) onSearch(q.trim()) }}>
-              <p>{d.counts.toDispatch} {d.counts.toDispatch === 1 ? 'order is' : 'orders are'} waiting to go out</p>
-              <div>
-                <Icon name="search" size={17} />
-                <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find an order, customer or phone…" aria-label="Find an order" />
-                <button type="submit" aria-label="Search"><Icon name="chevronRight" size={18} /></button>
-              </div>
-            </form>
-          )}
-        </section>
+        <AssistantCard waiting={d.counts.toDispatch} onAuthError={onAuthError} />
 
         <section className="wd-panel">
           <header className="wd-panel-head">

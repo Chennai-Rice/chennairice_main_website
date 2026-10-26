@@ -189,3 +189,39 @@
   .wd-mini { height: 30px; }
   .wd-row { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ---- the assistant (AssistantCard.jsx), in the dark-red card ---- */
+.wa { gap: 10px; min-height: 340px; max-height: 460px; }
+.wa.is-wide { grid-column: 1 / -1; max-height: 640px; min-height: 480px; }
+.wa-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wa-spark { color: #ff6b5e; }
+.wa-head-btns { display: flex; gap: 6px; }
+.wa-head-btns button {
+  height: 26px; padding: 0 10px; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08); color: #fff; font: inherit; font-size: 11.5px; cursor: pointer;
+}
+.wa-head-btns button:hover { background: rgba(255, 255, 255, 0.18); }
+.wa-log { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 2px; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.25) transparent; }
+.wa-intro { margin: 0; font-size: 13px; line-height: 1.55; color: rgba(255, 255, 255, 0.82); }
+.wa-intro strong { color: #fff; }
+.wa-msg { max-width: 92%; padding: 9px 12px; border-radius: 12px; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.wa-msg.is-user { align-self: flex-end; background: #fff; color: #17181a; border-bottom-right-radius: 4px; }
+.wa-msg.is-assistant { align-self: flex-start; background: rgba(255, 255, 255, 0.12); color: #fff; border-bottom-left-radius: 4px; }
+.wa-msg.is-error { background: rgba(255, 90, 80, 0.25); }
+.wa-msg p { margin: 0 0 6px; }
+.wa-msg p:last-child { margin-bottom: 0; }
+.wa-msg ul { margin: 2px 0 6px; padding-left: 18px; }
+.wa-msg li { margin: 2px 0; }
+.wa-msg code { font-size: 12px; padding: 0 4px; border-radius: 4px; background: rgba(0, 0, 0, 0.25); }
+.wa-table { margin: 4px 0 6px; overflow-x: auto; }
+.wa-table table { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+.wa-table th, .wa-table td { padding: 4px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.15); text-align: left; }
+.wa-table th { font-weight: 600; color: rgba(255, 255, 255, 0.8); }
+.wa-typing { display: flex; gap: 4px; padding: 12px 14px; }
+.wa-typing span { width: 6px; height: 6px; border-radius: 50%; background: #fff; opacity: 0.4; animation: wa-dot 1s infinite ease-in-out; }
+.wa-typing span:nth-child(2) { animation-delay: 0.15s; }
+.wa-typing span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes wa-dot { 50% { opacity: 1; transform: translateY(-2px); } }
+.wa-form { margin-top: 0; padding: 0; background: none; backdrop-filter: none; }
+.wa-form button:disabled { opacity: 0.4; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .wa-typing span { animation: none; } }

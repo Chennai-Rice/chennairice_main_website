@@ -371,7 +371,7 @@ export default function WarehousePage() {
 
         <main className="wh-content">
           {shown === 'accounts' && <AccountsView say={say} onAuthError={onAuthError} />}
-          {shown === 'dashboard' && <DashboardView say={say} onAuthError={onAuthError} go={go} money={money} me={me} onSearch={orders ? openOrders : null} />}
+          {shown === 'dashboard' && <DashboardView say={say} onAuthError={onAuthError} go={go} money={money} me={me} />}
           {shown === 'orders' && (
             <OrdersView
               status={status}
