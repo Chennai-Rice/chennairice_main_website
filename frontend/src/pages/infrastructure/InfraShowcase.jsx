@@ -183,19 +183,6 @@ export default function InfraShowcase() {
         </div>
       </div>
 
-      {/* ---------------- capability grid ---------------- */}
-      <div className="ish-grid-band">
-        <WheatStalk className="ish-wheat ish-wheat--left" />
-        <WheatStalk className="ish-wheat ish-wheat--right" />
-
-        <div className="infra-wrap">
-          <div className="ish-head infra-reveal">
-            <span className="infra-eyebrow">World Class Infrastructure</span>
-            <h2 className="infra-title ish-head-title">Technology. Quality. Capacity.</h2>
-            <Divider />
-          </div>
-        </div>
-      </div>
 
       {/* ---------------- inside the mill: animated production line ---------------- */}
       <InfraProcess />

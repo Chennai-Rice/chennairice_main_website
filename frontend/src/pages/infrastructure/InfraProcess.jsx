@@ -59,8 +59,8 @@ export default function InfraProcess() {
   return (
     <section className="ip" aria-labelledby="ip-title">
       <div className="container ip-inner">
-        <p className="ip-eyebrow">Inside the mill</p>
-        <h2 id="ip-title" className="ip-title">From Paddy to Pack, Step by Step</h2>
+        <p className="ip-eyebrow">World Class Infrastructure</p>
+        <h2 id="ip-title" className="ip-title">Technology. Quality. Capacity.</h2>
         <p className="ip-sub">Ten stages on one line at our Nasiyanur, Erode mill — every grain cleaned, milled, sorted and checked before it is packed.</p>
 
         <div className="ip-stage" aria-hidden="true">
