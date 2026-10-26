@@ -66,16 +66,13 @@ export default function Footer() {
         </picture>
       </div>
 
-      <div className="container foot-main">
-        <Link to="/" className="foot-logo" aria-label="Chennai Rice Industries — home">
-          <img src="/assets/logo-footer-v1.png" alt="Chennai Rice Industries" width="408" height="440" />
-        </Link>
-
-        <div className="foot-connect">
+      {/* Stay Connected: one band across the top, text on the left, the form on the right. */}
+      <div className="container foot-news">
+        <div className="foot-news-copy">
           <h2 className="foot-title">{FOOTER.newsletter.title}</h2>
-          <span className="foot-rule" aria-hidden="true" />
           <p className="foot-connect-text">{FOOTER.newsletter.text}</p>
-
+        </div>
+        <div className="foot-news-form">
           <form className="foot-subscribe" onSubmit={subscribe} noValidate>
             <input
               type="email"
@@ -90,45 +87,23 @@ export default function Footer() {
             />
             <button type="submit">Subscribe</button>
           </form>
-
           {state === 'bad' && <p className="foot-note foot-note-bad">Please enter a valid email address.</p>}
           {state === 'ok' && (
             <p className="foot-note" role="status">
               Thank you — saved. No mailing list is connected yet, so nothing was sent.
             </p>
           )}
-
-          {/* The company: name, registered address, contact and registrations (owner, Oct 2026). */}
-          <address className="foot-company">
-            <strong className="foot-company-name">{FOOTER.company}</strong>
-            <span>{FOOTER.address.join(' ')}</span>
-            <span>Phone: <a href={`tel:${FOOTER.phone.replace(/\s/g, '')}`}>{FOOTER.phone.replace('+91 ', '')}</a></span>
-            <span>Email: <a href={`mailto:${FOOTER.email}`}>{FOOTER.email}</a></span>
-            <span>GSTIN {FOOTER.gstin}</span>
-          </address>
         </div>
+      </div>
 
-        <div className="foot-cols">
-          {FOOTER.columns.map(col => (
-            <nav className="foot-col" key={col.head} aria-labelledby={`foot-${col.head}`}>
-              <h2 className="foot-title" id={`foot-${col.head}`}>
-                {col.head}
-              </h2>
-              <span className="foot-rule" aria-hidden="true" />
-              <ul>
-                {col.links.map(l => (
-                  <li key={l.label}>
-                    <Link to={l.to}>{l.label}</Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          ))}
-        </div>
+      {/* Brand | links | Reach Us. */}
+      <div className="container foot-main">
+        <div className="foot-brand">
+          <Link to="/" className="foot-logo" aria-label="Chennai Rice Industries — home">
+            <img src="/assets/logo-footer-v1.png" alt="Chennai Rice Industries" width="408" height="440" />
+          </Link>
 
-        <div className="foot-follow">
-          <h2 className="foot-title">Follow Us</h2>
-          <span className="foot-rule" aria-hidden="true" />
+          <h2 className="foot-label">Follow Us</h2>
           <ul className="foot-social">
             {FOOTER.social.filter((s) => s.href).map(({ key, href, label }) => (
               <li key={key}>
@@ -159,10 +134,47 @@ export default function Footer() {
               <strong>{FOOTER.fssai}</strong>
             </p>
           </div>
+        </div>
 
-          {/* Reach Us: the mill on Google Maps, and the Google Business Profile. */}
-          <h2 className="foot-title foot-title--map">Reach Us</h2>
+        <div className="foot-cols">
+          {FOOTER.columns.map(col => (
+            <nav className="foot-col" key={col.head} aria-labelledby={`foot-${col.head}`}>
+              <h2 className="foot-title" id={`foot-${col.head}`}>
+                {col.head}
+              </h2>
+              <span className="foot-rule" aria-hidden="true" />
+              <ul>
+                {col.links.map(l => (
+                  <li key={l.label}>
+                    <Link to={l.to}>{l.label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
+        </div>
+
+        {/* Reach Us: the company, address and contacts, then the mill on Google Maps. */}
+        <div className="foot-reach">
+          <h2 className="foot-title">Reach Us</h2>
           <span className="foot-rule" aria-hidden="true" />
+          <address className="foot-company">
+            <strong className="foot-company-name">{FOOTER.company}</strong>
+            <span className="foot-line">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6.2-6.5-11.2a6.5 6.5 0 0 1 13 0C18.5 14.8 12 21 12 21z" /><circle cx="12" cy="9.8" r="2.3" /></svg>
+              <span>{FOOTER.address.join(' ')}</span>
+            </span>
+            <span className="foot-line">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 3.5h3l1.5 4-2 1.3a11 11 0 0 0 6.1 6.1l1.3-2 4 1.5v3a2 2 0 0 1-2.2 2A17 17 0 0 1 4.6 5.7a2 2 0 0 1 2-2.2z" /></svg>
+              <a href={`tel:${FOOTER.phone.replace(/\s/g, '')}`}>{FOOTER.phone.replace('+91 ', '')}</a>
+            </span>
+            <span className="foot-line">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2" /><path d="M4 7l8 6 8-6" /></svg>
+              <a href={`mailto:${FOOTER.email}`}>{FOOTER.email}</a>
+            </span>
+            <span className="foot-gstin">GSTIN {FOOTER.gstin}</span>
+          </address>
+
           <div className="foot-map">
             <iframe
               title="Chennai Rice Industries on Google Maps"
@@ -188,9 +200,12 @@ export default function Footer() {
           <p>
             &copy; {new Date().getFullYear()} {FOOTER.brand}. All rights reserved.
           </p>
-          <button type="button" className="foot-cookie" onClick={reopen}>
-            Cookie Preferences
-          </button>
+          <div className="foot-bar-links">
+            <Link to="/privacy">Privacy Policy</Link>
+            <button type="button" className="foot-cookie" onClick={reopen}>
+              Cookie Preferences
+            </button>
+          </div>
         </div>
       </div>
     </footer>

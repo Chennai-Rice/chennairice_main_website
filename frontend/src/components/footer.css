@@ -6,6 +6,10 @@
    HTML on a CSS maroon sampled from the band's own bottom edge (#380708), so
    the two meet without a join.
 
+   Layout (Oct 2026, made simpler for customers): a Stay Connected strip on
+   top, then three groups — brand (logo, social, FSSAI) | links | Reach Us
+   (company, address, phone, email, map) — then the copyright bar.
+
    Contrast rule throughout: gold for headings and decoration, cream for text.
    Both are measured against this maroon — gold #d9b96a is about 9:1 and the
    cream links about 13:1.
@@ -14,6 +18,7 @@
   --foot-maroon: #380708;
   --foot-gold: #d9b96a;
   --foot-cream: #f6efdc;
+  --foot-line: rgba(217, 185, 106, 0.28);
   position: relative;
   overflow: hidden;
   background: linear-gradient(180deg, var(--foot-maroon) 0%, #320608 100%);
@@ -45,42 +50,6 @@
   height: auto;
 }
 
-/* ---------- main block ---------- */
-.foot-main {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  /* logo | Stay Connected | three link columns | Follow Us. minmax(0, …)
-     everywhere so no track can be forced wider than the screen by its
-     content — the form especially. */
-  grid-template-columns: 150px minmax(0, 1.25fr) minmax(0, 2fr) auto;
-  gap: 0;
-  align-items: start;
-  padding-block: clamp(28px, 3vw, 44px) clamp(40px, 4vw, 60px);
-}
-.foot-main > * {
-  min-width: 0;
-}
-
-/* Thin gold dividers between the groups, as in the artwork. */
-.foot-connect,
-.foot-cols,
-.foot-follow {
-  border-left: 1px solid rgba(217, 185, 106, 0.35);
-  padding-left: clamp(20px, 2.4vw, 36px);
-  padding-right: clamp(12px, 1.6vw, 24px);
-}
-
-.foot-logo {
-  display: block;
-  padding-right: 24px;
-}
-.foot-logo img {
-  width: 100%;
-  max-width: 130px;
-  height: auto;
-}
-
 /* ---------- headings ---------- */
 .foot-title {
   font-family: var(--serif);
@@ -96,19 +65,38 @@
   margin: 10px 0 16px;
   background: var(--foot-gold);
 }
+.foot-label {
+  margin: 22px 0 10px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--foot-gold);
+}
 
-/* ---------- Stay Connected ---------- */
+/* ---------- Stay Connected strip ---------- */
+.foot-news {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  align-items: center;
+  gap: 16px 40px;
+  padding-block: clamp(22px, 2.6vw, 34px);
+  border-bottom: 1px solid var(--foot-line);
+}
 .foot-connect-text {
+  margin-top: 6px;
   font-size: 14px;
   line-height: 1.6;
   color: rgba(246, 239, 220, 0.82);
-  max-width: 34ch;
+  max-width: 52ch;
 }
 .foot-subscribe {
-  margin-top: 18px;
   display: flex;
-  max-width: 380px;
-  min-height: 46px;
+  width: 100%;
+  min-height: 48px;
   border-radius: 8px;
   overflow: hidden;
   background: #fbf6ea;
@@ -142,7 +130,7 @@
 /* Gold button: a maroon one would disappear into the maroon footer. */
 .foot-subscribe button {
   flex: 0 0 auto;
-  padding: 0 20px;
+  padding: 0 22px;
   background: var(--foot-gold);
   color: #3a080c;
   font-family: var(--sans);
@@ -163,17 +151,42 @@
   font-size: 12.5px;
   line-height: 1.5;
   color: rgba(246, 239, 220, 0.82);
-  max-width: 380px;
 }
 .foot-note-bad {
   color: #f0a58f;
 }
 
-/* ---------- link columns ---------- */
+/* ---------- main block: brand | links | Reach Us ---------- */
+.foot-main {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  /* minmax(0, …) everywhere so no track can be forced wider than the screen. */
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.7fr) minmax(0, 1.25fr);
+  gap: 32px clamp(28px, 3.6vw, 56px);
+  align-items: start;
+  padding-block: clamp(30px, 3.4vw, 46px) clamp(44px, 4.4vw, 64px);
+}
+.foot-main > * {
+  min-width: 0;
+}
+
+/* Brand: logo, social icons, FSSAI. */
+.foot-logo {
+  display: block;
+  width: fit-content;
+}
+.foot-logo img {
+  display: block;
+  width: 112px;
+  height: auto;
+}
+
+/* Links: three short columns. */
 .foot-cols {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(16px, 2vw, 32px);
+  gap: 24px clamp(16px, 2vw, 32px);
 }
 .foot-col {
   min-width: 0;
@@ -181,13 +194,12 @@
 .foot-col ul {
   list-style: none;
   display: grid;
-  gap: 10px;
+  gap: 11px;
 }
 .foot-col a {
-  font-size: 14px;
+  font-size: 14.5px;
   line-height: 1.45;
   color: rgba(246, 239, 220, 0.88);
-  overflow-wrap: anywhere;
   transition: color 0.25s ease;
 }
 .foot-col a:hover,
@@ -195,28 +207,99 @@
   color: var(--foot-gold);
 }
 
-/* ---------- Follow Us ---------- */
+/* Reach Us: company, one line each with an icon, then the map. */
+.foot-company {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  font-style: normal;
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(246, 239, 220, 0.85);
+}
+.foot-company-name {
+  color: #fff4e4;
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.foot-line {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+.foot-line svg {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  fill: none;
+  stroke: var(--foot-gold);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.foot-company a {
+  color: inherit;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.foot-company a:hover {
+  color: var(--foot-gold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.foot-gstin {
+  padding-left: 28px;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  color: rgba(246, 239, 220, 0.62);
+}
+
+.foot-map {
+  position: relative;
+  margin-top: 18px;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f3ede4;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+.foot-map iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.foot-map-open {
+  position: absolute; top: 10px; left: 10px; z-index: 1;
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px;
+  background: #fff; color: #1a56c4; font-size: 13px; font-weight: 600; text-decoration: none; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+.foot-map-open:hover { text-decoration: underline; }
+
+/* ---------- social ---------- */
 .foot-social {
   list-style: none;
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 .foot-soc {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: 1.5px solid var(--foot-gold);
   color: var(--foot-gold);
   transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
 }
 /* The glyphs are drawn with padding inside their 24-unit grid, so the box is
-   set larger than the visual size wanted: 26px reads as about half the
-   circle, matching the artwork. */
+   set larger than the visual size wanted. */
 .foot-soc svg {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
 }
 .foot-soc:hover,
 .foot-soc:focus-visible {
@@ -225,13 +308,50 @@
   transform: translateY(-2px);
 }
 
+/* FSSAI licence badge. */
+.foot-fssai {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 8px 12px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+.foot-fssai img {
+  display: block;
+  width: 60px;
+  height: auto;
+}
+.foot-fssai p {
+  margin: 0;
+  display: grid;
+  line-height: 1.25;
+  font-family: var(--sans);
+  color: #2b2b2b;
+}
+.foot-fssai span {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #555;
+}
+.foot-fssai strong {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 /* ---------- wheat sprig, bottom right ---------- */
 .foot-sprig {
   position: absolute;
   right: 0;
   bottom: 48px;
-  width: clamp(110px, 10vw, 170px);
+  width: clamp(100px, 8vw, 150px);
   height: auto;
+  opacity: 0.85;
   pointer-events: none;
 }
 
@@ -251,10 +371,12 @@
   font-size: 12.5px;
   color: rgba(246, 239, 220, 0.72);
 }
-.foot-bar-sep {
-  margin-inline: 12px;
-  color: rgba(217, 185, 106, 0.6);
+.foot-bar-links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
+.foot-bar-links a,
 .foot-cookie {
   font: inherit;
   color: rgba(246, 239, 220, 0.85);
@@ -263,55 +385,67 @@
   text-decoration-color: rgba(217, 185, 106, 0.6);
   padding: 0;
 }
+.foot-bar-links a:hover,
 .foot-cookie:hover {
   color: var(--foot-gold);
 }
 
-/* ---------- tablet ---------- */
+/* ---------- tablet: brand + links on one row, Reach Us below with the map beside it ---------- */
 @media (max-width: 1100px) {
   .foot-main {
-    grid-template-columns: 130px minmax(0, 1fr);
-    row-gap: 36px;
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 2fr);
   }
-  /* Link columns and Follow Us move to their own rows under the logo and
-     Stay Connected, full width, with no divider to their left. */
-  .foot-cols,
-  .foot-follow {
+  .foot-reach {
     grid-column: 1 / -1;
-    border-left: none;
-    padding-left: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 32px;
+    padding-top: 28px;
+    border-top: 1px solid var(--foot-line);
+  }
+  .foot-reach > .foot-title,
+  .foot-reach > .foot-rule {
+    grid-column: 1 / -1;
+  }
+  .foot-map {
+    margin-top: 0;
   }
 }
 
 /* ---------- phones ---------- */
-@media (max-width: 640px) {
+@media (max-width: 720px) {
+  .foot-news {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .foot-main {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 30px;
-    text-align: left;
+  }
+  .foot-brand {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 20px;
+    align-items: center;
   }
   .foot-logo {
-    justify-self: center;
-    padding-right: 0;
+    grid-row: span 3;
   }
   .foot-logo img {
-    max-width: 110px;
+    width: 92px;
   }
-  .foot-connect {
-    border-left: none;
-    padding-inline: 0;
+  .foot-brand .foot-label {
+    margin-top: 0;
   }
-  .foot-subscribe {
-    max-width: none;
+  .foot-fssai {
+    margin-top: 14px;
+    justify-self: start;
   }
-  .foot-subscribe button {
-    padding: 0 16px;
-  }
-  /* Company and Resources share a row; Support, the longest, spans the width
-     with its links in two columns, so no row is left half empty. */
+  /* Our Rice and Company side by side; Support across the width in two columns. */
   .foot-cols {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 26px 18px;
+    padding-top: 26px;
+    border-top: 1px solid var(--foot-line);
   }
   .foot-col:last-child {
     grid-column: 1 / -1;
@@ -320,15 +454,14 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 18px;
   }
-  .foot-col a {
-    line-height: 1.7;
+  .foot-reach {
+    display: block;
   }
-  /* Beside the Follow Us icons, clear of the copyright bar, whose text wraps
-     to two lines on phones and would otherwise run underneath it. */
+  .foot-map {
+    margin-top: 18px;
+  }
   .foot-sprig {
-    width: 96px;
-    bottom: 140px;
-    opacity: 0.8;
+    display: none;
   }
   .foot-bar-inner {
     flex-direction: column;
@@ -346,66 +479,3 @@
     transform: none;
   }
 }
-
-/* FSSAI licence badge, under Follow Us. */
-.foot-fssai {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 22px;
-  padding: 8px 12px;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
-}
-.foot-fssai img {
-  display: block;
-  width: 68px;
-  height: auto;
-}
-.foot-fssai p {
-  margin: 0;
-  display: grid;
-  line-height: 1.25;
-  font-family: var(--sans);
-  color: #2b2b2b;
-}
-.foot-fssai span {
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #555;
-}
-.foot-fssai strong {
-  font-size: 13.5px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-/* The company details, under the newsletter in the Stay Connected column. */
-.foot-company { display: flex; flex-direction: column; gap: 4px; margin-top: 26px; font-style: normal; font-size: 13.5px; line-height: 1.6; color: rgba(255, 244, 228, 0.8); }
-.foot-company-name { color: #fff4e4; font-weight: 600; font-size: 14.5px; margin-bottom: 2px; }
-.foot-company a { color: inherit; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
-.foot-company a:hover { color: #fff; }
-
-/* Reach Us: map of the mill under Follow Us. */
-.foot-title--map { margin-top: 28px; }
-.foot-map { position: relative; margin-top: 14px; width: 100%; max-width: 300px; aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; background: #f3ede4; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25); }
-.foot-map iframe { display: block; width: 100%; height: 100%; border: 0; }
-.foot-map-placeholder {
-  width: 100%; height: 100%; border: 0; cursor: pointer; font: inherit;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-  color: #3a2a22; font-size: 13px;
-  background:
-    repeating-linear-gradient(0deg, transparent 0 38px, rgba(160, 140, 120, 0.18) 38px 40px),
-    repeating-linear-gradient(90deg, transparent 0 38px, rgba(160, 140, 120, 0.18) 38px 40px),
-    linear-gradient(135deg, #eef3ea 0%, #f6efe4 55%, #dde9f2 100%);
-}
-.foot-map-placeholder strong { padding: 6px 14px; border-radius: 999px; background: #7a1f2b; color: #fff; font-size: 12.5px; }
-.foot-map-open {
-  position: absolute; top: 10px; left: 10px; z-index: 1;
-  display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px;
-  background: #fff; color: #1a56c4; font-size: 13px; font-weight: 600; text-decoration: none; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-}
-.foot-map-open:hover { text-decoration: underline; }

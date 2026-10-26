@@ -344,17 +344,14 @@ export const FOOTER = {
       ],
     },
     {
+      // Company and Resources had two links each; one column reads easier.
       head: 'Company',
       links: [
         { label: 'About Us', to: '/about-us' },
-        { label: 'Contact Us', to: '/contact-us' },
-      ],
-    },
-    {
-      head: 'Resources',
-      links: [
+        { label: 'Infrastructure', to: '/infrastructure' },
         { label: 'Recipes', to: '/recipes' },
         { label: 'Blogs', to: '/blog' },
+        { label: 'Contact Us', to: '/contact-us' },
       ],
     },
     {
