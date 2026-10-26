@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* Our Infrastructure — From Paddy to Packed Rice (InfraJourney.jsx). */
+.ij {
+  --o: #F4511E;
+  --n: #17233D;
+  --g: #3F4652;
+  --l: #E9EDF1;
+  --m: #D4DAE1;
+  --bg: #F7F8FA;
+  background: #fff;
+  color: var(--n);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  padding: clamp(48px, 6vw, 88px) 0 clamp(56px, 7vw, 100px);
+}
+.ij-inner { max-width: 1480px; margin: 0 auto; padding: 0 clamp(16px, 2.5vw, 32px); }
+.ij-eyebrow { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: var(--o); }
+.ij-title { margin: 10px 0 12px; font-family: inherit; font-size: clamp(2.1rem, 1.3rem + 3vw, 4rem); font-weight: 800; line-height: 1.02; letter-spacing: -0.02em; text-transform: uppercase; color: var(--n); }
+.ij-sub { margin: 0 0 clamp(24px, 3vw, 40px); max-width: 620px; font-size: 1.05rem; line-height: 1.65; color: var(--g); }
+
+/* the four stages side by side; the drawings meet edge to edge */
+.ij-journey { display: grid; grid-template-columns: var(--cols); column-gap: 0; border-top: 1px solid var(--l); }
+.ij-zone { min-width: 0; display: flex; flex-direction: column; }
+.ij-zone + .ij-zone { border-left: 1px dashed var(--m); }
+.ij-zone-head { display: flex; gap: 12px; align-items: flex-start; padding: 22px clamp(10px, 1.2vw, 18px) 0; min-height: 132px; }
+.ij-zone-num { font-size: clamp(2.2rem, 1.4rem + 1.8vw, 3.4rem); font-weight: 800; line-height: 0.9; color: var(--o); letter-spacing: -0.03em; }
+.ij-zone-title { margin: 2px 0 4px; font-family: inherit; font-size: clamp(1rem, 0.8rem + 0.5vw, 1.3rem); font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--n); }
+.ij-zone-label { margin: 0 0 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--o); }
+.ij-zone-info { margin: 0; font-size: 13px; line-height: 1.5; color: var(--g); max-width: 260px; }
+
+.ij-art { position: relative; }
+.ij-svg { display: block; width: 100%; height: auto; overflow: visible; font-family: 'Inter', system-ui, sans-serif; }
+
+/* --- the drawing system: navy outlines, flat fills --- */
+.ij-svg polygon, .ij-svg path, .ij-svg rect, .ij-svg ellipse, .ij-svg circle { stroke: var(--n); stroke-width: 1.15; stroke-linejoin: round; }
+.ij-machine .ij-face-t { fill: #fff; }
+.ij-machine .ij-face-l { fill: var(--l); }
+.ij-machine .ij-face-r, .ij-machine .ij-face-r-soft { fill: var(--m); }
+.ij-face-r-soft { stroke: none !important; opacity: 0.9; }
+.ij-white .ij-face-l { fill: #fff; }
+.ij-white .ij-face-r { fill: var(--l); }
+.ij-orange .ij-face-t { fill: #ff7a50; }
+.ij-orange .ij-face-l { fill: var(--o); }
+.ij-orange .ij-face-r { fill: #c93d12; }
+.ij-sack .ij-face-t { fill: #fbf5ea; }
+.ij-sack .ij-face-l { fill: #f1e6d1; }
+.ij-sack .ij-face-r { fill: #e3d5bb; }
+.ij-band { fill: var(--o); }
+.ij-ring { fill: none; }
+.ij-band-line { fill: none; stroke: var(--o) !important; stroke-width: 2.2 !important; }
+.ij-water { fill: #cfd8e1; }
+.ij-shadow { fill: rgba(23, 35, 61, 0.07); stroke: none !important; }
+.ij-window { fill: #f3f6f9; }
+.ij-door { fill: var(--l); }
+.ij-louver { stroke: var(--n); stroke-width: 0.9; opacity: 0.55; }
+.ij-pipe { fill: none; stroke: var(--g) !important; stroke-width: 3.2 !important; stroke-linecap: round; }
+.ij-navy { fill: var(--n); }
+.ij-vest { fill: var(--o); }
+.ij-skin { fill: #c99a78; }
+.ij-helmet { fill: #fff; }
+.ij-sack { fill: #f1e6d1; }
+.ij-worker * { stroke-width: 0.9 !important; }
+.ij-face-text { font-size: 6.5px; font-weight: 800; letter-spacing: 0.08em; fill: var(--n); stroke: none !important; }
+.ij-bag-text { font-weight: 800; fill: var(--n); stroke: none !important; }
+.ij-plate { fill: #fff; }
+.ij-plate-bar { fill: var(--o); stroke: none !important; }
+.ij-plate-big { font-size: 17px; font-weight: 800; letter-spacing: 0.02em; fill: var(--n); stroke: none !important; }
+.ij-plate-small { font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em; fill: var(--o); stroke: none !important; }
+.ij-leader { stroke: var(--n); stroke-width: 1; stroke-dasharray: 2 3; }
+.ij-pill { fill: #fff; }
+.ij-pill-dot { fill: var(--o); stroke: none !important; }
+.ij-pill-text { font-size: 8.5px; font-weight: 800; letter-spacing: 0.08em; fill: var(--n); stroke: none !important; }
+.ij-ground { stroke: var(--l); stroke-width: 1; }
+
+/* --- the process line --- */
+.ij-route { fill: none; stroke: var(--o) !important; stroke-width: 2.4 !important; stroke-dasharray: 1; stroke-dashoffset: 1; opacity: 0; transition: stroke-dashoffset 0.45s ease-out, opacity 0.2s, stroke-width 0.15s; }
+.ij-route.is-drawn { stroke-dashoffset: 0; opacity: 1; }
+.ij-route.is-active { stroke-width: 4 !important; }
+.ij-route-thin { fill: none; stroke: var(--o) !important; stroke-width: 1.4 !important; }
+.ij-route-dash { fill: none; stroke: var(--o) !important; stroke-width: 1.8 !important; stroke-dasharray: 4 4; }
+.ij-return.is-active .ij-route-dash { stroke-width: 3 !important; }
+.ij-return-text { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; fill: var(--o); stroke: none !important; text-anchor: middle; }
+.ij-arrow-head { fill: var(--o); stroke: none !important; }
+
+.ij-stop { opacity: 0; transition: opacity 0.3s; cursor: default; }
+.ij-stop.is-drawn { opacity: 1; }
+.ij-stop-dot { fill: #fff; stroke: var(--o) !important; stroke-width: 2.2 !important; transition: fill 0.15s; }
+.ij-stop-num { font-size: 10px; font-weight: 800; fill: var(--o); stroke: none !important; text-anchor: middle; transition: fill 0.15s; }
+.ij-stop-label { font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em; fill: var(--n); stroke: none !important; text-anchor: middle; }
+.ij-stop.is-active .ij-stop-dot { fill: var(--o); }
+.ij-stop.is-active .ij-stop-num { fill: #fff; }
+
+/* --- stations: a small lift on hover --- */
+.ij-station { cursor: pointer; outline: none; }
+.ij-machine { transition: transform 0.2s ease; transform-box: fill-box; transform-origin: 50% 100%; }
+.ij-station.is-active .ij-machine { transform: scale(1.04); }
+.ij-station:focus-visible .ij-machine { outline: 2px solid var(--o); }
+
+/* --- the little motion that is there --- */
+.ij-steam { fill: #fff; stroke: var(--m) !important; animation: ij-steam 2.4s ease-out infinite; opacity: 0; transform-box: fill-box; transform-origin: center; }
+@keyframes ij-steam { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-26px) scale(1.4); opacity: 0; } }
+.ij-grain { fill: #fff; stroke: var(--n) !important; stroke-width: 0.6 !important; animation: ij-fall 1.4s linear infinite; }
+@keyframes ij-fall { from { transform: translateY(0); } to { transform: translateY(36px); } }
+.ij-beam { stroke: var(--o); stroke-width: 1.4; }
+
+/* tooltip */
+.ij-tip {
+  position: absolute; z-index: 3; transform: translate(-50%, -100%); margin-top: -10px; width: max-content; max-width: 220px;
+  padding: 10px 12px; border-radius: 6px; background: var(--n); color: #fff; font-size: 12.5px; line-height: 1.45;
+  box-shadow: 0 8px 22px rgba(23, 35, 61, 0.22); pointer-events: none;
+}
+.ij-tip strong { display: block; margin-bottom: 2px; font-size: 12px; letter-spacing: 0.04em; color: #ffb59c; }
+.ij-tip::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; background: var(--n); transform: translateX(-50%) rotate(45deg); }
+
+/* the steps written out under each stage */
+.ij-steps { list-style: none; margin: 0; padding: 4px clamp(10px, 1.2vw, 18px) 0; display: grid; gap: 10px; }
+.ij-steps li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; padding: 8px; border-radius: 6px; transition: background 0.15s; }
+.ij-steps li.is-active { background: var(--bg); }
+.ij-steps-num { font-size: 12px; font-weight: 800; color: var(--o); padding-top: 2px; }
+.ij-steps strong { display: block; font-size: 13px; font-weight: 700; color: var(--n); }
+.ij-steps li span:last-child { font-size: 12.5px; line-height: 1.5; color: var(--g); }
+
+/* --- phones and small tablets: one stage under another, a vertical journey --- */
+@media (max-width: 960px) {
+  .ij-journey { grid-template-columns: minmax(0, 1fr); border-top: 0; }
+  .ij-zone + .ij-zone { border-left: 0; margin-top: 18px; }
+  .ij-zone { position: relative; padding-bottom: 18px; }
+  .ij-zone:not(:last-child)::after { content: ''; position: absolute; left: 50%; bottom: -18px; width: 2.4px; height: 36px; background: var(--o); }
+  .ij-zone-head { min-height: 0; padding: 16px 4px 0; }
+  .ij-steps { padding: 4px 0 0; }
+  .ij-tip { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ij-route, .ij-stop { transition: none; }
+  .ij-steam, .ij-grain { animation: none; }
+  .ij-steam { opacity: 0.7; }
+}
