@@ -32,11 +32,8 @@
 }
 .wh-brand { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .wh-brand img {
-  width: 40px;
-  height: 40px;
-  padding: 3px;
-  border-radius: 12px;
-  background: var(--wh-red);
+  width: 42px;
+  height: 42px;
   object-fit: contain;
 }
 .wh-brand-pill {
