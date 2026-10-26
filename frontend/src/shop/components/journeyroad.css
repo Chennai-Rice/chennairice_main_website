@@ -1,0 +1,172 @@
+/* From Paddy to Pack as a winding road (JourneyRoad.jsx). Desktop: two lanes,
+   the first left → right, a U-turn on the right, the second right → left.
+   Phones: one road straight down the left with the steps beside it. */
+
+.jr {
+  --road: #8e2433;
+  --road-w: 34px;
+  --photo: 124px;
+  --lane-h: 330px;
+  --centre: calc(var(--photo) / 2 + 10px);
+  position: relative;
+  margin-top: 26px;
+  padding: 0 70px 0 24px;
+}
+
+/* ---- the lanes and the road under them ---- */
+.jr-lane {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-height: var(--lane-h);
+  display: grid;
+  grid-template-columns: repeat(var(--per-lane), minmax(0, 1fr));
+  gap: 18px;
+}
+.jr-lane::before {
+  content: "";
+  position: absolute;
+  left: -24px;
+  right: -70px;
+  top: calc(var(--centre) - var(--road-w) / 2);
+  height: var(--road-w);
+  background:
+    linear-gradient(90deg, rgba(255, 244, 228, 0.85) 0 18px, transparent 18px 34px) 0 50% / 34px 3px repeat-x,
+    var(--road);
+  border-radius: 999px 0 0 999px;
+  box-shadow: 0 6px 14px rgba(110, 20, 32, 0.18);
+}
+.jr-lane-2 { direction: rtl; }
+.jr-lane-2 > * { direction: ltr; }
+.jr-lane-2::before { left: -24px; right: -70px; border-radius: 0; }
+
+/* The U-turn joining the two lanes on the right. */
+.jr-turn {
+  position: absolute;
+  right: 0;
+  top: calc(var(--centre) - var(--road-w) / 2);
+  width: calc(var(--lane-h) / 2 + var(--road-w) / 2);
+  height: calc(var(--lane-h) + var(--road-w));
+  border: var(--road-w) solid var(--road);
+  border-left: 0;
+  border-radius: 0 999px 999px 0;
+  pointer-events: none;
+}
+
+/* Start and end markers on the road. */
+.jr-start,
+.jr-end {
+  position: absolute;
+  left: -6px;
+  z-index: 2;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #2b1d18;
+  color: #f8f0e0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.jr-start { top: calc(var(--centre) - 13px); }
+.jr-end { top: calc(var(--lane-h) + var(--centre) - 13px); }
+
+/* ---- a step ---- */
+.jr-step {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: 10px;
+}
+.jr-photo {
+  position: relative;
+  width: var(--photo);
+  height: var(--photo);
+  border-radius: 50%;
+  border: 6px solid #fffaf2;
+  box-shadow: 0 10px 22px rgba(60, 30, 10, 0.22);
+  background: #f3e8d6;
+  transition: transform 0.25s ease;
+}
+.jr-photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.jr-step:hover .jr-photo { transform: translateY(-4px) scale(1.04); }
+.jr-num {
+  position: absolute;
+  top: -8px;
+  left: -10px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #2b1d18;
+  color: #fff;
+  font-family: var(--font-display, serif);
+  font-size: 1.25rem;
+  border: 3px solid #fffaf2;
+}
+.jr-title {
+  margin: 16px 0 6px;
+  font-family: var(--font-display, serif);
+  font-weight: 500;
+  font-size: 1.15rem;
+  color: var(--maroon-600, #7a1f2b);
+}
+.jr-text {
+  margin: 0;
+  max-width: 230px;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: #5c4b3f;
+}
+
+/* ---- tablets and phones: the road runs straight down ---- */
+@media (max-width: 900px) {
+  .jr { --photo: 92px; padding: 0 0 0 4px; }
+  .jr-lane,
+  .jr-lane-2 {
+    direction: ltr;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    min-height: 0;
+    padding: 22px 0 0;
+  }
+  .jr-lane-2 { padding-top: 22px; }
+  .jr-lane::before,
+  .jr-lane-2::before {
+    left: calc(var(--photo) / 2 - 11px);
+    right: auto;
+    top: 0;
+    bottom: -22px;
+    width: 22px;
+    height: auto;
+    border-radius: 0;
+    background:
+      linear-gradient(180deg, rgba(255, 244, 228, 0.85) 0 14px, transparent 14px 26px) 50% 0 / 3px 26px repeat-y,
+      var(--road);
+  }
+  .jr-lane-1::before { border-radius: 999px 999px 0 0; top: 0; }
+  .jr-lane-2::before { bottom: 0; border-radius: 0 0 999px 999px; }
+  .jr-turn, .jr-start, .jr-end { display: none; }
+  .jr-step {
+    display: grid;
+    grid-template-columns: var(--photo) minmax(0, 1fr);
+    column-gap: 16px;
+    align-items: center;
+    text-align: left;
+    padding: 0;
+  }
+  .jr-photo { grid-row: 1 / span 2; }
+  .jr-num { width: 32px; height: 32px; font-size: 1rem; top: -6px; left: -6px; }
+  .jr-title { margin: 0 0 2px; align-self: end; }
+  .jr-text { max-width: none; align-self: start; font-size: 0.84rem; }
+}
+/* Desktop: the straight road stops where the U-turn begins. */
+@media (min-width: 901px) {
+  .jr-lane::before, .jr-lane-2::before { right: calc(-70px + var(--lane-h) / 2 + var(--road-w) / 2); }
+}

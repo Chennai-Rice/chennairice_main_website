@@ -6,7 +6,8 @@ import ProductGallery from "../components/ProductGallery.jsx";
 import PackSizeSelector from "../components/PackSizeSelector.jsx";
 import QuantitySelector from "../components/QuantitySelector.jsx";
 import ProductTabs, { ProductAbout } from "../components/ProductTabs.jsx";
-import JourneyTimeline from "../components/JourneyTimeline.jsx";
+import JourneyRoad from "../components/JourneyRoad.jsx";
+import "../components/journeyroad.css";
 import RecipeTeaser from "../components/RecipeTeaser.jsx";
 import RelatedProducts from "../components/RelatedProducts.jsx";
 import BulkOrderCTA from "../components/BulkOrderCTA.jsx";
@@ -346,7 +347,7 @@ export default function ProductDetailPage() {
             <span className="pdp-section-eyebrow">From Field to Family</span>
             <h2>From Paddy to Pack: How Rice Is Made</h2>
           </div>
-          <JourneyTimeline steps={GRAIN_JOURNEY} />
+          <JourneyRoad steps={GRAIN_JOURNEY} />
         </section>
 
         <section className="pdp-section">
