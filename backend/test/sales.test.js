@@ -610,6 +610,9 @@ test('warehouse panel phase 1: dashboard, packing, dispatch with details, delive
   assert.equal(dw.status, 200, JSON.stringify(dw.body))
   assert.ok(dw.body.counts.toDispatch >= 2)
   assert.equal(dw.body.todayByHour.length, 24)
+  // 14 days of history for the cards' bars, today last, with today's orders counted.
+  assert.equal(dw.body.daily.length, 14)
+  assert.ok(dw.body.daily.at(-1).orders >= 2, JSON.stringify(dw.body.daily.at(-1)))
   assert.ok(dw.body.recentOrders.length > 0 && dw.body.recentOrders.every((o) => o.total === undefined))
   const dOwner = await api('GET', '/api/admin/warehouse/dashboard', { token: OWNER })
   assert.ok(dOwner.body.recentOrders.some((o) => typeof o.total === 'number'))

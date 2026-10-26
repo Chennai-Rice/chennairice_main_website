@@ -1,0 +1,161 @@
+/* /warehouse — the top-bar layout (Oct 2026, owner's reference): a light grey
+   workspace, white rounded cards, one bar across the top with the sections
+   as pills (the active one black) and a red Dispatch button. Loaded after
+   warehouse.css, so it only overrides the shell; the pages keep their own
+   styles. Below 1024px the pills give way to the menu button and drawer. */
+
+.wh-app {
+  --wh-bg: #eef0f2;
+  --wh-red: #e0262d;
+  --wh-red-2: #b5141b;
+  --wh-black: #17181a;
+  --wh-card-radius: 18px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* The sidebar is now only the phone drawer. */
+@media (min-width: 1025px) {
+  .wh-side, .wh-scrim { display: none; }
+}
+
+/* ---------------------------------------------------------------- top bar */
+.wh-topbar {
+  margin: 14px 16px 0;
+  padding: 10px 12px;
+  gap: 12px;
+  border: 0;
+  border-radius: var(--wh-card-radius);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(20, 20, 30, 0.05);
+  backdrop-filter: none;
+  top: 10px;
+}
+.wh-brand { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.wh-brand img {
+  width: 40px;
+  height: 40px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--wh-red);
+  object-fit: contain;
+}
+.wh-brand-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--wh-black);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.wh-location { display: none; }
+
+/* the sections as pills, in one rounded track */
+.wh-pills {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 4px;
+  border: 1px solid #e6e8eb;
+  border-radius: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.wh-pills::-webkit-scrollbar { display: none; }
+.wh-pill {
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #5b6068;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.wh-pill:hover { background: #f1f2f4; color: var(--wh-black); }
+.wh-pill.is-active { background: var(--wh-black); color: #fff; font-weight: 600; }
+.wh-pill:focus-visible { outline: 2px solid var(--wh-red); outline-offset: 1px; }
+
+.wh-top-right { margin-left: 0; gap: 8px; flex: 0 0 auto; }
+.wh-top-search {
+  width: 190px;
+  min-height: 40px;
+  border-radius: 12px;
+  border-color: #e6e8eb;
+  background: #f6f7f8;
+}
+.wh-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--wh-red);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(224, 38, 45, 0.25);
+}
+.wh-new:hover { background: var(--wh-red-2); }
+.wh-top-icon { width: 40px; height: 40px; border: 1px solid #e6e8eb; border-radius: 50%; }
+.wh-top-icon:hover { background: #f1f2f4; }
+.wh-dot { box-shadow: 0 0 0 2px #fff; background: var(--wh-red); }
+.wh-user-btn { padding: 0; }
+.wh-user-text { display: none; }
+.wh-user-avatar { width: 40px; height: 40px; background: var(--wh-black); font-size: 13.5px; font-weight: 600; }
+
+/* ---------------------------------------------------------------- workspace */
+.wh-content { padding: 22px 16px 48px; max-width: 1560px; margin: 0 auto; }
+.wh-panel {
+  border: 0;
+  border-radius: var(--wh-card-radius);
+  box-shadow: 0 1px 2px rgba(20, 20, 30, 0.05);
+}
+
+/* The other pages' cards and main buttons in the same style. */
+.wh-kpi { border: 0; border-radius: var(--wh-card-radius); background: #fff; box-shadow: 0 1px 2px rgba(20, 20, 30, 0.05); }
+.wh-btn--primary { background: var(--wh-black); border-color: var(--wh-black); color: #fff; }
+.wh-btn--primary:hover:not(:disabled) { background: #000; }
+
+/* Narrower desktops: every section pill must stay visible, so the top
+   search goes first (each page has its own), then the brand pill, then the
+   Dispatch label and the pills' padding. */
+@media (max-width: 1560px) {
+  .wh-top-search { display: none; }
+}
+@media (max-width: 1440px) {
+  .wh-brand-pill { display: none; }
+}
+@media (max-width: 1300px) {
+  .wh-new span, .wh-user-btn > svg { display: none; }
+  .wh-new { padding: 0 12px; }
+  .wh-pill { padding: 0 9px; font-size: 13px; }
+}
+
+/* Phones and tablets: menu button + drawer; no pills. */
+@media (max-width: 1024px) {
+  .wh-topbar { margin: 10px 10px 0; padding: 8px 10px; top: 6px; }
+  .wh-pills, .wh-brand-pill { display: none; }
+  .wh-brand img { width: 36px; height: 36px; }
+  .wh-view-title { font-size: 18px; font-weight: 600; margin-right: auto; }
+  .wh-top-search { display: none; }
+  .wh-content { padding: 16px 12px 40px; }
+}
+@media (max-width: 640px) {
+  .wh-new span { display: none; }
+  .wh-new { padding: 0 12px; }
+}

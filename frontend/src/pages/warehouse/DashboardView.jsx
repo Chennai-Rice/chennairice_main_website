@@ -1,89 +1,87 @@
 import { useEffect, useState } from 'react'
 import { staffJson } from '../../services/staffAuth.js'
 import { Icon, STATUS, STATUS_KEY, dayLabel, timeLabel } from './shared.jsx'
+import './warehouse-dash.css'
 
-// Validated with the dataviz palette checker (all checks pass); every slice
-// is also named with its count in the legend, so colour is never alone.
-const DONUT = [
-  { key: 'toDispatch', label: 'To Dispatch', color: '#d9480f' },
-  { key: 'dispatched', label: 'Dispatched', color: '#1c7ed6' },
-  { key: 'delivered', label: 'Delivered', color: '#2b8a3e' },
-  { key: 'cancelled', label: 'Cancelled', color: '#9c36b5' },
+/*
+  Dashboard (Oct 2026, owner's reference): a greeting, four cards with the
+  last 7 days as small bars and the change against the week before, then
+  Recent Orders · Low Stock · Order Status, then Quick actions · the orders
+  trend · Top Products. White cards on grey, black and red accents.
+*/
+
+// Order status this month: one bar split by status, each part named with its
+// count in the legend, so colour is never the only cue.
+const STATUS_PARTS = [
+  { key: 'toDispatch', label: 'To Dispatch', color: '#e0262d' },
+  { key: 'dispatched', label: 'Dispatched', color: '#2563eb' },
+  { key: 'delivered', label: 'Delivered', color: '#16a34a' },
+  { key: 'cancelled', label: 'Cancelled', color: '#17181a' },
 ]
-const BAR = '#a3364a'
 const inr = (n) => '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 })
+const sum = (rows, key) => rows.reduce((t, r) => t + (r[key] || 0), 0)
+const weekday = (iso) => new Date(iso + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short' })
 
-function Donut({ data }) {
-  const [hover, setHover] = useState(null)
-  const total = DONUT.reduce((t, d) => t + (data[d.key] || 0), 0)
-  const R = 46
-  const C = 2 * Math.PI * R
-  const gap = total > 0 && DONUT.filter((d) => data[d.key]).length > 1 ? 2 : 0 // 2px surface gap between slices
-  let offset = 0
-  return (
-    <div className="wh-donut-wrap">
-      <figure className="wh-donut" aria-label={`Order status this month, ${total} orders`}>
-        <svg viewBox="0 0 120 120" width="150" height="150" role="img" aria-hidden="true">
-          <circle cx="60" cy="60" r={R} fill="none" stroke="#f1ebe2" strokeWidth="18" />
-          {total > 0 && DONUT.map((d, i) => {
-            const v = data[d.key] || 0
-            if (!v) return null
-            const len = (v / total) * C
-            const seg = (
-              <circle
-                key={d.key}
-                cx="60" cy="60" r={R} fill="none"
-                stroke={d.color}
-                strokeWidth={hover === i ? 21 : 18}
-                strokeDasharray={`${Math.max(len - gap, 0.5)} ${C}`}
-                strokeDashoffset={-offset}
-                transform="rotate(-90 60 60)"
-                onMouseEnter={() => setHover(i)}
-                onMouseLeave={() => setHover(null)}
-                style={{ transition: 'stroke-width 0.12s ease', cursor: 'default' }}
-              />
-            )
-            offset += len
-            return seg
-          })}
-        </svg>
-        <figcaption className="wh-donut-center">
-          <strong>{hover === null ? total : data[DONUT[hover].key] || 0}</strong>
-          <span>{hover === null ? 'Total orders' : DONUT[hover].label}</span>
-        </figcaption>
-      </figure>
-      <ul className="wh-legend">
-        {DONUT.map((d, i) => (
-          <li key={d.key} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}>
-            <span className="wh-legend-dot" style={{ background: d.color }} aria-hidden="true" />
-            <span>{d.label}</span>
-            <strong>{data[d.key] || 0}</strong>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
+function greeting() {
+  const h = Number(new Date().toLocaleString('en-IN', { hour: 'numeric', hour12: false, timeZone: 'Asia/Kolkata' }))
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
 }
 
-function HourBars({ hours }) {
-  // Business hours only (6 am to 10 pm), so the bars stay readable.
-  const shown = hours.slice(6, 23)
-  const max = Math.max(1, ...shown)
-  const label = (h) => (h === 0 ? '12a' : h < 12 ? h + 'a' : h === 12 ? '12p' : h - 12 + 'p')
+/** The last 7 values as small bars, today's darkest. */
+function MiniBars({ values }) {
+  const max = Math.max(1, ...values)
   return (
-    <div className="wh-hours" role="img" aria-label="Orders today by hour">
-      {shown.map((n, i) => (
-        <span key={i} className="wh-hour" title={`${label(i + 6)}: ${n} ${n === 1 ? 'order' : 'orders'}`}>
-          <span style={{ height: `${Math.max((n / max) * 100, n ? 6 : 0)}%`, background: BAR }} />
-        </span>
+    <span className="wd-mini" aria-hidden="true">
+      {values.map((v, i) => (
+        <span key={i} className={i === values.length - 1 ? 'is-today' : ''} style={{ height: `${Math.max((v / max) * 100, 8)}%` }} />
       ))}
-      <span className="wh-hours-axis" aria-hidden="true"><span>6a</span><span>12p</span><span>6p</span><span>10p</span></span>
+    </span>
+  )
+}
+
+/** "+25% vs last week" — this week's total against the week before. */
+function WeekChange({ now, before }) {
+  if (!now && !before) return <span className="wd-change">No activity in 2 weeks</span>
+  if (!before) return <span className="wd-change is-up">New this week</span>
+  const pct = Math.round(((now - before) / before) * 100)
+  return (
+    <span className={`wd-change ${pct >= 0 ? 'is-up' : 'is-down'}`}>
+      {pct >= 0 ? '+' : ''}{pct}% <span>vs last week</span>
+    </span>
+  )
+}
+
+/** Orders a day for the last 7 days; today in red with its count above it. */
+function TrendChart({ days }) {
+  const max = Math.max(1, ...days.map((d) => d.orders))
+  const top = Math.max(4, Math.ceil(max / 4) * 4)
+  return (
+    <div className="wd-trend" role="img" aria-label={'Orders per day: ' + days.map((d) => `${weekday(d.day)} ${d.orders}`).join(', ')}>
+      <div className="wd-trend-axis" aria-hidden="true">
+        {[top, (top * 3) / 4, top / 2, top / 4, 0].map((v) => <span key={v}>{v}</span>)}
+      </div>
+      <div className="wd-trend-bars">
+        {days.map((d, i) => {
+          const today = i === days.length - 1
+          return (
+            <div key={d.day} className={`wd-trend-col${today ? ' is-today' : ''}`}>
+              <div className="wd-trend-track">
+                <span style={{ height: `${(d.orders / top) * 100}%` }}>
+                  {today && <em>{d.orders} today</em>}
+                </span>
+              </div>
+              <small>{today ? 'Today' : weekday(d.day)}</small>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
 
-export default function DashboardView({ say, onAuthError, go, money }) {
+export default function DashboardView({ say, onAuthError, go, money, me, onSearch }) {
   const [d, setD] = useState(null)
+  const [q, setQ] = useState('')
   useEffect(() => {
     let live = true
     const load = () => staffJson('/api/admin/warehouse/dashboard')
@@ -96,123 +94,176 @@ export default function DashboardView({ say, onAuthError, go, money }) {
 
   if (!d) return <p className="wh-empty">Loading…</p>
 
-  const change = d.yesterdayOrders ? Math.round(((d.todayOrders - d.yesterdayOrders) / d.yesterdayOrders) * 100) : null
+  const daily = d.daily || []
+  const week = daily.slice(-7)
+  const before = daily.slice(0, 7)
   const cards = [
-    { key: 'toDispatch', label: 'To Dispatch', icon: 'truck', tone: 'rose', to: () => go('dispatch') },
-    { key: 'dispatched', label: 'Dispatched', icon: 'box', tone: 'blue', to: () => go('deliveries') },
-    { key: 'delivered', label: 'Delivered', icon: 'check', tone: 'green', to: () => go('deliveries', 'delivered') },
-    { key: 'openIssues', label: 'Returns / Issues', icon: 'returns', tone: 'pink', to: () => go('returns') },
+    { key: 'toDispatch', label: 'To Dispatch', series: 'orders', note: 'orders placed', to: () => go('dispatch') },
+    { key: 'dispatched', label: 'Dispatched', series: 'dispatched', note: 'dispatched', to: () => go('deliveries') },
+    { key: 'delivered', label: 'Delivered', series: 'delivered', note: 'delivered', to: () => go('deliveries', 'delivered') },
+    { key: 'openIssues', label: 'Returns / Issues', series: 'issues', note: 'opened', to: () => go('returns') },
   ]
+  const monthTotal = STATUS_PARTS.reduce((t, p) => t + (d.monthStatus[p.key] || 0), 0)
+  const firstName = String(me?.fullName || '').split(/\s+/)[0]
   const maxTop = Math.max(1, ...d.topProducts.map((p) => p.packs))
+  const change = d.yesterdayOrders ? Math.round(((d.todayOrders - d.yesterdayOrders) / d.yesterdayOrders) * 100) : null
 
   return (
-    <>
-      <div className="wh-page-head">
-        <h2>Dashboard</h2>
-        <p className="wh-muted">Today at the Nasiyanur mill</p>
-      </div>
+    <div className="wd">
+      <header className="wd-hello">
+        <h2>{greeting()}{firstName ? `, ${firstName}` : ''}</h2>
+        <p>Here's what's happening at the Nasiyanur mill today.</p>
+      </header>
 
-      <section className="wh-kpis" aria-label="Order counts">
+      {/* ---- four cards ---- */}
+      <section className="wd-cards" aria-label="Order counts">
         {cards.map((c) => (
-          <button key={c.key} type="button" className={`wh-kpi wh-kpi--${c.tone}`} onClick={c.to}>
-            <span className="wh-kpi-icon"><Icon name={c.icon} size={26} /></span>
-            <span className="wh-kpi-text">
-              <strong>{d.counts[c.key]}</strong>
-              <span className="wh-kpi-label">{c.label}</span>
+          <button key={c.key} type="button" className="wd-card" onClick={c.to}>
+            <span className="wd-card-top">
+              <span>
+                <span className="wd-card-label">{c.label}</span>
+                <strong className="wd-card-value">{d.counts[c.key]}</strong>
+              </span>
+              <MiniBars values={week.map((x) => x[c.series] || 0)} />
             </span>
-            <Icon name="chevronRight" size={20} className="wh-kpi-arrow" />
+            <span className="wd-card-foot">
+              <WeekChange now={sum(week, c.series)} before={sum(before, c.series)} />
+              <span className="wd-card-note">{sum(week, c.series)} {c.note} this week</span>
+              <Icon name="chevronRight" size={16} />
+            </span>
           </button>
         ))}
       </section>
 
-      <div className="wh-dash-grid">
-        <section className="wh-panel">
-          <h3 className="wh-panel-title">Today's Orders</h3>
-          <div className="wh-today">
-            <strong>{d.todayOrders}</strong>
-            {change !== null && (
-              <span className={`wh-trend ${change >= 0 ? 'is-up' : 'is-down'}`}>
-                {change >= 0 ? '↑' : '↓'} {Math.abs(change)}% <span className="wh-muted">vs yesterday</span>
-              </span>
-            )}
-          </div>
-          <HourBars hours={d.todayByHour} />
-        </section>
-
-        <section className="wh-panel">
-          <h3 className="wh-panel-title">Order Status (This Month)</h3>
-          <Donut data={d.monthStatus} />
-        </section>
-
-        <section className="wh-panel">
-          <h3 className="wh-panel-title">Top Products (This Month)</h3>
-          {d.topProducts.length ? (
-            <ul className="wh-top">
-              {d.topProducts.map((p) => (
-                <li key={p.name}>
-                  {p.image ? <img src={p.image} alt="" /> : <span className="wh-prod-img" />}
-                  <span className="wh-top-name">{p.name}</span>
-                  <span className="wh-top-bar"><span style={{ width: `${(p.packs / maxTop) * 100}%`, background: BAR }} /></span>
-                  <strong>{p.packs}</strong>
-                </li>
-              ))}
-            </ul>
-          ) : <p className="wh-empty">No orders this month yet.</p>}
-          <p className="wh-muted wh-small">Packs ordered</p>
-        </section>
-      </div>
-
-      <div className="wh-dash-grid wh-dash-grid--2">
-        <section className="wh-panel">
-          <header className="wh-panel-head">
-            <h3 className="wh-panel-title">Recent Orders</h3>
-            <button type="button" className="wh-link" onClick={() => go('orders')}>View all</button>
+      {/* ---- Recent Orders · Low Stock · Order Status ---- */}
+      <div className="wd-row">
+        <section className="wd-panel">
+          <header className="wd-panel-head">
+            <h3>Recent Orders</h3>
+            <button type="button" className="wd-more" onClick={() => go('orders')}>See all</button>
           </header>
-          <div className={`wh-table wh-table--recent${money ? ' has-money' : ''}`} role="table" aria-label="Recent orders">
-            <div className="wh-tr wh-th" role="row">
-              <span role="columnheader">Order ID</span>
-              <span role="columnheader">Customer</span>
-              <span role="columnheader">Products</span>
-              {money && <span role="columnheader">Amount</span>}
-              <span role="columnheader">Status</span>
-              <span role="columnheader">Date</span>
-            </div>
-            {d.recentOrders.map((o) => {
+          <ul className="wd-list">
+            {d.recentOrders.slice(0, 5).map((o) => {
               const day = dayLabel(o.placedAt)
               return (
-                <div className="wh-tr" role="row" key={o.id}>
-                  <span role="cell" className="wh-mono">{o.orderNumber}</span>
-                  <span role="cell">{o.customer}</span>
-                  <span role="cell" className="wh-clamp">{o.products}</span>
-                  {money && <span role="cell"><strong>{inr(o.total)}</strong></span>}
-                  <span role="cell"><span className={`wh-status wh-status--${STATUS_KEY[o.status]}`}>{STATUS[o.status]}</span></span>
-                  <span role="cell"><span className={day.recent ? 'is-recent' : ''}>{day.text}</span><span className="wh-muted wh-small">{timeLabel(o.placedAt)}</span></span>
-                </div>
+                <li key={o.id}>
+                  <span className="wd-list-icon"><Icon name="orders" size={17} /></span>
+                  <span className="wd-list-main">
+                    <strong>{o.customer}</strong>
+                    <span className="wd-clamp">{o.orderNumber} · {o.products}</span>
+                  </span>
+                  <span className="wd-list-side">
+                    <span className={`wh-status wh-status--${STATUS_KEY[o.status]}`}>{STATUS[o.status]}</span>
+                    <small>{money && o.total != null ? inr(o.total) + ' · ' : ''}{day.text === 'Today' ? timeLabel(o.placedAt) : day.text}</small>
+                  </span>
+                </li>
               )
             })}
-          </div>
+          </ul>
         </section>
 
-        <section className="wh-panel">
-          <header className="wh-panel-head">
-            <h3 className="wh-panel-title">Low Stock Alerts</h3>
-            <button type="button" className="wh-link" onClick={() => go('inventory', 'low')}>View all</button>
+        <section className="wd-panel">
+          <header className="wd-panel-head">
+            <h3>Low Stock Alerts</h3>
+            <button type="button" className="wd-more" onClick={() => go('inventory', 'low')}>See all</button>
           </header>
           {d.lowStock.length ? (
-            <ul className="wh-lowstock">
-              {d.lowStock.map((p) => (
+            <ul className="wd-list">
+              {d.lowStock.slice(0, 5).map((p) => (
                 <li key={p.name + p.packKg}>
-                  {p.image ? <img src={p.image} alt="" /> : <span className="wh-prod-img" />}
-                  <span><strong>{p.name}</strong><span className="wh-muted wh-small">{p.packKg} kg</span></span>
-                  <span className="wh-stock wh-stock--low">Stock: {p.available} packs</span>
+                  {p.image ? <img className="wd-list-img" src={p.image} alt="" /> : <span className="wd-list-icon"><Icon name="box" size={17} /></span>}
+                  <span className="wd-list-main">
+                    <strong>{p.name}</strong>
+                    <span>{p.packKg} kg pack · reorder at {p.reorderLevel}</span>
+                  </span>
+                  <span className="wd-list-side"><span className="wd-low">{p.available} left</span></span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="wh-empty"><Icon name="check" size={18} /> All packs above their reorder level.</p>
+            <p className="wd-allgood"><Icon name="check" size={18} /> All packs are above their reorder level.</p>
           )}
         </section>
+
+        <section className="wd-panel">
+          <header className="wd-panel-head"><h3>Order Status</h3><span className="wd-chip">This month</span></header>
+          <div className="wd-total">
+            <span>Total orders</span>
+            <strong>{monthTotal} <small>orders this month</small></strong>
+          </div>
+          <div className="wd-split" role="img" aria-label={STATUS_PARTS.map((p) => `${p.label} ${d.monthStatus[p.key] || 0}`).join(', ')}>
+            {STATUS_PARTS.map((p) => {
+              const n = d.monthStatus[p.key] || 0
+              return n ? <span key={p.key} style={{ flexGrow: n, background: p.color }} /> : null
+            })}
+            {!monthTotal && <span style={{ flexGrow: 1, background: '#e6e8eb' }} />}
+          </div>
+          <ul className="wd-legend">
+            {STATUS_PARTS.map((p) => (
+              <li key={p.key}>
+                <span style={{ background: p.color }} aria-hidden="true" />
+                {p.label}
+                <strong>{d.monthStatus[p.key] || 0}</strong>
+              </li>
+            ))}
+          </ul>
+        </section>
       </div>
-    </>
+
+      {/* ---- Quick actions · trend · Top Products ---- */}
+      <div className="wd-row">
+        <section className="wd-panel wd-quick">
+          <h3>Quick actions</h3>
+          <div className="wd-quick-chips">
+            <button type="button" onClick={() => go('dispatch')}>Dispatch orders ({d.counts.toDispatch})</button>
+            <button type="button" onClick={() => go('tracker')}>Upload tracker</button>
+            <button type="button" onClick={() => go('returns')}>Returns ({d.counts.openIssues})</button>
+          </div>
+          {onSearch && (
+            <form className="wd-quick-search" role="search" onSubmit={(e) => { e.preventDefault(); if (q.trim()) onSearch(q.trim()) }}>
+              <p>{d.counts.toDispatch} {d.counts.toDispatch === 1 ? 'order is' : 'orders are'} waiting to go out</p>
+              <div>
+                <Icon name="search" size={17} />
+                <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find an order, customer or phone…" aria-label="Find an order" />
+                <button type="submit" aria-label="Search"><Icon name="chevronRight" size={18} /></button>
+              </div>
+            </form>
+          )}
+        </section>
+
+        <section className="wd-panel">
+          <header className="wd-panel-head">
+            <h3>Orders Trend</h3>
+            <span className="wd-chip">Last 7 days</span>
+          </header>
+          <p className="wd-trend-sum">
+            <strong>{d.todayOrders}</strong> today
+            {change !== null && <span className={`wd-change ${change >= 0 ? 'is-up' : 'is-down'}`}> {change >= 0 ? '+' : ''}{change}% <span>vs yesterday</span></span>}
+          </p>
+          <TrendChart days={week} />
+        </section>
+
+        <section className="wd-panel">
+          <header className="wd-panel-head">
+            <h3>Top Products</h3>
+            <span className="wd-chip">This month</span>
+          </header>
+          {d.topProducts.length ? (
+            <ul className="wd-list">
+              {d.topProducts.map((p, i) => (
+                <li key={p.name}>
+                  {p.image ? <img className="wd-list-img" src={p.image} alt="" /> : <span className="wd-list-icon">{i + 1}</span>}
+                  <span className="wd-list-main">
+                    <strong>{p.name}</strong>
+                    <span className="wd-bar"><span style={{ width: `${(p.packs / maxTop) * 100}%` }} /></span>
+                  </span>
+                  <span className="wd-list-side"><strong>{p.packs}</strong><small>packs</small></span>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="wd-allgood">No orders this month yet.</p>}
+        </section>
+      </div>
+    </div>
   )
 }

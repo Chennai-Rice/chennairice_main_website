@@ -16,6 +16,7 @@ import { CustomersView, ReportsView, SettingsView } from './OtherViews.jsx'
 import AccountsView from './AccountsView.jsx'
 import './warehouse.css'
 import './warehouse-pages.css'
+import './warehouse-shell.css'
 
 const ALLOWED_ROLES = ['owner', 'admin', 'it', 'sales', 'dispatch', 'inventory', 'warehouse', 'accounts']
 
@@ -26,9 +27,9 @@ const NAV = [
   { id: 'orders', label: 'Orders', icon: 'orders', perm: ['warehouse.view', 'accounts.view'] },
   { id: 'dispatch', label: 'Dispatch', icon: 'truck', perm: 'warehouse.view' },
   { id: 'deliveries', label: 'Deliveries', icon: 'delivered', perm: 'warehouse.view' },
-  { id: 'tracker', label: 'Tracker Upload', icon: 'download', perm: 'warehouse.view' },
-  { id: 'returns', label: 'Returns & Issues', icon: 'returns', perm: 'issues.manage' },
-  { id: 'inventory', label: 'Products & Inventory', icon: 'box', perm: 'warehouse.view' },
+  { id: 'tracker', label: 'Tracker Upload', short: 'Tracker', icon: 'download', perm: 'warehouse.view' },
+  { id: 'returns', label: 'Returns & Issues', short: 'Returns', icon: 'returns', perm: 'issues.manage' },
+  { id: 'inventory', label: 'Products & Inventory', short: 'Inventory', icon: 'box', perm: 'warehouse.view' },
   { divider: true },
   { id: 'accounts', label: 'Accounts', icon: 'print', perm: 'accounts.view' },
   { id: 'customers', label: 'Customers', icon: 'users', perm: 'warehouse.view' },
@@ -316,44 +317,61 @@ export default function WarehousePage() {
       <button type="button" className="wh-scrim" aria-label="Close menu" onClick={() => setDrawer(false)} tabIndex={drawer ? 0 : -1} />
 
       <div className="wh-body">
+        {/* One bar across the top (Oct 2026, owner's reference): brand, the
+            sections as pills, then search, Dispatch, alerts and the user.
+            Phones keep the menu button and the slide-in menu. */}
         <header className="wh-topbar">
           <button type="button" className="wh-top-icon wh-hamburger" aria-label="Open menu" onClick={() => setDrawer(true)}>
             <Icon name="menu" size={22} />
           </button>
-          <label className="wh-location">
-            <Icon name="building" size={20} />
-            <span className="visually-hidden">Warehouse location</span>
-            <select value={fulfilment?.id || ''} onChange={() => {}} aria-label="Warehouse location">
-              {fulfilment ? <option value={fulfilment.id}>{fulfilment.name}</option> : <option value="">Warehouse (Local)</option>}
-            </select>
-            <Icon name="chevron" size={16} />
-          </label>
+          <div className="wh-brand">
+            <img src="/assets/warehouse-logo.png" alt="" width="40" height="40" />
+            <span className="wh-brand-pill">
+              <Icon name="building" size={15} />
+              {fulfilment?.name || 'Warehouse'}
+            </span>
+          </div>
           <h1 className="wh-view-title">{TITLES[shown]}</h1>
-          {/* Search from anywhere: opens Orders filtered by what was typed. */}
-          {orders && <form
-            className="wh-top-search"
-            role="search"
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (topSearch.trim()) openOrders(topSearch.trim())
-            }}
-          >
-            <Icon name="search" size={17} />
-            <span className="visually-hidden">Search orders</span>
-            <input type="search" value={topSearch} onChange={(e) => setTopSearch(e.target.value)} placeholder="Search order, customer…" />
-          </form>}
+          <nav className="wh-pills" aria-label="Sections">
+            {nav.filter((n) => !n.divider).map((n) => (
+              <button
+                key={n.id}
+                type="button"
+                className={`wh-pill${activeNav === n.id ? ' is-active' : ''}`}
+                aria-current={activeNav === n.id ? 'page' : undefined}
+                onClick={() => go(n.id)}
+              >
+                {n.short || n.label}
+              </button>
+            ))}
+          </nav>
           <div className="wh-top-right">
+            {/* Search from anywhere: opens Orders filtered by what was typed. */}
+            {orders && <form
+              className="wh-top-search"
+              role="search"
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (topSearch.trim()) openOrders(topSearch.trim())
+              }}
+            >
+              <Icon name="search" size={17} />
+              <span className="visually-hidden">Search orders</span>
+              <input type="search" value={topSearch} onChange={(e) => setTopSearch(e.target.value)} placeholder="Search orders…" />
+            </form>}
+            {warehouse && (
+              <button type="button" className="wh-new" onClick={() => go('dispatch')}>
+                <Icon name="truck" size={17} /> <span>Dispatch</span>
+              </button>
+            )}
             {warehouse && <Bell onOpenOrder={openOrders} onAuthError={onAuthError} />}
             <UserMenu me={me} onSettings={() => go('settings')} onSignOut={signOut} say={say} onAuthError={onAuthError} />
-            <button type="button" className="wh-btn wh-btn--signout" onClick={signOut}>
-              <Icon name="logout" size={18} /> <span>Sign out</span>
-            </button>
           </div>
         </header>
 
         <main className="wh-content">
           {shown === 'accounts' && <AccountsView say={say} onAuthError={onAuthError} />}
-          {shown === 'dashboard' && <DashboardView say={say} onAuthError={onAuthError} go={go} money={money} />}
+          {shown === 'dashboard' && <DashboardView say={say} onAuthError={onAuthError} go={go} money={money} me={me} onSearch={orders ? openOrders : null} />}
           {shown === 'orders' && (
             <OrdersView
               status={status}

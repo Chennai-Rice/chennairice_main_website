@@ -129,7 +129,7 @@ export async function pickListCsv(f = {}) {
 const IST = `at time zone 'Asia/Kolkata'`
 
 export async function warehouseDashboard({ money = false } = {}) {
-  const [counts, issues, today, hours, month, top, recent, low] = await Promise.all([
+  const [counts, issues, today, hours, month, top, recent, low, daily] = await Promise.all([
     query(`select status, count(*)::int as n from orders where status <> 'pending_payment' group by status`),
     query(`select count(*) filter (where status <> 'resolved')::int as open from order_issues`),
     query(`select
@@ -161,6 +161,16 @@ export async function warehouseDashboard({ money = false } = {}) {
       where v.is_active and p.is_active and v.price_paise is not null and v.reorder_level > 0
         and coalesce(s.on_hand - s.reserved, 0) <= v.reorder_level
       order by available limit 6`),
+    // The last 14 days, one row a day (IST): orders placed, packs dispatched,
+    // delivered and issues opened — the cards' small bars and "vs last week".
+    query(`select to_char(d, 'YYYY-MM-DD') as day,
+        (select count(*) from orders o where o.status <> 'pending_payment' and (o.placed_at ${IST})::date = d)::int as orders,
+        (select count(*) from shipments s where s.status <> 'cancelled' and (s.shipped_at ${IST})::date = d)::int as dispatched,
+        (select count(*) from shipments s where (s.delivered_at ${IST})::date = d)::int as delivered,
+        (select count(*) from order_issues i where (i.created_at ${IST})::date = d)::int as issues
+       from generate_series((now() ${IST})::date - 13, (now() ${IST})::date, interval '1 day') as g(ts),
+            lateral (select g.ts::date as d) x
+      order by d`),
   ])
   const by = Object.fromEntries(counts.rows.map((r) => [r.status, r.n]))
   const m = Object.fromEntries(month.rows.map((r) => [r.status, r.n]))
@@ -194,5 +204,6 @@ export async function warehouseDashboard({ money = false } = {}) {
     lowStock: low.rows.map((r) => ({
       name: r.name, image: r.image, packKg: Number(r.pack_kg), available: r.available, reorderLevel: r.reorder_level,
     })),
+    daily: daily.rows,
   }
 }

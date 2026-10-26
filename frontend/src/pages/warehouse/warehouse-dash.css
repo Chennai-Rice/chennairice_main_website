@@ -1,0 +1,191 @@
+/* /warehouse Dashboard (DashboardView.jsx) — owner's reference, Oct 2026:
+   white rounded cards on grey, black and red accents, small bar charts. */
+.wd { display: grid; gap: 16px; min-width: 0; }
+.wd-hello h2 { margin: 0; font-size: clamp(24px, 2.4vw, 30px); font-weight: 700; letter-spacing: -0.01em; color: #17181a; }
+.wd-hello p { margin: 4px 0 0; font-size: 14px; color: #6b7078; }
+
+/* ---- four cards ---- */
+.wd-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.wd-card {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(20, 20, 30, 0.05);
+  font: inherit;
+  text-align: left;
+  color: #17181a;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.wd-card:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(20, 20, 30, 0.08); }
+.wd-card:focus-visible { outline: 2px solid #e0262d; outline-offset: 2px; }
+.wd-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 6px;
+  padding: 12px 12px 14px;
+  border-radius: 13px;
+  background: #f4f5f7;
+}
+.wd-card-label { display: block; font-size: 13px; color: #5b6068; }
+.wd-card-value { display: block; margin-top: 6px; font-size: 30px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.wd-card-foot { display: flex; align-items: center; gap: 8px; padding: 8px 14px 11px; font-size: 12px; color: #6b7078; }
+.wd-card-foot svg { margin-left: auto; color: #9aa0a8; }
+.wd-card-note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.wd-mini { display: flex; align-items: flex-end; gap: 3px; height: 38px; }
+.wd-mini span { width: 4px; border-radius: 2px; background: #2b2d31; }
+.wd-mini span.is-today { background: #e0262d; }
+
+.wd-change { font-weight: 600; white-space: nowrap; color: #6b7078; }
+.wd-change.is-up { color: #16a34a; }
+.wd-change.is-down { color: #e0262d; }
+.wd-change span { font-weight: 400; color: #6b7078; }
+
+/* ---- rows of three panels ---- */
+.wd-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.wd-panel {
+  min-width: 0;
+  padding: 18px 18px 14px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(20, 20, 30, 0.05);
+}
+.wd-panel h3 { margin: 0; font-size: 15.5px; font-weight: 700; color: #17181a; }
+.wd-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.wd-more, .wd-chip {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid #e6e8eb;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 11.5px;
+  color: #5b6068;
+  display: inline-flex;
+  align-items: center;
+}
+.wd-more { cursor: pointer; }
+.wd-more:hover { background: #f4f5f7; color: #17181a; }
+
+/* lists: icon · two lines · status / time */
+.wd-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.wd-list li { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 7px 0; }
+.wd-list-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #17181a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.wd-list-img { width: 34px; height: 40px; object-fit: contain; }
+.wd-list-main { min-width: 0; display: grid; gap: 2px; }
+.wd-list-main strong { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wd-list-main > span { font-size: 12px; color: #6b7078; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wd-list-side { display: grid; justify-items: end; gap: 3px; font-size: 12px; color: #6b7078; }
+.wd-list-side small { font-size: 11.5px; white-space: nowrap; }
+.wd-list-side strong { font-size: 15px; color: #17181a; }
+.wd-low { padding: 3px 8px; border-radius: 999px; background: #fdecec; color: #c0161d; font-weight: 600; white-space: nowrap; }
+.wd-bar { display: block; height: 5px; margin-top: 4px; border-radius: 3px; background: #eef0f2; overflow: hidden; }
+.wd-bar span { display: block; height: 100%; border-radius: 3px; background: #e0262d; }
+.wd-allgood { display: flex; align-items: center; gap: 8px; margin: 8px 0; color: #16a34a; font-size: 14px; }
+
+/* order status: total + one split bar + legend */
+.wd-total { padding: 12px 14px; border-radius: 13px; background: #f4f5f7; }
+.wd-total span { font-size: 12px; color: #6b7078; }
+.wd-total strong { display: block; margin-top: 4px; font-size: 22px; font-weight: 700; }
+.wd-total small { font-size: 13px; font-weight: 500; color: #6b7078; }
+.wd-split { display: flex; gap: 4px; height: 8px; margin: 18px 0 12px; }
+.wd-split span { min-width: 6px; border-radius: 4px; }
+.wd-legend { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; font-size: 12.5px; color: #5b6068; }
+.wd-legend li { display: flex; align-items: center; gap: 7px; }
+.wd-legend li span { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.wd-legend strong { margin-left: auto; color: #17181a; }
+
+/* quick actions: the dark-red card */
+.wd-quick {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: #fff;
+  background:
+    radial-gradient(90% 70% at 100% 100%, rgba(255, 70, 60, 0.95) 0%, rgba(224, 38, 45, 0.55) 35%, transparent 70%),
+    linear-gradient(160deg, #1a0a0b 0%, #2a0d0f 55%, #4a1014 100%);
+  overflow: hidden;
+}
+.wd-quick h3 { color: #fff; }
+.wd-quick-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.wd-quick-chips button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.wd-quick-chips button:hover { background: rgba(255, 255, 255, 0.18); }
+.wd-quick-search {
+  margin-top: auto;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(6px);
+}
+.wd-quick-search p { margin: 0 0 8px 4px; font-size: 12px; color: rgba(255, 255, 255, 0.85); }
+.wd-quick-search div { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border-radius: 11px; background: #fff; color: #6b7078; }
+.wd-quick-search input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13.5px; color: #17181a; }
+.wd-quick-search button { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 9px; background: #17181a; color: #fff; cursor: pointer; }
+
+/* orders trend */
+.wd-trend-sum { margin: -4px 0 10px; font-size: 13px; color: #6b7078; }
+.wd-trend-sum strong { font-size: 20px; color: #17181a; margin-right: 2px; }
+.wd-trend { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 6px; height: 170px; }
+.wd-trend-axis { display: flex; flex-direction: column; justify-content: space-between; padding-bottom: 20px; font-size: 10.5px; color: #9aa0a8; text-align: right; }
+.wd-trend-bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.wd-trend-col { display: grid; grid-template-rows: minmax(0, 1fr) 20px; justify-items: center; min-width: 0; }
+.wd-trend-track { position: relative; display: flex; align-items: flex-end; width: 100%; max-width: 34px; border-radius: 8px; background: #f4f5f7; }
+.wd-trend-track span { position: relative; display: block; width: 100%; min-height: 3px; border-radius: 8px; background: #e6e8eb; }
+.wd-trend-col.is-today .wd-trend-track span { background: #e0262d; box-shadow: 0 6px 14px rgba(224, 38, 45, 0.3); }
+.wd-trend-track em {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: #17181a;
+  color: #fff;
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.wd-trend-col small { align-self: end; font-size: 11px; color: #6b7078; }
+.wd-trend-col.is-today small { color: #17181a; font-weight: 700; }
+
+/* ---- smaller screens ---- */
+@media (max-width: 1200px) {
+  .wd-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wd-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .wd-cards { gap: 10px; }
+  .wd-card-value { font-size: 24px; }
+  .wd-card-note { display: none; }
+  .wd-mini { height: 30px; }
+  .wd-row { grid-template-columns: minmax(0, 1fr); }
+}
