@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import InfraProcess from './InfraProcess.jsx'
 import { Link } from 'react-router-dom'
 import Img from '../../components/Img.jsx'
 import { INFRA_ASSETS, SHOWCASE_SLIDES, SHOWCASE_STATS, SHOWCASE_CARDS } from '../../data/infrastructure.js'
@@ -255,6 +256,9 @@ export default function InfraShowcase() {
           </div>
         </div>
       </div>
+
+      {/* ---------------- inside the mill: animated production line ---------------- */}
+      <InfraProcess />
 
       {/* ---------------- closing band ---------------- */}
       <div className="ish-band">

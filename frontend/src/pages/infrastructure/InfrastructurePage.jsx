@@ -2,7 +2,6 @@ import { useRef } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import InfraShowcase from './InfraShowcase.jsx'
-import InfraJourney from './journey/InfraJourney.jsx'
 import useGsapContext from '../../hooks/useGsapContext.js'
 import usePageMeta from '../../shop/hooks/usePageMeta.js'
 import './infrastructure.css'
@@ -38,8 +37,6 @@ export default function InfrastructurePage() {
 
   return (
     <main className="infra" ref={rootRef}>
-      {/* From Paddy to Packed Rice — the process first (owner, Oct 2026), then the facility showcase. */}
-      <InfraJourney />
       <InfraShowcase />
     </main>
   )
