@@ -714,3 +714,25 @@
      banner's buttons; it comes back once the visitor has answered. */
   body:has(.cookie-card-wrap) .sk-launcher { display: none; }
 }
+
+/* Order card (order tracking in the chat). */
+.sk-order { margin: 10px 0 0 35px; max-width: 86%; padding: 14px; border-radius: 16px; border: 1px solid var(--sk-border); background: var(--sk-cream); font-size: 13px; color: #3a2a22; }
+.sk-order-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-bottom: 8px; }
+.sk-order-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #a8802e; }
+.sk-order-no { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+.sk-order-date { width: 100%; font-size: 12px; color: #8b7f76; }
+.sk-order-items { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 2px; font-weight: 600; }
+.sk-order-steps { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 0; }
+.sk-order-steps li { position: relative; display: flex; align-items: center; gap: 10px; padding: 4px 0; color: #9a8f86; }
+.sk-order-steps li:not(:last-child)::after { content: ''; position: absolute; left: 6px; top: 20px; height: calc(100% - 10px); width: 2px; background: #e6ddd2; }
+.sk-order-dot { width: 14px; height: 14px; flex: 0 0 auto; border-radius: 50%; border: 2px solid #d9cdbf; background: #fff; position: relative; z-index: 1; }
+.sk-order-steps li.is-done { color: #3a2a22; }
+.sk-order-steps li.is-done .sk-order-dot { background: #1f9a4d; border-color: #1f9a4d; }
+.sk-order-steps li.is-done:not(:last-child)::after { background: #1f9a4d; }
+.sk-order-steps li.is-now { color: #7a1f2b; font-weight: 700; }
+.sk-order-steps li.is-now .sk-order-dot { background: #7a1f2b; border-color: #7a1f2b; box-shadow: 0 0 0 4px rgba(122, 31, 43, 0.15); }
+.sk-order-stopped { margin: 0 0 12px; padding: 8px 10px; border-radius: 10px; background: #fdecec; color: #b42318; font-weight: 700; }
+.sk-order-ship { margin: 0 0 12px; color: #5c5048; line-height: 1.5; }
+.sk-order-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.sk-order-btn { display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid #d9cdbf; background: #fff; color: #3a2a22; font-weight: 600; font-size: 12.5px; text-decoration: none; }
+.sk-order-btn.is-primary { background: #7a1f2b; border-color: #7a1f2b; color: #fff; }

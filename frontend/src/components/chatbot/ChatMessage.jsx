@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import ProductCard from './ProductCard.jsx'
+import OrderCard from './OrderCard.jsx'
 import { FALLBACK_MESSAGE } from '../../data/chatbot.js'
 
 export default function ChatMessage({ message }) {
@@ -20,8 +21,14 @@ export default function ChatMessage({ message }) {
               {FALLBACK_MESSAGE.cta.label}
             </Link>
           )}
+          {message.link && (
+            <a className="sk-msg-cta" href={message.link.href} target="_blank" rel="noopener noreferrer">
+              {message.link.label}
+            </a>
+          )}
         </div>
       </div>
+      {message.order && <OrderCard order={message.order} lang={message.lang} />}
       {message.product && <ProductCard product={message.product} />}
     </>
   )
