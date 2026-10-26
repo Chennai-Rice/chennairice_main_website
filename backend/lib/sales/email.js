@@ -289,6 +289,45 @@ export const templates = {
       text: `Dear ${order.contact_name},\n\nYour order ${order.order_number} has been delivered. Thank you for choosing Chennai Rice.`,
     }
   },
+  /**
+   * "How was your Chennai Rice?" — sent a couple of days after delivery with
+   * the Google review link. Every customer is asked (Google does not allow
+   * asking only the happy ones), and a problem goes to WhatsApp instead.
+   */
+  reviewRequest(order, items = [], deliveredAt = new Date()) {
+    const reviewUrl = process.env.REVIEW_URL || 'https://share.google/W8gy3NAFUbgfYHrdC'
+    const whatsappUrl = 'https://wa.me/917066646667'
+    const delivered = new Date(deliveredAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' })
+    const vars = {
+      'Customer Name': order.contact_name,
+      'Order ID': order.order_number,
+      'Delivered Date': delivered,
+      'Review URL': reviewUrl,
+      'WhatsApp URL': whatsappUrl,
+      'Support Number': process.env.SUPPORT_PHONE || '+91 70666 46667',
+      'Support Email': process.env.SUPPORT_EMAIL || 'support@chennairiceindustries.com',
+    }
+    const products = items.map((i) => ({
+      'Product Name': `${i.product_name} ${Number(i.pack_kg)} kg`,
+      'Quantity': i.quantity,
+      'Product Image': absolute(i.image_url) || `${SITE}/assets/shop/logo.png`,
+    }))
+    return {
+      template: 'review_request',
+      subject: `How was your Chennai Rice, ${order.contact_name}? 🍚`,
+      text:
+        `Vanakkam ${order.contact_name},\n\n` +
+        `Your order ${order.order_number} was delivered on ${delivered}:\n` +
+        `${items.map((i) => `  • ${i.quantity} × ${i.product_name} ${Number(i.pack_kg)} kg`).join('\n')}\n\n` +
+        `We hope it cooked soft and tasted just right. Would you tell us how it was?\n\n` +
+        `⭐ Write a Google Review: ${reviewUrl}\n\n` +
+        `Your honest review helps other families — and helps us keep improving.\n\n` +
+        `Something not right? Damaged bag, wrong item or anything else — message us on WhatsApp (${whatsappUrl}) ` +
+        `or reply to this email. We'll sort it out. Return & Refund Policy: ${SITE}/refund\n\n` +
+        `Thank you for choosing Chennai Rice,\nTeam Chennai Rice Industries\nNasiyanur, Erode · ${vars['Support Number']}`,
+      html: renderTemplate('review-request.html', vars, products),
+    }
+  },
   orderCancelled(order, refundNote) {
     return {
       template: 'order_cancelled',
