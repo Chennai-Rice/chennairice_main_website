@@ -145,14 +145,14 @@
 }
 .ish-wheat--left {
   left: 10px;
-  top: 54px;
-  width: 118px;
+  top: 26px;
+  width: 76px;
   transform: rotate(-8deg);
 }
 .ish-wheat--right {
   right: 10px;
-  top: 54px;
-  width: 118px;
+  top: 26px;
+  width: 76px;
   transform: rotate(8deg) scaleX(-1);
 }
 
@@ -333,8 +333,10 @@
 /* ---- capability grid ---- */
 .ish-grid-band {
   position: relative;
-  padding: 74px 0 86px;
+  overflow: hidden;
+  padding: 64px 0 60px;
 }
+.ish-grid-band .ish-head { margin-bottom: 0; }
 
 .ish-head {
   position: relative;
@@ -546,7 +548,7 @@
       rgba(247, 240, 226, 0.72) 100%
     );
   }
-  .ish-grid-band { padding: 56px 0 64px; }
+  .ish-grid-band { padding: 48px 0 44px; }
   .ish-band-inner {
     flex-direction: column;
     align-items: flex-start;

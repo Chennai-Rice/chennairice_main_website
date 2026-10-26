@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import InfraProcess from './InfraProcess.jsx'
 import { Link } from 'react-router-dom'
 import Img from '../../components/Img.jsx'
-import { INFRA_ASSETS, SHOWCASE_SLIDES, SHOWCASE_STATS, SHOWCASE_CARDS } from '../../data/infrastructure.js'
+import { INFRA_ASSETS, SHOWCASE_SLIDES, SHOWCASE_STATS } from '../../data/infrastructure.js'
 import { PAGE_META } from '../../seo.js'
 
 const ArrowRight = () => (
@@ -42,37 +42,6 @@ const STAT_ICONS = {
       <circle cx="9" cy="8" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.3" />
       <path d="M3.4 19.2c0-3.1 2.5-5.2 5.6-5.2s5.6 2.1 5.6 5.2" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
       <path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M17.4 14.4c2.1.6 3.4 2.4 3.4 4.8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </>
-  ),
-}
-
-/* Icons for the six capability cards, in the round burgundy badge. */
-const CARD_ICONS = {
-  processing: <path d="M4 21h16M6 21V11l4-2.5V21M14 21V8l4-2.5V21" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />,
-  storage: <path d="M7 21V10a5 5 0 0 1 10 0v11M4 21h16M7 14h10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />,
-  quality: (
-    <>
-      <circle cx="10.5" cy="10.5" r="5.6" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M14.6 14.6L20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </>
-  ),
-  sourcing: (
-    <>
-      <path d="M12 21V10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M12 10c0-3.5 2.6-6 6-6 0 3.5-2.6 6-6 6zm0 3c0-3-2.4-5.4-5.4-5.4C6.6 10.6 9 13 12 13z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-    </>
-  ),
-  logistics: (
-    <>
-      <path d="M2.6 16.4V7h10v9.4M12.6 10.4h4l3 3.2v2.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="7" cy="17.6" r="1.7" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <circle cx="16.6" cy="17.6" r="1.7" fill="none" stroke="currentColor" strokeWidth="1.5" />
-    </>
-  ),
-  packaging: (
-    <>
-      <path d="M3.6 7.6L12 3.6l8.4 4v8.8L12 20.4l-8.4-4V7.6z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M3.6 7.6L12 11.6l8.4-4M12 11.6v8.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
     </>
   ),
 }
@@ -224,35 +193,6 @@ export default function InfraShowcase() {
             <span className="infra-eyebrow">World Class Infrastructure</span>
             <h2 className="infra-title ish-head-title">Technology. Quality. Capacity.</h2>
             <Divider />
-            <p className="ish-head-text">
-              From paddy intake to packaging, our integrated infrastructure protects grain
-              condition and consistency at every step.
-            </p>
-          </div>
-
-          <div className="ish-grid">
-            {SHOWCASE_CARDS.map(card => (
-              <article className="ish-card infra-reveal" key={card.title}>
-                <div className="ish-card-media">
-                  {/* The zoom-on-hover needs a clipping box, but the badge
-                      below has to hang past the photo's bottom edge. One
-                      element cannot do both, so the clip lives on this frame
-                      and the media box itself stays unclipped. */}
-                  <div className="ish-card-frame">
-                    <Img src={INFRA_ASSETS[card.image]} fallback={INFRA_ASSETS.fallback} alt={card.alt} />
-                  </div>
-                  <span className="ish-card-badge">
-                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      {CARD_ICONS[card.icon]}
-                    </svg>
-                  </span>
-                </div>
-                <div className="ish-card-body">
-                  <h3 className="ish-card-title">{card.title}</h3>
-                  <p className="ish-card-text">{card.text}</p>
-                </div>
-              </article>
-            ))}
           </div>
         </div>
       </div>
