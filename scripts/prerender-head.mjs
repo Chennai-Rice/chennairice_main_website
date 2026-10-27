@@ -26,6 +26,12 @@ const src = (p) => pathToFileURL(join(ROOT, 'frontend', 'src', p)).href
 const { PAGE_META, PRODUCT_SEO, productPath, productName, keywordsFor } = await import(src('seo.js'))
 const { FOOTER } = await import(src('data/content.js'))
 const { LANDING } = await import(src('data/landing.js'))
+const { GUIDE_LINKS } = await import(src('data/guides.js'))
+const {
+  COMPANY, loadCatalog, productSchema, productHtml, landingHtml, basicHtml, HEAD_SNIPPET, wrap, llmsTxt, llmsFullTxt, packsLine,
+} = await import(pathToFileURL(join(ROOT, 'scripts', 'prerender-content.mjs')).href)
+// Packs, prices and stock from the live shop, read once (the build still works without it).
+const CATALOG = await loadCatalog()
 
 // Pack images, from the shop's built-in catalogue (the same block the sitemap reads).
 const catalogue = readFileSync(join(ROOT, 'frontend', 'src', 'shop', 'data', 'products.js'), 'utf8')
@@ -48,7 +54,8 @@ const ADDRESS = {
 }
 const PHONE = '+91-70666-46667'
 const LOGO = SITE + '/assets/logo-full-v2.png'
-const SAME_AS = (FOOTER.social || []).map((s) => s.href.replace(/&sk=about$/, ''))
+// Every public profile of the company (empty links — no channel yet — are left out) and its Google Business Profile.
+const SAME_AS = [...(FOOTER.social || []).map((s) => s.href.replace(/&sk=about$/, '')).filter(Boolean), FOOTER.maps?.profile].filter(Boolean)
 const ORG_ID = SITE + '/#organization'
 
 const organization = {
@@ -62,6 +69,14 @@ const organization = {
   telephone: PHONE,
   address: ADDRESS,
   sameAs: SAME_AS,
+  // What AI assistants and search engines need to connect the pack brands to this company.
+  description: COMPANY.facts.join(' '),
+  slogan: COMPANY.slogan,
+  foundingDate: COMPANY.founded,
+  founder: { '@type': 'Person', name: COMPANY.founder },
+  areaServed: 'IN',
+  knowsAbout: ['Ponni rice', 'Idli rice', 'Parboiled (boiled) rice', 'Aged rice', 'Rice milling'],
+  brand: [COMPANY.brand, ...Object.values(PRODUCT_SEO).map((p) => p.name).filter(Boolean)].map((name) => ({ '@type': 'Brand', name })),
 }
 const localBusiness = {
   '@type': 'LocalBusiness',
@@ -145,7 +160,7 @@ const jsonLd = (items) => items.length
 const shell = readFileSync(join(DIST, 'index.html'), 'utf8')
 writeFileSync(join(DIST, 'app.html'), shell)
 
-function render({ path, title, description, noindex, image, lang, schema = [] }) {
+function render({ path, title, description, noindex, image, lang, schema = [], body = '' }) {
   const url = abs(path)
   let html = shell
   // The first-paint headline (index.html #boot) belongs to the home page only.
@@ -174,23 +189,54 @@ function render({ path, title, description, noindex, image, lang, schema = [] })
     lang === 'ta' ? `<link rel="stylesheet" href="${TAMIL_FONT}" />` : '',
     jsonLd(schema),
   ].filter(Boolean).join('\n    ')
-  html = html.replace('</head>', `    ${extra}\n  </head>`)
+  html = html.replace('</head>', `    ${extra}\n    ${HEAD_SNIPPET}\n  </head>`)
+  // The page's own text, for crawlers that do not run JavaScript (hidden once the app starts).
+  if (body && !noindex) swap(/<div id="root">/, `<div id="root">${wrap(body)}`)
   const file = path === '/' ? join(DIST, 'index.html') : join(DIST, path.slice(1), 'index.html')
   mkdirSync(dirname(file), { recursive: true })
   writeFileSync(file, html)
   return path
 }
 
+// Packs as [name, path, one-line description] for the page texts.
+const productLinks = Object.keys(PRODUCT_SEO).map((id) => [productName(id), productPath(id), PRODUCT_SEO[id].line])
+const WITH_PACKS = new Set(['home', 'products', 'about', 'bulkOrder'])
+const WITH_GUIDES = new Set(['home', 'products', 'about', 'blog'])
+function pageBody(key, page) {
+  if (LANDING[key]) {
+    const ids = (LANDING[key].productIds || []).filter((id) => PRODUCT_SEO[id])
+    return landingHtml({ meta: page, page: LANDING[key], productLinks: ids.map((id) => [productName(id), productPath(id), PRODUCT_SEO[id].line]) })
+  }
+  return basicHtml({ meta: page, productLinks: WITH_PACKS.has(key) ? productLinks : [], guides: WITH_GUIDES.has(key) ? GUIDE_LINKS : [] })
+}
+
 const written = []
 for (const [key, page] of Object.entries(PAGE_META)) {
-  written.push(render({ ...page, schema: page.noindex ? [] : SCHEMA[key] || [] }))
+  written.push(render({ ...page, schema: page.noindex ? [] : SCHEMA[key] || [], body: pageBody(key, page) }))
 }
 for (const [id, p] of Object.entries(PRODUCT_SEO)) {
   const path = productPath(id)
   written.push(render({
     path, title: p.title, description: p.description, image: IMAGE[id],
-    // The Product schema with live prices is added by the product page itself.
-    schema: [breadcrumb([PAGE_META.products.h1, PAGE_META.products.path], [productName(id), path])],
+    // Product data for crawlers; the page itself adds the same @id with live prices, so they merge.
+    schema: [
+      productSchema({ id, seo: p, path, image: IMAGE[id], live: CATALOG.get(id), orgId: ORG_ID }),
+      organization,
+      breadcrumb([PAGE_META.products.h1, PAGE_META.products.path], [productName(id), path]),
+    ],
+    body: productHtml({ seo: p, live: CATALOG.get(id), guides: GUIDE_LINKS }),
   }))
 }
+
+// llms.txt (a summary for AI assistants) and llms-full.txt (the full text).
+const llmsProducts = Object.entries(PRODUCT_SEO).map(([id, p]) => ({
+  name: productName(id), path: productPath(id), line: p.line, about: p.about, dishes: p.dishes,
+  tag: CATALOG.get(id)?.tag, packs: packsLine(CATALOG.get(id)),
+}))
+const landingList = Object.keys(LANDING).filter((k) => PAGE_META[k] && LANDING[k].lang === 'en').map((k) => PAGE_META[k])
+writeFileSync(join(DIST, 'llms.txt'), llmsTxt({ products: llmsProducts, guides: GUIDE_LINKS, landing: landingList }))
+writeFileSync(join(DIST, 'llms-full.txt'), llmsFullTxt({
+  products: llmsProducts,
+  landingPages: Object.keys(LANDING).filter((k) => PAGE_META[k]).map((k) => ({ meta: PAGE_META[k], page: LANDING[k] })),
+}))
 console.log(`prerender-head: ${written.length} pages`)

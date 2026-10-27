@@ -66,6 +66,9 @@ export default function ProductDetailPage() {
     const data = {
       "@context": "https://schema.org",
       "@type": "Product",
+      // Same @id as the Product in the page HTML (scripts/prerender-content.mjs), so the two merge.
+      "@id": site + productPath(product.id) + "#product",
+      manufacturer: { "@id": site + "/#organization" },
       name: productName(id) || product.name,
       description: seo?.description || product.description,
       image: product.image ? [new URL(product.image, site).href] : undefined,

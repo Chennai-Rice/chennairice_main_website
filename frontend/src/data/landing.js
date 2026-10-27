@@ -12,6 +12,8 @@
 // Section blocks: { h2, p: [..] } paragraphs, { h2, list: [..] } bullets,
 // { h2, steps: [..] } numbered steps, { h2, table: { head, rows } }.
 
+import { GUIDES, GUIDE_PAGES } from './guides.js'
+
 const PONNI_IDS = [
   'kitchidi-ponni-rice', 'special-rajabhogam', 'viruchagam', 'vintage', 'united-5kg', 'a1-special-ponni',
   'vijaya-nagaram', 'chennai-bullets', 'rudra', 'thaaram', 'nayara-super-aged',
@@ -91,6 +93,8 @@ export const LANDING = {
     links: [
       { to: '/rice-products', label: 'See the full rice range' },
       { to: '/idli-rice', label: 'Idli rice for soft idlis' },
+      { to: '/best-ponni-rice-for-daily-meals', label: 'Best Ponni rice for daily meals' },
+      { to: '/what-is-aged-rice', label: 'What is aged rice?' },
       { to: '/bulk-order', label: 'Bulk & wholesale orders' },
     ],
   },
@@ -364,6 +368,8 @@ export const LANDING = {
       { to: '/bulk-order', label: 'மொத்த ஆர்டர்' },
     ],
   },
+  // Rice guides (answer pages).
+  ...GUIDES,
 }
 
 /** Landing pages by URL, for the router, the pre-rendered heads and the sitemap. */
@@ -374,4 +380,5 @@ export const LANDING_PAGES = [
   { path: '/ta', key: 'taHome', meta: 'taHome' },
   { path: '/ta/ponni-rice', key: 'taPonni', meta: 'taPonni' },
   { path: '/ta/idli-rice', key: 'taIdli', meta: 'taIdli' },
+  ...GUIDE_PAGES,
 ]

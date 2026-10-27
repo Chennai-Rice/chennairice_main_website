@@ -1,3 +1,4 @@
+import { GUIDE_META } from './data/guides.js'
 // Page URLs, meta titles and meta descriptions, from the "Chennai Rice SEO URL,
 // Meta Title, Description" sheet (Oct 2026). One place, read by the pages, the
 // links, the router and the sitemap generator (scripts/generate-sitemap.mjs),
@@ -173,6 +174,8 @@ export const PAGE_META = {
     description: 'The terms and conditions for using the Chennai Rice Industries website and for orders placed through it: payment, delivery, returns and refunds.',
     h1: 'Terms & Conditions',
   },
+  // Rice guides (answer pages), from data/guides.js.
+  ...GUIDE_META,
 }
 
 /**
