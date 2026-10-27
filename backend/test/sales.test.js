@@ -2168,3 +2168,27 @@ test('business advisor files: CSV, Excel, image, PDF checks; exact sums through 
     delete process.env.ADVISOR_BUCKET
   }
 })
+
+test('business advisor: 10 answered questions a day for the team, then "Rate limited" until midnight', async () => {
+  const { setAdvisorGenerateForTests } = await import('../lib/sales/advisor.js')
+  const text = JSON.stringify({ type: 'simple', summary: 'Fine.', numbers: [], findings: [], charts: [], tables: [], whyItMatters: [], actions: [], risks: [], missingData: [], followUps: [], sources: [] })
+  setAdvisorGenerateForTests(async () => ({ text, usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 }, candidates: [{ content: { role: 'model', parts: [{ text }] } }] }))
+  try {
+    await db.query(`delete from company_settings where key like 'advisor_questions:%'`)
+    const ask = () => api('POST', '/api/admin/advisor', { token: OWNER, body: { messages: [{ role: 'user', content: 'Orders?' }] } })
+    assert.equal((await ask()).status, 200)
+    let usage = (await api('GET', '/api/admin/advisor/usage', { token: OWNER })).body
+    assert.equal(usage.questionsToday, 1)
+    assert.equal(usage.dailyLimit, 10)
+    // Nine more fill the day; the eleventh is refused with the message the page shows.
+    await db.query(`update company_settings set value = '10' where key like 'advisor_questions:%'`)
+    const r = await ask()
+    assert.equal(r.status, 429)
+    assert.match(r.body.error, /^Rate limited: today's limit of 10 Advisor questions has been reached/)
+    usage = (await api('GET', '/api/admin/advisor/usage', { token: OWNER })).body
+    assert.equal(usage.questionsToday, 10)
+  } finally {
+    setAdvisorGenerateForTests(null)
+    await db.query(`delete from company_settings where key like 'advisor_questions:%'`)
+  }
+})

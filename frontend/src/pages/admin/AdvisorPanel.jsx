@@ -131,7 +131,7 @@ function Advisor({ onAuthError, report }) {
 
   async function ask(question) {
     const q = question.trim()
-    if (!q || busy || uploading.length) return
+    if (!q || busy || uploading.length || outToday) return
     const next = [...messages, { role: 'user', content: q, files: files.map((f) => f.name) }]
     setMessages(next)
     setText('')
@@ -147,9 +147,13 @@ function Advisor({ onAuthError, report }) {
         }),
       })
       setMessages((m) => [...m, { role: 'assistant', content: r.reply, answer: r.answer, costInr: r.costInr }])
-      setUsage((u) => (u ? { ...u, spentInr: Math.round((u.spentInr + (r.costInr || 0)) * 100) / 100 } : u))
+      setUsage((u) => (u ? { ...u, spentInr: Math.round((u.spentInr + (r.costInr || 0)) * 100) / 100, questionsToday: (u.questionsToday || 0) + 1 } : u))
     } catch (err) {
-      if (!onAuthError(err)) setMessages((m) => [...m, { role: 'assistant', content: err.message || 'Something went wrong.', error: true }])
+      if (onAuthError(err)) return
+      // 429: today's question limit (or the monthly ₹ limit) — shown as its own "Rate limited" notice.
+      const limited = err.status === 429
+      if (limited && /Rate limited/i.test(err.message || '')) setUsage((u) => (u ? { ...u, questionsToday: u.dailyLimit } : u))
+      setMessages((m) => [...m, { role: 'assistant', content: err.message || 'Something went wrong.', error: true, limited }])
     } finally {
       setBusy(false)
     }
@@ -166,6 +170,9 @@ function Advisor({ onAuthError, report }) {
   }
 
   const pct = usage ? Math.min(100, (usage.spentInr / usage.capInr) * 100) : 0
+  const dayLimit = usage?.dailyLimit || 10
+  const asked = usage?.questionsToday || 0
+  const outToday = usage ? asked >= dayLimit : false
   return (
     <div className="av">
       <section className="av-chat" aria-label="Business Advisor">
@@ -199,8 +206,9 @@ function Advisor({ onAuthError, report }) {
                 </div>
               </div>
             ) : (
-              <div key={i} className={`av-msg is-${m.role}${m.error ? ' is-error' : ''}`}>
-                {m.role === 'assistant' ? <Markdown text={m.content} /> : m.content}
+              <div key={i} className={`av-msg is-${m.role}${m.error ? ' is-error' : ''}${m.limited ? ' is-limited' : ''}`} role={m.limited ? 'alert' : undefined}>
+                {m.limited && <strong className="av-limited-title">⛔ Rate limited</strong>}
+                {m.role === 'assistant' ? <Markdown text={m.limited ? m.content.replace(/^Rate limited:\s*/i, '') : m.content} /> : m.content}
                 {m.files?.length > 0 && <span className="av-msg-files">📎 {m.files.join(', ')}</span>}
               </div>
             )
@@ -242,7 +250,7 @@ function Advisor({ onAuthError, report }) {
             placeholder={dragging ? 'Drop files to attach…' : 'Ask a question, describe a strategy, or attach a file (📎 or drag & drop)…'}
             aria-label="Ask the Business Advisor"
           />
-          <button type="submit" disabled={busy || !text.trim() || uploading.length > 0}>Ask</button>
+          <button type="submit" disabled={busy || !text.trim() || uploading.length > 0 || outToday}>Ask</button>
         </form>
         <p className="av-foot">
           Uses live data for {report?.range?.label?.toLowerCase() || 'the selected period'} (change it at the top).
@@ -252,7 +260,13 @@ function Advisor({ onAuthError, report }) {
       </section>
 
       {usage && (
-        <aside className="av-usage" aria-label="Advisor usage this month">
+        <aside className="av-usage" aria-label="Advisor usage">
+          <div className="av-usage-row">
+            <span>Today</span>
+            <strong>{asked} <small>of {dayLimit} questions</small></strong>
+          </div>
+          <div className="av-meter"><span style={{ width: Math.min(100, (asked / dayLimit) * 100) + '%' }} className={asked >= dayLimit - 2 ? 'is-high' : ''} /></div>
+          {outToday && <p className="av-usage-limited" role="status">⛔ Rate limited — today's {dayLimit} questions are used. Resets at midnight.</p>}
           <div className="av-usage-row">
             <span>This month</span>
             <strong>₹{usage.spentInr.toFixed(2)} <small>of ₹{usage.capInr}</small></strong>

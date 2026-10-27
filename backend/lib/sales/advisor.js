@@ -27,6 +27,10 @@ const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kol
 const month = () => today().slice(0, 7)
 const SPEND_KEY = () => 'advisor_spend_inr:' + month()
 const CAP_KEY = 'advisor_monthly_cap_inr'
+// Questions a day, for the whole team (owner, Oct 2026: 10), reset at midnight India time.
+const DAILY_KEY = () => 'advisor_questions:' + today()
+const DAILY_LIMIT_KEY = 'advisor_daily_limit'
+const DEFAULT_DAILY_LIMIT = 10
 
 let client = null
 // Tests replace the model call (there is no Vertex AI in the test database run).
@@ -216,9 +220,19 @@ Reply in the JSON format you are given; the dashboard draws it.
 // ---------------------------------------------------------------- spend
 
 async function spentThisMonth() {
-  const { rows } = await query(`select key, value from company_settings where key = any($1)`, [[SPEND_KEY(), CAP_KEY]])
+  const { rows } = await query(`select key, value from company_settings where key = any($1)`, [[SPEND_KEY(), CAP_KEY, DAILY_KEY(), DAILY_LIMIT_KEY]])
   const v = Object.fromEntries(rows.map((r) => [r.key, Number(r.value)]))
-  return { spent: v[SPEND_KEY()] || 0, cap: v[CAP_KEY] || DEFAULT_CAP_INR }
+  return {
+    spent: v[SPEND_KEY()] || 0, cap: v[CAP_KEY] || DEFAULT_CAP_INR,
+    today: v[DAILY_KEY()] || 0, dailyLimit: v[DAILY_LIMIT_KEY] || DEFAULT_DAILY_LIMIT,
+  }
+}
+
+async function countQuestion() {
+  await query(
+    `insert into company_settings (key, value, updated_at) values ($1, '1', now())
+     on conflict (key) do update set value = (coalesce(nullif(company_settings.value, '')::int, 0) + 1)::text, updated_at = now()`,
+    [DAILY_KEY()])
 }
 
 function priceInr(usage = {}) {
@@ -238,8 +252,8 @@ async function addSpend(inr) {
 
 /** This month's spend and the cap, for the page. */
 export async function advisorUsage() {
-  const { spent, cap } = await spentThisMonth()
-  return { month: month(), spentInr: Math.round(spent * 100) / 100, capInr: cap, model: MODEL() }
+  const { spent, cap, today: asked, dailyLimit } = await spentThisMonth()
+  return { month: month(), spentInr: Math.round(spent * 100) / 100, capInr: cap, model: MODEL(), questionsToday: asked, dailyLimit }
 }
 
 /** Change the monthly cap (₹50 – ₹50,000). */
@@ -440,7 +454,13 @@ export async function askAdvisor(staff, body = {}, { generate } = {}) {
     .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content.slice(0, 3000) }] }))
   if (!history.length || history.at(-1).role !== 'user') throw httpError('Ask a question.')
 
-  const { spent, cap } = await spentThisMonth()
+  const { spent, cap, today: asked, dailyLimit } = await spentThisMonth()
+  if (asked >= dailyLimit) {
+    throw httpError('Advisor daily limit', {
+      status: 429,
+      publicMessage: `Rate limited: today's limit of ${dailyLimit} Advisor questions has been reached. It resets at midnight (India time).`,
+    })
+  }
   if (spent >= cap) {
     throw httpError('Advisor cap reached', { status: 429, publicMessage: `This month's Advisor limit (₹${cap}) has been reached. Raise it in Settings or wait for next month.` })
   }
@@ -491,7 +511,9 @@ export async function askAdvisor(staff, body = {}, { generate } = {}) {
   // Every number the model was given, to check the answer's figures against.
   const known = collectNumbers(body.site || {})
   for (const t of attached.texts) for (const m of t.match(/-?\d[\d,]*(\.\d+)?/g) || []) known.add(Number(m.replace(/,/g, '')))
+  let answered = false
   const done = (text) => {
+    answered = true
     const answer = parseAnswer(text, known)
     return { answer, reply: answerText(answer), used, costInr: Math.round(cost * 100) / 100 }
   }
@@ -531,6 +553,8 @@ export async function askAdvisor(staff, body = {}, { generate } = {}) {
     throw httpError('Advisor failed: ' + err.message, { status: 502, publicMessage: 'The Advisor could not answer just now. Please try again in a minute.' })
   } finally {
     if (cost > 0) await addSpend(cost).catch((e) => console.error('[advisor] spend', e.message))
+    // Only answered questions count towards today's limit.
+    if (answered) await countQuestion().catch((e) => console.error('[advisor] count', e.message))
     console.log('[advisor]', JSON.stringify({ staff: staff?.email, tools: used, costInr: Math.round(cost * 100) / 100 }))
   }
 }

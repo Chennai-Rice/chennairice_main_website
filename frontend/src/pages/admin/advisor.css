@@ -72,6 +72,11 @@
 .av-cap { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .av-cap input { width: 90px; padding: 5px 8px; border: 1px solid var(--ad-line-strong); border-radius: 8px; font: inherit; }
 .av-usage p { margin: 12px 0 0; font-size: 12px; }
+.av-usage .av-usage-row + .av-meter + .av-usage-row, .av-usage .av-usage-limited + .av-usage-row { margin-top: 14px; }
+.av-usage .av-usage-limited { margin: 0 0 4px; padding: 8px 10px; border-radius: 10px; background: var(--ad-down-bg); color: var(--ad-down); font-weight: 600; }
+/* "Rate limited" notice in the chat. */
+.av-msg.is-limited { border: 1px solid #efc3bb; background: var(--ad-down-bg); color: var(--ad-down); }
+.av-limited-title { display: block; margin-bottom: 4px; font-size: 14.5px; }
 
 @media (max-width: 980px) {
   .av { grid-template-columns: minmax(0, 1fr); }
