@@ -17,8 +17,8 @@ const SUGGESTIONS = [
 ]
 const KEY = 'cr.wh.assistant'
 
-/** Just enough markdown for the answers: bold, bullet lists and small tables. */
-function Markdown({ text }) {
+/** Just enough markdown for the answers: bold, bullet lists and small tables (also used by the admin Business Advisor). */
+export function Markdown({ text }) {
   const inline = (s) => s.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) =>
     part.startsWith('**') && part.endsWith('**') ? <strong key={i}>{part.slice(2, -2)}</strong>
       : part.startsWith('`') && part.endsWith('`') ? <code key={i}>{part.slice(1, -1)}</code>

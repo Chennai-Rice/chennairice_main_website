@@ -2031,3 +2031,46 @@ test('warehouse assistant: answers through the live-data tools; amounts only for
     delete process.env.STAFF_GROQ_API_KEY
   }
 })
+
+test('business advisor: answers through the analytics tools, counts the spend, stops at the monthly cap; owner and IT only', async () => {
+  const { setAdvisorGenerateForTests } = await import('../lib/sales/advisor.js')
+  const asked = []
+  // Stand-in for Gemini: first asks for the business report and loyalty, then answers.
+  setAdvisorGenerateForTests(async (req) => {
+    asked.push(req)
+    const answered = req.contents.some((c) => c.parts?.some((p) => p.functionResponse))
+    const usageMetadata = { promptTokenCount: 10000, candidatesTokenCount: 500 }
+    if (answered) return { text: 'Verdict: Suitable with changes.', usageMetadata, candidates: [{ content: { role: 'model', parts: [{ text: 'x' }] } }] }
+    const calls = [{ id: 'a', name: 'business_report', args: {} }, { id: 'b', name: 'customer_loyalty', args: { lapsed_after_days: 30 } }]
+    return { functionCalls: calls, usageMetadata, candidates: [{ content: { role: 'model', parts: calls.map((c) => ({ functionCall: c })) } }] }
+  })
+  try {
+    const ask = (token, extra = {}) => api('POST', '/api/admin/advisor', { token, body: { messages: [{ role: 'user', content: 'Should we give 10% off on 26 kg?' }], site: { visitors: 135 }, from: '2026-10-01', to: '2026-10-07', ...extra } })
+    const r = await ask(OWNER)
+    assert.equal(r.status, 200, JSON.stringify(r.body))
+    assert.equal(r.body.reply, 'Verdict: Suitable with changes.')
+    assert.deepEqual(r.body.used.sort(), ['business_report', 'customer_loyalty'])
+    // 2 calls × (10,000 in × $0.25 + 500 out × $1.50) / 1M × ₹84
+    assert.equal(r.body.costInr, Math.round(2 * ((10000 * 0.25 + 500 * 1.5) / 1e6) * 84 * 100) / 100)
+    // The page's website analytics travel with the question, marked as data.
+    assert.match(asked[0].contents[0].parts[0].text, /WEBSITE ANALYTICS[\s\S]*"visitors":135/)
+    const results = asked[1].contents.at(-1).parts.map((p) => p.functionResponse)
+    assert.ok(results[0].response.result.sales && results[0].response.result.leads.list === undefined)
+    assert.ok(results[1].response.result.customers >= 1)
+
+    const usage = await api('GET', '/api/admin/advisor/usage', { token: OWNER })
+    assert.ok(usage.body.spentInr > 0 && usage.body.capInr === 500)
+    // Over the cap: refused until the cap is raised.
+    assert.equal((await api('PUT', '/api/admin/advisor/cap', { token: OWNER, body: { capInr: 50 } })).status, 200)
+    await db.query(`update company_settings set value = '60' where key like 'advisor_spend_inr:%'`)
+    const capped = await ask(OWNER)
+    assert.equal(capped.status, 429)
+    assert.match(capped.body.error, /limit \(₹50\)/)
+    assert.equal((await api('PUT', '/api/admin/advisor/cap', { token: OWNER, body: { capInr: 5 } })).status, 400)
+
+    // Warehouse staff cannot use it.
+    assert.equal((await ask('store@x.test|uid-store')).status, 403)
+  } finally {
+    setAdvisorGenerateForTests(null)
+  }
+})

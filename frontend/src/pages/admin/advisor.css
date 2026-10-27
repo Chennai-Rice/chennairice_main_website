@@ -1,0 +1,81 @@
+/* /admin → Business Advisor (AdvisorPanel.jsx). The admin palette (--ad-*):
+   white cards, maroon accent; the chat on the left, this month's usage on
+   the right (below it on phones). */
+.av { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 18px; align-items: start; }
+
+.av-chat {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 200px);
+  padding: 20px;
+  border-radius: 18px;
+  background: var(--ad-surface);
+  box-shadow: var(--ad-shadow);
+}
+.av-log { flex: 1 1 auto; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding-bottom: 8px; }
+
+.av-welcome { max-width: 720px; margin: 4px auto 0; text-align: center; }
+.av-badge {
+  display: inline-block; padding: 5px 12px; border-radius: 999px;
+  background: var(--ad-accent-wash); color: var(--ad-accent); font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+}
+.av-welcome h2 { margin: 12px 0 6px; font-size: 26px; font-weight: 700; color: var(--ad-ink); }
+.av-welcome p { margin: 0 auto; max-width: 600px; font-size: 14.5px; line-height: 1.65; color: var(--ad-muted); }
+.av-suggest { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 22px; text-align: left; }
+.av-suggest button {
+  padding: 12px 14px; border: 1px solid var(--ad-line); border-radius: 12px; background: var(--ad-bg);
+  font: inherit; font-size: 13.5px; line-height: 1.45; color: var(--ad-ink); text-align: left; cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.av-suggest button:hover { border-color: var(--ad-accent-soft); background: var(--ad-accent-wash); }
+
+.av-msg { max-width: min(760px, 92%); padding: 12px 16px; border-radius: 14px; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.av-msg.is-user { align-self: flex-end; background: var(--ad-ink); color: #fff; border-bottom-right-radius: 4px; }
+.av-msg.is-assistant { align-self: flex-start; background: var(--ad-bg); color: var(--ad-ink); border: 1px solid var(--ad-line); border-bottom-left-radius: 4px; }
+.av-msg.is-error { background: var(--ad-down-bg); border-color: transparent; color: var(--ad-down); }
+.av-msg p { margin: 0 0 8px; }
+.av-msg p:last-child { margin-bottom: 0; }
+.av-msg ul { margin: 2px 0 8px; padding-left: 20px; }
+.av-msg li { margin: 3px 0; }
+.av-msg strong { font-weight: 700; }
+.av-msg code { font-size: 12.5px; padding: 1px 5px; border-radius: 4px; background: rgba(0, 0, 0, 0.06); }
+.av-msg .wa-table { margin: 6px 0 10px; overflow-x: auto; }
+.av-msg .wa-table table { border-collapse: collapse; font-size: 13px; }
+.av-msg .wa-table th, .av-msg .wa-table td { padding: 6px 10px; border-bottom: 1px solid var(--ad-line); text-align: left; white-space: nowrap; }
+.av-msg .wa-table th { font-weight: 600; color: var(--ad-muted); background: rgba(0, 0, 0, 0.02); }
+
+.av-typing { display: flex; align-items: center; gap: 5px; }
+.av-typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--ad-accent); opacity: 0.35; animation: av-dot 1s infinite ease-in-out; }
+.av-typing span:nth-child(2) { animation-delay: 0.15s; }
+.av-typing span:nth-child(3) { animation-delay: 0.3s; }
+.av-typing em { margin-left: 6px; font-style: normal; font-size: 13px; color: var(--ad-muted); }
+@keyframes av-dot { 50% { opacity: 1; transform: translateY(-2px); } }
+
+.av-form { display: flex; gap: 10px; align-items: flex-end; margin-top: 12px; padding: 8px; border: 1px solid var(--ad-line-strong); border-radius: 14px; background: #fff; }
+.av-form:focus-within { border-color: var(--ad-accent-soft); box-shadow: 0 0 0 3px var(--ad-accent-wash); }
+.av-form textarea { flex: 1 1 auto; min-height: 44px; max-height: 180px; padding: 8px 10px; border: 0; outline: 0; resize: vertical; font: inherit; font-size: 14.5px; color: var(--ad-ink); background: transparent; }
+.av-form button { height: 42px; padding: 0 22px; border: 0; border-radius: 10px; background: var(--ad-accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.av-form button:hover:not(:disabled) { background: var(--ad-accent-hover); }
+.av-form button:disabled { opacity: 0.45; cursor: default; }
+.av-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 10px 2px 0; font-size: 12px; color: var(--ad-muted); }
+.av-foot button { margin-left: auto; padding: 4px 10px; border: 1px solid var(--ad-line); border-radius: 8px; background: #fff; font: inherit; font-size: 12px; color: var(--ad-ink); cursor: pointer; }
+
+.av-usage { position: sticky; top: 16px; padding: 16px; border-radius: 18px; background: var(--ad-surface); box-shadow: var(--ad-shadow); font-size: 13px; color: var(--ad-muted); }
+.av-usage-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.av-usage-row strong { font-size: 18px; color: var(--ad-ink); }
+.av-usage-row small { font-size: 12.5px; font-weight: 500; color: var(--ad-muted); }
+.av-meter { height: 8px; margin: 10px 0 12px; border-radius: 4px; background: var(--ad-bg); overflow: hidden; }
+.av-meter span { display: block; height: 100%; border-radius: 4px; background: var(--ad-up); }
+.av-meter span.is-high { background: var(--ad-down); }
+.av-cap-edit, .av-cap button { padding: 5px 10px; border: 1px solid var(--ad-line); border-radius: 8px; background: #fff; font: inherit; font-size: 12.5px; color: var(--ad-ink); cursor: pointer; }
+.av-cap { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.av-cap input { width: 90px; padding: 5px 8px; border: 1px solid var(--ad-line-strong); border-radius: 8px; font: inherit; }
+.av-usage p { margin: 12px 0 0; font-size: 12px; }
+
+@media (max-width: 980px) {
+  .av { grid-template-columns: minmax(0, 1fr); }
+  .av-usage { position: static; order: -1; }
+  .av-chat { min-height: 70vh; padding: 14px; }
+  .av-welcome h2 { font-size: 22px; }
+}
+@media (prefers-reduced-motion: reduce) { .av-typing span { animation: none; } }

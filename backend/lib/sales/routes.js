@@ -36,6 +36,7 @@ import { invoiceHtml, packingSlipHtml } from './documents.js'
 import { recordVisit, sourcesReport, sourceOrders, sourcePeople, saveContestLead, startContestLead, contestLeads } from './attribution.js'
 import { saveExpoLead, listExpoLeads, deleteExpoLead } from './expo.js'
 import { askAssistant } from './assistant.js'
+import { askAdvisor, advisorUsage, setAdvisorCap } from './advisor.js'
 import { analystReport, analystSettings, setRiceType, setMonthlyTarget, addAdSpend, deleteAdSpend } from './analyst.js'
 import { checkAutomationKey, automationContacts } from './automation.js'
 import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
@@ -403,6 +404,18 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.json(await warehouseReport(req.query))
   }))
   // The Analyst page: KPIs for a period (?from&to as India dates, ?rice=raw|idli|boiled), and its settings.
+  // Business Advisor (Gemini on Vertex AI): a question in, analysis and suggestions out; this month's spend and cap.
+  admin.post('/advisor', perm('analyst.view'), rateLimit({ windowMs: 60000, max: 20 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await askAdvisor(req.staff, req.body))
+  }))
+  admin.get('/advisor/usage', perm('analyst.view'), wrap(async (_req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await advisorUsage())
+  }))
+  admin.put('/advisor/cap', perm('analyst.view'), wrap(async (req, res) => {
+    res.json(await setAdvisorCap(req.body?.capInr))
+  }))
   admin.get('/analyst', perm('analyst.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await analystReport(req.query))

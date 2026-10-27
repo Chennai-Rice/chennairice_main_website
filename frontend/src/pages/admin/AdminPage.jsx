@@ -20,6 +20,7 @@ import JournalPanel from '../blog/JournalPanel.jsx'
 import CampaignsPanel from './CampaignsPanel.jsx'
 import EnquiriesPanel from './EnquiriesPanel.jsx'
 import AnalystPanel from './AnalystPanel.jsx'
+import AdvisorPanel from './AdvisorPanel.jsx'
 import { LoadingRegion } from './components/ui.jsx'
 import {
   BehaviourView,
@@ -59,6 +60,7 @@ const ANALYTICS_NAV = [
   { id: 'scroll', label: 'Scroll depth', subtitle: 'How far down pages are read', icon: 'depth' },
   { id: 'realtime', label: 'Realtime', subtitle: 'Who is on the site now', icon: 'pulse' },
   { id: 'analyst', label: 'Analyst', subtitle: 'Sales, leads, campaigns and delivery — the KPI dashboard', icon: 'grid' },
+  { id: 'advisor', label: 'Business Advisor', subtitle: 'Ask about the business — analysis, suggestions and strategy checks', icon: 'spark' },
   { id: 'campaigns', label: 'Ad campaigns', subtitle: 'Orders from Meta ads, Google Ads and direct visits', icon: 'target' },
   { id: 'enquiries', label: 'Enquiries', subtitle: 'Contact and bulk-order enquiries from the website', icon: 'mail' },
 ]
@@ -477,6 +479,8 @@ function Dashboard({ session, access, onSignOut }) {
             <CampaignsPanel />
           ) : view === 'enquiries' ? (
             <EnquiriesPanel />
+          ) : view === 'advisor' ? (
+            <AdvisorPanel report={report} />
           ) : needsInteractions ? (
             <>
               {view === 'behaviour' && (

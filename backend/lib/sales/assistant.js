@@ -20,7 +20,7 @@ const range = (a = {}) => ({
   to: DATE.test(str(a.to)) ? str(a.to) : today(),
 })
 
-const TOOLS = [
+export const TOOLS = [
   {
     name: 'dashboard_summary',
     description: 'Right now: orders to dispatch, dispatched, delivered, open issues, today vs yesterday, this month by status, top products this month, low stock, the 6 latest orders, and the last 14 days per day (orders, dispatched, delivered, issues).',
@@ -64,8 +64,8 @@ const TOOLS = [
   },
 ]
 
-/** The tools, bound to what this staff member may see. */
-function toolRunner({ money }) {
+/** The tools, bound to what this staff member may see (also used by the Business Advisor, advisor.js). */
+export function toolRunner({ money }) {
   const revenue = money ? `, round(sum(i.line_total_paise) / 100.0)::int as revenue` : ''
   return {
     async dashboard_summary() {
