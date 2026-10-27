@@ -2044,11 +2044,14 @@ test('business advisor: answers through the analytics tools, counts the spend, s
       // The real customer count (from the loyalty tool) and one figure that is in no data.
       const loyalty = req.contents.at(-1).parts.find((p) => p.functionResponse.name === 'customer_loyalty').functionResponse.response.result
       const text = JSON.stringify({
-        answer: 'Suitable with changes.',
+        type: 'full', summary: 'Suitable with changes.',
+        findings: [{ text: 'Online buyers choose 5 kg.', kind: 'verified', source: 'Analyst report' }],
         numbers: [{ label: 'Customers', value: loyalty.customers, unit: 'count' }, { label: 'Made up', value: 987654, unit: 'inr' }],
         charts: [{ title: 'Customers', type: 'bar', unit: 'count', labels: ['All'], series: [{ name: 'Customers', values: [loyalty.customers] }] }],
         tables: [{ title: 'T', columns: ['Name', 'Value'], rows: [['x', '₹9,87,654']] }],
-        why: ['Because.'], actions: [{ title: 'Do it', why: 'w', firstStep: 'f', impact: 'high', effort: 'low' }],
+        whyItMatters: ['Because.'],
+        actions: [{ action: 'Later', reason: 'r', expectedImpact: 'e', measurement: 'm', priority: 'low' }, { action: 'Do it', reason: 'r', expectedImpact: 'e', effort: 'low', measurement: 'orders', priority: 'high' }],
+        followUps: ['What next?'],
         verdict: { label: 'suitable_with_changes', reasons: ['r'] }, sources: ['Analyst report'],
       })
       return { text, usageMetadata, candidates: [{ content: { role: 'model', parts: [{ text }] } }] }
@@ -2060,7 +2063,12 @@ test('business advisor: answers through the analytics tools, counts the spend, s
     const ask = (token, extra = {}) => api('POST', '/api/admin/advisor', { token, body: { messages: [{ role: 'user', content: 'Should we give 10% off on 26 kg?' }], site: { visitors: 135 }, from: '2026-10-01', to: '2026-10-07', ...extra } })
     const r = await ask(OWNER)
     assert.equal(r.status, 200, JSON.stringify(r.body))
-    assert.equal(r.body.answer.answer, 'Suitable with changes.')
+    assert.equal(r.body.answer.summary, 'Suitable with changes.')
+    // Actions come highest priority first; the text version carries the sections.
+    assert.deepEqual(r.body.answer.actions.map((x) => x.action), ['Do it', 'Later'])
+    assert.equal(r.body.answer.findings[0].kind, 'verified')
+    assert.deepEqual(r.body.answer.followUps, ['What next?'])
+    assert.match(r.body.reply, /Key findings:[\s\S]*Recommended actions:\n1\. \[high priority\] Do it/)
     // Figures found in the data are marked checked; one that is not, is not.
     assert.deepEqual(r.body.answer.numbers.map((x) => x.verified), [true, false])
     assert.equal(r.body.answer.charts[0].verified, true)
@@ -2138,7 +2146,7 @@ test('business advisor files: CSV, Excel, image, PDF checks; exact sums through 
       const tool = req.contents.at(-1).parts.find((q) => q.functionResponse)
       const usageMetadata = { promptTokenCount: 1000, candidatesTokenCount: 100 }
       if (tool) {
-        const text = JSON.stringify({ answer: 'Salem leads.', numbers: [{ label: 'Salem kg', value: tool.functionResponse.response.result.rows[0]['sum of Kg'], unit: 'kg' }], why: [], actions: [], sources: ['distributors.csv'] })
+        const text = JSON.stringify({ type: 'simple', summary: 'Salem leads.', numbers: [{ label: 'Salem kg', value: tool.functionResponse.response.result.rows[0]['sum of Kg'], unit: 'kg' }], sources: ['distributors.csv'] })
         return { text, usageMetadata, candidates: [{ content: { role: 'model', parts: [{ text }] } }] }
       }
       const call = { id: 't', name: 'table_query', args: { file: c.body.id, group_by: ['City'], measures: [{ op: 'sum', column: 'Kg' }, { op: 'sum', column: 'Amount' }], sort_by: 'sum of Kg' } }

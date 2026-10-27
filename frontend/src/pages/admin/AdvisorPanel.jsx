@@ -188,7 +188,7 @@ function Advisor({ onAuthError, report }) {
           {messages.map((m, i) => (
             m.answer ? (
               <div key={i} className={`av-msg is-assistant is-answer${printing === i ? ' is-printing' : ''}`}>
-                <AdvisorAnswer answer={m.answer} />
+                <AdvisorAnswer answer={m.answer} onAsk={ask} />
                 <div className="av-msg-tools">
                   <button type="button" onClick={() => copy(m.content, i)}>{copied === i ? 'Copied ✓' : 'Copy'}</button>
                   <button type="button" onClick={() => print(i)}>Print / Save PDF</button>

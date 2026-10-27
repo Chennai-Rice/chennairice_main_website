@@ -3,8 +3,10 @@ import './advisor-answer.css'
 
 /*
   One Business Advisor answer, drawn from its structured JSON (advisor.js):
-  headline → number tiles → charts → tables → why → actions → verdict →
-  caveats → data used. Figures the server found in the data carry a ✓;
+  Executive Summary → Key Findings (tiles, findings marked verified /
+  calculated / hypothesis, charts) → tables → Why It Matters → Recommended
+  Actions (priority, reason, impact, effort, measurement) → verdict → Risks
+  and Limitations → follow-up questions → data used (owner's response format). Figures the server found in the data carry a ✓;
   anything it could not match is marked "check" so a made-up number is never
   shown as fact.
 
@@ -62,6 +64,7 @@ function Numbers({ items }) {
             {Number.isFinite(n.change) && (
               <span className={n.change >= 0 ? 'ava-up' : 'ava-down'}>{n.change >= 0 ? '↑' : '↓'} {fmtNum(Math.abs(n.change))}%</span>
             )}
+            {Number.isFinite(n.change) && n.baseline && <small className="ava-base">{n.baseline}</small>}
             <Check ok={n.verified} />
           </span>
         </div>
@@ -320,12 +323,18 @@ const VERDICT = {
   suitable_with_changes: { icon: '⚠️', text: 'Suitable with changes', tone: 'warn' },
   not_suitable: { icon: '❌', text: 'Not suitable for us', tone: 'bad' },
 }
-const DOTS = { high: 3, medium: 2, low: 1 }
-const Dots = ({ level, label }) => (
-  <span className="ava-dots" title={`${label}: ${level}`}>
-    {label} {[1, 2, 3].map((d) => <i key={d} className={d <= (DOTS[level] || 0) ? 'on' : ''} />)}
-  </span>
-)
+const KIND = { verified: 'Verified', calculated: 'Calculated', hypothesis: 'Hypothesis' }
+const PRIORITY = { high: 'High priority', medium: 'Medium priority', low: 'Low priority' }
+const EFFORT = { high: 'High', medium: 'Medium', low: 'Low' }
+
+function Section({ title, children, className = '' }) {
+  return (
+    <section className={`ava-sec ${className}`}>
+      {title && <h4>{title}</h4>}
+      {children}
+    </section>
+  )
+}
 
 function Verdict({ v }) {
   const meta = VERDICT[v.label] || VERDICT.suitable_with_changes
@@ -337,45 +346,98 @@ function Verdict({ v }) {
       <div className="ava-verdict-grid">
         {list('Why', v.reasons)}
         {list('Risks', v.risks)}
-        {line('Expected effect (estimate)', v.expectedEffect)}
         {line('Better alternative', v.alternative)}
         {line('Test it small first', v.testSmall)}
-        {list('What to watch', v.watch)}
       </div>
     </section>
   )
 }
 
-export default function AdvisorAnswer({ answer }) {
-  const a = answer
+/** Answers saved before Oct 27 used other field names; read them too. */
+function normalise(a) {
+  return {
+    ...a,
+    summary: a.summary ?? a.answer,
+    whyItMatters: a.whyItMatters ?? a.why ?? [],
+    actions: (a.actions || []).map((x) => (x.action ? x : { action: x.title, reason: x.why, expectedImpact: '', effort: x.effort, measurement: x.firstStep, priority: x.impact })),
+    risks: a.risks ?? a.caveats ?? [],
+  }
+}
+
+export default function AdvisorAnswer({ answer, onAsk }) {
+  const simple = answer.type === 'simple'
+  // A simple question gets a direct answer: no analysis sections, even if the model filled some.
+  const a = simple
+    ? { ...normalise(answer), findings: [], charts: [], whyItMatters: [], actions: [], risks: [], missingData: [], verdict: null }
+    : normalise(answer)
   return (
-    <article className="ava">
-      <p className="ava-headline">{a.answer}</p>
-      <Numbers items={a.numbers} />
-      {a.charts?.length > 0 && <div className="ava-charts">{a.charts.map((c, i) => <Chart key={i} chart={c} />)}</div>}
-      {a.tables?.map((t, i) => <DataTable key={i} table={t} />)}
-      {a.why?.length > 0 && (
-        <section className="ava-why">
-          <h4>Why</h4>
-          <ul>{a.why.map((w, i) => <li key={i}>{w}</li>)}</ul>
-        </section>
+    <article className={`ava${simple ? ' is-simple' : ''}`}>
+      {simple ? <p className="ava-headline">{a.summary}</p> : (
+        <Section title="Executive Summary" className="ava-summary"><p className="ava-headline">{a.summary}</p></Section>
       )}
+      {a.clarifyingQuestion && <p className="ava-clarify"><b>To answer more precisely:</b> {a.clarifyingQuestion}</p>}
+
+      {(a.numbers?.length > 0 || a.findings?.length > 0 || a.charts?.length > 0) && (
+        <Section title={simple ? '' : 'Key Findings'} className="ava-findings">
+          <Numbers items={a.numbers} />
+          {a.findings?.length > 0 && (
+            <ul className="ava-findlist">
+              {a.findings.map((f, i) => (
+                <li key={i}>
+                  <span className={`ava-kind is-${f.kind}`}>{KIND[f.kind] || f.kind}</span>
+                  <span>{f.text}{f.source && <small> — {f.source}</small>}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {a.charts?.length > 0 && <div className="ava-charts">{a.charts.map((c, i) => <Chart key={i} chart={c} />)}</div>}
+        </Section>
+      )}
+      {a.tables?.map((t, i) => <DataTable key={i} table={t} />)}
+
+      {a.whyItMatters?.length > 0 && (
+        <Section title="Why It Matters" className="ava-why">
+          <ul>{a.whyItMatters.map((w, i) => <li key={i}>{w}</li>)}</ul>
+        </Section>
+      )}
+
       {a.actions?.length > 0 && (
-        <section className="ava-actions">
-          <h4>What to do</h4>
+        <Section title="Recommended Actions" className="ava-actions">
           <ol>
             {a.actions.map((x, i) => (
               <li key={i}>
-                <div className="ava-action-top"><strong>{x.title}</strong><span><Dots level={x.impact} label="Impact" /><Dots level={x.effort} label="Effort" /></span></div>
-                <p>{x.why}</p>
-                <p className="ava-first"><b>First step:</b> {x.firstStep}</p>
+                <div className="ava-action-top">
+                  <strong>{x.action}</strong>
+                  {x.priority && <span className={`ava-prio is-${x.priority}`}>{PRIORITY[x.priority] || x.priority}</span>}
+                </div>
+                <dl>
+                  {x.reason && <><dt>Reason</dt><dd>{x.reason}</dd></>}
+                  {x.expectedImpact && <><dt>Expected impact</dt><dd>{x.expectedImpact}</dd></>}
+                  {x.effort && <><dt>Effort</dt><dd>{EFFORT[x.effort] || x.effort}</dd></>}
+                  {x.measurement && <><dt>Measurement</dt><dd>{x.measurement}</dd></>}
+                </dl>
               </li>
             ))}
           </ol>
-        </section>
+        </Section>
       )}
+
       {a.verdict && <Verdict v={a.verdict} />}
-      {a.caveats?.length > 0 && <p className="ava-caveats"><b>Note:</b> {a.caveats.join(' ')}</p>}
+
+      {(a.risks?.length > 0 || a.missingData?.length > 0) && (
+        <Section title="Risks and Limitations" className="ava-risks">
+          <ul>
+            {a.risks.map((r, i) => <li key={'r' + i}>{r}</li>)}
+            {(a.missingData || []).map((m, i) => <li key={'m' + i}><b>Missing data:</b> {m}</li>)}
+          </ul>
+        </Section>
+      )}
+
+      {a.followUps?.length > 0 && onAsk && (
+        <div className="ava-followups" aria-label="Suggested follow-up questions">
+          {a.followUps.map((q, i) => <button key={i} type="button" onClick={() => onAsk(q)}>{q} →</button>)}
+        </div>
+      )}
       {a.sources?.length > 0 && <p className="ava-sources">Data used: {a.sources.join(' · ')}</p>}
     </article>
   )
