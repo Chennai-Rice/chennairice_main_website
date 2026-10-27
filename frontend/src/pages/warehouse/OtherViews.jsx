@@ -127,7 +127,7 @@ export function CustomersView({ say, onAuthError, onOpenOrders }) {
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('') // '' | converted | not_converted
   const [page, setPage] = useState(1)
-  const [source, setSource] = useState('') // '' | Meta | WhatsApp | Google Ads | ...
+  const [source, setSource] = useState('') // '' | Meta | WhatsApp | Expo QR | Google Ads | ...
   useEffect(() => { setPage(1) }, [status, source])
   useEffect(() => {
     const t = window.setTimeout(() => { setQ(draft.trim()); setPage(1) }, 400)
@@ -180,7 +180,7 @@ export function CustomersView({ say, onAuthError, onOpenOrders }) {
           ))}
         </div>
         <div className="wh-seg" role="group" aria-label="Source">
-          {['', 'Meta', 'WhatsApp', 'Google Ads', 'Google search', 'Direct'].map((key) => (
+          {['', 'Meta', 'WhatsApp', 'Expo QR', 'Google Ads', 'Google search', 'Direct'].map((key) => (
             <button key={key || 'any'} type="button" className={`wh-seg-btn${source === key ? ' is-active' : ''}`} aria-pressed={source === key} onClick={() => setSource(key)}>
               {key || 'All sources'}
             </button>
