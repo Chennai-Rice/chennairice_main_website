@@ -61,7 +61,7 @@
 .av-foot button { margin-left: auto; padding: 4px 10px; border: 1px solid var(--ad-line); border-radius: 8px; background: #fff; font: inherit; font-size: 12px; color: var(--ad-ink); cursor: pointer; }
 
 /* Sticks just below the admin top bar (≈115px, itself sticky), so it never slides under it. */
-.av-usage { position: sticky; top: 132px; padding: 16px; border-radius: 18px; background: var(--ad-surface); box-shadow: var(--ad-shadow); font-size: 13px; color: var(--ad-muted); }
+.av-usage { position: sticky; top: 140px; padding: 16px; border-radius: 18px; background: var(--ad-surface); box-shadow: var(--ad-shadow); font-size: 13px; color: var(--ad-muted); }
 .av-usage-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .av-usage-row strong { font-size: 18px; color: var(--ad-ink); }
 .av-usage-row small { font-size: 12.5px; font-weight: 500; color: var(--ad-muted); }
