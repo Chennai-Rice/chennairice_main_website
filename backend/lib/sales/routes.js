@@ -37,6 +37,7 @@ import { recordVisit, sourcesReport, sourceOrders, sourcePeople, saveContestLead
 import { saveExpoLead, listExpoLeads, deleteExpoLead } from './expo.js'
 import { askAssistant } from './assistant.js'
 import { askAdvisor, advisorUsage, setAdvisorCap } from './advisor.js'
+import { saveAdvisorFile, MAX_FILE_BYTES } from './advisor-files.js'
 import { analystReport, analystSettings, setRiceType, setMonthlyTarget, addAdSpend, deleteAdSpend } from './analyst.js'
 import { checkAutomationKey, automationContacts } from './automation.js'
 import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
@@ -409,6 +410,13 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.set('Cache-Control', 'no-store')
     res.json(await askAdvisor(req.staff, req.body))
   }))
+  // A file for the Advisor: the raw bytes (Content-Type application/octet-stream), its name in ?name=.
+  admin.post('/advisor/upload', perm('analyst.view'), rateLimit({ windowMs: 10 * 60000, max: 40 }),
+    express.raw({ type: 'application/octet-stream', limit: MAX_FILE_BYTES + 1024 }),
+    wrap(async (req, res) => {
+      const buffer = Buffer.isBuffer(req.body) && req.body.length ? req.body : req.rawBody
+      res.json(await saveAdvisorFile(req.staff, { name: req.query.name, buffer }))
+    }))
   admin.get('/advisor/usage', perm('analyst.view'), wrap(async (_req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await advisorUsage())

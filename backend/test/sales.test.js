@@ -2040,7 +2040,19 @@ test('business advisor: answers through the analytics tools, counts the spend, s
     asked.push(req)
     const answered = req.contents.some((c) => c.parts?.some((p) => p.functionResponse))
     const usageMetadata = { promptTokenCount: 10000, candidatesTokenCount: 500 }
-    if (answered) return { text: 'Verdict: Suitable with changes.', usageMetadata, candidates: [{ content: { role: 'model', parts: [{ text: 'x' }] } }] }
+    if (answered) {
+      // The real customer count (from the loyalty tool) and one figure that is in no data.
+      const loyalty = req.contents.at(-1).parts.find((p) => p.functionResponse.name === 'customer_loyalty').functionResponse.response.result
+      const text = JSON.stringify({
+        answer: 'Suitable with changes.',
+        numbers: [{ label: 'Customers', value: loyalty.customers, unit: 'count' }, { label: 'Made up', value: 987654, unit: 'inr' }],
+        charts: [{ title: 'Customers', type: 'bar', unit: 'count', labels: ['All'], series: [{ name: 'Customers', values: [loyalty.customers] }] }],
+        tables: [{ title: 'T', columns: ['Name', 'Value'], rows: [['x', '₹9,87,654']] }],
+        why: ['Because.'], actions: [{ title: 'Do it', why: 'w', firstStep: 'f', impact: 'high', effort: 'low' }],
+        verdict: { label: 'suitable_with_changes', reasons: ['r'] }, sources: ['Analyst report'],
+      })
+      return { text, usageMetadata, candidates: [{ content: { role: 'model', parts: [{ text }] } }] }
+    }
     const calls = [{ id: 'a', name: 'business_report', args: {} }, { id: 'b', name: 'customer_loyalty', args: { lapsed_after_days: 30 } }]
     return { functionCalls: calls, usageMetadata, candidates: [{ content: { role: 'model', parts: calls.map((c) => ({ functionCall: c })) } }] }
   })
@@ -2048,7 +2060,15 @@ test('business advisor: answers through the analytics tools, counts the spend, s
     const ask = (token, extra = {}) => api('POST', '/api/admin/advisor', { token, body: { messages: [{ role: 'user', content: 'Should we give 10% off on 26 kg?' }], site: { visitors: 135 }, from: '2026-10-01', to: '2026-10-07', ...extra } })
     const r = await ask(OWNER)
     assert.equal(r.status, 200, JSON.stringify(r.body))
-    assert.equal(r.body.reply, 'Verdict: Suitable with changes.')
+    assert.equal(r.body.answer.answer, 'Suitable with changes.')
+    // Figures found in the data are marked checked; one that is not, is not.
+    assert.deepEqual(r.body.answer.numbers.map((x) => x.verified), [true, false])
+    assert.equal(r.body.answer.charts[0].verified, true)
+    assert.equal(r.body.answer.tables[0].verified, false)
+    assert.equal(r.body.answer.verdict.label, 'suitable_with_changes')
+    assert.match(r.body.reply, /^Suitable with changes\.[\s\S]*Verdict: suitable with changes/)
+    // Asked for the structured format.
+    assert.equal(asked[0].config.responseMimeType, 'application/json')
     assert.deepEqual(r.body.used.sort(), ['business_report', 'customer_loyalty'])
     // 2 calls × (10,000 in × $0.25 + 500 out × $1.50) / 1M × ₹84
     assert.equal(r.body.costInr, Math.round(2 * ((10000 * 0.25 + 500 * 1.5) / 1e6) * 84 * 100) / 100)
@@ -2072,5 +2092,71 @@ test('business advisor: answers through the analytics tools, counts the spend, s
     assert.equal((await ask('store@x.test|uid-store')).status, 403)
   } finally {
     setAdvisorGenerateForTests(null)
+  }
+})
+
+test('business advisor files: CSV, Excel, image, PDF checks; exact sums through table_query; wrong or oversized files refused', async () => {
+  process.env.ADVISOR_BUCKET = 'memory'
+  const { setAdvisorGenerateForTests } = await import('../lib/sales/advisor.js')
+  await db.query(`update company_settings set value = '0' where key like 'advisor_spend_inr:%'`)
+  await api('PUT', '/api/admin/advisor/cap', { token: OWNER, body: { capInr: 500 } })
+  const upload = (name, bytes, token = OWNER) => api('POST', '/api/admin/advisor/upload?name=' + encodeURIComponent(name), {
+    token, raw: bytes, headers: { 'Content-Type': 'application/octet-stream' },
+  })
+  try {
+    // CSV with Indian number formats, quotes and a comma inside a quoted cell.
+    const csv = 'Distributor,City,Kg,Amount\r\n"Ramesh Traders, Salem",Salem,"1,200",₹54000\r\nKumar Stores,Erode,800,"₹36,000"\r\n\"Ramesh Traders, Salem\",Salem,400,18000\r\n'
+    const c = await upload('distributors.csv', Buffer.from(csv))
+    assert.equal(c.status, 200, JSON.stringify(c.body))
+    assert.deepEqual(c.body.sheets, [{ name: 'Sheet1', rows: 3, columns: 4 }])
+
+    // Excel, made here with exceljs.
+    const ExcelJS = (await import('exceljs')).default
+    const wb = new ExcelJS.Workbook()
+    const ws = wb.addWorksheet('Costs')
+    ws.addRow(['Product', 'Cost per kg'])
+    ws.addRow(['Kitchidi Ponni', 42.5])
+    ws.addRow(['Alibaba', { formula: '30+8', result: 38 }])
+    const x = await upload('costs.xlsx', Buffer.from(await wb.xlsx.writeBuffer()))
+    assert.equal(x.status, 200, JSON.stringify(x.body))
+    assert.equal(x.body.sheets[0].name, 'Costs')
+
+    // A tiny PNG is fine; a "PDF" that is not one, an unknown type and a file over 10 MB are refused.
+    const png = Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8ffff3f0005fe02fea7d6a5c00000000049454e44ae426082', 'hex')
+    const p = await upload('shelf.png', png)
+    assert.equal(p.status, 200)
+    assert.equal((await upload('report.pdf', Buffer.from('MZ not a pdf'))).status, 400)
+    assert.equal((await upload('tool.exe', Buffer.from('MZ'))).status, 400)
+    assert.equal((await upload('big.csv', Buffer.alloc(10 * 1024 * 1024 + 10, 65))).status, 413)
+    // Warehouse staff cannot upload.
+    assert.equal((await upload('d.csv', Buffer.from('a,b\n1,2'), 'store@x.test|uid-store')).status, 403)
+
+    // The model asks for kg and amount per city; the server adds them up exactly.
+    const asked = []
+    setAdvisorGenerateForTests(async (req) => {
+      asked.push(req)
+      const tool = req.contents.at(-1).parts.find((q) => q.functionResponse)
+      const usageMetadata = { promptTokenCount: 1000, candidatesTokenCount: 100 }
+      if (tool) {
+        const text = JSON.stringify({ answer: 'Salem leads.', numbers: [{ label: 'Salem kg', value: tool.functionResponse.response.result.rows[0]['sum of Kg'], unit: 'kg' }], why: [], actions: [], sources: ['distributors.csv'] })
+        return { text, usageMetadata, candidates: [{ content: { role: 'model', parts: [{ text }] } }] }
+      }
+      const call = { id: 't', name: 'table_query', args: { file: c.body.id, group_by: ['City'], measures: [{ op: 'sum', column: 'Kg' }, { op: 'sum', column: 'Amount' }], sort_by: 'sum of Kg' } }
+      return { functionCalls: [call], usageMetadata, candidates: [{ content: { role: 'model', parts: [{ functionCall: call }] } }] }
+    })
+    const r = await api('POST', '/api/admin/advisor', { token: OWNER, body: { messages: [{ role: 'user', content: 'Which city buys most?' }], files: [c.body.id, x.body.id, p.body.id] } })
+    assert.equal(r.status, 200, JSON.stringify(r.body))
+    const result = asked[1].contents.at(-1).parts[0].functionResponse.response.result
+    assert.deepEqual(result.rows, [{ City: 'Salem', 'sum of Kg': 1600, 'sum of Amount': 72000 }, { City: 'Erode', 'sum of Kg': 800, 'sum of Amount': 36000 }])
+    assert.equal(r.body.answer.numbers[0].value, 1600)
+    assert.equal(r.body.answer.numbers[0].verified, true)
+    // The question carried the image inline and the sheets as described text, and offered table_query.
+    const parts = asked[0].contents[0].parts
+    assert.ok(parts.some((q) => q.inlineData?.mimeType === 'image/png'))
+    assert.ok(parts.some((q) => /Sheet "Costs": 2 rows/.test(q.text || '')))
+    assert.ok(asked[0].config.tools[0].functionDeclarations.some((d) => d.name === 'table_query'))
+  } finally {
+    setAdvisorGenerateForTests(null)
+    delete process.env.ADVISOR_BUCKET
   }
 })
