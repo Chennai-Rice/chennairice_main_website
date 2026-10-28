@@ -2213,6 +2213,8 @@ test('checkout journeys: cart → checkout → details → payment → cancelled
   // "Purchased" is not believed while the order is unpaid.
   assert.equal((await step(j1, 'purchased', { orderId: pending.body.orderId })).body.stage, 'payment')
   await step(j1, 'cancelled', { orderId: pending.body.orderId, error: 'Cancelled by the customer' })
+  // An unproven 'purchased' does not reopen a cancelled journey.
+  assert.equal((await step(j1, 'purchased', { orderId: pending.body.orderId })).body.stage, 'cancelled')
 
   // Journey 2: pays; the browser never says "purchased", but the paid order makes it so.
   const j2 = crypto.randomUUID()

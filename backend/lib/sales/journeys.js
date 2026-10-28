@@ -75,7 +75,9 @@ export async function recordJourney(body = {}, { userAgent = '' } = {}) {
   const claimed = stage === 'purchased' && !(order && ['paid', 'partially_refunded'].includes(order.payment_status)) ? 'payment' : stage
 
   const { rows: [existing] } = await query('select stage from checkout_journeys where id = $1', [id])
-  const stageNow = nextStage(existing?.stage, claimed)
+  // An unproven "purchased" may move a journey up to payment, but never reopens a cancelled or failed one.
+  const unproven = stage === 'purchased' && claimed !== 'purchased'
+  const stageNow = unproven && ['cancelled', 'failed'].includes(existing?.stage) ? existing.stage : nextStage(existing?.stage, claimed)
   const a = order?.shipping_address || {}
   await query(
     `insert into checkout_journeys (id, stage, steps, items, value_paise, contact_name, contact_phone, contact_email, city, state, pincode,
