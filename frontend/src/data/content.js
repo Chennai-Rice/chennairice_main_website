@@ -420,66 +420,33 @@ export const FOOTER = {
 /* Home page FAQs (Chennai Rice SEO - Homepage, Oct 2026). Also published as
    FAQPage structured data by HomeFaq. */
 export const HOME_FAQS = [
-  // Chennai Rice – Frequently Asked Questions (owner, Oct 2026). `link` adds a link under the answer.
+  // Chennai Rice – Frequently Asked Questions: five, for SEO (owner, Oct 2026). `links` adds links under the answer.
   {
-    q: 'What is Chennai Rice?',
-    a: 'Chennai Rice is the rice brand of Chennai Rice Industries India Private Limited, a rice manufacturer in Erode, Tamil Nadu. We make Ponni, Idli, Rajabhogam and aged rice in 26 kg packs.',
+    q: 'Why Choose Chennai Rice?',
+    a: 'Chennai Rice combines modern rice milling technology, advanced grain sorting and quality checks to maintain consistent rice quality. From Ponni Rice to Kitchidi Ponni Rice, our products are carefully processed to meet the everyday cooking needs of South Indian households.',
   },
   {
-    q: 'Where is Chennai Rice made?',
-    a: 'All Chennai Rice is milled and packed at our plant in Nasiyanur, Erode, Tamil Nadu – 638102.',
-  },
-  {
-    q: 'Which Chennai Rice is best for everyday meals?',
-    a: 'For daily lunch and dinner, most families choose Chennai Rice United Ponni, Vijayanagaram or Kitchidi Ponni. They cook soft and non-sticky.',
+    q: 'Which Chennai Rice Is Best for Everyday Cooking?',
+    a: 'Special Rajabhogam Rice and Kitchidi Ponni Rice are among our most purchased rice varieties at Chennai Rice Industries. Popular among customers for everyday South Indian cooking, both varieties are preferred for daily lunch, dinner and traditional Tamil meals.',
+    links: [
+      { to: '/products/special-rajabhogam-rice', label: 'See Special Rajabhogam Rice' },
+      { to: '/products/kitchidi-ponni-rice', label: 'See Kitchidi Ponni Rice' },
+    ],
   },
   {
     q: 'Which Chennai Rice is best for idli?',
     a: 'Chennai Rice Special Idly Rice. It grinds into a smooth batter and ferments well for soft idlis.',
-    link: { to: '/products/special-idly-rice', label: 'See Special Idly Rice' },
-  },
-  {
-    q: 'What is the price of Chennai Rice 26 kg?',
-    a: 'Prices depend on the variety. See current prices on our products page. Shops and hotels can request wholesale rates.',
-    link: { to: '/rice-products', label: 'See current prices' },
+    links: [{ to: '/products/special-idly-rice', label: 'See Special Idly Rice' }],
   },
   {
     q: 'Can I buy Chennai Rice online?',
     a: 'Yes. Order on this website or on WhatsApp at 70666 46667.',
-    link: { href: 'https://wa.me/917066646667', label: 'Order on WhatsApp' },
+    links: [{ href: 'https://wa.me/917066646667', label: 'Order on WhatsApp' }],
   },
   {
     q: 'How do I become a Chennai Rice distributor?',
     a: 'Apply on our distributorship page. Our sales team will call you to discuss your area.',
-    link: { to: '/rice-distributorship', label: 'Apply for distributorship' },
-  },
-  {
-    q: 'Is Chennai Rice FSSAI certified?',
-    a: 'Yes. Chennai Rice Industries India Pvt Ltd holds FSSAI Licence No. 12415007000253.',
-  },
-  {
-    q: 'What is Ponni rice?',
-    a: 'Ponni rice is a medium grain white rice widely grown and eaten across Tamil Nadu. It cooks soft and light, absorbs the flavour of sambar, rasam and kuzhambu well, and is the most popular choice for everyday South Indian meals, curd rice and lunch boxes.',
-  },
-  {
-    q: 'What is the difference between raw rice and boiled rice?',
-    a: 'Raw rice (pachai arisi) is milled directly from dried paddy and cooks soft and slightly sticky, which suits pongal, payasam and sweet dishes. Boiled rice (puzhungal arisi) is made from paddy that is soaked, steamed and dried before milling. It cooks firmer, with grains that stay separate, and is commonly used for daily meals.',
-  },
-  {
-    q: 'What is parboiled rice?',
-    a: 'Parboiled rice is rice that has been partially boiled in its husk before milling. The process of soaking, steaming and drying moves some nutrients from the bran into the grain, makes the grain harder and helps it cook into firm, separate grains. In Tamil Nadu it is widely known as boiled rice or puzhungal arisi.',
-  },
-  {
-    q: 'What is aged rice and why does it cook better?',
-    a: 'Aged rice is stored for several months after harvest before it is sold. During ageing the grain loses moisture and firms up, so it absorbs more water, swells more and cooks into fluffy, separate grains instead of turning sticky.',
-  },
-  {
-    q: 'How can I enquire about bulk rice orders?',
-    a: 'Retailers, distributors, hotels, caterers and institutions can send a bulk order enquiry from our Bulk Order page with the rice variety, pack size and quantity they need, or call us on +91 70666 46667. Our team will get back to you with availability and supply details.',
-  },
-  {
-    q: 'How do I identify good quality rice?',
-    a: 'Good quality rice has grains of uniform size and colour, very few broken grains, and no stones, husk or dust. It should smell fresh and natural, with no musty odour. Rice that is graded and colour sorted during milling, like Chennai Rice, meets these standards consistently.',
+    links: [{ to: '/rice-distributorship', label: 'Apply for distributorship' }],
   },
 ]
 

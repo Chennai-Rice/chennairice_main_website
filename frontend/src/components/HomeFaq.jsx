@@ -27,9 +27,9 @@ export default function HomeFaq() {
                 <span className="home-faq-icon" aria-hidden="true" />
               </summary>
               <p className="home-faq-a">{f.a}</p>
-              {f.link && (f.link.to
-                ? <Link className="home-faq-link" to={f.link.to}>{f.link.label} →</Link>
-                : <a className="home-faq-link" href={f.link.href} target="_blank" rel="noopener noreferrer">{f.link.label} →</a>)}
+              {f.links?.map((l) => (l.to
+                ? <Link className="home-faq-link" key={l.label} to={l.to}>{l.label} →</Link>
+                : <a className="home-faq-link" key={l.label} href={l.href} target="_blank" rel="noopener noreferrer">{l.label} →</a>))}
             </details>
           ))}
         </div>

@@ -98,4 +98,4 @@
 }
 
 /* A link under an answer (products page, distributorship, WhatsApp). */
-.home-faq-link { display: inline-block; margin: 0 0 16px; font-weight: 600; color: var(--maroon-600, #7a1f2b); text-decoration: underline; text-underline-offset: 3px; }
+.home-faq-link { display: inline-block; margin: 0 20px 16px 0; font-weight: 600; color: var(--maroon-600, #7a1f2b); text-decoration: underline; text-underline-offset: 3px; }
