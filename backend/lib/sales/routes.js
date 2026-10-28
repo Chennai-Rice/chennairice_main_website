@@ -45,6 +45,7 @@ import { checkAutomationKey, automationContacts } from './automation.js'
 import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
+import { listReports, reportCsv } from './reports.js'
 import { accountsSummary, invoiceRegister, invoiceRegisterCsv, paymentsList, refundsList, period } from './accounts.js'
 import { invoicePdf } from './invoice-pdf.js'
 import { query } from '../db.js'
@@ -435,6 +436,14 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/journeys', perm('analyst.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await listJourneys(req.query))
+  }))
+  // /admin → Reports: the website's data as spreadsheets (owner and IT team). ?days=7|30|90|365 or ?from&to.
+  admin.get('/reports', perm('analyst.view'), wrap(async (_req, res) => res.json({ reports: listReports() })))
+  admin.get('/reports/:id.csv', perm('analyst.view'), rateLimit({ windowMs: 60000, max: 20 }), wrap(async (req, res) => {
+    const { filename, csv } = await reportCsv(req.params.id, req.query)
+    res.set('Cache-Control', 'no-store')
+    res.set('Content-Disposition', `attachment; filename="${filename}"`)
+    res.type('text/csv; charset=utf-8').send(csv)
   }))
   admin.get('/analyst', perm('analyst.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
