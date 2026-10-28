@@ -2003,6 +2003,42 @@ test('Reports: the owner lists and downloads each report as a CSV for a period; 
   assert.equal((await api('GET', '/api/admin/reports/nothing.csv', { token: OWNER })).status, 404)
 })
 
+test('Settlements: the bank UTIB code from Razorpay lands on the paid payment and shows in the Orders and Accounts files; the settlement webhook is accepted', async () => {
+  const { rows: [pay] } = await db.query(
+    `select p.gateway_payment_id, o.order_number from payments p join orders o on o.id = p.order_id
+      where p.status = 'paid' and p.gateway_payment_id is not null order by p.paid_at desc limit 1`)
+  assert.ok(pay, 'an earlier test left a paid payment')
+  const head = 'transaction_entity,entity_id,amount,fee (exclusive tax),tax,settlement_id,settled_at,settlement_utr,additional_utr'
+  const csv = [head,
+    `payment,${pay.gateway_payment_id},609.00,0,0,setl_TEST1,17/10/2026 13:13:51,AXISCN1504277311,UTIBN62026101710660349`,
+    `payment,pay_notours,1.00,0,0,setl_TEST1,17/10/2026 13:13:51,AXISCN1504277311,UTIBN62026101710660349`,
+    `refund,rfnd_x,1.00,0,0,setl_TEST1,17/10/2026 13:13:51,AXISCN1504277311,UTIBN62026101710660349`].join('\n')
+  const octet = { 'Content-Type': 'application/octet-stream' }
+  assert.equal((await api('POST', '/api/admin/settlements/import?name=recon.csv', { token: tokens.sales, raw: csv, headers: octet })).status, 403)
+  const done = await api('POST', '/api/admin/settlements/import?name=recon.csv', { token: OWNER, raw: csv, headers: octet })
+  assert.equal(done.status, 200, JSON.stringify(done.body))
+  assert.equal(done.body.updated, 1)
+  assert.equal(done.body.unknown, 1) // pay_notours is not one of ours; the refund is skipped
+  const { rows: [row] } = await db.query(`select bank_utr, settlement_id, settlement_utr, settled_at from payments where gateway_payment_id = $1`, [pay.gateway_payment_id])
+  assert.equal(row.bank_utr, 'UTIBN62026101710660349')
+  assert.equal(row.settlement_id, 'setl_TEST1')
+  assert.equal(row.settlement_utr, 'AXISCN1504277311')
+  assert.equal(new Date(row.settled_at).toISOString(), '2026-10-17T07:43:51.000Z') // 13:13:51 India time
+  // Sending the same file again changes nothing.
+  assert.equal((await api('POST', '/api/admin/settlements/import?name=recon.csv', { token: OWNER, raw: csv, headers: octet })).body.updated, 0)
+  assert.equal((await api('POST', '/api/admin/settlements/import?name=recon.csv', { token: OWNER, raw: 'a,b\n1,2', headers: octet })).status, 400)
+  // The code is in the Orders file and the Accounts invoice register file.
+  const orders = (await api('GET', '/api/admin/reports/orders.csv?days=7', { token: OWNER })).body
+  assert.match(orders, /UTIB \(bank reference\)/)
+  assert.match(orders, /UTIBN62026101710660349/)
+  const invoices = (await api('GET', '/api/admin/accounts/invoices.csv?days=30', { token: OWNER })).body
+  assert.match(invoices, /UTIB \(bank reference\)/)
+  // Razorpay's settlement webhook is accepted (the backend asks Razorpay for the payout in the background).
+  const raw = JSON.stringify({ event: 'settlement.processed', payload: { settlement: { entity: { id: 'setl_TEST2', utr: 'AXISCN1' } } } })
+  const hook = await api('POST', '/api/payments/webhook/razorpay', { raw, headers: { 'X-Razorpay-Signature': signWebhook(raw), 'X-Razorpay-Event-Id': 'evt_settle_1' } })
+  assert.equal(hook.status, 200, JSON.stringify(hook.body))
+})
+
 test('Ad campaigns: people from a source — every checkout (paid or not) with name, mobile and campaign; filtered by source', async () => {
   const { session } = await buy([{ id: 'alibaba', qty: 1 }], buyer({ name: 'Source Sara', email: 'sara@example.com', phone: '9500088888' }))
   await db.query(`update orders set traffic_source = 'google_ads', traffic_campaign = 'Idli Search', traffic_ad = 'Soft idli' where id = $1`, [session.orderId])

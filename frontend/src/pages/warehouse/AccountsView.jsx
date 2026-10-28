@@ -181,7 +181,7 @@ export default function AccountsView({ say, onAuthError }) {
                 <span role="cell"><strong className="wh-mono">{r.invoiceNumber}</strong><br /><span className="wh-muted wh-small">{when(r.issuedAt)}</span></span>
                 <span role="cell">{r.customer}<br /><span className="wh-muted wh-small wh-mono">{r.orderNumber}</span> <span className="wh-muted wh-small">· {r.placeOfSupply}</span><br /><span className="wh-muted wh-small">{r.items}</span></span>
                 <span role="cell"><span className="wh-k">Total</span><strong>{rupees(r.total)}</strong>{r.refunded > 0 && <><br /><span className="wh-small wh-acc-bad">Refunded {rupees(r.refunded)}</span></>}</span>
-                <span role="cell"><span className="wh-k">Payment</span>{r.method || '—'}<br /><span className="wh-mono wh-small">{r.paymentId || '—'}</span></span>
+                <span role="cell"><span className="wh-k">Payment</span>{r.method || '—'}<br /><span className="wh-mono wh-small">{r.paymentId || '—'}</span>{r.bankUtr ? <><br /><span className="wh-mono wh-small" title="The bank's reference of the Razorpay payout — what the bank statement shows">UTIB {r.bankUtr}</span></> : null}</span>
                 <span role="cell" className="wh-acc-actions">
                   <button type="button" className="wh-btn wh-btn--outline" onClick={() => viewInvoice(r.orderId, say, onAuthError)}><Icon name="eye" size={16} /> View</button>
                   <button type="button" className="wh-btn wh-btn--outline" onClick={() => download(`/api/admin/orders/${r.orderId}/invoice.pdf`, 'invoice.pdf', say, onAuthError)}><Icon name="download" size={16} /> PDF</button>
@@ -201,7 +201,7 @@ export default function AccountsView({ say, onAuthError }) {
                 <span role="cell">{p.customer}<br /><span className="wh-muted wh-small wh-mono">{p.orderNumber}</span>{p.invoiceNumber && <span className="wh-muted wh-small"> · {p.invoiceNumber}</span>}</span>
                 <span role="cell"><span className="wh-k">Amount</span><strong>{rupees(p.amount)}</strong></span>
                 <span role="cell"><span className="wh-k">Method</span>{p.method || '—'}{p.cardLast4 && <span className="wh-muted wh-small"> ••{p.cardLast4}</span>}</span>
-                <span role="cell"><span className="wh-k">IDs</span><span className="wh-mono wh-small">{p.paymentId || '—'}<br /><span className="wh-muted">{p.gatewayOrderId}</span></span></span>
+                <span role="cell"><span className="wh-k">IDs</span><span className="wh-mono wh-small">{p.paymentId || '—'}<br /><span className="wh-muted">{p.gatewayOrderId}</span>{p.bankUtr ? <><br />UTIB {p.bankUtr}</> : null}</span></span>
                 <span role="cell"><span className={`wh-acc-pill is-${p.status}`}>{PAY_STATUS[p.status] || p.status}</span>{p.failure && <><br /><span className="wh-muted wh-small">{p.failure}</span></>}</span>
               </div>
             ))}

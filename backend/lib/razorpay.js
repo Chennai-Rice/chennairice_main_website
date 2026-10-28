@@ -151,6 +151,20 @@ export async function fetchPayment(paymentId) {
 }
 
 /**
+ * One page of the settlement reconciliation for a day (by the date Razorpay paid out): every payment,
+ * refund and adjustment with its settlement id, Razorpay UTR and `additional_utr` — the bank's own
+ * reference of the transfer (UTIB…), which is what the bank statement shows. Amounts are in paise.
+ *
+ * @param {{ year: number, month: number, day?: number, skip?: number, count?: number }} input
+ * @returns {Promise<{ count: number, items: Array<Record<string, any>> }>}
+ */
+export async function fetchSettlementRecon({ year, month, day, skip = 0, count = 1000 }) {
+  const q = new URLSearchParams({ year: String(year), month: String(month), count: String(count), skip: String(skip) })
+  if (day) q.set('day', String(day))
+  return razorpayFetch('/settlements/recon/combined?' + q)
+}
+
+/**
  * Verify the signature checkout hands back, proving the order/payment pair
  * came from Razorpay and not from a tampered browser.
  *

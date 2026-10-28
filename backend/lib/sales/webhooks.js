@@ -4,13 +4,15 @@
 // Set up in Razorpay Dashboard → Webhooks:
 //   URL     https://chennairiceindustries.com/api/payments/webhook/razorpay
 //   Secret  same value as RAZORPAY_WEBHOOK_SECRET
-//   Events  payment.captured, payment.failed, refund.processed, refund.failed
+//   Events  payment.captured, payment.failed, refund.processed, refund.failed,
+//           settlement.processed (records the bank's UTIB code on the payments in it — settlements.js)
 //
 // Every event is stored once by its id; Razorpay retries deliveries, and a
 // repeat is acknowledged without being applied again.
 import crypto from 'node:crypto'
 import { query } from '../db.js'
 import { markOrderPaid } from './checkout.js'
+import { syncSettlements } from './settlements.js'
 import { httpError, safeEqual } from './util.js'
 
 export function verifyRazorpayWebhook(rawBody, signature, secret = process.env.RAZORPAY_WEBHOOK_SECRET) {
@@ -80,6 +82,13 @@ async function apply(event) {
         where gateway = 'razorpay' and gateway_order_ref = $1 and status = 'created'`,
       [payment.order_id, payment.id, payment.error_description || 'Payment failed', payment]
     )
+    return
+  }
+
+  // Razorpay has paid out to the bank: record the settlement (and its UTIB code) on the payments in it.
+  // A failure here must not make Razorpay retry the event; the daily check picks it up.
+  if (event.event === 'settlement.processed') {
+    await syncSettlements({ days: 3 }).catch((err) => console.error('[settlements]', err.message))
     return
   }
 

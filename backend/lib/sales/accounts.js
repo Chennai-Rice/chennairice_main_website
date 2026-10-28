@@ -73,7 +73,7 @@ export async function invoiceRegister(db, params) {
   const { rows } = await db.query(
     `select v.invoice_number, v.issued_at, v.place_of_supply, v.total_paise,
             o.id as order_id, o.order_number, o.contact_name, o.contact_phone, o.status, o.payment_status, o.shipping_paise,
-            p.method, p.gateway, p.gateway_payment_id, p.paid_at,
+            p.method, p.gateway, p.gateway_payment_id, p.paid_at, p.settlement_id, p.bank_utr, p.settled_at,
             (select coalesce(sum(r.amount_paise), 0) from refunds r where r.order_id = o.id and r.status in ('processed', 'manual'))::bigint as refunded_paise,
             (select string_agg(i.product_name || ' ' || trim(to_char(i.pack_kg, 'FM999')) || ' kg × ' || i.quantity, ', ')
                from order_items i where i.order_id = o.id) as items
@@ -100,7 +100,7 @@ export async function invoiceRegister(db, params) {
     delivery: rupees(r.shipping_paise),
     refunded: rupees(r.refunded_paise),
     method: PAYMENT_METHOD[r.method] || r.method || '',
-    paymentId: r.gateway_payment_id || '',
+    paymentId: r.gateway_payment_id || '', settlementId: r.settlement_id || '', bankUtr: r.bank_utr || '', settledAt: r.settled_at,
     paidAt: r.paid_at,
     orderStatus: r.status,
     paymentStatus: r.payment_status,
@@ -113,7 +113,7 @@ export async function paymentsList(db, params) {
   const status = ['paid', 'failed', 'created', 'superseded'].includes(params?.status) ? params.status : ''
   const { rows } = await db.query(
     `select p.gateway, p.gateway_order_ref, p.gateway_payment_id, p.amount_paise, p.status, p.method, p.card_last4,
-            p.failure_reason, p.paid_at, p.created_at, o.id as order_id, o.order_number, o.contact_name,
+            p.failure_reason, p.paid_at, p.created_at, p.settlement_id, p.bank_utr, p.settled_at, o.id as order_id, o.order_number, o.contact_name,
             (select v.invoice_number from invoices v where v.order_id = o.id) as invoice_number
        from payments p join orders o on o.id = p.order_id
       where ${IN_PERIOD('coalesce(p.paid_at, p.created_at)')} and ($3 = '' or p.status = $3)
@@ -129,7 +129,7 @@ export async function paymentsList(db, params) {
     cardLast4: r.card_last4 || '',
     gateway: r.gateway === 'razorpay' ? 'Razorpay' : r.gateway,
     gatewayOrderId: r.gateway_order_ref,
-    paymentId: r.gateway_payment_id || '',
+    paymentId: r.gateway_payment_id || '', settlementId: r.settlement_id || '', bankUtr: r.bank_utr || '', settledAt: r.settled_at,
     failure: r.failure_reason || '',
     orderId: r.order_id,
     orderNumber: r.order_number,
@@ -177,8 +177,8 @@ export async function invoiceRegisterCsv(db, params) {
   }
   const day = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '')
   const head = ['Invoice No', 'Invoice Date', 'Order No', 'Customer', 'Phone', 'State', 'Items',
-    'Invoice Total', 'of which Delivery', 'Refunded', 'Payment Method', 'Razorpay Payment ID', 'Order Status']
+    'Invoice Total', 'of which Delivery', 'Refunded', 'Payment Method', 'Razorpay Payment ID', 'UTIB (bank reference)', 'Settlement ID', 'Settled On', 'Order Status']
   const lines = [head].concat(rows.map((r) => [r.invoiceNumber, day(r.issuedAt), r.orderNumber, r.customer, r.phone, r.placeOfSupply, r.items,
-    r.total.toFixed(2), r.delivery.toFixed(2), r.refunded.toFixed(2), r.method, r.paymentId, r.orderStatus]))
+    r.total.toFixed(2), r.delivery.toFixed(2), r.refunded.toFixed(2), r.method, r.paymentId, r.bankUtr, r.settlementId, day(r.settledAt), r.orderStatus]))
   return '﻿' + lines.map((l) => l.map(cell).join(',')).join('\r\n')
 }

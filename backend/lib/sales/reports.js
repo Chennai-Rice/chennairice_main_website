@@ -10,6 +10,7 @@ import { listJourneys } from './journeys.js'
 import { contestReport } from './contest.js'
 import { httpError, str } from './util.js'
 
+
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 const istDay = () => new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
 const when = (v) =>
@@ -42,13 +43,24 @@ export const REPORTS = {
     async build(q) {
       const p = span(q)
       const { orders } = await listWarehouseOrders({ tab: 'all', from: p.from, to: p.to, limit: 5000, offset: 0 }, { maxLimit: 5000, money: true })
+      // Where the money landed: the bank's UTIB code and the settlement, once Razorpay has paid it out.
+      const { rows: paid } = await query(
+        `select o.order_number, p.gateway_payment_id, p.settlement_id, p.bank_utr, p.settled_at
+           from payments p join orders o on o.id = p.order_id
+          where p.status = 'paid' and o.order_number = any($1)`, [orders.map((o) => o.orderNumber)])
+      const bank = new Map(paid.map((r) => [r.order_number, r]))
       return {
-        header: ['Order ID', 'Order date', 'Customer', 'Phone', 'Products', 'Packs', 'Weight (kg)', 'Amount (₹)', 'Payment', 'Status', 'City', 'State', 'PIN'],
-        lines: orders.map((o) => [
-          o.orderNumber, when(o.placedAt), o.customer.name, o.customer.phone,
-          o.items.map((i) => `${i.qty} x ${i.name} (${Number(i.packKg)} kg)`).join('; '),
-          o.packs, o.totalKg, o.total, o.paymentStatus, o.status, o.address.city, o.address.state, o.address.pincode,
-        ]),
+        header: ['Order ID', 'Order date', 'Customer', 'Phone', 'Products', 'Packs', 'Weight (kg)', 'Amount (₹)', 'Payment', 'Status', 'City', 'State', 'PIN',
+          'Razorpay payment ID', 'UTIB (bank reference)', 'Settlement ID', 'Settled on'],
+        lines: orders.map((o) => {
+          const b = bank.get(o.orderNumber) || {}
+          return [
+            o.orderNumber, when(o.placedAt), o.customer.name, o.customer.phone,
+            o.items.map((i) => `${i.qty} x ${i.name} (${Number(i.packKg)} kg)`).join('; '),
+            o.packs, o.totalKg, o.total, o.paymentStatus, o.status, o.address.city, o.address.state, o.address.pincode,
+            b.gateway_payment_id, b.bank_utr, b.settlement_id, b.settled_at ? when(b.settled_at) : '',
+          ]
+        }),
       }
     },
   },

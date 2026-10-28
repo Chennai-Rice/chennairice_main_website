@@ -47,6 +47,7 @@ import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { listReports, reportCsv } from './reports.js'
 import { contestReport } from './contest.js'
+import { syncSettlements, importSettlementFile } from './settlements.js'
 import { accountsSummary, invoiceRegister, invoiceRegisterCsv, paymentsList, refundsList, period } from './accounts.js'
 import { invoicePdf } from './invoice-pdf.js'
 import { query } from '../db.js'
@@ -543,6 +544,18 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   }))
 
   // Accounts section: invoices, payments, refunds and GST totals (read-only).
+  // The bank's UTIB code on each paid order: ask Razorpay for the last days' settlements, or upload its
+  // Settlement Recon file (Razorpay → Reports → Settlement Recon, .xlsx or .csv). Owner, admin, IT team, accounts.
+  admin.post('/settlements/sync', perm('accounts.view'), rateLimit({ windowMs: 60000, max: 6 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await syncSettlements({ days: Number(req.body?.days) || 31 }))
+  }))
+  admin.post('/settlements/import', perm('accounts.view'), rateLimit({ windowMs: 60000, max: 6 }),
+    express.raw({ type: 'application/octet-stream', limit: '8mb' }),
+    wrap(async (req, res) => {
+      const buffer = Buffer.isBuffer(req.body) && req.body.length ? req.body : req.rawBody
+      res.json(await importSettlementFile({ query }, { name: req.query.name, buffer }))
+    }))
   admin.get('/accounts/summary', perm('accounts.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await accountsSummary({ query }, req.query))
