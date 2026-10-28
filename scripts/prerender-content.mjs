@@ -24,7 +24,7 @@ export const COMPANY = {
   founded: '1980',
   founder: 'M. S. Tamilselvan',
   place: 'Nasiyanur, Erode, Tamil Nadu, India',
-  slogan: "South India's Largest Rice Mill with Paddy Storage",
+  slogan: "South India's No. 1 Non-Basmati Rice Manufacturer",
   facts: [
     'Family-run rice mill at Nasiyanur, Erode, Tamil Nadu, founded in 1980.',
     'Capacity of 2,44,000 tonnes a year (MTPA), with 61,500 MT of paddy storage in 31 silos.',
