@@ -10,6 +10,7 @@ import { formatRupees } from "../utils/format.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
 import { trackMetaEvent } from "../../services/metaPixel.js";
+import { trackGooglePurchase } from "../../services/googleAnalytics.js";
 import {
   initiatePayment,
   openPaymentWidget,
@@ -243,6 +244,8 @@ export default function CheckoutPage() {
         },
         "purchase-" + result.orderNumber
       );
+      // Google Analytics / Google Ads: the same sale, once, with the packs and their product-feed ids.
+      trackGooglePurchase({ transactionId: result.orderNumber, value: Number(result.amount ?? session.amount), items });
       // Checkout journey: purchased (the server checks the order really is paid).
       recordJourney("purchased", { orderId: session.orderId });
       endJourney();
