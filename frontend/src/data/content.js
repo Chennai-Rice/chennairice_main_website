@@ -60,7 +60,7 @@ export const HERO = {
   // Owner, 24 Oct 2026: the old display line is now a small styled line above the heading.
   tagline: 'South India’s No. 1 Non-Basmati Rice Manufacturer',
   h1: 'Premium Ponni & Idli Rice from Erode',
-  intro: 'Chennai Rice is the rice brand of Chennai Rice Industries, Erode, milling Ponni, Idli and aged rice for Tamil kitchens since the 1950s. Mill-fresh, aged for better cooking, and packed in 26 kg bags for homes, shops and hotels.',
+  intro: 'For over 75 years, Chennai Rice Industries has combined generations of milling expertise with modern technology to bring quality Ponni rice, Idli rice, and premium rice varieties to tables across India.',
   ctas: [
     { label: 'Shop Chennai Rice', to: '/rice-products', primary: true },
     { label: 'Bulk & Distributor Enquiry', to: '/bulk-order' },
