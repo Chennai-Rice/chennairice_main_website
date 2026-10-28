@@ -79,7 +79,7 @@ export const PRODUCTS = [
     ghost: ['SPECIAL', 'RAJABHOGAM'],
     name: 'Special Rajabhogam',
     // Our signature red bag (catalogue: "Classic Red").
-    desc: 'Everyday rice in our signature red pack, for comforting lunch and dinner at home.',
+    desc: 'Ideal for everyday cooking and family meals, in 5 kg, 10 kg and 26 kg packs for every household.',
     packSize: '5 / 10 / 26 KG',
     riceType: 'Kitchidi Ponni',
     idealFor: 'Everyday Family Meals',
