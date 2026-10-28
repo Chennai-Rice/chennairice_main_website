@@ -1,13 +1,14 @@
 import React from "react";
 
-export default function QuantitySelector({ qty, onChange }) {
+// min: the lowest it goes (1 before adding; 0 when it is the cart's own quantity, which removes the pack).
+export default function QuantitySelector({ qty, onChange, min = 1 }) {
   return (
     <div className="pdp-qty" role="group" aria-label="Quantity">
       <button
         type="button"
         className="pdp-qty-btn"
         aria-label="Decrease quantity"
-        onClick={() => onChange(Math.max(1, qty - 1))}
+        onClick={() => onChange(Math.max(min, qty - 1))}
       >
         &minus;
       </button>

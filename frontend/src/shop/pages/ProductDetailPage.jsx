@@ -31,7 +31,7 @@ export default function ProductDetailPage() {
   const { id: slug } = useParams();
   const id = productIdFromSlug(slug);
   const navigate = useNavigate();
-  const { add, items } = useCart();
+  const { add, items, setQty: setCartQty } = useCart();
   const wishlist = useWishlist();
   const spawnRipple = useRipple();
 
@@ -169,7 +169,8 @@ export default function ProductDetailPage() {
   };
 
   const handleBuyNow = (event) => {
-    handleAddToCart(event);
+    // Already in the cart: go there with the quantity chosen beside "Added".
+    if (!inCart) handleAddToCart(event);
     navigate("/cart");
   };
 
@@ -272,8 +273,13 @@ export default function ProductDetailPage() {
               </div>
 
               <div className="pdp-qty-row">
-                <span className="pdp-section-label">Quantity</span>
-                <QuantitySelector qty={qty} onChange={setQty} />
+                <span className="pdp-section-label">{inCart ? "In your cart" : "Quantity"}</span>
+                {/* Once this pack is in the cart, the stepper is the cart's own quantity (0 removes it). */}
+                {inCart ? (
+                  <QuantitySelector qty={inCart.qty} onChange={(n) => setCartQty(inCart.id, n)} min={0} />
+                ) : (
+                  <QuantitySelector qty={qty} onChange={setQty} />
+                )}
               </div>
             </div>
 
@@ -282,7 +288,13 @@ export default function ProductDetailPage() {
                   call to action is a route to the people who can quote it. */}
               {showCardPrices ? (
                 <>
-                  <button type="button" className="btn-maroon pdp-add-btn" onClick={handleAddToCart} disabled={soldOut}>
+                  <button
+                    type="button"
+                    className={`btn-maroon pdp-add-btn${inCart ? " is-added" : ""}`}
+                    onClick={inCart ? () => navigate("/cart") : handleAddToCart}
+                    disabled={soldOut}
+                    title={inCart ? "In your cart — change the quantity beside it, or tap to view the cart" : undefined}
+                  >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <path
                         d="M6 6h15l-1.5 9h-12z M6 6l-1-3H2 M9 21a1 1 0 100-2 1 1 0 000 2zM18 21a1 1 0 100-2 1 1 0 000 2z"
@@ -292,7 +304,7 @@ export default function ProductDetailPage() {
                         fill="none"
                       />
                     </svg>
-                    {soldOut ? "Out of stock" : inCart ? "Add Another" : "Add to Cart"}
+                    {soldOut ? "Out of stock" : inCart ? "Added ✓" : "Add to Cart"}
                   </button>
                   <button type="button" className="btn-outline" onClick={handleBuyNow} disabled={soldOut}>
                     Buy Now
