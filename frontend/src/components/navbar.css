@@ -213,21 +213,29 @@
 
 @media (max-width: 900px) {
   .nav-links,
-  .nav-cta,
-  .nav-actions {
+  .nav-cta {
     display: none;
   }
-  .nav-burger {
-    display: flex;
-  }
+  /* Phones: logo … contest badge · wishlist · cart · menu (owner, Oct 2026). */
   .nav-contest-mobile {
     display: flex;
     margin-left: auto;
+    order: 1;
+  }
+  .nav-actions {
+    order: 2;
+    gap: 0;
+    margin: 0 2px 0 4px;
+  }
+  .nav-burger {
+    display: flex;
+    order: 3;
   }
   .nav-contest-mobile img {
     height: 46px;
   }
   .nav-inner {
     height: 78px;
+    gap: 6px;
   }
 }
