@@ -65,11 +65,11 @@ export function merchantItemId(item) {
 
 /**
  * A paid order, once: the GA4 `purchase` (with the packs bought) and, when Google Ads is set up, its
- * conversion. Called only after the server has confirmed the payment; the order number is the
+ * conversion. Called when the order-confirmed page opens, which is only shown after the server has confirmed the payment; the order number is the
  * transaction id, so a repeat (a reload, a second call) is dropped here and de-duplicated by Google too.
  * Sent only when analytics cookies were accepted (gtag.js is not loaded otherwise).
  */
-export function trackGooglePurchase({ transactionId, value, items = [] }) {
+export function trackGooglePurchase({ transactionId, value, shipping, items = [] }) {
   if (!loaded || !window.gtag || !transactionId) return false
   const key = `cr.gpurchase.${transactionId}`
   try {
@@ -81,9 +81,15 @@ export function trackGooglePurchase({ transactionId, value, items = [] }) {
     transaction_id: transactionId,
     value: total,
     currency: 'INR',
-    items: items.map((i) => ({
+    // The delivery charge, when the order had one (the amount paid already includes it).
+    ...(Number(shipping) > 0 ? { shipping: Number(shipping) } : {}),
+    items: items.map((i, index) => ({
       item_id: merchantItemId(i),
       item_name: i.name,
+      item_brand: 'Chennai Rice',
+      item_category: 'Rice',
+      ...(Number(i.packKg) > 0 ? { item_variant: `${Number(i.packKg)} kg` } : {}),
+      index,
       price: Number(i.price) || 0,
       quantity: Number(i.qty) || 1,
     })),

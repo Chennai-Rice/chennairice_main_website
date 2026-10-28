@@ -76,6 +76,18 @@ export default function CheckoutPage() {
   const [failure, setFailure] = useState("");
   const [confirmed, setConfirmed] = useState(fromHistory);
 
+  // Google Analytics / Google Ads: the sale, once, when the order-confirmed page opens (it only shows for a
+  // payment the server has confirmed). A refresh of the page is de-duplicated by the order number.
+  useEffect(() => {
+    if (!onConfirmedPage || status !== "done" || !confirmed) return;
+    trackGooglePurchase({
+      transactionId: confirmed.orderNumber,
+      value: Number(confirmed.amount),
+      shipping: confirmed.shipping,
+      items: confirmed.items || [],
+    });
+  }, [onConfirmedPage, status, confirmed]);
+
   usePageMeta(
     onConfirmedPage ? "Order confirmed — Chennai Rice" : "Checkout — Chennai Rice",
     onConfirmedPage ? "Your Chennai Rice order is confirmed." : "Complete your Chennai Rice order.",
@@ -231,6 +243,10 @@ export default function CheckoutPage() {
         last4: result.last4,
         customerName: form.name,
         customerEmail: form.email,
+        // What was bought, kept on the receipt (the cart is emptied below) for the Google purchase event
+        // sent when the order-confirmed page opens.
+        shipping: shipping || 0,
+        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, packKg: i.packKg, qty: i.qty })),
       };
       setConfirmed(receipt);
       // Meta: the sale, with the amount the gateway actually captured. The order
@@ -244,8 +260,6 @@ export default function CheckoutPage() {
         },
         "purchase-" + result.orderNumber
       );
-      // Google Analytics / Google Ads: the same sale, once, with the packs and their product-feed ids.
-      trackGooglePurchase({ transactionId: result.orderNumber, value: Number(result.amount ?? session.amount), items });
       // Checkout journey: purchased (the server checks the order really is paid).
       recordJourney("purchased", { orderId: session.orderId });
       endJourney();
