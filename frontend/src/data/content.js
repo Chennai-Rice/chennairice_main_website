@@ -94,7 +94,7 @@ export const PRODUCTS = [
     name: 'Kitchidi Ponni Rice',
     // The maroon-and-peach offer bag. From the pack: 1 year aged,
     // "Delicious Tastes", "From Mother's Hands to Your Heart".
-    desc: 'Made for real veettu saapadu, with clean grains for every daily meal.',
+    desc: 'Quality rice for everyday South Indian cooking, family meals and traditional Tamil dishes.',
     packSize: '5 / 26 KG',
     riceType: '1 Year Aged Kitchidi Ponni',
     idealFor: 'Delicious Everyday Meals',
@@ -109,7 +109,7 @@ export const PRODUCTS = [
     name: 'Viruchagam',
     // From the pack: SNR RNR Poompuhar Ponni, "Pure Rice", "100% Natural",
     // "Rich Nutrition".
-    desc: 'Everyday rice in the blue and gold pack, for traditional Tamil meals.',
+    desc: 'One of our bestselling Poompuhar Ponni rices, a favourite for traditional Tamil cooking.',
     // Sizes from the 09-10-2026 price list.
     packSize: '5 / 10 / 26 KG',
     riceType: 'SNR RNR Poompuhar Ponni',
@@ -123,7 +123,7 @@ export const PRODUCTS = [
     shopPath: '/products/nayara-super-aged-rice',
     ghost: ['NAYARA', 'SUPER AGED'],
     name: 'Nayara Super Aged',
-    desc: 'Cooks separate and firm, perfect for lemon rice, tamarind rice and lunch boxes.',
+    desc: 'Firm, separate grains, ideal for lemon rice, tamarind rice and South Indian variety rice.',
     packSize: '5 / 10 / 26 KG',
     riceType: 'Super Aged Gel Cook Rice',
     idealFor: 'Daily Meals • Variety Rice',
