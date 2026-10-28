@@ -3,7 +3,7 @@ import { HOME_BULK, VARIETIES } from '../data/content.js'
 import { productPath } from '../seo.js'
 import './homeintro.css'
 
-/** "Looking for a Rice Supplier for Your Business?" — the business buyers' route to Bulk Order. */
+/** "Looking for Reliable Bulk Rice Suppliers in Tamil Nadu?" — the business buyers' route to Bulk Order. */
 export function HomeBulk() {
   return (
     <section className="home-bulk" aria-labelledby="home-bulk-title">

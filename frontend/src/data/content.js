@@ -143,8 +143,8 @@ export const STATS = [
 
 /* Home page business-buyer band before the FAQs (SEO Optimization Plan, Oct 2026; HomeBulk). */
 export const HOME_BULK = {
-  title: 'Looking for a Rice Supplier for Your Business?',
-  text: 'Chennai Rice Industries serves business customers seeking rice products for retail and bulk purchasing. Retailers, distributors and institutional buyers can contact our team to discuss product availability, pack sizes and supply requirements.',
+  title: 'Looking for Reliable Bulk Rice Suppliers in Tamil Nadu?',
+  text: 'Chennai Rice Industries, a trusted rice manufacturer in Erode with over 75 years of expertise, supplies quality rice to wholesalers, distributors, retailers, hotels and institutional buyers. Contact us for bulk rice orders, wholesale supply and distributor opportunities.',
   button: 'Enquire About Bulk Orders',
 }
 
