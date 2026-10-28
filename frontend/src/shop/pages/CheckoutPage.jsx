@@ -10,6 +10,7 @@ import { formatRupees } from "../utils/format.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
 import { trackMetaEvent } from "../../services/metaPixel.js";
+import { trackGooglePurchase } from "../../services/googleAnalytics.js";
 import {
   initiatePayment,
   openPaymentWidget,
@@ -74,6 +75,18 @@ export default function CheckoutPage() {
   const [status, setStatus] = useState(fromHistory ? "done" : "idle"); // idle | paying | done
   const [failure, setFailure] = useState("");
   const [confirmed, setConfirmed] = useState(fromHistory);
+
+  // Google Analytics / Google Ads: the sale, once, when the order-confirmed page opens (it only shows for a
+  // payment the server has confirmed). A refresh of the page is de-duplicated by the order number.
+  useEffect(() => {
+    if (!onConfirmedPage || status !== "done" || !confirmed) return;
+    trackGooglePurchase({
+      transactionId: confirmed.orderNumber,
+      value: Number(confirmed.amount),
+      shipping: confirmed.shipping,
+      items: confirmed.items || [],
+    });
+  }, [onConfirmedPage, status, confirmed]);
 
   usePageMeta(
     onConfirmedPage ? "Order confirmed — Chennai Rice" : "Checkout — Chennai Rice",
@@ -230,6 +243,10 @@ export default function CheckoutPage() {
         last4: result.last4,
         customerName: form.name,
         customerEmail: form.email,
+        // What was bought, kept on the receipt (the cart is emptied below) for the Google purchase event
+        // sent when the order-confirmed page opens.
+        shipping: shipping || 0,
+        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, packKg: i.packKg, qty: i.qty })),
       };
       setConfirmed(receipt);
       // Meta: the sale, with the amount the gateway actually captured. The order
