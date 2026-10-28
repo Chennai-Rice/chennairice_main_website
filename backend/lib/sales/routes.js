@@ -46,6 +46,7 @@ import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { listReports, reportCsv } from './reports.js'
+import { contestReport } from './contest.js'
 import { accountsSummary, invoiceRegister, invoiceRegisterCsv, paymentsList, refundsList, period } from './accounts.js'
 import { invoicePdf } from './invoice-pdf.js'
 import { query } from '../db.js'
@@ -448,6 +449,17 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/analyst', perm('analyst.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await analystReport(req.query))
+  }))
+  // Analyst → Contest: the Super Slogan Contest entries (read from the coupon site's Firestore).
+  admin.get('/contest', perm('analyst.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    try {
+      res.json(await contestReport(req.query))
+    } catch (err) {
+      if (err.status) throw err
+      console.error('contest report', err)
+      throw httpError(err.message, { status: 502, publicMessage: 'Could not read the contest entries from the coupon site. Try again in a minute.' })
+    }
   }))
   admin.get('/analyst/settings', perm('analyst.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')

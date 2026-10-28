@@ -67,6 +67,9 @@ before(async () => {
   const { seed } = await import('../db/seed.js')
   await runMigrations({ log: () => {} })
   await seed({ log: () => {} })
+  // The contest lives in another project's Firestore: tests use an empty stand-in unless one sets entries.
+  const contest = await import('../lib/sales/contest.js')
+  contest.setContestSourceForTests({ entries: async () => [], coupons: async () => ({ printed: 0, used: 0 }) })
   const { createSalesRouter } = await import('../lib/sales/routes.js')
 
   const app = express()
@@ -1986,7 +1989,7 @@ test('Reports: the owner lists and downloads each report as a CSV for a period; 
   assert.equal((await api('GET', '/api/admin/reports/orders.csv', { token: tokens.sales })).status, 403)
   const list = await api('GET', '/api/admin/reports', { token: OWNER })
   assert.equal(list.status, 200)
-  assert.deepEqual(list.body.reports.map((r) => r.id), ['orders', 'customers', 'signups', 'expo', 'enquiries', 'checkout'])
+  assert.deepEqual(list.body.reports.map((r) => r.id), ['orders', 'customers', 'signups', 'expo', 'enquiries', 'contest', 'checkout'])
   for (const { id } of list.body.reports) {
     const r = await api('GET', `/api/admin/reports/${id}.csv?days=365`, { token: OWNER })
     assert.equal(r.status, 200, `${id}: ${JSON.stringify(r.body)}`)
@@ -2269,4 +2272,68 @@ test('checkout journeys: cart → checkout → details → payment → cancelled
   const found = await api('GET', '/api/admin/journeys?days=7&q=Meena', { token: OWNER })
   assert.deepEqual(found.body.journeys.map((x) => x.id), [j1])
   assert.equal((await api('GET', '/api/admin/journeys', { token: 'store@x.test|uid-store' })).status, 403)
+})
+
+test('slogan contest: entries by day, pack, region, district and shop; demo left out; entrants who bought online; owner and IT only', async () => {
+  const { setContestSourceForTests } = await import('../lib/sales/contest.js')
+  const at = (iso) => new Date(iso)
+  const entry = (over) => ({
+    fullName: 'Entrant', phone: '9000000001', couponCode: 'C1', slogan: 'Ponni for all', packSize: '5 kg', shopName: 'Sri Murugan Stores',
+    area: 'Perundurai', district: 'Erode', region: 'West / Kongu', source: 'website', marketingConsent: true, isDemo: false,
+    submittedAt: at('2026-10-05T10:00:00+05:30'), ...over,
+  })
+  const asked = []
+  setContestSourceForTests({
+    async entries(start, end) {
+      asked.push([start, end])
+      return [
+        entry({}),
+        entry({ phone: '+91 98765 43210', couponCode: 'C2', packSize: '26kg', source: 'whatsapp', marketingConsent: false, submittedAt: at('2026-10-06T21:00:00+05:30') }),
+        entry({ phone: '9000000003', couponCode: 'C3', packSize: '', shopName: 'sri murugan stores', district: 'Salem', area: '', region: '', submittedAt: at('2026-10-06T23:59:00+05:30') }),
+        entry({ phone: '9000000004', couponCode: 'DEMO', isDemo: true }),
+      ].filter((e) => e.submittedAt >= start && e.submittedAt <= end)
+    },
+    async coupons() { return { printed: 1000, used: 3 } },
+  })
+  try {
+    const r = await api('GET', '/api/admin/contest?from=2026-10-01&to=2026-10-07', { token: OWNER })
+    assert.equal(r.status, 200, JSON.stringify(r.body))
+    const c = r.body
+    // The period is read in India time.
+    assert.equal(asked[0][0].toISOString(), '2026-09-30T18:30:00.000Z')
+    assert.equal(c.totals.entries, 3)
+    assert.equal(c.totals.website, 2)
+    assert.equal(c.totals.whatsapp, 1)
+    assert.equal(c.totals.consent, 2)
+    assert.equal(c.perDay.length, 7)
+    assert.deepEqual(c.perDay.filter((d) => d.entries).map((d) => [d.day, d.entries]), [['2026-10-05', 1], ['2026-10-06', 2]])
+    assert.deepEqual(c.byPack.map((p) => [p.label, p.n]), [['26 kg', 1], ['5 kg', 1], ['Not given', 1]])
+    assert.deepEqual(c.byRegion.find((x) => x.label === 'Not given'), { label: 'Not given', n: 1 })
+    assert.deepEqual(c.byDistrict[0], { label: 'Erode', n: 2 })
+    assert.equal(c.coupons.usedPercent, 0.3)
+    // The test buyer's mobile (+91 98765 43210) has paid orders from earlier tests.
+    assert.equal(c.buyers.entrants, 3)
+    assert.equal(c.buyers.boughtOnline, 1)
+    assert.ok(c.buyers.revenue > 0)
+    assert.equal(c.list.length, 3)
+    assert.equal(c.list[0].coupon, 'C3') // newest first
+    assert.equal(c.list.find((e) => e.coupon === 'C2').boughtOnline, true)
+    assert.ok(!c.list.some((e) => e.coupon === 'DEMO'))
+
+    // The coupon entries spreadsheet.
+    const csv = await api('GET', '/api/admin/reports/contest.csv?from=2026-10-01&to=2026-10-07', { token: OWNER })
+    assert.equal(csv.status, 200)
+    assert.match(csv.body, /Coupon,Slogan,Pack/)
+    assert.equal(csv.body.trim().split('\r\n').length, 4)
+
+    assert.equal((await api('GET', '/api/admin/contest', { token: 'store@x.test|uid-store' })).status, 403)
+
+    // When the coupon site cannot be read, a clear message, not a crash.
+    setContestSourceForTests({ entries: async () => { throw new Error('PERMISSION_DENIED') }, coupons: async () => ({ printed: 0, used: 0 }) })
+    const down = await api('GET', '/api/admin/contest', { token: OWNER })
+    assert.equal(down.status, 502)
+    assert.match(down.body.error, /coupon site/)
+  } finally {
+    setContestSourceForTests({ entries: async () => [], coupons: async () => ({ printed: 0, used: 0 }) })
+  }
 })

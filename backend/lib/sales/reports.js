@@ -7,6 +7,7 @@ import { contestLeads } from './attribution.js'
 import { listExpoLeads } from './expo.js'
 import { listEnquiries } from './enquiries-admin.js'
 import { listJourneys } from './journeys.js'
+import { contestReport } from './contest.js'
 import { httpError, str } from './util.js'
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
@@ -103,6 +104,21 @@ export const REPORTS = {
           ...keep(bulk).map((r) => [when(r.created_at), 'Bulk order', r.company_or_name, r.representative_name,
             r.buyer_type === 'other' ? r.other_type || 'Other' : r.buyer_type, r.email, r.phone, r.quantity_kg, r.gstin, r.message, r.status]),
         ],
+      }
+    },
+  },
+  contest: {
+    label: 'Slogan Contest entries',
+    note: 'Super Slogan Contest coupon entries: entrant, mobile, coupon, slogan, pack size, the shop it was bought from, area, district, website or WhatsApp. Demo entries left out.',
+    period: true,
+    async build(q) {
+      const p = span(q)
+      const r = await contestReport({ from: p.from, to: p.to })
+      return {
+        header: ['Entered', 'Name', 'Mobile', 'Email', 'Coupon', 'Slogan', 'Pack', 'Shop', 'Shop location', 'Area', 'District', 'Region', 'PIN',
+          'Entered on', 'Marketing consent', 'Also bought on the website'],
+        lines: r.list.map((e) => [when(e.at), e.name, e.phone, e.email, e.coupon, e.slogan, e.pack, e.shop, e.shopLocation, e.area, e.district, e.region,
+          e.pincode, e.source === 'whatsapp' ? 'WhatsApp' : 'Website', e.consent ? 'Yes' : 'No', e.boughtOnline ? 'Yes' : 'No']),
       }
     },
   },

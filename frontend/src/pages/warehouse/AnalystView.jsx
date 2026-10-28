@@ -24,6 +24,7 @@ const TABS = [
   { key: 'leads', label: 'Leads & conversion' },
   { key: 'campaigns', label: 'Campaigns' },
   { key: 'delivery', label: 'Delivery & location' },
+  { key: 'contest', label: 'Slogan Contest' },
   { key: 'settings', label: 'Settings' },
 ]
 
@@ -471,6 +472,118 @@ function DeliveryTab({ data }) {
   )
 }
 
+/** Contest entries per day: one bar per day, hover / focus for website vs WhatsApp. */
+function EntryDays({ days }) {
+  const [hover, setHover] = useState(null)
+  const max = Math.max(1, ...days.map((d) => d.entries))
+  const ticks = [0, Math.round(max / 2), max]
+  return (
+    <figure className="wh-chart an-trend">
+      <div className="wh-chart-plot" onMouseLeave={() => setHover(null)}>
+        <div className="wh-chart-axis" aria-hidden="true">{ticks.slice().reverse().map((t, i) => <span key={i}>{count(t)}</span>)}</div>
+        <div className="wh-chart-bars" style={{ '--n': days.length }}>
+          {ticks.map((t, i) => <span key={'g' + i} className="wh-chart-grid" style={{ bottom: `${(t / max) * 100}%` }} />)}
+          {days.map((d, i) => (
+            <button key={d.day} type="button" className="wh-chart-hit" onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)}
+              aria-label={`${dayFmt(d.day)}: ${d.entries} entries (${d.website} website, ${d.whatsapp} WhatsApp)`}>
+              <span className="wh-chart-bar" style={{ height: `${(d.entries / max) * 100}%`, background: BAR, opacity: hover === null || hover === i ? 1 : 0.55 }} />
+            </button>
+          ))}
+          {hover !== null && (
+            <div className="wh-chart-tip" style={{ left: `${((hover + 0.5) / days.length) * 100}%` }} role="status">
+              <strong>{dayFmt(days[hover].day)}</strong>
+              <span>{days[hover].entries} entries · {days[hover].website} website · {days[hover].whatsapp} WhatsApp</span>
+            </div>
+          )}
+        </div>
+      </div>
+      {days.length > 1 && (
+        <figcaption className="an-trend-x"><span>{dayFmt(days[0].day)}</span><span>{dayFmt(days[days.length - 1].day)}</span></figcaption>
+      )}
+    </figure>
+  )
+}
+
+/** Every real entry of the period, newest first, with a search and a CSV of what is shown. */
+function EntryList({ list }) {
+  const [q, setQ] = useState('')
+  const rows = list.filter((e) => !q || `${e.name || ''} ${e.phone || ''} ${e.coupon || ''} ${e.shop || ''} ${e.area || ''} ${e.district || ''} ${e.slogan || ''}`
+    .toLowerCase().includes(q.trim().toLowerCase()))
+  function download() {
+    const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const csv = [['Entered', 'Name', 'Mobile', 'Email', 'Coupon', 'Slogan', 'Pack', 'Shop', 'Area', 'District', 'Region', 'PIN', 'Entered on', 'Marketing consent', 'Also bought on the website'],
+      ...rows.map((e) => [when(e.at), e.name, e.phone, e.email, e.coupon, e.slogan, e.pack, e.shop, e.area, e.district, e.region, e.pincode,
+        e.source === 'whatsapp' ? 'WhatsApp' : 'Website', e.consent ? 'Yes' : 'No', e.boughtOnline ? 'Yes' : 'No'])]
+      .map((r) => r.map(cell).join(',')).join('\r\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }))
+    a.download = 'contest-entries.csv'
+    document.body.appendChild(a); a.click(); a.remove()
+  }
+  return (
+    <Panel title="Entries — one by one" note="Newest first. “Bought online” means the same mobile has a paid order on this website." wide>
+      <div className="an-leadbar">
+        <span className="wh-muted wh-small">{count(rows.length)} of {count(list.length)}</span>
+        <div className="an-leadtools">
+          <input className="an-search" type="search" placeholder="Search name, mobile, coupon, shop…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search entries" />
+          <button type="button" className="wh-btn wh-btn--outline wh-btn--small" onClick={download} disabled={!rows.length}>Download CSV</button>
+        </div>
+      </div>
+      <Table cols={[
+        { label: 'Date', value: (e) => <span className="an-nowrap">{when(e.at)}</span> },
+        { label: 'Entrant', value: (e) => <><strong>{e.name || '—'}</strong>{e.phone && <a className="an-sub" href={`tel:${String(e.phone).replace(/[^\d+]/g, '')}`}>{e.phone}</a>}</> },
+        { label: 'Coupon · pack', value: (e) => <><span className="wh-mono">{e.coupon || '—'}</span><span className="an-sub">{e.pack}</span></> },
+        { label: 'Bought at', value: (e) => <span className="an-detail">{e.shop || '—'}{(e.area || e.district) && <span className="an-sub">{[e.area, e.district].filter(Boolean).join(', ')}</span>}</span> },
+        { label: 'Slogan', value: (e) => <span className="an-detail">{e.slogan || '—'}</span> },
+        { label: 'Via', value: (e) => <span className={`an-kind is-${e.source === 'whatsapp' ? 'whatsapp' : 'signup'}`}>{e.source === 'whatsapp' ? 'WhatsApp' : 'Website'}</span> },
+        { label: 'Bought online', value: (e) => (e.boughtOnline ? <span className="an-status is-green"><i />Yes</span> : <span className="wh-muted">No</span>) },
+      ]} rows={rows.slice(0, 300)} empty={list.length ? 'No entries match.' : 'No contest entries in this period.'} />
+      {rows.length > 300 && <p className="wh-muted wh-small">Showing the newest 300 of {rows.length}. Download the CSV for all of them.</p>}
+    </Panel>
+  )
+}
+
+function ContestTab({ contest, error }) {
+  if (error) return <p className="wh-empty">{error}</p>
+  if (!contest) return <p className="wh-empty">Loading the contest entries…</p>
+  const t = contest.totals
+  const c = contest.coupons
+  const b = contest.buyers
+  return (
+    <>
+      <section className="an-stats">
+        <Tile hero label="Contest entries" value={count(t.entries)} delta={t.changePercent} note={`${t.perDay} a day · ${count(t.people)} people`} icon="users" />
+        <Tile label="Website / WhatsApp" value={`${count(t.website)} / ${count(t.whatsapp)}`} note="Where the coupon was entered" icon="orders" />
+        <Tile label="Coupons used" value={count(c.used)} note={`of ${count(c.printed)} printed (${c.usedPercent ?? 0}%) · all time`} icon="box" />
+        <Tile label="Also bought online" value={count(b.boughtOnline)} note={`of ${count(b.entrants)} entrants (${pct(b.percent)}) have a paid website order · ${inr(b.revenue)}`} icon="reports" />
+        <Tile label="Marketing consent" value={pct(t.consentPercent)} note={`${count(t.consent)} said yes to offers`} icon="check" />
+      </section>
+      <div className="an-grid">
+        <Panel title="Entries per day" note="Demo and test entries are left out." wide>
+          <EntryDays days={contest.perDay} />
+        </Panel>
+        <Panel title="By pack size">
+          <Bars rows={contest.byPack} value={(r) => r.n} label={(r) => r.label} sub={(r) => (t.entries ? `· ${Math.round((r.n / t.entries) * 100)}%` : '')} empty="No entries in this period." />
+        </Panel>
+        <Panel title="By region">
+          <Bars rows={contest.byRegion} value={(r) => r.n} label={(r) => r.label} empty="No entries in this period." />
+        </Panel>
+        <Panel title="Top districts">
+          <Bars rows={contest.byDistrict} value={(r) => r.n} label={(r) => r.label} empty="No districts given in this period." />
+        </Panel>
+        <Panel title="Top shops" note="The shop each entrant bought the pack from.">
+          <Table cols={[
+            { label: 'Shop', value: (r) => <strong>{r.shop}</strong> },
+            { label: 'Place', value: (r) => r.place || '—' },
+            { label: 'Entries', value: (r) => count(r.entries), num: true },
+          ]} rows={contest.topShops} empty="No shops given in this period." />
+        </Panel>
+        <EntryList list={contest.list || []} />
+      </div>
+    </>
+  )
+}
+
 function SettingsTab({ settings, period, say, onAuthError, reload }) {
   const [busy, setBusy] = useState(false)
   const [target, setTarget] = useState(settings.kgPerMonth ?? '')
@@ -539,6 +652,7 @@ export default function AnalystView({ say, onAuthError, name = '' }) {
   const [rice, setRice] = useState('')
   const [data, setData] = useState(null)
   const [settings, setSettings] = useState(null)
+  const [contest, setContest] = useState({ data: null, error: null })
   const [tick, setTick] = useState(0)
   const reload = useCallback(() => setTick((t) => t + 1), [])
 
@@ -559,6 +673,16 @@ export default function AnalystView({ say, onAuthError, name = '' }) {
       .catch((err) => { if (live && !onAuthError(err)) say(err.message, 'error') })
     return () => { live = false }
   }, [tab, period, tick, say, onAuthError])
+  // The contest is read from the coupon site only when its tab is open.
+  useEffect(() => {
+    if (tab !== 'contest') return undefined
+    let live = true
+    setContest({ data: null, error: null })
+    staffJson(`/api/admin/contest?from=${period.from}&to=${period.to}`)
+      .then((d) => live && setContest({ data: d, error: null }))
+      .catch((err) => { if (live && !onAuthError(err)) setContest({ data: null, error: err.message }) })
+    return () => { live = false }
+  }, [tab, period, tick, onAuthError])
 
   const choose = (key) => { setRange(key); if (key !== 'custom') setPeriod(preset(key)) }
 
@@ -567,7 +691,7 @@ export default function AnalystView({ say, onAuthError, name = '' }) {
       <header className="an-head">
         <div>
           <h1 className="an-hello">{greeting()}{firstName ? `, ${firstName}` : ''}</h1>
-          <p className="an-sub">Sales, leads, campaigns and delivery for {dayFmt(period.from)} – {dayFmt(period.to)}{rice ? ` · ${RICE[rice]} rice` : ''}.</p>
+          <p className="an-sub">Sales, leads, campaigns, delivery and the slogan contest for {dayFmt(period.from)} – {dayFmt(period.to)}{rice ? ` · ${RICE[rice]} rice` : ''}.</p>
         </div>
         <div className="an-controls">
           <div className="an-pills" role="group" aria-label="Period">
@@ -598,6 +722,7 @@ export default function AnalystView({ say, onAuthError, name = '' }) {
 
       {tab === 'settings'
         ? (settings ? <SettingsTab settings={settings} period={period} say={say} onAuthError={onAuthError} reload={reload} /> : <p className="wh-empty">Loading…</p>)
+        : tab === 'contest' ? <ContestTab contest={contest.data} error={contest.error} />
         : !data ? <p className="wh-empty">Loading…</p>
           : tab === 'overview' ? <AnalystOverview data={data} go={setTab} periodLabel={`${dayFmt(period.from)} – ${dayFmt(period.to)}`} />
           : tab === 'ceo' ? <CeoReport ceo={data.ceo} />
