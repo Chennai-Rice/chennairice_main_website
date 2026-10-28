@@ -43,39 +43,6 @@ function Reports({ onAuthError }) {
   }, [onAuthError])
   useEffect(() => { load() }, [load])
 
-  const [note, setNote] = useState('')
-
-  async function syncNow() {
-    setBusy('sync'); setError(''); setNote('')
-    try {
-      const r = await staffJson('/api/admin/settlements/sync', { method: 'POST', body: JSON.stringify({ days: 31 }) })
-      setNote(r.skipped ? `Not done: ${r.skipped}.` : `Checked the last ${r.days} days: ${r.updated} payment(s) updated with their bank code.`)
-    } catch (err) {
-      if (!onAuthError(err)) setError(err.message || 'Could not ask Razorpay.')
-    } finally {
-      setBusy('')
-    }
-  }
-
-  async function importFile(e) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    setBusy('import'); setError(''); setNote('')
-    try {
-      const r = await staffJson(`/api/admin/settlements/import?name=${encodeURIComponent(file.name)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/octet-stream' },
-        body: await file.arrayBuffer(),
-      })
-      setNote(`Read ${r.rows} rows: ${r.updated} payment(s) updated with their bank code${r.unknown ? `, ${r.unknown} not in our records` : ''}.`)
-    } catch (err) {
-      if (!onAuthError(err)) setError(err.message || 'Could not read that file.')
-    } finally {
-      setBusy('')
-    }
-  }
-
   async function download(report) {
     setBusy(report.id)
     setError('')
@@ -112,27 +79,6 @@ function Reports({ onAuthError }) {
               The period applies to every report except Customers, which is always the full list. The files include
               personal details: keep them inside the team.
             </p>
-          </Card>
-          <Card
-            title="Bank codes (UTIB)"
-            subtitle="When Razorpay pays out, the bank's code of the transfer is added to each order automatically. Use these if you need to fill in earlier months."
-            actions={
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                <button type="button" className="ad-btn ad-btn-quiet" disabled={busy === 'sync'} onClick={syncNow}>
-                  {busy === 'sync' ? 'Asking Razorpay…' : 'Update from Razorpay'}
-                </button>
-                <label className="ad-btn ad-btn-quiet" style={{ cursor: 'pointer' }}>
-                  {busy === 'import' ? 'Reading the file…' : 'Upload Settlement Recon file'}
-                  <input type="file" accept=".xlsx,.csv" hidden onChange={importFile} disabled={busy === 'import'} />
-                </label>
-              </div>
-            }
-          >
-            <p className="ad-muted ad-small">
-              The files in the Orders report and in Accounts → Invoices show a <strong>UTIB (bank reference)</strong> column.
-              It is empty until Razorpay has paid the order out (about two days after payment).
-            </p>
-            {note && <p className="ad-notice" role="status">{note}</p>}
           </Card>
           <div className="ad-grid ad-grid-2">
             {reports.map((r) => (

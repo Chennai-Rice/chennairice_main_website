@@ -60,6 +60,46 @@ async function viewInvoice(orderId, say, onAuthError) {
   }
 }
 
+/**
+ * The bank's UTIB code of each Razorpay payout, for the invoice register's "UTIB (bank reference)" column.
+ * Filled in automatically when Razorpay settles; these fill in earlier payments (accounts only).
+ */
+function BankCodes({ say, fail, onDone }) {
+  const [busy, setBusy] = useState('')
+  async function run(kind, call) {
+    setBusy(kind)
+    try { say(await call()); onDone() } catch (err) { fail(err) } finally { setBusy('') }
+  }
+  const sync = () => run('sync', async () => {
+    const r = await staffJson('/api/admin/settlements/sync', { method: 'POST', body: JSON.stringify({ days: 31 }) })
+    return r.skipped ? `Not done: ${r.skipped}.` : `Checked the last ${r.days} days: ${r.updated} payment(s) got their UTIB code.`
+  })
+  const upload = (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    run('import', async () => {
+      const r = await staffJson(`/api/admin/settlements/import?name=${encodeURIComponent(file.name)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: await file.arrayBuffer(),
+      })
+      return `Read ${r.rows} rows: ${r.updated} payment(s) got their UTIB code${r.unknown ? `, ${r.unknown} not in our records` : ''}.`
+    })
+  }
+  return (
+    <div className="wh-report-bar wh-acc-bar">
+      <span className="wh-small"><strong>Bank codes (UTIB)</strong>
+        <span className="wh-muted"> — added when Razorpay pays out (about 2 days after payment); shown in the invoice register CSV.</span></span>
+      <button type="button" className="wh-btn wh-btn--outline" disabled={!!busy} onClick={sync}>
+        {busy === 'sync' ? 'Asking Razorpay…' : 'Update UTIB from Razorpay'}
+      </button>
+      <label className="wh-btn wh-btn--outline" style={{ cursor: busy ? 'default' : 'pointer' }}>
+        {busy === 'import' ? 'Reading the file…' : 'Upload Settlement Recon'}
+        <input type="file" accept=".xlsx,.csv" hidden onChange={upload} disabled={!!busy} />
+      </label>
+    </div>
+  )
+}
+
 export default function AccountsView({ say, onAuthError }) {
   const options = useMemo(presets, [])
   const [preset, setPreset] = useState('month')
@@ -73,6 +113,8 @@ export default function AccountsView({ say, onAuthError }) {
   const [rows, setRows] = useState(null)
 
   const fail = useCallback((err) => { if (!onAuthError(err)) say(err.message, 'error') }, [onAuthError, say])
+  const [tick, setTick] = useState(0)
+  const reload = useCallback(() => setTick((t) => t + 1), [])
 
   useEffect(() => {
     setSummary(null)
@@ -90,7 +132,7 @@ export default function AccountsView({ say, onAuthError }) {
         .catch(fail)
     }, tab === 'invoices' && q ? 300 : 0)
     return () => { live = false; window.clearTimeout(t) }
-  }, [tab, qs, q, payStatus, fail])
+  }, [tab, qs, q, payStatus, fail, tick])
 
   const s = summary
   return (
@@ -117,6 +159,7 @@ export default function AccountsView({ say, onAuthError }) {
           <Icon name="download" size={18} /> Invoice register (CSV)
         </button>
       </div>
+      <BankCodes say={say} fail={fail} onDone={reload} />
 
       <section className="wh-kpis wh-kpis--compact">
         <div className="wh-kpi wh-kpi--green"><span className="wh-kpi-icon"><Icon name="check" size={24} /></span>
