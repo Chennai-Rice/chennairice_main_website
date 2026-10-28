@@ -439,14 +439,14 @@ export const HOME_FAQS = [
     links: [{ to: '/products/special-idly-rice', label: 'See Special Idly Rice' }],
   },
   {
-    q: 'Can I buy Chennai Rice online?',
-    a: 'Yes. Order on this website or on WhatsApp at 70666 46667.',
-    links: [{ href: 'https://wa.me/917066646667', label: 'Order on WhatsApp' }],
+    q: 'What is Ponni rice?',
+    a: 'Ponni rice is a medium grain white rice widely grown and eaten across Tamil Nadu. It cooks soft and light, absorbs the flavour of sambar, rasam and kuzhambu well, and is the most popular choice for everyday South Indian meals, curd rice and lunch boxes.',
+    links: [{ to: '/ponni-rice', label: 'Explore Ponni rice' }],
   },
   {
-    q: 'How do I become a Chennai Rice distributor?',
-    a: 'Apply on our distributorship page. Our sales team will call you to discuss your area.',
-    links: [{ to: '/rice-distributorship', label: 'Apply for distributorship' }],
+    q: 'Where is Chennai Rice made?',
+    a: 'All Chennai Rice is milled, graded and packed at our own plant in Nasiyanur, Erode, Tamil Nadu – 638102, with paddy storage silos, colour sorting and quality checks under one roof.',
+    links: [{ to: '/infrastructure', label: 'See our infrastructure' }],
   },
 ]
 
