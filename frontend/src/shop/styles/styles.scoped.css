@@ -2001,6 +2001,9 @@
   border-radius: var(--radius-md);
 }
 
+/* Under "Where should we deliver?": the details are saved as they are filled in (checkout journeys). */
+.shop-scope .checkout-form-note { margin: -6px 0 16px; font-size: 13px; line-height: 1.5; color: #7a6a5c; }
+.shop-scope .checkout-form-note a { color: inherit; text-decoration: underline; }
 .shop-scope .checkout-form-title {
   margin: 0 0 var(--s-2);
   font-size: var(--fs-h3);

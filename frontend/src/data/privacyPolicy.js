@@ -34,6 +34,7 @@ export const POLICY_SECTIONS = [
       'On our website. When you browse, view products, or submit a form, we may collect certain information automatically or as you provide it.',
       'Through enquiries. When you ask about a product or request a quote, we use what you share to understand and respond to your needs.',
       'Through orders. Placing an order or making a purchase naturally involves sharing transaction-related details.',
+      'At checkout. When you enter your delivery details at checkout (name, mobile number, email, city and PIN code), we save them as you fill them in, even if you do not finish paying, so our team can help you complete your order. Details from checkouts that are not completed are deleted after 90 days.',
       'Through GoKwik and similar checkout tools. Some website and checkout steps run on third-party technology such as GoKwik. You may be asked to verify your mobile number by OTP; the resulting details (mobile number, name, email, etc.) are shared with us to complete your transaction. These providers handle their part of the process under their own privacy policies.',
       'Through direct communication. Via WhatsApp, email, phone, our sales team, or customer support.',
     ],

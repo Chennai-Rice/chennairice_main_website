@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import SiteLayout from "../layouts/SiteLayout.jsx";
 import { useCart } from "../hooks/useCart.jsx";
@@ -107,6 +107,25 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startedCheckout]);
   const busy = status === "paying";
+
+  // Checkout journey, step 3 as the form is filled: once there is a 10-digit
+  // mobile number, the details are saved (and again after each change, a
+  // moment after typing stops), so the team can help someone who stops before
+  // paying. The form says so, with a link to the Privacy Policy.
+  const sentDetails = useRef("");
+  useEffect(() => {
+    if (isEmpty || status !== "idle") return undefined;
+    if (String(form.phone).replace(/\D/g, "").length < 10) return undefined;
+    const contact = { name: form.name, phone: form.phone, email: form.email, city: form.city, state: form.state, pincode: form.pincode };
+    const key = JSON.stringify(contact);
+    if (key === sentDetails.current) return undefined;
+    const t = window.setTimeout(() => {
+      sentDetails.current = key;
+      recordJourney("details", { items: journeyItems(items), value: journeyValue(items), contact });
+    }, 1500);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.name, form.phone, form.email, form.city, form.state, form.pincode, status, isEmpty]);
 
   const lines = useMemo(
     () => items.map((item) => ({ ...item, lineTotal: item.price * item.qty })),
@@ -322,6 +341,10 @@ export default function CheckoutPage() {
                 form, so it is associated by id instead of by nesting. */}
             <form id="checkout-form" className="checkout-form" onSubmit={handleSubmit} noValidate>
               <h2 className="checkout-form-title">Where should we deliver?</h2>
+              <p className="checkout-form-note">
+                We save these details as you fill them in, so our team can help if you can't finish your order.{" "}
+                <Link to="/privacy">Privacy Policy</Link>
+              </p>
 
               <label className="field">
                 <span className="field-label">Full name</span>

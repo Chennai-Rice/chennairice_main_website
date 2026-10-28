@@ -26,5 +26,7 @@ export async function runJobs() {
   // Sign-ups NeoDove could not take at the time; its raw webhook calls kept 90 days.
   const neodove = await sendNeodoveLeads({ query }).catch(() => ({}))
   await query("delete from neodove_events where received_at < now() - interval '90 days'").catch(() => {})
+  // Checkout journeys are kept 90 days (Privacy Policy, 'How we collect your information').
+  await query("delete from checkout_journeys where updated_at < now() - interval '90 days'").catch(() => {})
   return { expired, digest, email, crm, whatsapp, neodove }
 }
