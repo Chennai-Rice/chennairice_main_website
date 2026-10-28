@@ -5,6 +5,7 @@ import { useCart } from "../hooks/useCart.jsx";
 import useCartQuote from "../hooks/useCartQuote.js";
 import { currentAttribution } from "../../services/attribution.js";
 import { trackEvent } from "../../services/events.js";
+import { recordJourney, endJourney, journeyItems, journeyValue } from "../../services/journey.js";
 import { formatRupees } from "../utils/format.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
@@ -96,6 +97,8 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!startedCheckout || checkoutTracked) return;
     setCheckoutTracked(true);
+    // Checkout journey, step 2: proceeded to checkout.
+    recordJourney("checkout", { items: journeyItems(items), value: journeyValue(items) });
     trackMetaEvent("InitiateCheckout", {
       content_ids: items.map((i) => i.id), content_type: "product",
       num_items: items.reduce((n, i) => n + i.qty, 0),
@@ -121,6 +124,11 @@ export default function CheckoutPage() {
     }
 
     setStatus("paying");
+    // Checkout journey, step 3: details filled (the form passed its checks).
+    recordJourney("details", {
+      items: journeyItems(items), value: journeyValue(items),
+      contact: { name: form.name, phone: form.phone, email: form.email, city: form.city, state: form.state, pincode: form.pincode },
+    });
 
     // Browser-side failover. The server already skips a gateway whose API is
     // down; this covers what only the browser can see — a checkout script that
@@ -144,7 +152,10 @@ export default function CheckoutPage() {
           ...(excludeGateway.length ? { excludeGateway } : {}),
         });
         orderId = session.orderId;
+        // Checkout journey, step 4: continued to payment (the order exists now).
+        recordJourney("payment", { orderId });
       } catch (error) {
+        recordJourney("failed", { error: error.message || "Could not start the order" });
         setStatus("idle");
         setFailure(error.message || "We could not start your order. Please try again.");
         return;
@@ -159,6 +170,11 @@ export default function CheckoutPage() {
           excludeGateway.push(error.gateway);
           continue;
         }
+        // Checkout journey, step 5: payment cancelled by the shopper, or failed.
+        recordJourney(error instanceof PaymentCancelledError ? "cancelled" : "failed", {
+          orderId,
+          error: error instanceof PaymentCancelledError ? "Cancelled by the customer" : error.message || "Payment failed",
+        });
         setStatus("idle");
         setFailure(
           error instanceof PaymentCancelledError
@@ -170,6 +186,7 @@ export default function CheckoutPage() {
     }
 
     if (!widgetResult) {
+      recordJourney("failed", { orderId, error: "The payment window could not open" });
       setStatus("idle");
       setFailure("We could not open a payment window. Please try again in a few minutes, or contact us to order by phone.");
       return;
@@ -207,6 +224,9 @@ export default function CheckoutPage() {
         },
         "purchase-" + result.orderNumber
       );
+      // Checkout journey: purchased (the server checks the order really is paid).
+      recordJourney("purchased", { orderId: session.orderId });
+      endJourney();
       setStatus("done");
       navigate("/order-confirmed", { replace: true, state: { confirmed: receipt } });
       // The funnel's "Paid" step (/admin). Only for visitors who accepted

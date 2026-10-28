@@ -3,6 +3,7 @@
 // Public (the storefront):
 //   GET  /api/catalog                         packs, prices, in stock
 //   POST /api/checkout/quote                  price a cart (nothing is held)
+//   POST /api/journey                         one step of a shopper's checkout journey
 //   GET  /api/delivery?pincode=               do we deliver there, and the charge per pack size
 //   POST /api/checkout/session                create order, hold stock, open payment
 //   POST /api/checkout/verify                 confirm payment
@@ -37,6 +38,7 @@ import { recordVisit, sourcesReport, sourceOrders, sourcePeople, saveContestLead
 import { saveExpoLead, listExpoLeads, deleteExpoLead } from './expo.js'
 import { askAssistant } from './assistant.js'
 import { askAdvisor, advisorUsage, setAdvisorCap } from './advisor.js'
+import { recordJourney, listJourneys } from './journeys.js'
 import { saveAdvisorFile, MAX_FILE_BYTES } from './advisor-files.js'
 import { analystReport, analystSettings, setRiceType, setMonthlyTarget, addAdSpend, deleteAdSpend } from './analyst.js'
 import { checkAutomationKey, automationContacts } from './automation.js'
@@ -147,6 +149,11 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   }))
 
   router.post('/api/checkout/quote', wrap(async (req, res) => res.json(await quoteCart(req.body))))
+
+  // One step of a shopper's checkout journey (cart, checkout, details, payment, cancelled, failed, purchased).
+  router.post('/api/journey', rateLimit({ windowMs: 60000, max: 60 }), wrap(async (req, res) => {
+    res.json(await recordJourney(req.body, { userAgent: req.get('user-agent') }))
+  }))
 
   // Soru Kutty's delivery check: region and delivery charge per pack size for a PIN code.
   router.get('/api/delivery', rateLimit({ windowMs: 60000, max: 30 }), wrap(async (req, res) => {
@@ -423,6 +430,11 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   }))
   admin.put('/advisor/cap', perm('analyst.view'), wrap(async (req, res) => {
     res.json(await setAdvisorCap(req.body?.capInr))
+  }))
+  // /admin → Checkout journeys: the funnel and the people at each step.
+  admin.get('/journeys', perm('analyst.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await listJourneys(req.query))
   }))
   admin.get('/analyst', perm('analyst.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')

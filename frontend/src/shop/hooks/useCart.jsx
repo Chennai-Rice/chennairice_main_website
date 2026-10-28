@@ -1,6 +1,7 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { trackAddToCart } from "../../services/events.js";
 import { trackMetaEvent } from "../../services/metaPixel.js";
+import { recordJourney, journeyItems, journeyValue } from "../../services/journey.js";
 
 /**
  * The cart, ported from js/cart-store.js.
@@ -38,6 +39,15 @@ export function CartProvider({ children }) {
     } catch {
       /* storage unavailable — the cart just won't persist */
     }
+  }, [items]);
+
+  // Checkout journey, step 1: the cart (after the shopper changes it, not on page load).
+  const loaded = useRef(false);
+  useEffect(() => {
+    if (!loaded.current) { loaded.current = true; return undefined; }
+    if (!items.length) return undefined;
+    const t = window.setTimeout(() => recordJourney("cart", { items: journeyItems(items), value: journeyValue(items) }), 1200);
+    return () => window.clearTimeout(t);
   }, [items]);
 
   // Keep tabs in step with each other.

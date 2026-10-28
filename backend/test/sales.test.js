@@ -2192,3 +2192,60 @@ test('business advisor: 10 answered questions a day for the team, then "Rate lim
     await db.query(`delete from company_settings where key like 'advisor_questions:%'`)
   }
 })
+
+test('checkout journeys: cart → checkout → details → payment → cancelled / purchased; only forward; paid orders count as purchased; owner and IT only', async () => {
+  const step = (journeyId, stage, extra = {}) => api('POST', '/api/journey', { body: { journeyId, stage, ...extra } })
+  const items = [{ id: 'alibaba-10kg', name: 'Alibaba (10 kg)', qty: 2, price: 990 }]
+
+  // Journey 1: fills details, opens payment, cancels.
+  const j1 = crypto.randomUUID()
+  assert.equal((await step(j1, 'cart', { items, value: 1980 })).status, 200)
+  await step(j1, 'checkout', { items, value: 1980 })
+  await step(j1, 'details', { items, value: 1980, contact: { name: 'Meena K', phone: '+91 98400 11223', email: 'meena@example.com', city: 'Salem', pincode: '636001', state: 'Tamil Nadu' } })
+  const pending = await api('POST', '/api/checkout/session', { body: { ...buyer({ name: 'Meena K', email: 'meena@example.com', city: 'Salem', pincode: '636001' }), items: [{ id: 'alibaba-10kg', qty: 2 }] }, headers: { 'X-Forwarded-For': '10.9.9.1' } })
+  assert.equal(pending.status, 200, JSON.stringify(pending.body))
+  await step(j1, 'payment', { orderId: pending.body.orderId })
+  let r = await step(j1, 'cancelled', { orderId: pending.body.orderId })
+  assert.equal(r.body.stage, 'cancelled')
+  // A later "cart" does not move it back; a second payment attempt does count.
+  assert.equal((await step(j1, 'cart', { items })).body.stage, 'cancelled')
+  assert.equal((await step(j1, 'payment', { orderId: pending.body.orderId })).body.stage, 'payment')
+  // "Purchased" is not believed while the order is unpaid.
+  assert.equal((await step(j1, 'purchased', { orderId: pending.body.orderId })).body.stage, 'payment')
+  await step(j1, 'cancelled', { orderId: pending.body.orderId, error: 'Cancelled by the customer' })
+
+  // Journey 2: pays; the browser never says "purchased", but the paid order makes it so.
+  const j2 = crypto.randomUUID()
+  await step(j2, 'cart', { items, value: 990 })
+  await step(j2, 'details', { contact: { name: 'Ravi', phone: '9876500001' } })
+  const { session } = await buy([{ id: 'alibaba-10kg', qty: 1 }], buyer({ name: 'Ravi', email: 'ravi.j@example.com' }))
+  await step(j2, 'payment', { orderId: session.orderId })
+
+  // Journey 3: stops at the cart. Bad input is refused.
+  const j3 = crypto.randomUUID()
+  await step(j3, 'cart', { items })
+  assert.equal((await step('not-a-uuid', 'cart')).status, 400)
+  assert.equal((await step(j3, 'teleport')).status, 400)
+
+  const list = await api('GET', '/api/admin/journeys?days=7', { token: OWNER })
+  assert.equal(list.status, 200, JSON.stringify(list.body))
+  const f = list.body.funnel
+  assert.ok(f.cart >= 3 && f.details >= 2 && f.payment >= 2 && f.purchased >= 1 && f.cancelled >= 1, JSON.stringify(f))
+  const one = list.body.journeys.find((x) => x.id === j1)
+  // The order's own details win over the form's once there is an order.
+  assert.equal(one.outcome, 'cancelled')
+  assert.equal(one.customer.name, 'Meena K')
+  assert.equal(one.orderNumber, pending.body.orderNumber)
+  assert.equal(one.paymentAttempts, 2)
+  assert.equal(one.lastError, 'Cancelled by the customer')
+  assert.ok(one.steps.cart && one.steps.checkout && one.steps.details && one.steps.payment && one.steps.cancelled)
+  assert.equal(list.body.journeys.find((x) => x.id === j2).outcome, 'purchased')
+  assert.equal(list.body.journeys.find((x) => x.id === j3).customer, null)
+
+  // Filters and search.
+  const cancelled = await api('GET', '/api/admin/journeys?days=7&outcome=cancelled', { token: OWNER })
+  assert.ok(cancelled.body.journeys.every((x) => x.outcome === 'cancelled') && cancelled.body.journeys.some((x) => x.id === j1))
+  const found = await api('GET', '/api/admin/journeys?days=7&q=Meena', { token: OWNER })
+  assert.deepEqual(found.body.journeys.map((x) => x.id), [j1])
+  assert.equal((await api('GET', '/api/admin/journeys', { token: 'store@x.test|uid-store' })).status, 403)
+})

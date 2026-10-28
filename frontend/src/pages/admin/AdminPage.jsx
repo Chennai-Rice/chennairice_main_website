@@ -21,6 +21,7 @@ import CampaignsPanel from './CampaignsPanel.jsx'
 import EnquiriesPanel from './EnquiriesPanel.jsx'
 import AnalystPanel from './AnalystPanel.jsx'
 import AdvisorPanel from './AdvisorPanel.jsx'
+import CheckoutJourneysPanel from './CheckoutJourneysPanel.jsx'
 import { LoadingRegion } from './components/ui.jsx'
 import {
   BehaviourView,
@@ -54,6 +55,7 @@ const ANALYTICS_NAV = [
   { id: 'visitors', label: 'Visitors', subtitle: 'Everyone who has browsed', icon: 'user' },
   { id: 'products', label: 'Products', subtitle: 'Which packs draw attention', icon: 'box' },
   { id: 'funnel', label: 'Funnel', subtitle: 'Where visitors drop off', icon: 'filter' },
+  { id: 'checkout', label: 'Checkout journeys', subtitle: 'Cart → checkout → details → payment: who stopped where', icon: 'route' },
   { id: 'journeys', label: 'Journeys', subtitle: 'The path one visitor walked', icon: 'route' },
   { id: 'behaviour', label: 'Behaviour', subtitle: 'Rage clicks and dead clicks', icon: 'spark' },
   { id: 'heatmap', label: 'Heatmap', subtitle: 'Where visitors click on a page', icon: 'target' },
@@ -449,7 +451,7 @@ function Dashboard({ session, access, onSignOut }) {
           </div>
 
           <div className="ad-topbar-actions">
-            {view !== 'realtime' && view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && (
+            {view !== 'realtime' && view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && (
               <label className="ad-select-wrap">
                 <span className="ad-sr">Date range</span>
                 <select className="ad-select" value={rangeId} onChange={(e) => setRangeId(e.target.value)}>
@@ -459,7 +461,7 @@ function Dashboard({ session, access, onSignOut }) {
                 </select>
               </label>
             )}
-            {view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && (
+            {view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && (
               <button type="button" className="ad-btn ad-btn-quiet" onClick={refresh} disabled={loading}>
                 {loading ? 'Refreshing…' : 'Refresh'}
               </button>
@@ -479,6 +481,8 @@ function Dashboard({ session, access, onSignOut }) {
             <CampaignsPanel />
           ) : view === 'enquiries' ? (
             <EnquiriesPanel />
+          ) : view === 'checkout' ? (
+            <CheckoutJourneysPanel />
           ) : view === 'advisor' ? (
             <AdvisorPanel report={report} />
           ) : needsInteractions ? (
