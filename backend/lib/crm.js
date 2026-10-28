@@ -61,7 +61,8 @@ export const CRM_STAGES = {
  * (Settings → Tags); any other tag is dropped, so these exact names exist there.
  */
 export const CRM_TAGS = {
-  contest_signup: 'Contest sign-up',
+  // The ad pop-up sign-up. ("Contest sign-up" is the slogan contest itself, sent by the contest service.)
+  contest_signup: 'Ad sign-up',
   contact: 'Contact enquiry',
   bulk_order: 'Bulk enquiry',
   order_event: 'Website order',

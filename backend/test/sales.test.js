@@ -1347,7 +1347,7 @@ test('Sales Daddy CRM: contest sign-ups and enquiries are sent as leads; failure
     assert.equal(contest.lead.name, 'Lakshmi Devi')
     // An Instagram ad sign-up: Sales Daddy's own Instagram source; a stage, and tags on top.
     assert.equal(contest.lead.source, 'instagram')
-    assert.deepEqual(contest.lead.tags, ['Contest sign-up', 'Instagram ad', 'Not converted'])
+    assert.deepEqual(contest.lead.tags, ['Ad sign-up', 'Instagram ad', 'Not converted'])
     assert.match(contest.lead.note, /Reel 3/)
     assert.ok(contest.lead.clientRef)
 
@@ -1588,7 +1588,7 @@ test('Sales Daddy CRM: stages — sign-up → "Signed up – not bought", unpaid
     let moved = await step(signUp)
     assert.deepEqual(moved, [{ statusId: S.signedUp }])
     const lead = got.find((g) => g.method === 'POST' && g.path === '/v1/ext/leads').body
-    assert.deepEqual(lead.tags, ['Contest sign-up', 'Instagram ad', 'Not converted'])
+    assert.deepEqual(lead.tags, ['Ad sign-up', 'Instagram ad', 'Not converted'])
     assert.equal(lead.stage, undefined) // ours, never sent to Sales Daddy
     assert.equal(lead.source, 'instagram')
 
@@ -1979,6 +1979,25 @@ test('Analyst: owner sees sales, leads, campaigns and delivery KPIs; rice type, 
   const entry = settings.adSpend.find((s) => s.campaign === 'Diwali Reels')
   assert.equal(entry.amount, 500)
   assert.equal((await api('DELETE', `/api/admin/analyst/ad-spend/${entry.id}`, { token: OWNER })).status, 200)
+})
+
+test('Reports: the owner lists and downloads each report as a CSV for a period; other roles are refused; an unknown report is a 404', async () => {
+  assert.equal((await api('GET', '/api/admin/reports', { token: tokens.sales })).status, 403)
+  assert.equal((await api('GET', '/api/admin/reports/orders.csv', { token: tokens.sales })).status, 403)
+  const list = await api('GET', '/api/admin/reports', { token: OWNER })
+  assert.equal(list.status, 200)
+  assert.deepEqual(list.body.reports.map((r) => r.id), ['orders', 'customers', 'signups', 'expo', 'enquiries', 'checkout'])
+  for (const { id } of list.body.reports) {
+    const r = await api('GET', `/api/admin/reports/${id}.csv?days=365`, { token: OWNER })
+    assert.equal(r.status, 200, `${id}: ${JSON.stringify(r.body)}`)
+    assert.ok(String(r.body).includes('\r\n'), `${id} is a CSV with a header line`)
+  }
+  // The orders placed by the tests above are in Orders (with an amount) and their buyers in Customers.
+  const orders = (await api('GET', '/api/admin/reports/orders.csv?days=7', { token: OWNER })).body
+  assert.match(orders, /Order ID,Order date,Customer,Phone,Products,Packs,Weight \(kg\),Amount \(₹\),Payment,Status/)
+  assert.match(orders, /CR-\d{8}-/)
+  assert.match((await api('GET', '/api/admin/reports/customers.csv', { token: OWNER })).body, /Customer,Phone,Email,Source,Status/)
+  assert.equal((await api('GET', '/api/admin/reports/nothing.csv', { token: OWNER })).status, 404)
 })
 
 test('Ad campaigns: people from a source — every checkout (paid or not) with name, mobile and campaign; filtered by source', async () => {
