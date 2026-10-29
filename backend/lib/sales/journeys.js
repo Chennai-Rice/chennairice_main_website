@@ -9,6 +9,7 @@
 // before it could say so.
 import { query } from '../db.js'
 import { httpError, str } from './util.js'
+import { audit } from './staff.js'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DAY = /^\d{4}-\d{2}-\d{2}$/
@@ -191,4 +192,21 @@ export async function listJourneys(q = {}) {
       followedUpAt: r.followed_up_at,
     })),
   }
+}
+
+/**
+ * Deletes journeys from the list (mock or test data, a mistake) — only the journey records. An order a journey
+ * led to is never touched. Each deletion is written to the staff audit log. Returns how many were removed.
+ */
+export async function deleteJourneys(db, staff, ids) {
+  const list = [...new Set((Array.isArray(ids) ? ids : []).map((v) => String(v).trim()).filter((v) => UUID.test(v)))].slice(0, 500)
+  if (!list.length) throw httpError('No journeys chosen', { publicMessage: 'Choose the journeys to delete.' })
+  const { rows } = await db.query(
+    `delete from checkout_journeys where id::text = any($1::text[])
+      returning id, contact_name, contact_phone, order_number, stage`, [list])
+  for (const r of rows) {
+    await audit(db, staff, 'journey.delete', 'checkout_journey', r.id,
+      { name: r.contact_name, phone: r.contact_phone, order: r.order_number, stage: r.stage })
+  }
+  return { deleted: rows.length }
 }

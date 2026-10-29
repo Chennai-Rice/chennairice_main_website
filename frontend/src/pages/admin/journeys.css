@@ -64,3 +64,13 @@
   .cj-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .cj-filters input { min-width: 0; width: 100%; }
 }
+
+/* Delete: pick journeys (mock or test data) and remove them; an order they led to is never deleted. */
+.cj-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cj-btn--danger { color: #fff; background: #b42318; border-color: #b42318; }
+.cj-btn--danger:hover { background: #912018; }
+.cj-check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.cj-check--all { margin-left: 14px; }
+.cj-row.is-picked { background: var(--ad-accent-wash); }
+.cj-del { justify-self: start; margin-top: 4px; padding: 3px 12px; border: 1px solid #f0b4ae; border-radius: 999px; background: #fff; color: #b42318; font-size: 12px; cursor: pointer; }
+.cj-del:hover { background: #fdecea; }
