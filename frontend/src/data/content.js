@@ -454,7 +454,8 @@ export const HOME_FAQS = [
   {
     q: 'Does Chennai Rice Supply Rice for Wholesale and Bulk Orders?',
     a: 'Yes. Chennai Rice Industries supplies rice for wholesale and bulk orders to distributors, retailers, hotels, restaurants and institutional buyers. As a rice manufacturer based in Erode, Tamil Nadu, we offer multiple rice varieties and packaging options to meet different business requirements. Contact our team for bulk rice pricing, wholesale enquiries and distributor opportunities.',
-    links: [{ to: '/bulk-order', label: 'Send a bulk enquiry' }],
+    // The words in the answer that link (owner, Oct 2026).
+    inline: { text: 'Contact our team', to: '/contact-us' },
   },
 ]
 

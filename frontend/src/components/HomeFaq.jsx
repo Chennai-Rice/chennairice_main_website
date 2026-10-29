@@ -13,6 +13,19 @@ const FAQ_SCHEMA = JSON.stringify({
   })),
 })
 
+/** The answer, with `inline.text` (where it appears) as a link. */
+function Answer({ f }) {
+  const at = f.inline ? f.a.indexOf(f.inline.text) : -1
+  if (at < 0) return f.a
+  return (
+    <>
+      {f.a.slice(0, at)}
+      <Link className="home-faq-inline" to={f.inline.to}>{f.inline.text}</Link>
+      {f.a.slice(at + f.inline.text.length)}
+    </>
+  )
+}
+
 /** Home page FAQs: an accordion, the first answer open. */
 export default function HomeFaq() {
   return (
@@ -26,7 +39,7 @@ export default function HomeFaq() {
                 <h3 className="home-faq-q">{f.q}</h3>
                 <span className="home-faq-icon" aria-hidden="true" />
               </summary>
-              <p className="home-faq-a">{f.a}</p>
+              <p className="home-faq-a"><Answer f={f} /></p>
               {f.links?.map((l) => (l.to
                 ? <Link className="home-faq-link" key={l.label} to={l.to}>{l.label} →</Link>
                 : <a className="home-faq-link" key={l.label} href={l.href} target="_blank" rel="noopener noreferrer">{l.label} →</a>))}
