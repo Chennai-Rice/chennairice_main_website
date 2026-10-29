@@ -1984,6 +1984,28 @@ test('Analyst: owner sees sales, leads, campaigns and delivery KPIs; rice type, 
   assert.equal((await api('DELETE', `/api/admin/analyst/ad-spend/${entry.id}`, { token: OWNER })).status, 200)
 })
 
+test('Orders CSV of the ticked orders: only those, whatever tab or filter the page is on; without a selection the whole filtered list', async () => {
+  const list = await api('GET', '/api/admin/warehouse/orders?tab=all&limit=50', { token: OWNER })
+  assert.equal(list.status, 200)
+  assert.ok(list.body.orders.length >= 3, 'earlier tests left several orders')
+  const [a, b] = list.body.orders
+  const rest = list.body.orders.slice(2)
+  const picked = await api('POST', '/api/admin/warehouse/orders.csv', { token: OWNER, body: { ids: [a.id, b.id, 'not-an-id', a.id] } })
+  assert.equal(picked.status, 200)
+  assert.ok(picked.body.includes(a.orderNumber) && picked.body.includes(b.orderNumber))
+  assert.ok(rest.every((o) => !picked.body.includes(o.orderNumber)), 'no other order is in the file')
+  assert.equal(picked.body.trim().split(/\r?\n/).length, 3) // the header and the two orders
+  // No selection: everything in the list.
+  const all = await api('GET', '/api/admin/warehouse/orders.csv?tab=all', { token: OWNER })
+  assert.ok(rest.every((o) => all.body.includes(o.orderNumber)))
+  // Not for roles without the permission.
+  assert.equal((await api('POST', '/api/admin/warehouse/orders.csv', { token: tokens.plant, body: { ids: [a.id] } })).status, 403)
+  // A selection of nothing valid is an empty file, not the whole list.
+  const none = await api('POST', '/api/admin/warehouse/orders.csv', { token: OWNER, body: { ids: ['x'] } })
+  assert.equal(none.status, 200)
+  assert.equal(none.body.trim().split(/\r?\n/).length, 1) // the header only
+})
+
 test('Reports: the owner lists and downloads each report as a CSV for a period; other roles are refused; an unknown report is a 404', async () => {
   assert.equal((await api('GET', '/api/admin/reports', { token: tokens.sales })).status, 403)
   assert.equal((await api('GET', '/api/admin/reports/orders.csv', { token: tokens.sales })).status, 403)
