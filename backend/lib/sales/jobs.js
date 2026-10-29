@@ -5,7 +5,8 @@
 //   2. the team's summary email, once a day at 9:00 India time (digest.js): new orders and
 //      where they came from, cancellations, orders waiting too long, low stock
 //   3. send queued emails, retry CRM leads and WhatsApp messages
-//   4. the bank's UTIB code for settled payments (settlements.js), a catch-up for the settlement webhook
+//   4. checkout journeys that stopped before paying, to NeoDove and Sales Daddy (journey-followup.js)
+//   5. the bank's UTIB code for settled payments (settlements.js), a catch-up for the settlement webhook
 import { query } from '../db.js'
 import { expireUnpaidOrders } from './checkout.js'
 import { sendQueued } from './email.js'
@@ -14,12 +15,15 @@ import { sendCrmLeads } from '../crm.js'
 import { sendWhatsAppMessages } from '../whatsapp.js'
 import { sendNeodoveLeads } from '../neodove.js'
 import { syncSettlements } from './settlements.js'
+import { followUpJourneys } from './journey-followup.js'
 
 export async function runJobs() {
   const expired = await expireUnpaidOrders()
   // The team's alerts go out as one summary a day, at 9:00 India time.
   const digest = await sendDailyDigest({ query })
   const email = await sendQueued({ query })
+  // Checkout journeys that stopped before paying: queued for NeoDove and Sales Daddy, sent just below.
+  const journeys = await followUpJourneys({ query })
   // Leads Sales Daddy could not take at the time are retried here.
   const crm = await sendCrmLeads({ query })
   const whatsapp = await sendWhatsAppMessages({ query })
@@ -40,5 +44,5 @@ export async function runJobs() {
       `select count(*)::int as n from payments where status = 'paid' and bank_utr is null and paid_at < now() - interval '1 day'`)
     if (due.n) settlements = await syncSettlements({ days: 4 }).catch((err) => ({ error: err.message }))
   }
-  return { expired, digest, email, crm, whatsapp, neodove, settlements }
+  return { expired, digest, email, journeys, crm, whatsapp, neodove, settlements }
 }

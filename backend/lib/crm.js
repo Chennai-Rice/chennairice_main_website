@@ -67,6 +67,8 @@ export const CRM_TAGS = {
   bulk_order: 'Bulk enquiry',
   order_event: 'Website order',
   abandoned: 'Abandoned checkout',
+  // A checkout journey that stopped after the form, before Pay (journey-followup.js).
+  journey: 'Left at details',
   // Someone who messaged the business WhatsApp number (AskEva → askeva-inbound.js).
   whatsapp_chat: 'whatsapp',
   // A NeoDove call, on any of the team's NeoDove campaigns (neodove.js).
@@ -168,7 +170,7 @@ async function updateTags(leadId, add = [], remove = []) {
  */
 async function deliver(kind, payload, ref) {
   // An event (order step, NeoDove call result) is { lead, note, stage? } and always adds its note.
-  const event = kind === 'order_event' || kind === 'call_result'
+  const event = kind === 'order_event' || kind === 'call_result' || kind === 'journey'
   // `stage` is ours, not a Sales Daddy field.
   const { stage: leadStage, ...fields } = event ? payload.lead : payload
   const stage = payload.stage || leadStage

@@ -2373,3 +2373,90 @@ test('slogan contest: entries by day, pack, region, district and shop; demo left
     setContestSourceForTests({ entries: async () => [], coupons: async () => ({ printed: 0, used: 0 }) })
   }
 })
+
+test('checkout journeys follow-up: stopped journeys go to their own NeoDove campaigns (payment / details), left-at-details also to Sales Daddy; buyers, fresh and cart-only journeys are not sent; once a week per mobile', async () => {
+  const http = await import('node:http')
+  const neo = []
+  const fakeNeo = http.createServer((req, res) => {
+    let body = ''
+    req.on('data', (c) => (body += c)).on('end', () => { neo.push({ path: req.url, body: JSON.parse(body) }); res.end('OK') })
+  })
+  const sd = []
+  const fakeSd = http.createServer((req, res) => {
+    let body = ''
+    req.on('data', (c) => (body += c)).on('end', () => {
+      sd.push({ method: req.method, path: req.url, body: body ? JSON.parse(body) : null })
+      res.setHeader('content-type', 'application/json')
+      if (req.url === '/v1/ext/masters') return res.end(JSON.stringify({ ok: true, statuses: [] }))
+      if (req.method === 'GET') return res.end(JSON.stringify({ ok: true, lead: { tags: [] } }))
+      if (req.url.endsWith('/notes')) return res.end(JSON.stringify({ ok: true }))
+      res.end(JSON.stringify({ ok: true, leadId: 'lead-j', duplicate: false }))
+    })
+  })
+  await new Promise((r) => fakeNeo.listen(0, r))
+  await new Promise((r) => fakeSd.listen(0, r))
+  const { followUpJourneys } = await import('../lib/sales/journey-followup.js')
+  const { sendNeodoveLeads } = await import('../lib/neodove.js')
+  const { sendCrmLeads } = await import('../lib/crm.js')
+  const neoUrl = `http://127.0.0.1:${fakeNeo.address().port}`
+  Object.assign(process.env, { NEODOVE_PAYMENT_ENDPOINT: neoUrl + '/payment', NEODOVE_DETAILS_ENDPOINT: neoUrl + '/details' })
+  const journey = async (stage, phone, minutesAgo, extra = {}) => {
+    const id = crypto.randomUUID()
+    await db.query(
+      `insert into checkout_journeys (id, stage, started_at, updated_at, steps, items, value_paise, contact_name, contact_phone, city, state, pincode, last_error, traffic_source)
+       values ($1, $2, now() - make_interval(mins => $4 + 5), now() - make_interval(mins => $4), $5, $6, 121800, $7, $3, 'Erode', 'Tamil Nadu', '638102', $8, 'meta_ads_instagram')`,
+      [id, stage, phone, minutesAgo, { cart: new Date(), checkout: new Date(), [stage]: new Date() },
+        JSON.stringify([{ id: 'kitchidi-ponni-rice-26', name: 'Kitchidi Ponni Rice 26 kg', qty: 2, price: 609 }]),
+        extra.name ?? 'Kavya S', extra.error ?? null])
+    return id
+  }
+  try {
+    await db.query(`update crm_outbox set status = 'failed' where status = 'queued'`)
+    const details = await journey('details', '+91 96000 11111', 40)
+    const cancelled = await journey('cancelled', '9600055555', 35, { error: 'Cancelled by the customer' })
+    const fresh = await journey('details', '9600033333', 10)
+    const buyer = await journey('details', '+91 98765 43210', 45) // has paid orders from earlier tests
+    const cartOnly = await journey('checkout', '9600044444', 50)
+    const again = await journey('payment', '9600011111', 45) // same mobile as the first, other campaign
+    const againDetails = await journey('details', '96000 11111', 31) // same mobile, same campaign: not twice
+
+    const r = await followUpJourneys({ query: db.query })
+    assert.deepEqual({ payment: r.payment, details: r.details, salesDaddy: r.salesDaddy }, { payment: 2, details: 1, salesDaddy: 1 }, JSON.stringify(r))
+    const state = Object.fromEntries((await db.query(`select id, followup from checkout_journeys where id = any($1)`,
+      [[details, cancelled, fresh, buyer, cartOnly, again, againDetails]])).rows.map((x) => [x.id, x.followup]))
+    assert.equal(state[details], 'details')
+    assert.equal(state[cancelled], 'payment')
+    assert.equal(state[fresh], null) // under 30 minutes: next round
+    assert.equal(state[buyer], 'skipped: bought')
+    assert.equal(state[cartOnly], 'skipped: stage checkout')
+    assert.equal(state[again], 'payment')
+    assert.equal(state[againDetails], 'details (already called this week)')
+
+    // NeoDove: each journey to its own campaign's endpoint.
+    await sendNeodoveLeads({ query: db.query })
+    const byPath = (p) => neo.filter((n) => n.path === p).map((n) => n.body)
+    assert.equal(byPath('/details').length, 1)
+    assert.equal(byPath('/payment').length, 2)
+    const d = byPath('/details')[0]
+    assert.deepEqual({ name: d.name, mobile: d.mobile, Stopped: d.Stopped, Basket: d.Basket, Value: d.Value, Place: d.Place },
+      { name: 'Kavya S', mobile: 9600011111, Stopped: 'Filled in details, did not press Pay', Basket: '2 x Kitchidi Ponni Rice 26 kg', Value: '₹1,218', Place: 'Erode, Tamil Nadu, 638102' })
+    assert.equal(byPath('/payment').find((p) => p.mobile === 9600055555).Stopped, 'Cancelled the payment')
+
+    // Sales Daddy: the left-at-details journey as a lead, tagged, with the note.
+    Object.assign(process.env, { SALESDADDY_API_KEY: 'sd_live_test', SALESDADDY_BASE_URL: `http://127.0.0.1:${fakeSd.address().port}` })
+    await sendCrmLeads({ query: db.query, limit: 1000 })
+    const lead = sd.find((g) => g.method === 'POST' && g.path === '/v1/ext/leads')
+    assert.equal(lead.body.mobile, '9600011111')
+    assert.deepEqual(lead.body.tags, ['Left at details'])
+    const note = sd.find((g) => g.path.endsWith('/notes')).body.body
+    assert.match(note, /left at the details step/)
+    assert.match(note, /Basket: 2 x Kitchidi Ponni Rice 26 kg/)
+
+    // A second run sends nothing new.
+    const again2 = await followUpJourneys({ query: db.query })
+    assert.equal(again2.payment + again2.details + again2.salesDaddy, 0)
+  } finally {
+    for (const k of ['NEODOVE_PAYMENT_ENDPOINT', 'NEODOVE_DETAILS_ENDPOINT', 'SALESDADDY_API_KEY', 'SALESDADDY_BASE_URL']) delete process.env[k]
+    fakeNeo.close(); fakeSd.close()
+  }
+})

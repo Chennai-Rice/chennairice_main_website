@@ -20,6 +20,11 @@ const STEPS = [
   { key: 'payment', label: 'Continued to payment' },
   { key: 'purchased', label: 'Purchased' },
 ]
+// Where a stopped journey was sent for a call (journey-followup.js).
+const FOLLOWUP = {
+  payment: 'Sent to NeoDove: Payment not completed',
+  details: 'Sent to NeoDove: Left at details · Sales Daddy',
+}
 const OUTCOME = {
   purchased: { text: 'Purchased', tone: 'good' },
   cancelled: { text: 'Payment cancelled', tone: 'bad' },
@@ -102,6 +107,9 @@ function Journey({ j }) {
         {j.paymentAttempts > 1 && <span className="cj-muted">{j.paymentAttempts} payment attempts</span>}
         {j.lastError && j.outcome !== 'purchased' && <span className="cj-note">{j.lastError}</span>}
         {j.source && <span className="cj-muted">Source: {j.source}</span>}
+        {FOLLOWUP[j.followup] && j.outcome !== 'purchased' && (
+          <span className="cj-note" title={j.followedUpAt ? `Sent ${when(j.followedUpAt)}` : undefined}>{FOLLOWUP[j.followup]}</span>
+        )}
       </div>
     </li>
   )

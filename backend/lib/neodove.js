@@ -7,8 +7,14 @@
 //                                                       └▶ Sales Daddy: note + "Qualified" / "Not qualified" stage
 //   paid order with the same mobile ─▶ lead_status 'converted' (and Sales Daddy Converted, see crm.js)
 //
-//   NEODOVE_ENDPOINT     the campaign's Custom Integration "Endpoint" URL (Secret Manager). Until it is a
-//                        real https URL, leads wait in neodove_outbox and go out once it is set.
+//   checkout journey that stopped before paying (journey-followup.js)
+//        └▶ neodove_outbox, campaign 'checkout_payment' or 'checkout_details' ─▶ its own NeoDove campaign
+//
+//   NEODOVE_ENDPOINT          the sign-up campaign's Custom Integration "Endpoint" URL (Secret Manager)
+//   NEODOVE_PAYMENT_ENDPOINT  the "Payment not completed" campaign's endpoint
+//   NEODOVE_DETAILS_ENDPOINT  the "Left at details" campaign's endpoint
+//                             Until a campaign's endpoint is a real https URL, its leads wait in
+//                             neodove_outbox and go out once it is set.
 //   NEODOVE_WEBHOOK_KEY  the secret NeoDove's webhook sends (X-API-Key header or ?key= in the URL)
 //
 // NeoDove's webhook format is not published: the parser accepts flat and nested shapes and every
@@ -20,9 +26,17 @@ import { httpError, safeEqual } from './sales/util.js'
 const MAX_ATTEMPTS = 8
 const BACKOFF = [1, 5, 15, 30, 60, 120, 360, 720] // minutes
 
-const endpoint = () => String(process.env.NEODOVE_ENDPOINT || '').trim()
+// Each NeoDove campaign has its own Custom Integration endpoint.
+export const NEODOVE_CAMPAIGNS = {
+  signup: 'NEODOVE_ENDPOINT',
+  checkout_payment: 'NEODOVE_PAYMENT_ENDPOINT',
+  checkout_details: 'NEODOVE_DETAILS_ENDPOINT',
+}
+const endpoint = (campaign = 'signup') => String(process.env[NEODOVE_CAMPAIGNS[campaign]] || '').trim()
 // https only (a plain http address is accepted for this machine, for the tests).
-export const neodoveEnabled = () => /^https:\/\/\S+$/.test(endpoint()) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(endpoint())
+const usable = (url) => /^https:\/\/\S+$/.test(url) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url)
+export const neodoveEnabled = (campaign = 'signup') => usable(endpoint(campaign))
+const enabledCampaigns = () => Object.keys(NEODOVE_CAMPAIGNS).filter((c) => neodoveEnabled(c))
 
 export function checkNeodoveKey(req) {
   const key = process.env.NEODOVE_WEBHOOK_KEY
@@ -182,7 +196,7 @@ export async function recordSignup(db, { name, phone, email, source, sourceLabel
       'Signed up': fmt(new Date()),
     }
     const { rows: [o] } = await db.query(
-      `insert into neodove_outbox (mobile, payload) values ($1, $2) on conflict (mobile) do nothing returning id`, [mobile, payload])
+      `insert into neodove_outbox (mobile, payload) values ($1, $2) on conflict (mobile) where campaign = 'signup' do nothing returning id`, [mobile, payload])
     return o?.id || null
   } catch (err) {
     console.error('[neodove] could not record a sign-up:', err.message)
@@ -208,8 +222,8 @@ export async function markLeadConverted(db, mobileRaw) {
   }
 }
 
-async function post(body) {
-  const res = await fetch(endpoint(), {
+async function post(body, campaign) {
+  const res = await fetch(endpoint(campaign), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(body),
@@ -219,9 +233,13 @@ async function post(body) {
   return { status: res.status, text }
 }
 
-/** Sends queued sign-ups to NeoDove (oldest first). With `id`, just that one. Never throws. */
+/**
+ * Sends queued leads to their NeoDove campaigns (oldest first). With `id`, just that one. A campaign
+ * without an endpoint yet keeps its leads queued. Never throws.
+ */
 export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQuery } = {}) {
-  if (!hasDatabase() || !neodoveEnabled()) return { sent: 0, failed: 0, skipped: neodoveEnabled() ? 'no database' : 'no NeoDove endpoint' }
+  const campaigns = enabledCampaigns()
+  if (!hasDatabase() || !campaigns.length) return { sent: 0, failed: 0, skipped: campaigns.length ? 'no database' : 'no NeoDove endpoint' }
   let sent = 0
   let failed = 0
   try {
@@ -229,18 +247,19 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
       `update neodove_outbox set next_try_at = now() + interval '2 minutes'
         where id in (select id from neodove_outbox
                       where status = 'queued' and next_try_at <= now() and ($1::uuid is null or id = $1)
+                        and campaign = any($3::text[])
                       order by created_at limit $2 for update skip locked)
-        returning id, mobile, payload, attempts, created_at`,
-      [id, limit]
+        returning id, mobile, campaign, payload, attempts, created_at`,
+      [id, limit, campaigns]
     )
     rows.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
     for (const r of rows) {
       let result
-      try { result = await post(r.payload) } catch (err) { result = { status: 0, text: err.message } }
+      try { result = await post(r.payload, r.campaign) } catch (err) { result = { status: 0, text: err.message } }
       if (result.status >= 200 && result.status < 300) {
         sent++
         await query(`update neodove_outbox set status = 'sent', sent_at = now(), attempts = attempts + 1, last_error = null where id = $1`, [r.id])
-        await query(`update lead_status set neodove_sent_at = now(), updated_at = now() where mobile = $1`, [r.mobile])
+        if (r.campaign === 'signup') await query(`update lead_status set neodove_sent_at = now(), updated_at = now() where mobile = $1`, [r.mobile])
         continue
       }
       failed++

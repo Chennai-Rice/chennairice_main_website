@@ -187,6 +187,8 @@ export async function listJourneys(q = {}) {
       paymentAttempts: r.payment_attempts,
       lastError: r.last_error,
       source: r.traffic_source,
+      followup: r.followup,
+      followedUpAt: r.followed_up_at,
     })),
   }
 }

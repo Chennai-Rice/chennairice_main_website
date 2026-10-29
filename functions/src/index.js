@@ -66,7 +66,9 @@ import { runJobs } from '../../backend/lib/sales/jobs.js'
 export const salesJobs = onSchedule(
   {
     schedule: 'every 10 minutes', region: 'asia-south1', timeZone: 'Asia/Kolkata', memory: '256MiB', timeoutSeconds: 120,
-    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'NEODOVE_ENDPOINT'], // the database, queued emails, CRM, WhatsApp and NeoDove retries
+    // NEODOVE_PAYMENT_ENDPOINT / NEODOVE_DETAILS_ENDPOINT: the two checkout NeoDove campaigns (journey-followup.js);
+    // until one holds a real https URL its leads wait in the outbox.
+    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'NEODOVE_ENDPOINT', 'NEODOVE_PAYMENT_ENDPOINT', 'NEODOVE_DETAILS_ENDPOINT'], // the database, queued emails, CRM, WhatsApp and NeoDove retries
     serviceAccount: 'api-backend@chennai-rice-website.iam.gserviceaccount.com',
   },
   async () => {
