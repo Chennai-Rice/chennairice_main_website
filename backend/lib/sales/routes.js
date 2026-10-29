@@ -14,6 +14,7 @@
 // Staff (/api/admin/*, Firebase ID token, permissions per role — staff.js).
 import express from 'express'
 import { listCatalog, checkDelivery } from './catalog.js'
+import { merchantFeed } from './merchant-feed.js'
 import { createCheckoutSession, confirmCheckout, quoteCart } from './checkout.js'
 import { handleRazorpayWebhook } from './webhooks.js'
 import { runJobs } from './jobs.js'
@@ -101,6 +102,12 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   router.get('/api/catalog', wrap(async (_req, res) => {
     res.set('Cache-Control', 'public, max-age=60')
     res.json({ products: await listCatalog({ query }) })
+  }))
+
+  // Product feed for Google / Bing Merchant Center and AI shopping listings (merchant-feed.js).
+  router.get('/api/merchant-feed.xml', wrap(async (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=900')
+    res.type('application/xml').send(await merchantFeed({ query }))
   }))
 
   // One landing from an ad link or another site (counts only, no visitor data).

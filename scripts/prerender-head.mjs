@@ -227,7 +227,8 @@ for (const [key, page] of Object.entries(PAGE_META)) {
 for (const [id, p] of Object.entries(PRODUCT_SEO)) {
   const path = productPath(id)
   written.push(render({
-    path, title: p.title, description: p.description, image: IMAGE[id],
+    // Link previews use the square white-background photo (public/assets/shop/feed, also in the merchant feed).
+    path, title: p.title, description: p.description, image: IMAGE[id] && `/assets/shop/feed/${id}.jpg`,
     // Product data for crawlers; the page itself adds the same @id with live prices, so they merge.
     schema: [
       productSchema({ id, seo: p, path, image: IMAGE[id], live: CATALOG.get(id), orgId: ORG_ID }),

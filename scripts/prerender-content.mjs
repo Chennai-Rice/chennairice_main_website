@@ -80,7 +80,8 @@ export function productSchema({ id, seo, path, image, live, orgId }) {
     description: seo.about || seo.description,
     url,
     sku: id,
-    ...(image ? { image: SITE + image } : {}),
+    // The square white-background photo first (what shopping results and AI product cards prefer), then the pack cut-out.
+    ...(image ? { image: [`${SITE}/assets/shop/feed/${id}.jpg`, SITE + image] } : {}),
     brand: { '@type': 'Brand', name: COMPANY.brand },
     manufacturer: { '@id': orgId },
     category: 'Rice',

@@ -136,6 +136,34 @@ test('owner sets up the team, prices and opening stock', async () => {
   assert.equal(rudra.inStock, true)
 })
 
+test('merchant feed: priced packs with live price, stock, square photo and the product page', async () => {
+  const res = await api('GET', '/api/merchant-feed.xml')
+  assert.equal(res.status, 200)
+  assert.match(res.body, /^<\?xml/)
+  const items = res.body.split('<item>').slice(1)
+  const rudra = items.find((i) => i.includes('<g:item_group_id>rudra</g:item_group_id>'))
+  assert.ok(rudra, 'rudra is in the feed')
+  assert.match(rudra, /<g:price>650\.00 INR<\/g:price>/)
+  assert.match(rudra, /<g:availability>in_stock<\/g:availability>/)
+  assert.match(rudra, /<g:link>https:\/\/chennairiceindustries\.com\/products\/rudra-ponni-rice<\/g:link>/)
+  assert.match(rudra, /<g:image_link>https:\/\/chennairiceindustries\.com\/assets\/shop\/feed\/rudra\.jpg<\/g:image_link>/)
+  assert.match(rudra, /<g:brand>Chennai Rice<\/g:brand>/)
+  // Packs without a price are not listed.
+  assert.ok(items.every((i) => !i.includes('<g:price>null')))
+})
+
+test('merchant feed pages, names and photos match the website', async () => {
+  const { FEED_PAGES } = await import('../lib/sales/merchant-feed.js')
+  const { PRODUCT_SEO, productPath, productName } = await import('../../frontend/src/seo.js')
+  const { existsSync } = await import('node:fs')
+  assert.deepEqual(Object.keys(FEED_PAGES).sort(), Object.keys(PRODUCT_SEO).sort())
+  for (const [id, [slug, name]] of Object.entries(FEED_PAGES)) {
+    assert.equal('/products/' + slug, productPath(id), id)
+    assert.equal(name, productName(id), id)
+    assert.ok(existsSync(new URL(`../../frontend/public/assets/shop/feed/${id}.jpg`, import.meta.url)), `photo for ${id}`)
+  }
+})
+
 test('quote prices a cart server-side and ignores any price the browser sends', async () => {
   const q = await api('POST', '/api/checkout/quote', { body: { state: 'Kerala', items: [{ id: 'rudra-25kg', qty: 2, price: 1 }] } })
   assert.equal(q.status, 200, JSON.stringify(q.body))
