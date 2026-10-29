@@ -3,16 +3,6 @@ import SectionHead from './SectionHead.jsx'
 import { HOME_FAQS } from '../data/content.js'
 import './homefaq.css'
 
-const FAQ_SCHEMA = JSON.stringify({
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: HOME_FAQS.map(f => ({
-    '@type': 'Question',
-    name: f.q,
-    acceptedAnswer: { '@type': 'Answer', text: f.a },
-  })),
-})
-
 /** The answer, with `inline.text` (where it appears) as a link. */
 function Answer({ f }) {
   const at = f.inline ? f.a.indexOf(f.inline.text) : -1
@@ -26,7 +16,10 @@ function Answer({ f }) {
   )
 }
 
-/** Home page FAQs: an accordion, the first answer open. */
+/**
+ * Home page FAQs: an accordion, the first answer open. Their FAQPage
+ * structured data is in the pre-rendered home page (scripts/prerender-head.mjs).
+ */
 export default function HomeFaq() {
   return (
     <section className="home-faq" id="faqs">
@@ -47,7 +40,6 @@ export default function HomeFaq() {
           ))}
         </div>
       </div>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: FAQ_SCHEMA }} />
     </section>
   )
 }

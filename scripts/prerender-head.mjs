@@ -24,9 +24,9 @@ const SITE = 'https://chennairiceindustries.com'
 const src = (p) => pathToFileURL(join(ROOT, 'frontend', 'src', p)).href
 
 const { PAGE_META, PRODUCT_SEO, productPath, productName, keywordsFor } = await import(src('seo.js'))
-const { FOOTER } = await import(src('data/content.js'))
+const { FOOTER, HOME_FAQS } = await import(src('data/content.js'))
 const { LANDING } = await import(src('data/landing.js'))
-const { GUIDE_LINKS } = await import(src('data/guides.js'))
+const { GUIDE_LINKS, GUIDE_META } = await import(src('data/guides.js'))
 const {
   COMPANY, loadCatalog, productSchema, productHtml, landingHtml, basicHtml, HEAD_SNIPPET, wrap, llmsTxt, llmsFullTxt, packsLine,
 } = await import(pathToFileURL(join(ROOT, 'scripts', 'prerender-content.mjs')).href)
@@ -104,8 +104,12 @@ const crumb = (key) => breadcrumb([PAGE_META[key].h1, PAGE_META[key].path])
 
 const productNames = Object.keys(PRODUCT_SEO).map((id) => [productName(id), productPath(id)])
 
+const faqPage = (faqs, lang = 'en') => ({ '@type': 'FAQPage', inLanguage: lang, mainEntity: faqs.map((q) => ({
+  '@type': 'Question', name: q.q, acceptedAnswer: { '@type': 'Answer', text: q.a },
+})) })
+
 const SCHEMA = {
-  home: [organization, localBusiness, website],
+  home: [organization, localBusiness, website, faqPage(HOME_FAQS)],
   products: [
     { '@type': 'ItemList', name: PAGE_META.products.h1, itemListElement: productNames.map(([name, path], i) => ({ '@type': 'ListItem', position: i + 1, name, url: abs(path) })) },
     crumb('products'),
@@ -132,10 +136,16 @@ for (const [key, page] of Object.entries(LANDING)) {
       '@type': 'ListItem', position: i + 1, name: productName(id), url: abs(productPath(id)),
     })) })
   }
-  if (page.faqs?.length) {
-    items.push({ '@type': 'FAQPage', inLanguage: page.lang, mainEntity: page.faqs.map((q) => ({
-      '@type': 'Question', name: q.q, acceptedAnswer: { '@type': 'Answer', text: q.a },
-    })) })
+  if (page.faqs?.length) items.push(faqPage(page.faqs, page.lang))
+  // Rice guides: an article by the company, with its dates (AI answers favour a known, dated source).
+  const g = GUIDE_META[key]
+  if (g) {
+    items.push({
+      '@type': 'Article', headline: g.h1, description: g.description, inLanguage: page.lang,
+      url: abs(g.path), mainEntityOfPage: abs(g.path), datePublished: g.published, dateModified: g.updated || g.published,
+      author: { '@id': ORG_ID }, publisher: { '@id': ORG_ID }, image: LOGO,
+      about: (page.productIds || []).filter((id) => PRODUCT_SEO[id]).map((id) => ({ '@type': 'Product', name: productName(id), url: abs(productPath(id)) })),
+    }, organization)
   }
   items.push(key === 'taHome' ? breadcrumb() : crumb(key))
   SCHEMA[key] = items
@@ -205,9 +215,9 @@ const WITH_GUIDES = new Set(['home', 'products', 'about', 'blog'])
 function pageBody(key, page) {
   if (LANDING[key]) {
     const ids = (LANDING[key].productIds || []).filter((id) => PRODUCT_SEO[id])
-    return landingHtml({ meta: page, page: LANDING[key], productLinks: ids.map((id) => [productName(id), productPath(id), PRODUCT_SEO[id].line]) })
+    return landingHtml({ meta: page, page: LANDING[key], productLinks: ids.map((id) => [productName(id), productPath(id), PRODUCT_SEO[id].line, packsLine(CATALOG.get(id))]) })
   }
-  return basicHtml({ meta: page, productLinks: WITH_PACKS.has(key) ? productLinks : [], guides: WITH_GUIDES.has(key) ? GUIDE_LINKS : [] })
+  return basicHtml({ meta: page, productLinks: WITH_PACKS.has(key) ? productLinks : [], guides: WITH_GUIDES.has(key) ? GUIDE_LINKS : [], faqs: key === 'home' ? HOME_FAQS : [] })
 }
 
 const written = []
@@ -233,7 +243,8 @@ const llmsProducts = Object.entries(PRODUCT_SEO).map(([id, p]) => ({
   name: productName(id), path: productPath(id), line: p.line, about: p.about, dishes: p.dishes,
   tag: CATALOG.get(id)?.tag, packs: packsLine(CATALOG.get(id)),
 }))
-const landingList = Object.keys(LANDING).filter((k) => PAGE_META[k] && LANDING[k].lang === 'en').map((k) => PAGE_META[k])
+// Topic pages only (the guides are listed on their own).
+const landingList = Object.keys(LANDING).filter((k) => PAGE_META[k] && LANDING[k].lang === 'en' && !GUIDE_META[k]).map((k) => PAGE_META[k])
 writeFileSync(join(DIST, 'llms.txt'), llmsTxt({ products: llmsProducts, guides: GUIDE_LINKS, landing: landingList }))
 writeFileSync(join(DIST, 'llms-full.txt'), llmsFullTxt({
   products: llmsProducts,

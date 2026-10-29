@@ -46,6 +46,13 @@
   line-height: 1.75;
   color: var(--muted);
 }
+.shop-scope .lp-byline {
+  margin: -6px auto 18px;
+  font-family: var(--sans);
+  font-size: 13.5px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
 .shop-scope .lp-hero-actions {
   display: flex;
   flex-wrap: wrap;

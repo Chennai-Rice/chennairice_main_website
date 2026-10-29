@@ -33,8 +33,8 @@ export const MOVED_PAGES = {
 export const PAGE_META = {
   home: {
     path: '/',
-    title: 'Chennai Rice | Quality Ponni Rice for Every Home',
-    description: 'Discover Chennai Rice\'s range of Ponni rice and everyday rice varieties. Explore quality-focused rice for traditional Tamil meals and family dining.',
+    title: 'Chennai Rice | Premium Ponni & Idli Rice from Erode, Buy Online',
+    description: 'South India’s No. 1 non-basmati rice manufacturer. Buy Ponni, Kitchidi Ponni and idli rice in 5, 10 and 26 kg packs from our Erode mill, delivered across India.',
     h1: 'Premium Ponni & Idli Rice from Erode',
     keywords: 'Chennai Rice, Ponni rice, rice varieties, Tamil Nadu rice, idli rice, buy rice online',
   },

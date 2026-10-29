@@ -34,6 +34,10 @@ const STATIC_ROUTES = [
   ['/ponni-vs-sona-masoori', 0.8, 'monthly'],
   ['/how-much-rice-per-month', 0.8, 'monthly'],
   ['/buy-ponni-rice-online', 0.8, 'monthly'],
+  ['/how-to-cook-ponni-rice', 0.8, 'monthly'],
+  ['/ponni-rice-price', 0.8, 'weekly'],
+  ['/ponni-rice-vs-basmati-rice', 0.8, 'monthly'],
+  ['/bulk-rice-suppliers-tamil-nadu', 0.8, 'monthly'],
   ['/infrastructure', 0.7, 'monthly'],
   ['/about-us', 0.7, 'monthly'],
   ['/contest', 0.6, 'monthly'],
@@ -133,9 +137,19 @@ writeFileSync(join(PUBLIC_DIR, 'sitemap.xml'), xml)
 // /admin and /blog/studio are disallowed as a courtesy to crawlers, not as
 // security — they are client-side routes and robots.txt is advisory. Real
 // protection is the Supabase RLS behind them.
+// The AI crawlers are named so it is plain they are welcome; they share the
+// one group (RFC 9309), so the same pages stay out for them too.
+const AI_AND_SEARCH_BOTS = [
+  'Googlebot', 'Bingbot', 'Google-Extended', 'GPTBot', 'OAI-SearchBot', 'ChatGPT-User',
+  'ClaudeBot', 'Claude-SearchBot', 'Claude-User', 'PerplexityBot', 'Perplexity-User',
+  'Applebot', 'Applebot-Extended', 'Meta-ExternalAgent', 'CCBot',
+]
 const robots =
   '# https://www.robotstxt.org/robotstxt.html\n' +
+  '# Search engines and AI assistants are welcome to read the public pages.\n' +
+  '# A plain-text summary for AI assistants: ' + SITE + '/llms.txt\n' +
   'User-agent: *\n' +
+  AI_AND_SEARCH_BOTS.map((b) => 'User-agent: ' + b + '\n').join('') +
   'Allow: /\n' +
   'Disallow: /admin\n' +
   'Disallow: /blog/studio\n' +
