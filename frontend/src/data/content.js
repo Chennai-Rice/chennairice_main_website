@@ -459,7 +459,7 @@ export const HOME_FAQS = [
   },
 ]
 
-/* Home: Chennai Rice Varieties, under "Our Bestsellers Rice" (owner, Oct 2026).
+/* Home: Chennai Rice Varieties, under "Our Bestsellers" (owner, Oct 2026).
    Each group's products link to their pages (ids are shop product ids). */
 export const VARIETIES = {
   title: 'Chennai Rice Varieties',

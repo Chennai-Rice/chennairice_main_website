@@ -41,7 +41,7 @@
   }
 }
 
-/* Chennai Rice Varieties (home, under Our Bestsellers Rice): five cards, each
+/* Chennai Rice Varieties (home, under Our Bestsellers): five cards, each
    with its bags fanned on a warm stage, a number, the text and product links. */
 .home-var { padding: clamp(48px, 7vw, 96px) 0; background: linear-gradient(180deg, #faf4e8 0%, #f4ead8 100%); }
 .home-var-inner { max-width: 1240px; margin: 0 auto; padding: 0 20px; text-align: center; }
