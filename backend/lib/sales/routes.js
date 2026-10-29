@@ -485,6 +485,13 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.set('Content-Disposition', `attachment; filename="warehouse-orders-${day}.csv"`)
     res.type('text/csv; charset=utf-8').send(await warehouseCsv(req.query))
   }))
+  // The same file for the orders ticked on the page (their ids in the body: too many for a web address).
+  admin.post('/warehouse/orders.csv', permAny('warehouse.view', 'accounts.view'), wrap(async (req, res) => {
+    const day = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
+    res.set('Cache-Control', 'no-store')
+    res.set('Content-Disposition', `attachment; filename="warehouse-orders-selected-${day}.csv"`)
+    res.type('text/csv; charset=utf-8').send(await warehouseCsv({ ids: req.body?.ids, onlyIds: true }))
+  }))
   // ---- the ID register ----
   admin.get('/order-ids', perm('ids.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')

@@ -35,6 +35,13 @@ const IST_DAY = `(${WHEN} at time zone 'Asia/Kolkata')::date`
  * WHERE clause for every filter except the status tab, so the same filters
  * can drive the list, the tab counts and the packing summary.
  */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/** Order ids from a list or a comma-separated string: only well-formed ids, no repeats, at most 2000. */
+export function chosenIds(value) {
+  const list = Array.isArray(value) ? value : String(value ?? '').split(',')
+  return [...new Set(list.map((v) => String(v).trim()).filter((v) => UUID.test(v)))].slice(0, 2000)
+}
+
 export function filterSql(f, params) {
   const where = [`o.status <> 'pending_payment'`]
   const add = (value) => {
@@ -59,6 +66,10 @@ export function filterSql(f, params) {
 
   if (DATE.test(str(f.from))) where.push(`${IST_DAY} >= ${add(f.from)}::date`)
   if (DATE.test(str(f.to))) where.push(`${IST_DAY} <= ${add(f.to)}::date`)
+
+  // Orders ticked on the page (the CSV of the selection): only these, by id.
+  const ids = chosenIds(f.ids)
+  if (ids.length) where.push(`o.id = any(${add(ids)}::uuid[])`)
 
   const q = str(f.q).slice(0, 100)
   if (q) {
@@ -194,7 +205,14 @@ function phoneForSheet(phone) {
 /** The filtered list as CSV, opening straight in Excel (UTF-8 with BOM, so ₹ and Tamil survive). */
 export async function warehouseCsv(f = {}) {
   // Every matching order, not one page of them.
-  const { orders } = await listWarehouseOrders({ ...f, limit: 5000, offset: 0 }, { maxLimit: 5000 })
+  // With ticked orders, exactly those (whatever tab or filter the page is showing); otherwise the filtered list.
+  const picked = chosenIds(f.ids)
+  // (A selection with no valid order in it is an empty file, never the whole list.)
+  const { orders } = f.onlyIds && !picked.length
+    ? { orders: [] }
+    : await listWarehouseOrders(
+      picked.length ? { tab: 'all', ids: picked, limit: 5000, offset: 0 } : { ...f, limit: 5000, offset: 0 },
+      { maxLimit: 5000 })
   const header = [
     'Order ID', 'Shipment ID', 'Order date', 'Products', 'Total packs', 'Total weight (kg)',
     'Customer name', 'Phone', 'Address', 'City', 'State', 'PIN', 'Payment status', 'Order status',

@@ -348,7 +348,10 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
 
   async function downloadCsv() {
     try {
-      const res = await staffFetch('/api/admin/warehouse/orders.csv?' + queryString(status, sort, filters))
+      // Orders are ticked: the file has only those (the page's filters and tab do not matter); else the whole list.
+      const res = selected.size
+        ? await staffFetch('/api/admin/warehouse/orders.csv', { method: 'POST', body: JSON.stringify({ ids: [...selected.keys()] }) })
+        : await staffFetch('/api/admin/warehouse/orders.csv?' + queryString(status, sort, filters))
       const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'warehouse-orders.csv'
       const url = URL.createObjectURL(await res.blob())
       const a = document.createElement('a')
@@ -407,8 +410,9 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
             />
           </label>
           <button type="submit" className="wh-btn wh-btn--primary">Search</button>
-          <button type="button" className="wh-btn wh-btn--outline wh-csv" onClick={downloadCsv} disabled={!total}>
-            <Icon name="download" size={18} /> Download CSV
+          <button type="button" className="wh-btn wh-btn--outline wh-csv" onClick={downloadCsv} disabled={!total && !selected.size}
+            title={selected.size ? 'Download only the ticked orders' : 'Download every order in this list'}>
+            <Icon name="download" size={18} /> {selected.size ? `Download CSV (${selected.size} selected)` : 'Download CSV'}
           </button>
         </form>
 
