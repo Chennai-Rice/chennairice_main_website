@@ -420,7 +420,7 @@ export const FOOTER = {
 /* Home page FAQs (Chennai Rice SEO - Homepage, Oct 2026). Also published as
    FAQPage structured data by HomeFaq. */
 export const HOME_FAQS = [
-  // Chennai Rice – Frequently Asked Questions: five, for SEO (owner, Oct 2026). `links` adds links under the answer.
+  // Chennai Rice – Frequently Asked Questions: the owner's six, for SEO (Oct 2026). `links` adds links under the answer.
   {
     q: 'Why Choose Chennai Rice?',
     a: 'Chennai Rice combines modern rice milling technology, advanced grain sorting and quality checks to maintain consistent rice quality. From Ponni Rice to Kitchidi Ponni Rice, our products are carefully processed to meet the everyday cooking needs of South Indian households.',
@@ -434,19 +434,27 @@ export const HOME_FAQS = [
     ],
   },
   {
-    q: 'Which Chennai Rice is best for idli?',
-    a: 'Chennai Rice Special Idly Rice. It grinds into a smooth batter and ferments well for soft idlis.',
-    links: [{ to: '/products/special-idly-rice', label: 'See Special Idly Rice' }],
+    q: 'Can I Buy Chennai Rice Online?',
+    a: 'Yes! You can buy Chennai Rice online through our official website or order directly on WhatsApp at 70666 46667. Explore our range of Ponni Rice, Kitchidi Ponni Rice and Special Rajabhogam Rice, and choose the right variety for your home.',
+    links: [
+      { to: '/rice-products', label: 'Shop Chennai Rice online' },
+      { href: 'https://wa.me/917066646667', label: 'Order on WhatsApp' },
+    ],
   },
   {
-    q: 'What is Ponni rice?',
-    a: 'Ponni rice is a medium grain white rice widely grown and eaten across Tamil Nadu. It cooks soft and light, absorbs the flavour of sambar, rasam and kuzhambu well, and is the most popular choice for everyday South Indian meals, curd rice and lunch boxes.',
+    q: 'What Is Ponni Rice?',
+    a: 'Ponni Rice is a popular rice variety in Tamil Nadu, widely used for traditional South Indian cooking. Known for its versatility, it is commonly served with sambar, rasam and traditional Tamil meals. Chennai Rice offers Ponni Rice varieties, including Kitchidi Ponni Rice, for families looking for quality rice for daily cooking.',
     links: [{ to: '/ponni-rice', label: 'Explore Ponni rice' }],
   },
   {
-    q: 'Where is Chennai Rice made?',
-    a: 'All Chennai Rice is milled, graded and packed at our own plant in Nasiyanur, Erode, Tamil Nadu – 638102, with paddy storage silos, colour sorting and quality checks under one roof.',
-    links: [{ to: '/infrastructure', label: 'See our infrastructure' }],
+    q: 'What Is the Difference Between Aged Rice and Regular Rice?',
+    a: 'Aged rice is stored under controlled conditions before milling or sale, allowing its cooking properties to change over time. Compared with newly harvested rice, aged rice often cooks into firmer, more separate grains, depending on the variety. Chennai Rice offers premium aged rice varieties for customers who prefer this texture in their everyday meals.',
+    links: [{ to: '/what-is-aged-rice', label: 'Read: what is aged rice' }],
+  },
+  {
+    q: 'Does Chennai Rice Supply Rice for Wholesale and Bulk Orders?',
+    a: 'Yes. Chennai Rice Industries supplies rice for wholesale and bulk orders to distributors, retailers, hotels, restaurants and institutional buyers. As a rice manufacturer based in Erode, Tamil Nadu, we offer multiple rice varieties and packaging options to meet different business requirements. Contact our team for bulk rice pricing, wholesale enquiries and distributor opportunities.',
+    links: [{ to: '/bulk-order', label: 'Send a bulk enquiry' }],
   },
 ]
 
