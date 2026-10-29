@@ -136,9 +136,11 @@
   color: #f8f2e3;
   text-shadow: 0 2px 30px rgba(0, 0, 0, 0.55);
 }
+/* Wide enough for the intro to sit on two even lines on a laptop (owner, Oct 2026). */
 .home-hero-sub {
   margin: 20px auto 0;
-  max-width: 720px;
+  max-width: 900px;
+  text-wrap: balance;
   font-size: 17px;
   line-height: 1.65;
   font-weight: 400;
