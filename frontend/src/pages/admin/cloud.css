@@ -87,3 +87,32 @@ td.cc-mono { display: table-cell; font-size: 12px; color: var(--ad-ink); }
   .cc-runs li > :nth-child(3) { display: none; }
   .cc-runs li > :nth-child(4) { grid-column: 2; }
 }
+
+/* Phase 2: speed, errors and uptime, settings */
+.cc-tiles { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.cc-tiles-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 12px; }
+.cc-checknow { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cc-score { display: inline-grid; place-items: center; min-width: 34px; height: 26px; padding: 0 6px; border-radius: 999px; font-weight: 700; font-size: 13px; background: var(--ad-bg); }
+.cc-score.is-good, .cc-field b.is-good { color: var(--ad-up); }
+.cc-score.is-good { background: var(--ad-up-bg); }
+.cc-score.is-warn, .cc-field b.is-warn { color: var(--ad-warn); }
+.cc-score.is-warn { background: var(--ad-warn-bg); }
+.cc-score.is-bad, .cc-field b.is-bad { color: var(--ad-down); }
+.cc-score.is-bad { background: var(--ad-down-bg); }
+.cc-field { display: block; margin-top: 4px; font-size: 12.5px; }
+.cc-up { color: var(--ad-up); font-weight: 600; }
+.cc-down { color: var(--ad-down); font-weight: 600; }
+.cc-up .cc-dot, .cc-down .cc-dot { margin: 0 2px 0 0; vertical-align: middle; }
+.cc-errmsg { font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-word; }
+.cc-details { margin-top: 10px; }
+.cc-details summary { cursor: pointer; font-size: 13px; color: var(--ad-muted); }
+.cc-form { display: grid; gap: 10px; max-width: 760px; }
+.cc-form label { display: grid; gap: 6px; font-size: 13px; color: var(--ad-ink); }
+.cc-form input { min-height: 40px; padding: 0 12px; border: 1px solid var(--ad-line); border-radius: 10px; font: inherit; font-size: 14px; }
+.cc-form p { margin: 0; }
+.cc-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.cc-btn-main { justify-self: start; background: var(--ad-ink); border-color: var(--ad-ink); color: #fff; }
+@media (max-width: 1100px) {
+  .cc-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cc-tiles-3 { grid-template-columns: minmax(0, 1fr); }
+}

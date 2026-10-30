@@ -15,9 +15,12 @@ import './cloud.css'
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'projects', label: 'All projects' },
+  { id: 'speed', label: 'Speed' },
+  { id: 'errors', label: 'Errors & uptime' },
   { id: 'api', label: 'Website API' },
   { id: 'jobs', label: 'Background jobs' },
   { id: 'deploys', label: 'Deploys' },
+  { id: 'settings', label: 'Alerts & settings' },
 ]
 const PERIODS = [[1, 'Last 24 hours'], [7, 'Last 7 days'], [30, 'Last 30 days']]
 
@@ -31,6 +34,11 @@ const ago = (iso) => {
   return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 48 * 60 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`
 }
 const share = (v) => (v == null ? '—' : `${Math.round(v * 100)}%`)
+const ms = (v) => (v == null ? '—' : v >= 1000 ? `${(v / 1000).toFixed(1)} s` : `${Math.round(v)} ms`)
+const host = (url) => url.replace(/^https:\/\//, '').replace(/\/$/, '')
+// Google's Core Web Vitals bands: good / needs improvement / poor.
+const band = (v, good, poor) => (v == null ? '' : v <= good ? 'good' : v <= poor ? 'warn' : 'bad')
+const scoreBand = (s) => (s == null ? '' : s >= 90 ? 'good' : s >= 50 ? 'warn' : 'bad')
 
 /** A row of thin bars, one per day. */
 function Bars({ points, label }) {
@@ -117,10 +125,16 @@ function Overview({ d }) {
   const lastDeploy = d.deploys[0]
   const apiCalls = d.api.daily.reduce((a, x) => a + x.calls, 0)
   const job = d.jobs.stats.find((s) => s.job === 'salesJobs')
+  const checked = d.uptime.targets.filter((t) => t.lastOk != null)
+  const sitesUp = checked.filter((t) => t.lastOk).length
+  const errorKinds = active.reduce((a, p) => a + p.usage.errorGroups.length, 0)
+  const errorTimes = active.reduce((a, p) => a + p.usage.errorGroups.reduce((s, g) => s + g.count, 0), 0)
   return (
     <div className="cc-stack">
       <Alerts alerts={d.alerts} googleError={d.googleError} />
       <div className="cc-tiles">
+        <Tile label="Sites up now" value={checked.length ? `${sitesUp}/${checked.length}` : '—'} foot={checked.length ? 'checked every 10 minutes' : 'checks start once live'} tone={checked.length && sitesUp < checked.length ? 'bad' : ''} />
+        <Tile label="Errors reported" value={num(errorTimes)} foot={`${errorKinds} kinds · see Errors & uptime`} tone={errorTimes ? 'warn' : ''} />
         <Tile label="Projects" value={num(d.totals.projects)} foot={`${d.totals.billed} billed · ${d.totals.firebase} Firebase`} />
         <Tile label="Requests (all projects)" value={num(d.totals.requests)} foot={`${pct(d.totals.errors, d.totals.requests).toFixed(2)}% server errors`} tone={pct(d.totals.errors, d.totals.requests) > 2 ? 'bad' : ''} />
         <Tile label="Hosting data served" value={bytes(d.totals.hostingBytes)} />
@@ -296,6 +310,250 @@ function DeploysTab({ d }) {
   )
 }
 
+/** "Check now": runs an uptime round or the next PageSpeed check, then reloads the page's figures. */
+function CheckNow({ kind, label, reload, onAuthError }) {
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState('')
+  async function run() {
+    setBusy(true)
+    setNote('')
+    try {
+      const r = await staffJson('/api/admin/cloud/check', { method: 'POST', body: JSON.stringify({ kind }) })
+      setNote(r.skipped ? `Not run: ${r.skipped}.` : r.error ? `Checked, with an error: ${r.error}` : 'Done.')
+      reload()
+    } catch (err) {
+      if (!onAuthError(err)) setNote(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <span className="cc-checknow">
+      <button type="button" className="cc-btn" onClick={run} disabled={busy}>{busy ? 'Checking…' : label}</button>
+      {note && <span className="cc-muted">{note}</span>}
+    </span>
+  )
+}
+
+function SpeedTab({ d, reload, onAuthError }) {
+  const services = d.projects.filter((p) => p.usage).flatMap((p) => p.usage.services.map((s) => ({ ...s, project: p.id })))
+  const db = d.database
+  const Cell = ({ r }) => {
+    if (!r) return <td className="cc-muted">not checked yet</td>
+    if (r.error) return <td className="is-bad">{r.error}</td>
+    return (
+      <td>
+        <span className={`cc-score is-${scoreBand(r.score)}`}>{r.score ?? '—'}</span>
+        <span className="cc-muted"> lab: load {ms(r.lab_lcp_ms)} · blocking {ms(r.lab_tbt_ms)}</span>
+        {r.field_category ? (
+          <span className="cc-field">
+            Real users: <b className={`is-${band(r.field_lcp_ms, 2500, 4000)}`}>load {ms(r.field_lcp_ms)}</b> · <b className={`is-${band(r.field_inp_ms, 200, 500)}`}>tap {ms(r.field_inp_ms)}</b> · <b className={`is-${band(r.field_cls, 0.1, 0.25)}`}>shift {r.field_cls ?? '—'}</b>
+          </span>
+        ) : <span className="cc-field cc-muted">Not enough Chrome visits yet for real-user figures.</span>}
+        <span className="cc-muted"> · {ago(r.checked_at)}</span>
+      </td>
+    )
+  }
+  return (
+    <div className="cc-stack">
+      <section className="cc-panel">
+        <div className="cc-panel-head">
+          <h3 className="cc-h3">Website speed (Google PageSpeed, checked every night)</h3>
+          <CheckNow kind="speed" label="Check next page now" reload={reload} onAuthError={onAuthError} />
+        </div>
+        <p className="cc-muted">Score out of 100 (90+ good, 50–89 needs work, under 50 poor). Real users = Chrome visitors over the last 28 days: load under 2.5 s, tap response under 200 ms and layout shift under 0.1 are good.</p>
+        <div className="cc-table-wrap">
+          <table className="cc-table">
+            <thead><tr><th>Page</th><th>Phone</th><th>Computer</th></tr></thead>
+            <tbody>
+              {d.speed.map((p) => (
+                <tr key={p.url}><td><a href={p.url} target="_blank" rel="noopener noreferrer">{host(p.url)}</a></td><Cell r={p.mobile} /><Cell r={p.desktop} /></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section className="cc-panel">
+        <h3 className="cc-h3">How fast each server answers</h3>
+        <div className="cc-table-wrap">
+          <table className="cc-table">
+            <thead><tr><th>Service</th><th className="num">Requests</th><th className="num">Typical (median)</th><th className="num">Slowest 5%</th><th className="num">Cold starts</th></tr></thead>
+            <tbody>
+              {services.map((s) => (
+                <tr key={s.project + s.name}>
+                  <td><strong>{s.name}</strong><span className="cc-mono">{s.project}</span></td>
+                  <td className="num">{num(s.requests)}</td>
+                  <td className="num">{ms(s.p50Ms)}</td>
+                  <td className={`num${s.p95Ms > 2000 ? ' is-bad' : ''}`}>{ms(s.p95Ms)}</td>
+                  <td className="num">{num(s.coldStarts)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="cc-muted">A cold start is a server waking up after being idle (about 2–3 s extra for that one request).</p>
+      </section>
+      <section className="cc-panel">
+        <h3 className="cc-h3">Website database</h3>
+        <div className="cc-tiles cc-tiles-3">
+          <Tile label="Database size" value={bytes(db.bytes)} />
+          <Tile label="Connections" value={num(db.connections.reduce((a, c) => a + c.n, 0))} foot={db.connections.map((c) => `${c.n} ${c.state}`).join(' · ')} />
+          <Tile label="Query statistics" value={db.queryStats ? 'On' : 'Off'} foot={db.queryStats ? 'slowest queries below' : 'Turn on the Cloud SQL flag cloudsql.enable_pg_stat_statements to see slow queries'} />
+        </div>
+        <div className="cc-table-wrap">
+          <table className="cc-table">
+            <thead><tr><th>Biggest tables</th><th className="num">Rows</th><th className="num">Size</th></tr></thead>
+            <tbody>{db.tables.map((t) => <tr key={t.name}><td className="cc-mono">{t.name}</td><td className="num">{num(t.rows)}</td><td className="num">{bytes(t.bytes)}</td></tr>)}</tbody>
+          </table>
+        </div>
+        {db.slowQueries?.length > 0 && (
+          <div className="cc-table-wrap">
+            <table className="cc-table">
+              <thead><tr><th>Slowest queries (total time)</th><th className="num">Calls</th><th className="num">Average</th></tr></thead>
+              <tbody>{db.slowQueries.map((s, i) => <tr key={i}><td className="cc-mono">{s.query}</td><td className="num">{num(s.calls)}</td><td className="num">{ms(Number(s.mean_ms))}</td></tr>)}</tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}
+
+function ErrorsTab({ d, reload, onAuthError }) {
+  const groups = d.projects.filter((p) => p.usage).flatMap((p) => p.usage.errorGroups.map((g) => ({ ...g, project: p.id })))
+    .sort((a, b) => b.count - a.count)
+  return (
+    <div className="cc-stack">
+      <section className="cc-panel">
+        <div className="cc-panel-head">
+          <h3 className="cc-h3">Uptime: every site checked every 10 minutes</h3>
+          <CheckNow kind="uptime" label="Check all now" reload={reload} onAuthError={onAuthError} />
+        </div>
+        <div className="cc-table-wrap">
+          <table className="cc-table">
+            <thead><tr><th>Site</th><th>Now</th><th className="num">Uptime</th><th className="num">Checks</th><th className="num">Average answer</th></tr></thead>
+            <tbody>
+              {d.uptime.targets.map((t) => (
+                <tr key={t.id}>
+                  <td><strong>{t.label}</strong><a className="cc-mono" href={t.url} target="_blank" rel="noopener noreferrer">{host(t.url)}</a></td>
+                  <td>{t.lastOk == null ? <span className="cc-muted">no checks yet</span> : (
+                    <span className={t.lastOk ? 'cc-up' : 'cc-down'}><span className={`cc-dot is-${t.lastOk ? 'good' : 'bad'}`} aria-hidden="true" /> {t.lastOk ? 'Up' : `Down (${t.lastResult})`} · {ago(t.lastAt)}</span>
+                  )}</td>
+                  <td className={`num${t.uptime != null && t.uptime < 0.99 ? ' is-bad' : ''}`}>{t.uptime == null ? '—' : `${(t.uptime * 100).toFixed(2)}%`}</td>
+                  <td className="num">{num(t.checks)}</td>
+                  <td className="num">{ms(t.avgMs)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {d.uptime.failures.length > 0 && (
+          <details className="cc-details">
+            <summary>{d.uptime.failures.length} failed checks in this period</summary>
+            <ul className="cc-runs">
+              {d.uptime.failures.map((f, i) => (
+                <li key={i}><span className="cc-dot is-bad" aria-hidden="true" /><span className="cc-run-when">{when(f.checked_at)}</span><span>{f.target}</span><span className="is-bad">{f.error || `HTTP ${f.status}`}</span></li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </section>
+      <section className="cc-panel">
+        <h3 className="cc-h3">Errors by kind, all projects (Google Error Reporting)</h3>
+        {groups.length ? (
+          <div className="cc-table-wrap">
+            <table className="cc-table">
+              <thead><tr><th className="num">Times</th><th>Error</th><th>Where</th><th>Last seen</th></tr></thead>
+              <tbody>
+                {groups.map((g) => (
+                  <tr key={g.project + g.id}>
+                    <td className="num"><strong>{num(g.count)}</strong></td>
+                    <td className="cc-errmsg">{g.message}</td>
+                    <td><strong>{g.service || '—'}</strong><span className="cc-mono">{g.project}</span></td>
+                    <td>{ago(g.lastSeen)}<span className="cc-muted"> · first {when(g.firstSeen)}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <p className="cc-ok">● No errors reported in this period.</p>}
+      </section>
+      <section className="cc-panel">
+        <h3 className="cc-h3">What the website sends out</h3>
+        <div className="cc-table-wrap">
+          <table className="cc-table">
+            <thead><tr><th>To</th><th className="num">Sent</th><th className="num">Failed</th><th className="num">Waiting now</th><th>Oldest waiting</th></tr></thead>
+            <tbody>
+              {d.deliveries.map((x) => (
+                <tr key={x.name}>
+                  <td><strong>{x.name}</strong></td><td className="num">{num(x.sent)}</td>
+                  <td className={`num${x.failed ? ' is-bad' : ''}`}>{num(x.failed)}</td><td className="num">{num(x.waiting)}</td>
+                  <td>{x.oldest_waiting ? `${when(x.oldest_waiting)} (${ago(x.oldest_waiting)})` : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function SettingsTab({ onAuthError }) {
+  const [s, setS] = useState(null)
+  const [emails, setEmails] = useState('')
+  const [key, setKey] = useState('')
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    staffJson('/api/admin/cloud/settings').then((r) => { setS(r); setEmails(r.alertEmails.join(', ')) }).catch((err) => { if (!onAuthError(err)) setNote(err.message) })
+  }, [onAuthError])
+  async function save(body) {
+    setBusy(true)
+    setNote('')
+    try {
+      const r = await staffJson('/api/admin/cloud/settings', { method: 'PUT', body: JSON.stringify(body) })
+      setS(r)
+      setEmails(r.alertEmails.join(', '))
+      setKey('')
+      setNote('Saved.')
+    } catch (err) {
+      if (!onAuthError(err)) setNote(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  if (!s) return <p className="cc-muted">{note || 'Loading…'}</p>
+  return (
+    <div className="cc-stack">
+      <section className="cc-panel cc-form">
+        <h3 className="cc-h3">Alert emails</h3>
+        <p className="cc-muted">Sent when a site is down in two checks in a row, the 10-minute job fails three times, or the website API's server errors pass 5% in an hour. The same problem is emailed at most once every 6 hours.</p>
+        <label>
+          <span>Send alerts to (comma-separated)</span>
+          <input type="text" value={emails} onChange={(e) => setEmails(e.target.value)} placeholder="it@chennairiceindustries.com" />
+        </label>
+        <p className="cc-muted">{s.recipients ? `Alerts go to: ${s.recipients}` : 'Nobody gets alerts yet: add an email, or give a staff account the IT role.'}{!s.alertEmails.length && s.recipients ? ' (the IT team accounts, until a list is saved here)' : ''}</p>
+        <button type="button" className="cc-btn cc-btn-main" onClick={() => save({ alertEmails: emails })} disabled={busy}>Save alert emails</button>
+      </section>
+      <section className="cc-panel cc-form">
+        <h3 className="cc-h3">PageSpeed API key</h3>
+        <p className="cc-muted">The nightly website-speed checks need a free Google API key: Google Cloud console → project <b>chennai-rice-website</b> → APIs &amp; Services → enable <b>PageSpeed Insights API</b> → Credentials → Create API key → restrict it to the PageSpeed Insights API. The key is stored on the server and never shown again.</p>
+        <p className={s.pagespeedKeySet ? 'cc-up' : 'cc-muted'}>{s.pagespeedKeySet ? '● A key is saved.' : 'No key saved yet.'}</p>
+        <label>
+          <span>{s.pagespeedKeySet ? 'Replace the key' : 'Paste the key'}</span>
+          <input type="password" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} placeholder="AIza…" />
+        </label>
+        <div className="cc-row">
+          <button type="button" className="cc-btn cc-btn-main" onClick={() => save({ pagespeedKey: key })} disabled={busy || !key.trim()}>Save key</button>
+          {s.pagespeedKeySet && <button type="button" className="cc-btn" onClick={() => save({ pagespeedKey: '' })} disabled={busy}>Remove key</button>}
+        </div>
+      </section>
+      {note && <p className="cc-muted" role="status">{note}</p>}
+    </div>
+  )
+}
+
 function Centre({ onAuthError }) {
   const [days, setDays] = useState(7)
   const [tab, setTab] = useState('overview')
@@ -317,13 +575,16 @@ function Centre({ onAuthError }) {
   useEffect(() => { load() }, [load])
 
   const body = useMemo(() => {
+    if (tab === 'settings') return <SettingsTab onAuthError={onAuthError} />
     if (!data) return null
     if (tab === 'projects') return <Projects d={data} />
+    if (tab === 'speed') return <SpeedTab d={data} reload={load} onAuthError={onAuthError} />
+    if (tab === 'errors') return <ErrorsTab d={data} reload={load} onAuthError={onAuthError} />
     if (tab === 'api') return <ApiTab d={data} />
     if (tab === 'jobs') return <JobsTab d={data} />
     if (tab === 'deploys') return <DeploysTab d={data} />
     return <Overview d={data} />
-  }, [data, tab])
+  }, [data, tab, load, onAuthError])
 
   return (
     <div className="cc">

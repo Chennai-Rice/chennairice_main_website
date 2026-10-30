@@ -70,6 +70,9 @@ before(async () => {
   // The contest lives in another project's Firestore: tests use an empty stand-in unless one sets entries.
   const contest = await import('../lib/sales/contest.js')
   contest.setContestSourceForTests({ entries: async () => [], coupons: async () => ({ printed: 0, used: 0 }) })
+  // The 10-minute job's uptime and PageSpeed checks never reach the real internet in tests.
+  const checks = await import('../lib/sales/cloud-checks.js')
+  checks.setCloudChecksForTests({ targets: [], fetch: async () => { throw new Error('no network in tests') } })
   const { createSalesRouter } = await import('../lib/sales/routes.js')
 
   const app = express()
@@ -2588,6 +2591,75 @@ test('cloud centre: every project with billing, resources, usage, deploys, API c
     assert.match(down.body.googleError, /Could not read Google Cloud/)
     assert.ok(down.body.api.routes.length)
   } finally {
+    cloud.setGoogleForTests(null)
+  }
+})
+
+test('cloud centre phase 2: uptime checks, alert emails once per problem, PageSpeed key and results, database and deliveries', async () => {
+  const cloud = await import('../lib/sales/cloud.js')
+  const checks = await import('../lib/sales/cloud-checks.js')
+  const psi = {
+    lighthouseResult: {
+      categories: { performance: { score: 0.87 } },
+      audits: { 'largest-contentful-paint': { numericValue: 2100.4 }, 'total-blocking-time': { numericValue: 120 }, 'cumulative-layout-shift': { numericValue: 0.02 } },
+    },
+    loadingExperience: { overall_category: 'FAST', metrics: { LARGEST_CONTENTFUL_PAINT_MS: { percentile: 1900 }, INTERACTION_TO_NEXT_PAINT: { percentile: 150 }, CUMULATIVE_LAYOUT_SHIFT_SCORE: { percentile: 3 } } },
+  }
+  const asked = []
+  checks.setCloudChecksForTests({
+    targets: [{ id: 'website', label: 'Site', url: 'https://site.test/' }, { id: 'shop-api', label: 'Shop API', url: 'https://site.test/api/catalog' }],
+    fetch: async (url) => {
+      asked.push(String(url))
+      if (String(url).includes('pagespeedonline')) return new Response(JSON.stringify(psi), { headers: { 'Content-Type': 'application/json' } })
+      return new Response('', { status: String(url).includes('/api/catalog') ? 503 : 200 })
+    },
+  })
+  cloud.setGoogleForTests(async () => ({}))
+  try {
+    // Settings: the alert list, and a PageSpeed key that is stored but never sent back.
+    assert.equal((await api('PUT', '/api/admin/cloud/settings', { token: tokens.sales, body: { alertEmails: 'x@y.com' } })).status, 403)
+    assert.equal((await api('PUT', '/api/admin/cloud/settings', { token: OWNER, body: { pagespeedKey: 'not a key!' } })).status, 400)
+    const saved = await api('PUT', '/api/admin/cloud/settings', { token: OWNER, body: { alertEmails: 'IT@Example.com, bad, it@example.com', pagespeedKey: 'AIzaTestKey_1234567890abcdef' } })
+    assert.equal(saved.status, 200, JSON.stringify(saved.body))
+    assert.deepEqual(saved.body.alertEmails, ['it@example.com'])
+    assert.equal(saved.body.pagespeedKeySet, true)
+    assert.ok(!JSON.stringify(saved.body).includes('AIzaTest'))
+
+    // Two uptime checks: the shop API is down in both.
+    for (let i = 0; i < 2; i++) {
+      const r = await api('POST', '/api/admin/cloud/check', { token: OWNER, body: { kind: 'uptime' } })
+      assert.deepEqual(r.body, { checked: 2, down: ['shop-api'] })
+    }
+    // One alert email for it, not repeated on the next run.
+    await checks.cloudAlertEmails({ query: db.query })
+    await checks.cloudAlertEmails({ query: db.query })
+    const { rows: mails } = await db.query(`select to_email, subject from email_outbox where template = 'cloud_alert'`)
+    assert.equal(mails.length, 1)
+    assert.equal(mails[0].to_email, 'it@example.com')
+    assert.match(mails[0].subject, /Shop API.*DOWN/)
+
+    // A PageSpeed check on demand, with the stored key.
+    const sp = await api('POST', '/api/admin/cloud/check', { token: OWNER, body: { kind: 'speed' } })
+    assert.equal(sp.body.score, 87)
+    assert.ok(asked.some((u) => u.includes('pagespeedonline') && u.includes('key=AIzaTestKey_1234567890abcdef') && u.includes('strategy=mobile')))
+
+    const res = await api('GET', '/api/admin/cloud?days=1', { token: OWNER })
+    assert.equal(res.status, 200, JSON.stringify(res.body))
+    const r = res.body
+    const shop = r.uptime.targets.find((t) => t.id === 'shop-api')
+    assert.equal(shop.lastOk, false)
+    assert.equal(shop.uptime, 0)
+    assert.equal(r.uptime.targets.find((t) => t.id === 'website').uptime, 1)
+    assert.equal(r.uptime.failures.length, 2)
+    const home = r.speed.find((p) => p.url === 'https://chennairiceindustries.com/')
+    assert.equal(home.mobile.score, 87)
+    assert.equal(home.mobile.field_category, 'FAST')
+    assert.equal(home.mobile.field_lcp_ms, 1900)
+    assert.ok(r.database.tables.length > 0 && r.database.bytes > 0)
+    assert.deepEqual(r.deliveries.map((d) => d.name), ['Emails', 'Sales Daddy', 'WhatsApp', 'NeoDove'])
+    assert.match(r.alerts.map((a) => a.text).join(' | '), /Shop API \(catalogue\) is not answering/)
+  } finally {
+    checks.setCloudChecksForTests({ targets: [], fetch: async () => { throw new Error('no network in tests') } })
     cloud.setGoogleForTests(null)
   }
 })

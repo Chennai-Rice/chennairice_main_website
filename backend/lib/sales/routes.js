@@ -16,6 +16,7 @@ import express from 'express'
 import { listCatalog, checkDelivery } from './catalog.js'
 import { merchantFeed } from './merchant-feed.js'
 import { cloudOverview } from './cloud.js'
+import { cloudSettings, saveCloudSettings, checkUptime, checkSpeed } from './cloud-checks.js'
 import { createCheckoutSession, confirmCheckout, quoteCart } from './checkout.js'
 import { handleRazorpayWebhook } from './webhooks.js'
 import { runJobs } from './jobs.js'
@@ -447,6 +448,13 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/cloud', perm('cloud.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await cloudOverview({ query, days: req.query.days }))
+  }))
+  // Who gets the alert emails, and the PageSpeed API key (never sent back, only whether one is set).
+  admin.get('/cloud/settings', perm('cloud.view'), wrap(async (_req, res) => res.json(await cloudSettings({ query }))))
+  admin.put('/cloud/settings', perm('cloud.view'), wrap(async (req, res) => res.json(await saveCloudSettings({ query }, req.body))))
+  // "Check now": the uptime of every site, or the next PageSpeed check, without waiting for the job.
+  admin.post('/cloud/check', perm('cloud.view'), wrap(async (req, res) => {
+    res.json(req.body?.kind === 'speed' ? await checkSpeed({ query, force: true }) : await checkUptime({ query }))
   }))
   admin.get('/journeys', perm('analyst.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
