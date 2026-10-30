@@ -42,7 +42,7 @@ import { recordVisit, sourcesReport, sourceOrders, sourcePeople, saveContestLead
 import { saveExpoLead, listExpoLeads, deleteExpoLead } from './expo.js'
 import { askAssistant } from './assistant.js'
 import { askAdvisor, advisorUsage, setAdvisorCap } from './advisor.js'
-import { recordJourney, listJourneys } from './journeys.js'
+import { recordJourney, listJourneys, deleteJourneys } from './journeys.js'
 import { saveAdvisorFile, MAX_FILE_BYTES } from './advisor-files.js'
 import { analystReport, analystSettings, setRiceType, setMonthlyTarget, addAdSpend, deleteAdSpend } from './analyst.js'
 import { checkAutomationKey, automationContacts } from './automation.js'
@@ -477,6 +477,10 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.set('Cache-Control', 'no-store')
     res.set('Content-Disposition', `attachment; filename="${filename}"`)
     res.type('text/csv; charset=utf-8').send(csv)
+  }))
+  // Delete checkout journeys from the list (only the journey records, never an order). Owner and IT team.
+  admin.post('/journeys/delete', perm('analyst.view'), wrap(async (req, res) => {
+    res.json(await deleteJourneys({ query }, req.staff, req.body?.ids))
   }))
   admin.get('/analyst', perm('analyst.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')

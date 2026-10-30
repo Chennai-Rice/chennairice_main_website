@@ -18,26 +18,29 @@ import CookieBanner from './components/CookieBanner.jsx'
 import ContestPopup from './components/ContestPopup.jsx'
 
 import HomePage from './pages/HomePage.jsx'
-import ComingSoonPage from './pages/ComingSoonPage.jsx'
-import ContactPage from './pages/ContactPage.jsx'
-import TrackOrderPage from './pages/TrackOrderPage.jsx'
-import BulkOrderPage from './pages/BulkOrderPage.jsx'
 import ExpoPopup from './components/ExpoPopup.jsx'
-import LandingPage from './pages/LandingPage.jsx'
 import { LANDING_PAGES } from './data/landing.js'
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage.jsx'
-import PolicyPage from './pages/PolicyPage.jsx'
-import TermsPage from './pages/TermsPage.jsx'
-import ProductsPage from './shop/pages/ProductsPage.jsx'
-import ProductDetailPage from './shop/pages/ProductDetailPage.jsx'
-import AboutPage from './shop/pages/AboutPage.jsx'
-import ContestPage from './shop/pages/ContestPage.jsx'
-import FounderPage from './shop/pages/FounderPage.jsx'
-import CartPage from './shop/pages/CartPage.jsx'
-import CheckoutPage from './shop/pages/CheckoutPage.jsx'
 import { isCheckoutEnabled } from './config.js'
-import WishlistPage from './shop/pages/WishlistPage.jsx'
-import InfrastructurePage from './pages/infrastructure/InfrastructurePage.jsx'
+
+/* Every page except the home page is fetched when it is first opened, so a visitor landing on the home
+   page downloads only what it needs. */
+const ComingSoonPage = lazy(() => import('./pages/ComingSoonPage.jsx'))
+const ContactPage = lazy(() => import('./pages/ContactPage.jsx'))
+const TrackOrderPage = lazy(() => import('./pages/TrackOrderPage.jsx'))
+const BulkOrderPage = lazy(() => import('./pages/BulkOrderPage.jsx'))
+const LandingPage = lazy(() => import('./pages/LandingPage.jsx'))
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage.jsx'))
+const PolicyPage = lazy(() => import('./pages/PolicyPage.jsx'))
+const TermsPage = lazy(() => import('./pages/TermsPage.jsx'))
+const ProductsPage = lazy(() => import('./shop/pages/ProductsPage.jsx'))
+const ProductDetailPage = lazy(() => import('./shop/pages/ProductDetailPage.jsx'))
+const AboutPage = lazy(() => import('./shop/pages/AboutPage.jsx'))
+const ContestPage = lazy(() => import('./shop/pages/ContestPage.jsx'))
+const FounderPage = lazy(() => import('./shop/pages/FounderPage.jsx'))
+const CartPage = lazy(() => import('./shop/pages/CartPage.jsx'))
+const CheckoutPage = lazy(() => import('./shop/pages/CheckoutPage.jsx'))
+const WishlistPage = lazy(() => import('./shop/pages/WishlistPage.jsx'))
+const InfrastructurePage = lazy(() => import('./pages/infrastructure/InfrastructurePage.jsx'))
 
 /* Lazily loaded so the dashboard and the Supabase auth code it pulls in stay
    out of the bundle every ordinary shopper downloads — only someone who
@@ -130,6 +133,7 @@ export default function App() {
       {isStorefront && <MetaPixel />}
       {isStorefront && <GoogleAnalytics />}
       {!isTool && <Navbar />}
+      <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
       <Routes>
         {/* Must be declared before the "*" catch-all below, which would
             otherwise redirect /admin straight back to the home page. */}
@@ -253,6 +257,7 @@ export default function App() {
         <Route path="/cart.html" element={<Navigate to="/cart" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
       {!isTool && <Footer />}
       {isStorefront && <SoruKutty />}
       {isStorefront && <CookieBanner />}

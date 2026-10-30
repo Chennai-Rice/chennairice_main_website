@@ -2019,6 +2019,32 @@ test('Analyst: owner sees sales, leads, campaigns and delivery KPIs; rice type, 
   assert.equal((await api('DELETE', `/api/admin/analyst/ad-spend/${entry.id}`, { token: OWNER })).status, 200)
 })
 
+test('Checkout journeys: delete by id — only the journeys, an audit row for each; owner and IT only; nothing chosen or already gone is harmless', async () => {
+  const step = (journeyId, stage, extra = {}) => api('POST', '/api/journey', { body: { journeyId, stage, ...extra } })
+  const items = [{ id: 'alibaba-10kg', name: 'Alibaba (10 kg)', qty: 1, price: 990 }]
+  const [a, b, c] = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()]
+  for (const id of [a, b, c]) await step(id, 'cart', { items, value: 990 })
+  await step(a, 'details', { contact: { name: 'Mock Anu', phone: '9876511111' } })
+  const shown = async () => (await api('GET', '/api/admin/journeys?days=7&limit=500', { token: OWNER })).body.journeys.map((j) => j.id)
+  const before = await shown()
+  assert.ok([a, b, c].every((id) => before.includes(id)))
+
+  assert.equal((await api('POST', '/api/admin/journeys/delete', { token: tokens.sales, body: { ids: [a] } })).status, 403)
+  assert.equal((await api('POST', '/api/admin/journeys/delete', { token: OWNER, body: { ids: [] } })).status, 400)
+  assert.equal((await api('POST', '/api/admin/journeys/delete', { token: OWNER, body: { ids: ['junk'] } })).status, 400)
+
+  const del = await api('POST', '/api/admin/journeys/delete', { token: OWNER, body: { ids: [a, b, 'junk', a] } })
+  assert.equal(del.status, 200, JSON.stringify(del.body))
+  assert.equal(del.body.deleted, 2)
+  const after = await shown()
+  assert.ok(after.includes(c) && !after.includes(a) && !after.includes(b), 'only the two chosen are gone')
+  const { rows: log } = await db.query(`select entity_id, details from staff_audit_log where action = 'journey.delete' and entity_id = any($1::text[])`, [[a, b]])
+  assert.equal(log.length, 2)
+  assert.equal(log.find((r) => r.entity_id === a).details.name, 'Mock Anu')
+  // Already gone: nothing happens.
+  assert.equal((await api('POST', '/api/admin/journeys/delete', { token: OWNER, body: { ids: [a] } })).body.deleted, 0)
+})
+
 test('Orders CSV of the ticked orders: only those, whatever tab or filter the page is on; without a selection the whole filtered list', async () => {
   const list = await api('GET', '/api/admin/warehouse/orders?tab=all&limit=50', { token: OWNER })
   assert.equal(list.status, 200)
