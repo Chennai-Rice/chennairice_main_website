@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { renderMarkdown, slugify } from '../../../lib/markdown.jsx'
+import PostPreview from './PostPreview.jsx'
 import {
   BlogError,
   COVER_TYPES,
@@ -38,6 +39,7 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [previewing, setPreviewing] = useState(false)
   const fileRef = useRef(null)
 
   /* Once the writer edits the address by hand, stop rewriting it from the
@@ -76,19 +78,30 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
     }
   }
 
+  // Only enforced on publish: a draft is allowed to be half-finished, but a cover that reaches the public
+  // site without a description is unusable to anyone reading with a screen reader.
+  const publishProblem = () => {
+    if (!draft.title.trim()) return 'Give the post a title.'
+    if (!draft.contentMd.trim()) return 'Write something before publishing.'
+    if (draft.coverPath && !draft.coverAlt.trim()) return 'Describe the cover image before publishing, so it works for screen readers.'
+    return ''
+  }
+
+  // Publish and Update first show the preview; the post goes live only from its Publish now button.
+  const openPreview = () => {
+    const problem = publishProblem()
+    setError(problem)
+    if (!problem) setPreviewing(true)
+  }
+
   const save = async (status) => {
     setError('')
 
     if (status === 'published') {
-      if (!draft.contentMd.trim()) {
-        setError('Write something before publishing.')
-        return
-      }
-      // Only enforced on publish: a draft is allowed to be half-finished,
-      // but a cover that reaches the public site without a description is
-      // unusable to anyone reading with a screen reader.
-      if (draft.coverPath && !draft.coverAlt.trim()) {
-        setError('Describe the cover image before publishing, so it works for screen readers.')
+      const problem = publishProblem()
+      if (problem) {
+        setError(problem)
+        setPreviewing(false)
         return
       }
     }
@@ -115,6 +128,7 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
       setError(err instanceof BlogError ? err.message : 'Could not save the post.')
     } finally {
       setBusy('')
+      setPreviewing(false)
     }
   }
 
@@ -300,6 +314,17 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
         </div>
       </div>
 
+      {previewing && (
+        <PostPreview
+          draft={draft}
+          author={author}
+          live={live}
+          busy={busy === 'published'}
+          onBack={() => setPreviewing(false)}
+          onPublish={() => save('published')}
+        />
+      )}
+
       {/* ---------- actions ---------- */}
       <div className="st-actions">
         <button
@@ -315,9 +340,9 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
           type="button"
           className="st-btn st-btn-primary"
           disabled={Boolean(busy)}
-          onClick={() => save('published')}
+          onClick={openPreview}
         >
-          {busy === 'published' ? 'Publishing…' : live ? 'Update' : 'Publish'}
+          {live ? 'Preview and update' : 'Preview and publish'}
         </button>
 
         <button
