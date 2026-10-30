@@ -23,6 +23,7 @@ import AnalystPanel from './AnalystPanel.jsx'
 import AdvisorPanel from './AdvisorPanel.jsx'
 import CheckoutJourneysPanel from './CheckoutJourneysPanel.jsx'
 import ReportsPanel from './ReportsPanel.jsx'
+import CloudCentrePanel from './CloudCentrePanel.jsx'
 import { LoadingRegion } from './components/ui.jsx'
 import {
   BehaviourView,
@@ -67,6 +68,7 @@ const ANALYTICS_NAV = [
   { id: 'campaigns', label: 'Ad campaigns', subtitle: 'Orders from Meta ads, Google Ads and direct visits', icon: 'target' },
   { id: 'enquiries', label: 'Enquiries', subtitle: 'Contact and bulk-order enquiries from the website', icon: 'mail' },
   { id: 'reports', label: 'Reports', subtitle: 'Download the website’s data — orders, customers, sign-ups, enquiries, checkout journeys', icon: 'doc' },
+  { id: 'cloud', label: 'Cloud Centre', subtitle: 'Every Google Cloud and Firebase project — health, usage, API, jobs and deploys', icon: 'pulse' },
 ]
 
 /* Section that needs a row in blog_authors. */
@@ -452,7 +454,7 @@ function Dashboard({ session, access, onSignOut }) {
           </div>
 
           <div className="ad-topbar-actions">
-            {view !== 'realtime' && view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && (
+            {view !== 'realtime' && view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
               <label className="ad-select-wrap">
                 <span className="ad-sr">Date range</span>
                 <select className="ad-select" value={rangeId} onChange={(e) => setRangeId(e.target.value)}>
@@ -462,7 +464,7 @@ function Dashboard({ session, access, onSignOut }) {
                 </select>
               </label>
             )}
-            {view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && (
+            {view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
               <button type="button" className="ad-btn ad-btn-quiet" onClick={refresh} disabled={loading}>
                 {loading ? 'Refreshing…' : 'Refresh'}
               </button>
@@ -484,6 +486,8 @@ function Dashboard({ session, access, onSignOut }) {
             <EnquiriesPanel />
           ) : view === 'checkout' ? (
             <CheckoutJourneysPanel />
+          ) : view === 'cloud' ? (
+            <CloudCentrePanel />
           ) : view === 'reports' ? (
             <ReportsPanel />
           ) : view === 'advisor' ? (

@@ -8,6 +8,7 @@
 //   4. checkout journeys that stopped before paying, to NeoDove and Sales Daddy (journey-followup.js)
 //   5. the bank's UTIB code for settled payments (settlements.js), a catch-up for the settlement webhook
 import { query } from '../db.js'
+import { runCloudChecks } from './cloud-checks.js'
 import { expireUnpaidOrders } from './checkout.js'
 import { sendQueued } from './email.js'
 import { sendDailyDigest } from './digest.js'
@@ -34,6 +35,11 @@ export async function runJobs() {
   await query("delete from neodove_events where received_at < now() - interval '90 days'").catch(() => {})
   // Checkout journeys are kept 90 days (Privacy Policy, 'How we collect your information').
   await query("delete from checkout_journeys where updated_at < now() - interval '90 days'").catch(() => {})
+  // Cloud Centre counters (migration 032): API calls per hour and job runs, kept 90 days.
+  await query("delete from api_usage where day < (now() at time zone 'Asia/Kolkata')::date - 90").catch(() => {})
+  await query("delete from job_runs where started_at < now() - interval '90 days'").catch(() => {})
+  await query("delete from uptime_checks where checked_at < now() - interval '90 days'").catch(() => {})
+  await query("delete from site_speed where checked_at < now() - interval '90 days'").catch(() => {})
   // The bank's UTIB code for payments Razorpay has settled: a catch-up for the settlement webhook, twice a
   // day (just after 2 pm and 8 pm India time, when payouts have gone), and only while a paid payment
   // from more than a day ago still has none.
@@ -44,5 +50,7 @@ export async function runJobs() {
       `select count(*)::int as n from payments where status = 'paid' and bank_utr is null and paid_at < now() - interval '1 day'`)
     if (due.n) settlements = await syncSettlements({ days: 4 }).catch((err) => ({ error: err.message }))
   }
-  return { expired, digest, email, journeys, crm, whatsapp, neodove, settlements }
+  // Cloud Centre: uptime of every site, alert emails, and at night one PageSpeed check (cloud-checks.js).
+  const cloud = await runCloudChecks({ query })
+  return { expired, digest, email, journeys, crm, whatsapp, neodove, settlements, cloud }
 }

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import express from 'express'
 import { startDatabase, setTestEnv, fakeRazorpay, fakeVerifier, signWebhook } from './helpers.js'
 
-let stopDb, base, server, rzp, db, closePool
+let stopDb, base, server, rzp, db, closePool, apiUsage
 
 const OWNER = 'owner@chennairice.test|uid-owner'
 const tokens = {}
@@ -70,10 +70,17 @@ before(async () => {
   // The contest lives in another project's Firestore: tests use an empty stand-in unless one sets entries.
   const contest = await import('../lib/sales/contest.js')
   contest.setContestSourceForTests({ entries: async () => [], coupons: async () => ({ printed: 0, used: 0 }) })
+  // The 10-minute job's uptime and PageSpeed checks never reach the real internet in tests.
+  const checks = await import('../lib/sales/cloud-checks.js')
+  checks.setCloudChecksForTests({ targets: [], fetch: async () => { throw new Error('no network in tests') } })
   const { createSalesRouter } = await import('../lib/sales/routes.js')
 
   const app = express()
   app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf } }))
+  // The API's own usage counters, as in server/app.js (Cloud Centre).
+  const { createApiUsage } = await import('../lib/sales/api-usage.js')
+  apiUsage = createApiUsage()
+  app.use(apiUsage.middleware)
   app.use(createSalesRouter({ verifyIdToken: fakeVerifier }))
   await new Promise((resolve) => { server = app.listen(0, resolve) })
   base = 'http://127.0.0.1:' + server.address().port
@@ -134,6 +141,34 @@ test('owner sets up the team, prices and opening stock', async () => {
   const rudra = cat.body.products.find((p) => p.slug === 'rudra').variants[0]
   assert.equal(rudra.price, 650)
   assert.equal(rudra.inStock, true)
+})
+
+test('merchant feed: priced packs with live price, stock, square photo and the product page', async () => {
+  const res = await api('GET', '/api/merchant-feed.xml')
+  assert.equal(res.status, 200)
+  assert.match(res.body, /^<\?xml/)
+  const items = res.body.split('<item>').slice(1)
+  const rudra = items.find((i) => i.includes('<g:item_group_id>rudra</g:item_group_id>'))
+  assert.ok(rudra, 'rudra is in the feed')
+  assert.match(rudra, /<g:price>650\.00 INR<\/g:price>/)
+  assert.match(rudra, /<g:availability>in_stock<\/g:availability>/)
+  assert.match(rudra, /<g:link>https:\/\/chennairiceindustries\.com\/products\/rudra-ponni-rice<\/g:link>/)
+  assert.match(rudra, /<g:image_link>https:\/\/chennairiceindustries\.com\/assets\/shop\/feed\/rudra\.jpg<\/g:image_link>/)
+  assert.match(rudra, /<g:brand>Chennai Rice<\/g:brand>/)
+  // Packs without a price are not listed.
+  assert.ok(items.every((i) => !i.includes('<g:price>null')))
+})
+
+test('merchant feed pages, names and photos match the website', async () => {
+  const { FEED_PAGES } = await import('../lib/sales/merchant-feed.js')
+  const { PRODUCT_SEO, productPath, productName } = await import('../../frontend/src/seo.js')
+  const { existsSync } = await import('node:fs')
+  assert.deepEqual(Object.keys(FEED_PAGES).sort(), Object.keys(PRODUCT_SEO).sort())
+  for (const [id, [slug, name]] of Object.entries(FEED_PAGES)) {
+    assert.equal('/products/' + slug, productPath(id), id)
+    assert.equal(name, productName(id), id)
+    assert.ok(existsSync(new URL(`../../frontend/public/assets/shop/feed/${id}.jpg`, import.meta.url)), `photo for ${id}`)
+  }
 })
 
 test('quote prices a cart server-side and ignores any price the browser sends', async () => {
@@ -2506,5 +2541,264 @@ test('checkout journeys follow-up: stopped journeys go to their own NeoDove camp
   } finally {
     for (const k of ['NEODOVE_PAYMENT_ENDPOINT', 'NEODOVE_DETAILS_ENDPOINT', 'SALESDADDY_API_KEY', 'SALESDADDY_BASE_URL']) delete process.env[k]
     fakeNeo.close(); fakeSd.close()
+  }
+})
+
+test('cloud centre: every project with billing, resources, usage, deploys, API counters, job runs and alerts', async () => {
+  const cloud = await import('../lib/sales/cloud.js')
+  const { recordJobRun, istHour } = await import('../lib/sales/api-usage.js')
+  assert.deepEqual(istHour(new Date('2026-10-29T20:00:00Z')), ['2026-10-30', 1])
+
+  const asked = []
+  const point = (v) => [{ interval: { endTime: new Date().toISOString() }, value: v }]
+  cloud.setGoogleForTests(async (url) => {
+    asked.push(url)
+    if (url.includes('projects:search')) return { projects: [
+      { projectId: 'site-a', displayName: 'Site A', name: 'projects/111', state: 'ACTIVE' },
+      { projectId: 'old-b', displayName: 'Old B', name: 'projects/222', state: 'DELETE_REQUESTED' },
+    ] }
+    if (url.includes('/billingAccounts?')) return { billingAccounts: [{ name: 'billingAccounts/AAA', displayName: 'Main account' }] }
+    if (url.includes('billingAccounts/AAA/projects')) return { projectBillingInfo: [{ projectId: 'site-a', billingEnabled: true }] }
+    if (url.includes('searchAllResources')) return { results: [
+      { project: 'projects/111', assetType: 'sqladmin.googleapis.com/Instance', displayName: 'db1', location: 'asia-south1', state: 'RUNNABLE' },
+    ] }
+    if (url.includes('projects/site-a/sites')) return { sites: [{ name: 'projects/site-a/sites/site-a', defaultUrl: 'https://site-a.web.app' }] }
+    if (url.includes('sites/site-a/releases')) return { releases: [{ releaseTime: '2026-10-29T06:00:00Z', releaseUser: { email: 'it@example.com' }, type: 'DEPLOY', version: { fileCount: '10' } }] }
+    if (url.includes('timeSeries') && url.includes('request_count')) return { timeSeries: [
+      { resource: { labels: { service_name: 'api' } }, metric: { labels: { response_code_class: '2xx' } }, points: point({ int64Value: '900' }) },
+      { resource: { labels: { service_name: 'api' } }, metric: { labels: { response_code_class: '5xx' } }, points: point({ int64Value: '100' }) },
+    ] }
+    if (url.includes('timeSeries') && url.includes('cpu%2Futilization')) return { timeSeries: [
+      { resource: { labels: { database_id: 'site-a:db1' } }, points: point({ doubleValue: 0.9 }) },
+    ] }
+    if (url.includes('timeSeries') && url.includes('sent_bytes_count')) return { timeSeries: [
+      { resource: { labels: { site_name: 'site-a' } }, points: point({ int64Value: '5000000' }) },
+    ] }
+    return {}
+  })
+  try {
+    // The website's own counters: two catalogue calls, flushed to api_usage.
+    await api('GET', '/api/catalog')
+    await api('GET', '/api/catalog')
+    await apiUsage.flush()
+    // A job run an hour ago, so the 10-minute job looks stopped.
+    await recordJobRun({ query: db.query }, 'salesJobs', new Date(Date.now() - 3600_000), { email: { sent: 1 } })
+
+    assert.equal((await api('GET', '/api/admin/cloud', { token: tokens.sales })).status, 403)
+    const res = await api('GET', '/api/admin/cloud?days=7', { token: OWNER })
+    assert.equal(res.status, 200, JSON.stringify(res.body))
+    const r = res.body
+    assert.equal(r.googleError, null)
+    const a = r.projects.find((p) => p.id === 'site-a')
+    assert.equal(a.billing.account, 'Main account')
+    assert.equal(a.firebase, true)
+    assert.deepEqual(a.resources.map((x) => x.name), ['db1'])
+    assert.equal(a.usage.requests, 1000)
+    assert.equal(a.usage.errors, 100)
+    assert.equal(a.usage.hostingBytes, 5000000)
+    // A project marked for deletion is listed but never queried.
+    const b = r.projects.find((p) => p.id === 'old-b')
+    assert.equal(b.usage, null)
+    assert.ok(!asked.some((u) => u.includes('old-b')))
+    assert.equal(r.deploys[0].by, 'it@example.com')
+    const cat = r.api.routes.find((x) => x.route === '/api/catalog' && x.method === 'GET')
+    assert.ok(cat && cat.calls >= 2, JSON.stringify(r.api.routes))
+    assert.equal(r.jobs.runs[0].job, 'salesJobs')
+    assert.deepEqual(r.jobs.runs[0].result, { email: { sent: 1 } })
+    const texts = r.alerts.map((x) => x.text).join(' | ')
+    assert.match(texts, /has not run since/)
+    assert.match(texts, /site-a \/ api: 10\.0% server errors/)
+    assert.match(texts, /db1: CPU at 90%/)
+
+    // Google unreachable: the page still answers with the website's own counters.
+    cloud.setGoogleForTests(async () => { throw Object.assign(new Error('Google 500'), { status: 500 }) })
+    const down = await api('GET', '/api/admin/cloud?days=1', { token: OWNER })
+    assert.equal(down.status, 200)
+    assert.match(down.body.googleError, /Could not read Google Cloud/)
+    assert.ok(down.body.api.routes.length)
+  } finally {
+    cloud.setGoogleForTests(null)
+  }
+})
+
+test('cloud centre phase 2: uptime checks, alert emails once per problem, PageSpeed key and results, database and deliveries', async () => {
+  const cloud = await import('../lib/sales/cloud.js')
+  const checks = await import('../lib/sales/cloud-checks.js')
+  const psi = {
+    lighthouseResult: {
+      categories: { performance: { score: 0.87 } },
+      audits: { 'largest-contentful-paint': { numericValue: 2100.4 }, 'total-blocking-time': { numericValue: 120 }, 'cumulative-layout-shift': { numericValue: 0.02 } },
+    },
+    loadingExperience: { overall_category: 'FAST', metrics: { LARGEST_CONTENTFUL_PAINT_MS: { percentile: 1900 }, INTERACTION_TO_NEXT_PAINT: { percentile: 150 }, CUMULATIVE_LAYOUT_SHIFT_SCORE: { percentile: 3 } } },
+  }
+  const asked = []
+  checks.setCloudChecksForTests({
+    targets: [{ id: 'website', label: 'Site', url: 'https://site.test/' }, { id: 'shop-api', label: 'Shop API', url: 'https://site.test/api/catalog' }],
+    fetch: async (url) => {
+      asked.push(String(url))
+      if (String(url).includes('pagespeedonline')) return new Response(JSON.stringify(psi), { headers: { 'Content-Type': 'application/json' } })
+      return new Response('', { status: String(url).includes('/api/catalog') ? 503 : 200 })
+    },
+  })
+  cloud.setGoogleForTests(async () => ({}))
+  try {
+    // Settings: the alert list, and a PageSpeed key that is stored but never sent back.
+    assert.equal((await api('PUT', '/api/admin/cloud/settings', { token: tokens.sales, body: { alertEmails: 'x@y.com' } })).status, 403)
+    assert.equal((await api('PUT', '/api/admin/cloud/settings', { token: OWNER, body: { pagespeedKey: 'not a key!' } })).status, 400)
+    const saved = await api('PUT', '/api/admin/cloud/settings', { token: OWNER, body: { alertEmails: 'IT@Example.com, bad, it@example.com', pagespeedKey: 'AIzaTestKey_1234567890abcdef' } })
+    assert.equal(saved.status, 200, JSON.stringify(saved.body))
+    assert.deepEqual(saved.body.alertEmails, ['it@example.com'])
+    assert.equal(saved.body.pagespeedKeySet, true)
+    assert.ok(!JSON.stringify(saved.body).includes('AIzaTest'))
+
+    // Two uptime checks: the shop API is down in both.
+    for (let i = 0; i < 2; i++) {
+      const r = await api('POST', '/api/admin/cloud/check', { token: OWNER, body: { kind: 'uptime' } })
+      assert.deepEqual(r.body, { checked: 2, down: ['shop-api'] })
+    }
+    // One alert email for it, not repeated on the next run.
+    await checks.cloudAlertEmails({ query: db.query })
+    await checks.cloudAlertEmails({ query: db.query })
+    const { rows: mails } = await db.query(`select to_email, subject from email_outbox where template = 'cloud_alert'`)
+    assert.equal(mails.length, 1)
+    assert.equal(mails[0].to_email, 'it@example.com')
+    assert.match(mails[0].subject, /Shop API.*DOWN/)
+
+    // A PageSpeed check on demand, with the stored key.
+    const sp = await api('POST', '/api/admin/cloud/check', { token: OWNER, body: { kind: 'speed' } })
+    assert.equal(sp.body.score, 87)
+    assert.ok(asked.some((u) => u.includes('pagespeedonline') && u.includes('key=AIzaTestKey_1234567890abcdef') && u.includes('strategy=mobile')))
+
+    const res = await api('GET', '/api/admin/cloud?days=1', { token: OWNER })
+    assert.equal(res.status, 200, JSON.stringify(res.body))
+    const r = res.body
+    const shop = r.uptime.targets.find((t) => t.id === 'shop-api')
+    assert.equal(shop.lastOk, false)
+    assert.equal(shop.uptime, 0)
+    assert.equal(r.uptime.targets.find((t) => t.id === 'website').uptime, 1)
+    assert.equal(r.uptime.failures.length, 2)
+    const home = r.speed.find((p) => p.url === 'https://chennairiceindustries.com/')
+    assert.equal(home.mobile.score, 87)
+    assert.equal(home.mobile.field_category, 'FAST')
+    assert.equal(home.mobile.field_lcp_ms, 1900)
+    assert.ok(r.database.tables.length > 0 && r.database.bytes > 0)
+    assert.deepEqual(r.deliveries.map((d) => d.name), ['Emails', 'Sales Daddy', 'WhatsApp', 'NeoDove'])
+    assert.match(r.alerts.map((a) => a.text).join(' | '), /Shop API \(catalogue\) is not answering/)
+  } finally {
+    checks.setCloudChecksForTests({ targets: [], fetch: async () => { throw new Error('no network in tests') } })
+    cloud.setGoogleForTests(null)
+  }
+})
+
+test('cloud centre phase 3: costs from the billing export with budgets and forecast, and the security check', async () => {
+  const cloud = await import('../lib/sales/cloud.js')
+  const today = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10)
+  const lastMonthDay = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 15)).toISOString().slice(0, 10)
+  const bq = (fields, rows) => ({ jobComplete: true, schema: { fields: fields.map((name) => ({ name })) }, rows: rows.map((r) => ({ f: fields.map((f) => ({ v: r[f] == null ? null : String(r[f]) })) })) })
+  const costFields = ['project', 'service', 'sku', 'day', 'account', 'cost', 'credits', 'currency']
+  let tablesReady = false
+  const posted = []
+  const google = async (url, opts = {}) => {
+    if (url.includes('projects:search')) return { projects: [{ projectId: 'site-a', displayName: 'Site A', name: 'projects/111', state: 'ACTIVE' }, { projectId: 'db-b', displayName: 'DB B', name: 'projects/222', state: 'ACTIVE' }] }
+    if (url.includes('/datasets/billing_export/tables')) return tablesReady ? { tables: [{ tableReference: { tableId: 'gcp_billing_export_resource_v1_AAA' } }] } : {}
+    if (url.includes('/tables')) return {}
+    if (url.includes('bigquery/v2/projects/chennai-rice-website/queries')) {
+      posted.push(opts)
+      if (opts.body.query.includes('resource.name as resource')) return bq(['project', 'service', 'resource', 'net'], [{ project: 'db-b', service: 'Cloud SQL', resource: 'db1', net: 300 }])
+      return bq(costFields, [
+        { project: 'site-a', service: 'Cloud Run', sku: 'CPU', day: today, account: 'AAA', cost: 100, credits: -20, currency: 'INR' },
+        { project: 'db-b', service: 'Cloud SQL', sku: 'vCPU', day: today, account: 'AAA', cost: 300, credits: 0, currency: 'INR' },
+        { project: 'db-b', service: 'Cloud SQL', sku: 'vCPU', day: lastMonthDay, account: 'AAA', cost: 999, credits: 0, currency: 'INR' },
+      ])
+    }
+    if (url.includes('/billingAccounts?')) return { billingAccounts: [{ name: 'billingAccounts/AAA', displayName: 'Main account' }] }
+    if (url.includes('billingAccounts/AAA/budgets')) return { budgets: [{ displayName: 'Database', amount: { specifiedAmount: { currencyCode: 'INR', units: '3000' } }, budgetFilter: { projects: ['projects/222'] }, thresholdRules: [{ thresholdPercent: 0.5 }, { thresholdPercent: 0.9 }] }] }
+    if (url.includes('searchAllIamPolicies') && url.includes(encodeURIComponent('policy:(roles/owner OR roles/editor)'))) return { results: [{
+      assetType: 'cloudresourcemanager.googleapis.com/Project', resource: '//cloudresourcemanager.googleapis.com/projects/site-a', project: 'projects/111',
+      policy: { bindings: [
+        { role: 'roles/owner', members: ['user:admin@chennairiceindustries.com', 'user:someone@gmail.com'] },
+        { role: 'roles/editor', members: ['serviceAccount:111-compute@developer.gserviceaccount.com'] },
+      ] },
+    }] }
+    if (url.includes('searchAllIamPolicies')) return { results: [
+      { assetType: 'run.googleapis.com/Service', resource: '//run.googleapis.com/projects/site-a/locations/asia-south1/services/api', project: 'projects/111', policy: { bindings: [{ role: 'roles/run.invoker', members: ['allUsers'] }] } },
+      { assetType: 'storage.googleapis.com/Bucket', resource: '//storage.googleapis.com/open-bucket', project: 'projects/111', policy: { bindings: [{ role: 'roles/storage.objectViewer', members: ['allUsers'] }] } },
+    ] }
+    if (url.includes('ServiceAccountKey')) return { results: [{ name: '//iam.googleapis.com/projects/site-a/serviceAccounts/old@site-a.iam.gserviceaccount.com/keys/k1', project: 'projects/111', createTime: new Date(Date.now() - 120 * 86_400_000).toISOString() }] }
+    if (url.includes('iam.googleapis.com/ServiceAccount')) return { results: [{ name: 'a' }, { name: 'b' }] }
+    return {}
+  }
+  cloud.setGoogleForTests(google)
+  try {
+    // Before Google writes the first billing data.
+    const waiting = await api('GET', '/api/admin/cloud/costs?days=30', { token: OWNER })
+    assert.equal(waiting.status, 200)
+    assert.equal(waiting.body.ready, false)
+    assert.match(waiting.body.note, /first billing data/)
+
+    tablesReady = true
+    cloud.setGoogleForTests(google) // clears the cached table list
+    assert.equal((await api('GET', '/api/admin/cloud/costs', { token: tokens.sales })).status, 403)
+    const res = await api('GET', '/api/admin/cloud/costs?days=7', { token: OWNER })
+    assert.equal(res.status, 200, JSON.stringify(res.body))
+    const c = res.body
+    assert.equal(c.ready, true)
+    assert.equal(c.currency, 'INR')
+    assert.equal(c.total, 380) // 100 − 20 + 300; last month's 999 is more than 7 days back
+    assert.equal(c.monthToDate, 380)
+    assert.equal(c.lastMonth, 999)
+    assert.deepEqual(c.byProject[0], { name: 'db-b', cost: 300 })
+    assert.equal(c.credits, -20)
+    assert.ok(c.forecast >= 380)
+    const budget = c.budgets.find((b) => b.name === 'Database')
+    assert.equal(budget.amount, 3000)
+    assert.deepEqual(budget.projects, ['db-b'])
+    assert.equal(budget.spent, 300)
+    assert.equal(budget.share, 0.1)
+    assert.deepEqual(budget.thresholds, [50, 90])
+    assert.equal(c.resources[0].resource, 'db1')
+    assert.equal(c.website.paidOrders >= 0, true)
+    // Every query is capped and runs in the website project.
+    assert.ok(posted.every((p) => p.method === 'POST' && p.body.maximumBytesBilled === '1000000000' && p.body.useLegacySql === false))
+
+    const sec = await api('GET', '/api/admin/cloud/security', { token: OWNER })
+    assert.equal(sec.status, 200, JSON.stringify(sec.body))
+    const s = sec.body
+    assert.deepEqual(s.complete, { access: true, public: true, keys: true })
+    assert.equal(s.access[0].member, 'someone@gmail.com')
+    assert.equal(s.access[0].outside, true)
+    assert.equal(s.open.find((o) => o.name === 'api').risk, 'expected')
+    assert.equal(s.open.find((o) => o.name === 'open-bucket').risk, 'check')
+    assert.equal(s.keys[0].account, 'old@site-a.iam.gserviceaccount.com')
+    assert.ok(s.keys[0].ageDays >= 119)
+    const text = s.findings.map((f) => f.text).join(' | ')
+    assert.match(text, /someone@gmail\.com has owner on site-a/)
+    assert.match(text, /Storage bucket open-bucket \(site-a\) is open to everyone/)
+    assert.match(text, /days old/)
+    assert.match(text, /Editor role/)
+  } finally {
+    cloud.setGoogleForTests(null)
+  }
+})
+
+test('the Cloud Centre login (role cloud) opens the Cloud Centre and nothing else', async () => {
+  const cloud = await import('../lib/sales/cloud.js')
+  cloud.setGoogleForTests(async () => ({}))
+  try {
+    const add = await api('POST', '/api/admin/staff', { token: OWNER, body: { email: 'it_team@example.com', fullName: 'IT Team (Cloud Centre)', role: 'cloud' } })
+    assert.equal(add.status, 200, JSON.stringify(add.body))
+    const IT = 'it_team@example.com|uid-cloud-login'
+    // An unverified email is still refused, even for this role.
+    assert.equal((await api('GET', '/api/admin/me', { token: 'it_team@example.com|uid-cloud-login|unverified' })).status, 403)
+    const me = await api('GET', '/api/admin/me', { token: IT })
+    assert.equal(me.status, 200, JSON.stringify(me.body))
+    assert.deepEqual(me.body.permissions, ['cloud.view'])
+    assert.equal((await api('GET', '/api/admin/cloud?days=1', { token: IT })).status, 200)
+    assert.equal((await api('GET', '/api/admin/cloud/settings', { token: IT })).status, 200)
+    for (const path of ['/api/admin/orders', '/api/admin/dashboard', '/api/admin/staff', '/api/admin/journeys', '/api/admin/warehouse/orders']) {
+      assert.equal((await api('GET', path, { token: IT })).status, 403, path)
+    }
+  } finally {
+    cloud.setGoogleForTests(null)
   }
 })

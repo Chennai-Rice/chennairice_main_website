@@ -15,11 +15,14 @@ import { httpError, str } from './util.js'
 // warehouse: the team at the mill who confirm and pack orders on /warehouse.
 // 'it' is the IT Team: Admin's access plus company settings.
 // accounts: the accounts team — invoices, payments, refunds and GST, read-only.
-export const ROLES = ['owner', 'admin', 'it', 'sales', 'inventory', 'plant', 'dispatch', 'warehouse', 'accounts']
-const ALL = ROLES
+// cloud: a login for /cloud (the Cloud Centre) and nothing else (Oct 2026).
+export const ROLES = ['owner', 'admin', 'it', 'sales', 'inventory', 'plant', 'dispatch', 'warehouse', 'accounts', 'cloud']
+// The website's working roles: the Cloud Centre login sees none of the orders, stock or money.
+const STAFF = ROLES.filter((r) => r !== 'cloud')
+const ALL = STAFF
 // Everyone except warehouse: these views carry prices and revenue, which the
 // warehouse team does not need to pack an order.
-const OFFICE = ROLES.filter((r) => r !== 'warehouse')
+const OFFICE = STAFF.filter((r) => r !== 'warehouse')
 
 // Who may do what. Kept as one table so the whole policy is reviewable at once.
 const PERMISSIONS = {
@@ -39,6 +42,8 @@ const PERMISSIONS = {
   'order.delete': ['owner', 'it'],
   // The Analyst page (sales, leads, campaigns, delivery KPIs; ad spend, rice types, kg target): owner and IT team only.
   'analyst.view': ['owner', 'it'],
+  // /admin → Cloud Centre: every Google Cloud and Firebase project, its usage and deploys (cloud.js): owner and IT team only.
+  'cloud.view': ['owner', 'it', 'cloud'],
   // Deleting an expo QR lead (a test or a mistake): owner and IT team only.
   'expo.delete': ['owner', 'it'],
   // The website's contact and bulk-order enquiries (/admin → Enquiries).

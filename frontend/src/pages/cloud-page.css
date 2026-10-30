@@ -1,0 +1,11 @@
+/* /cloud (CloudPage.jsx): the Cloud Centre on its own, on a warm neutral page. */
+.cloud-page { min-height: 100vh; padding: 20px clamp(12px, 3vw, 40px) 40px; background: #e9e4dc; }
+.cloud-page-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; max-width: 1440px; margin: 0 auto 16px; }
+.cloud-page-brand { display: inline-flex; align-items: center; gap: 10px; color: #29251f; font-weight: 600; font-size: 15px; text-decoration: none; }
+.cloud-page-brand img { width: 40px; height: 40px; border-radius: 50%; object-fit: contain; background: #fff; }
+.cloud-page-out {
+  min-height: 38px; padding: 0 18px; border: 1px solid rgba(41, 37, 31, 0.25); border-radius: 999px;
+  background: transparent; font: inherit; font-size: 13px; color: #29251f; cursor: pointer;
+}
+.cloud-page-out:hover { background: #29251f; color: #f3efe2; }
+.cloud-page-main { max-width: 1440px; margin: 0 auto; padding: 0; }

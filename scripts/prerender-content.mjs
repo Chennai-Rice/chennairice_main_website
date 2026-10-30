@@ -21,12 +21,16 @@ export const COMPANY = {
   name: 'Chennai Rice Industries',
   legalName: 'Chennai Rice Industries India Private Limited',
   brand: 'Chennai Rice',
-  founded: '1980',
+  // The family business: rice trading in Salem from 1951 ("over 75 years"), milling from 1956;
+  // the company itself was incorporated in 2013 (shop/data/legacy.js).
+  founded: '1951',
+  incorporated: '2013',
   founder: 'M. S. Tamilselvan',
   place: 'Nasiyanur, Erode, Tamil Nadu, India',
   slogan: "South India's No. 1 Non-Basmati Rice Manufacturer",
   facts: [
-    'Family-run rice mill at Nasiyanur, Erode, Tamil Nadu, founded in 1980.',
+    'Family rice business since 1951 (rice trading in Salem, milling since 1956), with the fifth generation now in the business; Chennai Rice Industries India Pvt. Ltd. (2013) runs the rice mill at Nasiyanur, Erode, Tamil Nadu.',
+    "South India's No. 1 non-basmati rice manufacturer: Ponni rice, idli rice and everyday South Indian rice, not basmati.",
     'Capacity of 2,44,000 tonnes a year (MTPA), with 61,500 MT of paddy storage in 31 silos.',
     'Paddy is selected, tested, stored, parboiled (for boiled rice), milled on a 10-stage line (cleaning, husking, polishing, grading, colour sorting) and packed at the Erode plant.',
     'Sells Ponni rice and idli rice in 5, 10 and 26 kg packs (Rudra and Thaaram Nei Kitchadi in 25 kg) through distributors, shops and online across India.',
@@ -76,7 +80,8 @@ export function productSchema({ id, seo, path, image, live, orgId }) {
     description: seo.about || seo.description,
     url,
     sku: id,
-    ...(image ? { image: SITE + image } : {}),
+    // The square white-background photo first (what shopping results and AI product cards prefer), then the pack cut-out.
+    ...(image ? { image: [`${SITE}/assets/shop/feed/${id}.jpg`, SITE + image] } : {}),
     brand: { '@type': 'Brand', name: COMPANY.brand },
     manufacturer: { '@id': orgId },
     category: 'Rice',
@@ -125,6 +130,8 @@ export function productHtml({ seo, live, guides }) {
 }
 
 /** A landing page or rice guide (data/landing.js / data/guides.js shape). */
+const longDate = (iso) => new Date(iso + 'T00:00:00+05:30').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })
+
 export function landingHtml({ meta, page, productLinks }) {
   const blocks = (page.sections || []).map((s) => {
     let h = `<h2>${esc(s.h2)}</h2>`
@@ -137,8 +144,9 @@ export function landingHtml({ meta, page, productLinks }) {
   })
   return [
     `<h1>${esc(meta.h1)}</h1>`,
+    meta.updated ? `<p>By ${esc(COMPANY.name)}, Erode · Updated <time datetime="${meta.updated}">${esc(longDate(meta.updated))}</time></p>` : '',
     ...(page.intro || []).map((t) => `<p>${esc(t)}</p>`),
-    productLinks.length ? `<section><h2>${esc(page.productsHeading || 'Our packs')}</h2>${ul(productLinks.map(([n, p, line]) => `${link(p, n)}${line ? ' — ' + esc(line) : ''}`))}</section>` : '',
+    productLinks.length ? `<section><h2>${esc(page.productsHeading || 'Our packs')}</h2>${ul(productLinks.map(([n, p, line, price]) => `${link(p, n)}${line ? ' — ' + esc(line) : ''}${price ? ' ' + esc(price) : ''}`))}</section>` : '',
     ...blocks,
     page.faqs?.length ? `<section><h2>${page.lang === 'ta' ? 'அடிக்கடி கேட்கப்படும் கேள்விகள்' : 'Frequently asked questions'}</h2>${page.faqs.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join('')}</section>` : '',
     page.links?.length ? `<p>${page.links.map((l) => link(l.to, l.label)).join(' · ')}</p>` : '',
@@ -147,12 +155,13 @@ export function landingHtml({ meta, page, productLinks }) {
 }
 
 /** Any other page: its heading, its description and the company facts, with links to the main pages. */
-export function basicHtml({ meta, productLinks, guides, withCompany = true }) {
+export function basicHtml({ meta, productLinks, guides, faqs, withCompany = true }) {
   return [
     `<h1>${esc(meta.h1 || meta.title)}</h1>`,
     `<p>${esc(meta.description)}</p>`,
     productLinks?.length ? `<section><h2>Chennai Rice packs</h2>${ul(productLinks.map(([n, p, line]) => `${link(p, n)}${line ? ' — ' + esc(line) : ''}`))}</section>` : '',
     guides?.length ? `<section><h2>Rice guides</h2>${ul(guides.map((g) => link(g.to, g.label)))}</section>` : '',
+    faqs?.length ? `<section><h2>Frequently asked questions</h2>${faqs.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join('')}</section>` : '',
     withCompany ? companyBlock() : '',
   ].join('\n')
 }
@@ -167,7 +176,7 @@ export function llmsTxt({ products, guides, landing }) {
   const lines = [
     `# ${COMPANY.name} (${COMPANY.brand})`,
     '',
-    `> ${COMPANY.legalName} is a rice mill at ${COMPANY.place}, founded in ${COMPANY.founded}. It mills and packs Ponni rice and idli rice under the Chennai Rice brand and its pack brands (Kitchidi Ponni Rice, Special Rajabhogam, Nayara Super Aged, A1 Special Ponni and others), sold through distributors and shops and online across India at ${SITE}.`,
+    `> ${COMPANY.legalName} runs a rice mill at ${COMPANY.place}; the family has been in the rice business since ${COMPANY.founded} (over 75 years). It mills and packs Ponni rice and idli rice under the Chennai Rice brand and its pack brands (Kitchidi Ponni Rice, Special Rajabhogam, Nayara Super Aged, A1 Special Ponni and others), sold through distributors and shops and online across India at ${SITE}.`,
     '',
     '## Key facts',
     ...COMPANY.facts.map((f) => `- ${f}`),

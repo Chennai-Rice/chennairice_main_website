@@ -119,6 +119,27 @@ export async function signInWithGoogle() {
   }
 }
 
+/** Email and password (the Cloud Centre login, /cloud), then the staff profile from the backend. */
+export async function signInWithPassword(email, password) {
+  const { auth, lib } = await firebase()
+  try {
+    await lib.signInWithEmailAndPassword(auth, String(email || '').trim(), String(password || ''))
+  } catch (err) {
+    if (['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email'].includes(err?.code)) {
+      throw new Error('Wrong email or password.')
+    }
+    if (err?.code === 'auth/too-many-requests') throw new Error('Too many tries. Wait a few minutes and try again.')
+    if (err?.code === 'auth/operation-not-allowed') throw new Error('Email and password sign-in is not switched on in Firebase yet (Authentication → Sign-in method → Email/Password).')
+    throw new Error(`Sign-in failed (${err?.code || 'unknown'}). Please try again.`)
+  }
+  try {
+    return await staffJson('/api/admin/me')
+  } catch (err) {
+    await signOutStaff()
+    throw err
+  }
+}
+
 /** Local testing only: sign in by email. Returns the staff profile. */
 export async function signInLocal(email) {
   devToken = 'dev:' + String(email || '').trim().toLowerCase()

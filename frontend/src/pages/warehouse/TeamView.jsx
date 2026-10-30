@@ -13,6 +13,7 @@ const ROLES = [
   { key: 'accounts', label: 'Accounts', note: 'Invoices, payments, refunds and GST totals. View and download only; changes nothing.' },
   { key: 'admin', label: 'Warehouse Admin', note: 'Everything, including money and the team.' },
   { key: 'it', label: 'IT Team', note: 'Everything an admin can do, plus company settings.' },
+  { key: 'cloud', label: 'Cloud Centre only', note: 'Opens /cloud (the Cloud Centre: projects, uptime, errors, cost). No orders, customers or money. Its password login is set up with db/create-cloud-login.js.' },
   { key: 'owner', label: 'Owner', note: 'Everything. Only an owner can add another owner.' },
 ]
 const LABEL = Object.fromEntries(ROLES.map((r) => [r.key, r.label]))

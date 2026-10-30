@@ -10,6 +10,9 @@ import './landing.css'
 
 const TAMIL_FONT = 'https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;600;700&display=swap'
 
+// A rice guide's "Updated" date (GUIDE_META in data/guides.js), e.g. 29 October 2026.
+const longDate = (iso) => new Date(`${iso}T00:00:00+05:30`).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })
+
 const UI = {
   en: { faq: 'Frequently asked questions', more: 'Explore more', loading: 'Loading packs…' },
   ta: { faq: 'அடிக்கடி கேட்கப்படும் கேள்விகள்', more: 'மேலும் பார்க்க', loading: 'அரிசி வகைகள் ஏற்றப்படுகின்றன…' },
@@ -56,6 +59,11 @@ export default function LandingPage({ id }) {
           <div className="lp-shell">
             <p className="lp-eyebrow">{page.eyebrow}</p>
             <h1 className="lp-title">{meta.h1}</h1>
+            {meta.updated && (
+              <p className="lp-byline">
+                By Chennai Rice Industries, Erode · Updated <time dateTime={meta.updated}>{longDate(meta.updated)}</time>
+              </p>
+            )}
             {page.intro.map((t) => <p className="lp-intro" key={t}>{t}</p>)}
             <div className="lp-hero-actions">
               {page.cta && <Link className="lp-btn" to={page.cta.to}>{page.cta.label}</Link>}
