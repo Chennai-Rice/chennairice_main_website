@@ -39,11 +39,14 @@ const paise = (v, units) => {
 export async function applySettlementRows(db, rows, { units = 'paise' } = {}) {
   let updated = 0
   let unknown = 0
+  let noBankCode = 0
   for (const r of rows) {
     const type = str(r.type || r.transaction_entity).toLowerCase()
     const paymentId = str(r.payment_id || (type === 'payment' ? r.entity_id : ''))
     const settlementId = str(r.settlement_id)
     if (!/^pay_/.test(paymentId) || !settlementId) continue // a refund, an adjustment, or not settled yet
+    const bankCode = str(r.additional_utr ?? r['additional utr'] ?? r.bank_utr)
+    if (!bankCode) noBankCode += 1
     const { rowCount } = await db.query(
       `update payments
           set settlement_id = $2,
@@ -54,7 +57,7 @@ export async function applySettlementRows(db, rows, { units = 'paise' } = {}) {
               settlement_tax_paise = $7
         where gateway = 'razorpay' and gateway_payment_id = $1
           and (settlement_id is distinct from $2 or bank_utr is distinct from coalesce(nullif($4, ''), bank_utr))`,
-      [paymentId, settlementId, str(r.settlement_utr), str(r.additional_utr), toDate(r.settled_at),
+      [paymentId, settlementId, str(r.settlement_utr), bankCode, toDate(r.settled_at),
         paise(r.fee ?? r['fee (exclusive tax)'], units), paise(r.tax, units)]
     )
     if (rowCount) updated += rowCount
@@ -63,7 +66,7 @@ export async function applySettlementRows(db, rows, { units = 'paise' } = {}) {
       if (!known) unknown += 1
     }
   }
-  return { updated, unknown }
+  return { updated, unknown, noBankCode }
 }
 
 /** Asks Razorpay for the settlements paid out on each of the last `days` days and records them. */
@@ -73,6 +76,7 @@ export async function syncSettlements({ days = 4, db = { query } } = {}) {
   let fetched = 0
   let updated = 0
   let unknown = 0
+  let noBankCode = 0
   for (let back = 0; back < span; back++) {
     const [year, month, day] = istDay(Date.now() - back * 864e5).split('-').map(Number)
     for (let skip = 0; skip < 20000; skip += 1000) {
@@ -82,10 +86,11 @@ export async function syncSettlements({ days = 4, db = { query } } = {}) {
       const done = await applySettlementRows(db, items, { units: 'paise' })
       updated += done.updated
       unknown += done.unknown
+      noBankCode += done.noBankCode
       if (items.length < 1000) break
     }
   }
-  return { days: span, fetched, updated, unknown }
+  return { days: span, fetched, updated, unknown, noBankCode }
 }
 
 /** Reads the Settlement Recon file (.xlsx or .csv) into rows keyed by its column names. */

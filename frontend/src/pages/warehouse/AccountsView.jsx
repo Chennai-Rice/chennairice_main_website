@@ -72,7 +72,7 @@ function BankCodes({ say, fail, onDone }) {
   }
   const sync = () => run('sync', async () => {
     const r = await staffJson('/api/admin/settlements/sync', { method: 'POST', body: JSON.stringify({ days: 31 }) })
-    return r.skipped ? `Not done: ${r.skipped}.` : `Checked the last ${r.days} days: ${r.updated} payment(s) got their UTIB code.`
+    return r.skipped ? `Not done: ${r.skipped}.` : `Checked the last ${r.days} days: ${r.updated} payment(s) got their UTIB code.${r.noBankCode ? ` Razorpay sent no bank code for ${r.noBankCode} settled payment(s): upload its Settlement Recon file for those.` : ''}`
   })
   const upload = (e) => {
     const file = e.target.files?.[0]
@@ -82,7 +82,7 @@ function BankCodes({ say, fail, onDone }) {
       const r = await staffJson(`/api/admin/settlements/import?name=${encodeURIComponent(file.name)}`, {
         method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: await file.arrayBuffer(),
       })
-      return `Read ${r.rows} rows: ${r.updated} payment(s) got their UTIB code${r.unknown ? `, ${r.unknown} not in our records` : ''}.`
+      return `Read ${r.rows} rows: ${r.updated} payment(s) got their UTIB code${r.noBankCode ? `, ${r.noBankCode} rows have no additional_utr column value` : ''}${r.unknown ? `, ${r.unknown} not in our records` : ''}.`
     })
   }
   return (
