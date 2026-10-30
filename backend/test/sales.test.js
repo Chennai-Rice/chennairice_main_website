@@ -2754,3 +2754,25 @@ test('cloud centre phase 3: costs from the billing export with budgets and forec
     cloud.setGoogleForTests(null)
   }
 })
+
+test('the Cloud Centre login (role cloud) opens the Cloud Centre and nothing else', async () => {
+  const cloud = await import('../lib/sales/cloud.js')
+  cloud.setGoogleForTests(async () => ({}))
+  try {
+    const add = await api('POST', '/api/admin/staff', { token: OWNER, body: { email: 'it_team@example.com', fullName: 'IT Team (Cloud Centre)', role: 'cloud' } })
+    assert.equal(add.status, 200, JSON.stringify(add.body))
+    const IT = 'it_team@example.com|uid-cloud-login'
+    // An unverified email is still refused, even for this role.
+    assert.equal((await api('GET', '/api/admin/me', { token: 'it_team@example.com|uid-cloud-login|unverified' })).status, 403)
+    const me = await api('GET', '/api/admin/me', { token: IT })
+    assert.equal(me.status, 200, JSON.stringify(me.body))
+    assert.deepEqual(me.body.permissions, ['cloud.view'])
+    assert.equal((await api('GET', '/api/admin/cloud?days=1', { token: IT })).status, 200)
+    assert.equal((await api('GET', '/api/admin/cloud/settings', { token: IT })).status, 200)
+    for (const path of ['/api/admin/orders', '/api/admin/dashboard', '/api/admin/staff', '/api/admin/journeys', '/api/admin/warehouse/orders']) {
+      assert.equal((await api('GET', path, { token: IT })).status, 403, path)
+    }
+  } finally {
+    cloud.setGoogleForTests(null)
+  }
+})

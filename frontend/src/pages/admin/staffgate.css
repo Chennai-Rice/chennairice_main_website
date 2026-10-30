@@ -1,0 +1,5 @@
+/* StaffGate.jsx: the email-and-password form (the Cloud Centre login). */
+.sg-login { display: grid; gap: 12px; margin: 14px 0 10px; }
+.sg-login label { display: grid; gap: 6px; font-size: 13px; }
+.sg-login .wh-btn { justify-self: start; }
+.sg-login p { margin: 4px 0 0; }

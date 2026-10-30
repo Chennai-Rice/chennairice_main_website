@@ -826,9 +826,10 @@ export default function CloudCentrePanel() {
   return (
     <StaffGate
       perm="cloud.view"
-      title="Sign in to see the Cloud Centre"
-      why="The Cloud Centre shows every Google Cloud and Firebase project, so it needs your staff Google account (owner or IT team)."
-      deniedText="This staff account cannot open the Cloud Centre. Sign in as the owner or the IT team."
+      passwordSignIn
+      title="Sign in to the Cloud Centre"
+      why="The Cloud Centre shows every Google Cloud and Firebase project. Sign in with the Cloud Centre email and password, or with the owner's or an IT team Google account."
+      deniedText="This account cannot open the Cloud Centre. Sign in with the Cloud Centre login, or as the owner or the IT team."
     >
       {({ onAuthError }) => <Centre onAuthError={onAuthError} />}
     </StaffGate>

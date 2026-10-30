@@ -45,6 +45,7 @@ import InfrastructurePage from './pages/infrastructure/InfrastructurePage.jsx'
 const AdminPage = lazy(() => import('./pages/admin/AdminPage.jsx'))
 // Staff-only order screen for the mill; loaded only when visited.
 const WarehousePage = lazy(() => import('./pages/warehouse/WarehousePage.jsx'))
+const CloudPage = lazy(() => import('./pages/CloudPage.jsx'))
 
 /* The journal is split out too. It carries its own Markdown renderer, and
    most visitors come for the packs — there is no reason for every one of
@@ -117,7 +118,7 @@ export default function App() {
      It gets no marketing chrome and, importantly, no visitor tracking:
      whoever is reading the numbers or writing the posts must not appear
      inside them. */
-  const isTool = pathname.startsWith('/admin') || pathname.startsWith('/warehouse')
+  const isTool = pathname.startsWith('/admin') || pathname.startsWith('/warehouse') || pathname.startsWith('/cloud')
   const isStorefront = !isTool && !isEmbedded
 
   return (
@@ -145,6 +146,15 @@ export default function App() {
           element={
             <Suspense fallback={null}>
               <WarehousePage />
+            </Suspense>
+          }
+        />
+        {/* The Cloud Centre on its own, for the IT team's email-and-password login. */}
+        <Route
+          path="/cloud"
+          element={
+            <Suspense fallback={null}>
+              <CloudPage />
             </Suspense>
           }
         />

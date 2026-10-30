@@ -157,6 +157,7 @@ const robots =
   'Disallow: /checkout\n' +
   'Disallow: /wishlist\n' +
   'Disallow: /warehouse\n' +
+  'Disallow: /cloud\n' +
   '\n' +
   'Sitemap: ' + SITE + '/sitemap.xml\n'
 
