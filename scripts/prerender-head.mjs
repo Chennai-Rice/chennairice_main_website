@@ -235,7 +235,7 @@ for (const [id, p] of Object.entries(PRODUCT_SEO)) {
       organization,
       breadcrumb([PAGE_META.products.h1, PAGE_META.products.path], [productName(id), path]),
     ],
-    body: productHtml({ seo: p, live: CATALOG.get(id), guides: GUIDE_LINKS }),
+    body: productHtml({ seo: p, live: CATALOG.get(id), guides: GUIDE_LINKS, photo: IMAGE[id] && `/assets/shop/feed/${id}.jpg` }),
   }))
 }
 

@@ -115,9 +115,13 @@ function packsTable(live) {
 }
 
 /** A product page's text. */
-export function productHtml({ seo, live, guides }) {
+export function productHtml({ seo, live, guides, photo }) {
+  // The current pack photo as a real <img>, for crawlers that do not run the app.
+  const alt = `Chennai Rice ${seo.name || seo.h1} rice pack`
   return [
     `<h1>${esc(seo.h1)}</h1>`,
+    // lazy: browsers skip it while #prerender is hidden, so visitors never download it twice.
+    photo ? `<img src="${esc(photo)}" alt="${esc(alt)}" width="1000" height="1000" loading="lazy">` : '',
     `<p><strong>${esc(seo.line || '')}</strong> Made by ${esc(COMPANY.name)}, Erode, Tamil Nadu.</p>`,
     seo.about ? `<p>${esc(seo.about)}</p>` : '',
     live?.tag ? `<p>Pack label: ${esc(live.tag)}.${live.description ? ' ' + esc(live.description) : ''}</p>` : '',
@@ -168,7 +172,7 @@ export function basicHtml({ meta, productLinks, guides, faqs, withCompany = true
 
 /** Wraps page text for #root, plus the head bits that hide it once JavaScript runs. */
 export const HEAD_SNIPPET = `<script>document.documentElement.classList.add('js')</script>
-    <style>.js #prerender{display:none}#prerender{max-width:860px;margin:32px auto;padding:0 16px;font:16px/1.6 system-ui,sans-serif;color:#2b1d17}#prerender table{border-collapse:collapse}#prerender td,#prerender th{border:1px solid #ddd;padding:4px 8px;text-align:left}</style>`
+    <style>.js #prerender{display:none}#prerender{max-width:860px;margin:32px auto;padding:0 16px;font:16px/1.6 system-ui,sans-serif;color:#2b1d17}#prerender img{max-width:320px;height:auto}#prerender table{border-collapse:collapse}#prerender td,#prerender th{border:1px solid #ddd;padding:4px 8px;text-align:left}</style>`
 export const wrap = (html) => `<main id="prerender">\n${html}\n</main>`
 
 // ---- llms.txt ---------------------------------------------------------------

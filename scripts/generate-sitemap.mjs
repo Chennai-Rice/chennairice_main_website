@@ -104,8 +104,17 @@ for (const [path, priority, changefreq] of STATIC_ROUTES) {
 }
 const { PRODUCT_SEO } = await import(pathToFileURL(join(ROOT, 'frontend', 'src', 'seo.js')).href)
 const publicSlugs = [...new Set([...productSlugs().map((id) => PRODUCT_SEO[id]?.slug || id), ...Object.values(PRODUCT_SEO).map((p) => p.slug)])]
+// Each product page names its current pack photo (image sitemap), so Bing and
+// Google — and the AI answers built on them — pair the product with today's pack
+// rather than an old photo found elsewhere on the web.
+const packPhoto = {}
+for (const [id, p] of Object.entries(PRODUCT_SEO)) {
+  if (existsSync(join(PUBLIC_DIR, 'assets', 'shop', 'feed', id + '.jpg'))) {
+    packPhoto[p.slug] = { loc: SITE + '/assets/shop/feed/' + id + '.jpg', title: 'Chennai Rice ' + p.name + ' rice pack' }
+  }
+}
 for (const slug of publicSlugs) {
-  entries.push({ loc: SITE + '/products/' + slug, priority: 0.8, changefreq: 'monthly', lastmod: today })
+  entries.push({ loc: SITE + '/products/' + slug, priority: 0.8, changefreq: 'monthly', lastmod: today, image: packPhoto[slug] })
 }
 for (const post of await blogSlugs()) {
   entries.push({
@@ -118,7 +127,7 @@ for (const post of await blogSlugs()) {
 
 const xml =
   '<?xml version="1.0" encoding="UTF-8"?>\n' +
-  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n' +
   entries
     .map(
       (e) =>
@@ -127,6 +136,7 @@ const xml =
         '    <lastmod>' + e.lastmod + '</lastmod>\n' +
         '    <changefreq>' + e.changefreq + '</changefreq>\n' +
         '    <priority>' + e.priority.toFixed(1) + '</priority>\n' +
+        (e.image ? '    <image:image><image:loc>' + e.image.loc + '</image:loc><image:title>' + e.image.title.replace(/&/g, '&amp;') + '</image:title></image:image>\n' : '') +
         '  </url>'
     )
     .join('\n') +
