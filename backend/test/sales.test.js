@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import express from 'express'
 import { startDatabase, setTestEnv, fakeRazorpay, fakeVerifier, signWebhook } from './helpers.js'
 
-let stopDb, base, server, rzp, db, closePool
+let stopDb, base, server, rzp, db, closePool, apiUsage
 
 const OWNER = 'owner@chennairice.test|uid-owner'
 const tokens = {}
@@ -74,6 +74,10 @@ before(async () => {
 
   const app = express()
   app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf } }))
+  // The API's own usage counters, as in server/app.js (Cloud Centre).
+  const { createApiUsage } = await import('../lib/sales/api-usage.js')
+  apiUsage = createApiUsage()
+  app.use(apiUsage.middleware)
   app.use(createSalesRouter({ verifyIdToken: fakeVerifier }))
   await new Promise((resolve) => { server = app.listen(0, resolve) })
   base = 'http://127.0.0.1:' + server.address().port
@@ -2508,5 +2512,82 @@ test('checkout journeys follow-up: stopped journeys go to their own NeoDove camp
   } finally {
     for (const k of ['NEODOVE_PAYMENT_ENDPOINT', 'NEODOVE_DETAILS_ENDPOINT', 'SALESDADDY_API_KEY', 'SALESDADDY_BASE_URL']) delete process.env[k]
     fakeNeo.close(); fakeSd.close()
+  }
+})
+
+test('cloud centre: every project with billing, resources, usage, deploys, API counters, job runs and alerts', async () => {
+  const cloud = await import('../lib/sales/cloud.js')
+  const { recordJobRun, istHour } = await import('../lib/sales/api-usage.js')
+  assert.deepEqual(istHour(new Date('2026-10-29T20:00:00Z')), ['2026-10-30', 1])
+
+  const asked = []
+  const point = (v) => [{ interval: { endTime: new Date().toISOString() }, value: v }]
+  cloud.setGoogleForTests(async (url) => {
+    asked.push(url)
+    if (url.includes('projects:search')) return { projects: [
+      { projectId: 'site-a', displayName: 'Site A', name: 'projects/111', state: 'ACTIVE' },
+      { projectId: 'old-b', displayName: 'Old B', name: 'projects/222', state: 'DELETE_REQUESTED' },
+    ] }
+    if (url.includes('/billingAccounts?')) return { billingAccounts: [{ name: 'billingAccounts/AAA', displayName: 'Main account' }] }
+    if (url.includes('billingAccounts/AAA/projects')) return { projectBillingInfo: [{ projectId: 'site-a', billingEnabled: true }] }
+    if (url.includes('searchAllResources')) return { results: [
+      { project: 'projects/111', assetType: 'sqladmin.googleapis.com/Instance', displayName: 'db1', location: 'asia-south1', state: 'RUNNABLE' },
+    ] }
+    if (url.includes('projects/site-a/sites')) return { sites: [{ name: 'projects/site-a/sites/site-a', defaultUrl: 'https://site-a.web.app' }] }
+    if (url.includes('sites/site-a/releases')) return { releases: [{ releaseTime: '2026-10-29T06:00:00Z', releaseUser: { email: 'it@example.com' }, type: 'DEPLOY', version: { fileCount: '10' } }] }
+    if (url.includes('timeSeries') && url.includes('request_count')) return { timeSeries: [
+      { resource: { labels: { service_name: 'api' } }, metric: { labels: { response_code_class: '2xx' } }, points: point({ int64Value: '900' }) },
+      { resource: { labels: { service_name: 'api' } }, metric: { labels: { response_code_class: '5xx' } }, points: point({ int64Value: '100' }) },
+    ] }
+    if (url.includes('timeSeries') && url.includes('cpu%2Futilization')) return { timeSeries: [
+      { resource: { labels: { database_id: 'site-a:db1' } }, points: point({ doubleValue: 0.9 }) },
+    ] }
+    if (url.includes('timeSeries') && url.includes('sent_bytes_count')) return { timeSeries: [
+      { resource: { labels: { site_name: 'site-a' } }, points: point({ int64Value: '5000000' }) },
+    ] }
+    return {}
+  })
+  try {
+    // The website's own counters: two catalogue calls, flushed to api_usage.
+    await api('GET', '/api/catalog')
+    await api('GET', '/api/catalog')
+    await apiUsage.flush()
+    // A job run an hour ago, so the 10-minute job looks stopped.
+    await recordJobRun({ query: db.query }, 'salesJobs', new Date(Date.now() - 3600_000), { email: { sent: 1 } })
+
+    assert.equal((await api('GET', '/api/admin/cloud', { token: tokens.sales })).status, 403)
+    const res = await api('GET', '/api/admin/cloud?days=7', { token: OWNER })
+    assert.equal(res.status, 200, JSON.stringify(res.body))
+    const r = res.body
+    assert.equal(r.googleError, null)
+    const a = r.projects.find((p) => p.id === 'site-a')
+    assert.equal(a.billing.account, 'Main account')
+    assert.equal(a.firebase, true)
+    assert.deepEqual(a.resources.map((x) => x.name), ['db1'])
+    assert.equal(a.usage.requests, 1000)
+    assert.equal(a.usage.errors, 100)
+    assert.equal(a.usage.hostingBytes, 5000000)
+    // A project marked for deletion is listed but never queried.
+    const b = r.projects.find((p) => p.id === 'old-b')
+    assert.equal(b.usage, null)
+    assert.ok(!asked.some((u) => u.includes('old-b')))
+    assert.equal(r.deploys[0].by, 'it@example.com')
+    const cat = r.api.routes.find((x) => x.route === '/api/catalog' && x.method === 'GET')
+    assert.ok(cat && cat.calls >= 2, JSON.stringify(r.api.routes))
+    assert.equal(r.jobs.runs[0].job, 'salesJobs')
+    assert.deepEqual(r.jobs.runs[0].result, { email: { sent: 1 } })
+    const texts = r.alerts.map((x) => x.text).join(' | ')
+    assert.match(texts, /has not run since/)
+    assert.match(texts, /site-a \/ api: 10\.0% server errors/)
+    assert.match(texts, /db1: CPU at 90%/)
+
+    // Google unreachable: the page still answers with the website's own counters.
+    cloud.setGoogleForTests(async () => { throw Object.assign(new Error('Google 500'), { status: 500 }) })
+    const down = await api('GET', '/api/admin/cloud?days=1', { token: OWNER })
+    assert.equal(down.status, 200)
+    assert.match(down.body.googleError, /Could not read Google Cloud/)
+    assert.ok(down.body.api.routes.length)
+  } finally {
+    cloud.setGoogleForTests(null)
   }
 })

@@ -35,11 +35,15 @@ import { createCheckoutSession, confirmCheckout } from '../lib/checkout.js'
 import { availableGateways } from '../lib/gateways.js'
 import { hasDatabase } from '../lib/db.js'
 import { createSalesRouter } from '../lib/sales/routes.js'
+import { createApiUsage } from '../lib/sales/api-usage.js'
 import { listCatalog } from '../lib/sales/catalog.js'
 import { query } from '../lib/db.js'
 
 export const app = express()
 app.use(cors())
+// Calls, errors and speed per API route, for /admin → Cloud Centre (api-usage.js; no logs kept).
+export const apiUsage = createApiUsage()
+app.use(apiUsage.middleware)
 app.use(
   express.json({
     limit: '200kb',

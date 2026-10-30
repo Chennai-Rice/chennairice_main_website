@@ -34,6 +34,9 @@ export async function runJobs() {
   await query("delete from neodove_events where received_at < now() - interval '90 days'").catch(() => {})
   // Checkout journeys are kept 90 days (Privacy Policy, 'How we collect your information').
   await query("delete from checkout_journeys where updated_at < now() - interval '90 days'").catch(() => {})
+  // Cloud Centre counters (migration 032): API calls per hour and job runs, kept 90 days.
+  await query("delete from api_usage where day < (now() at time zone 'Asia/Kolkata')::date - 90").catch(() => {})
+  await query("delete from job_runs where started_at < now() - interval '90 days'").catch(() => {})
   // The bank's UTIB code for payments Razorpay has settled: a catch-up for the settlement webhook, twice a
   // day (just after 2 pm and 8 pm India time, when payouts have gone), and only while a paid payment
   // from more than a day ago still has none.

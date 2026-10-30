@@ -15,6 +15,7 @@
 import express from 'express'
 import { listCatalog, checkDelivery } from './catalog.js'
 import { merchantFeed } from './merchant-feed.js'
+import { cloudOverview } from './cloud.js'
 import { createCheckoutSession, confirmCheckout, quoteCart } from './checkout.js'
 import { handleRazorpayWebhook } from './webhooks.js'
 import { runJobs } from './jobs.js'
@@ -442,6 +443,11 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.json(await setAdvisorCap(req.body?.capInr))
   }))
   // /admin → Checkout journeys: the funnel and the people at each step.
+  // /admin → Cloud Centre: all Google Cloud and Firebase projects (read-only), ?days=1|7|30.
+  admin.get('/cloud', perm('cloud.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await cloudOverview({ query, days: req.query.days }))
+  }))
   admin.get('/journeys', perm('analyst.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await listJourneys(req.query))

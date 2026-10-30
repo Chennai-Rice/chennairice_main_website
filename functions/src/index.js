@@ -60,8 +60,9 @@ export const api = onRequest(
 // and sending queued emails. Does nothing until the sales database is
 // configured (CLOUD_SQL_INSTANCE), so deploying it early is harmless.
 import { onSchedule } from 'firebase-functions/v2/scheduler'
-import { hasDatabase } from '../../backend/lib/db.js'
+import { hasDatabase, query } from '../../backend/lib/db.js'
 import { runJobs } from '../../backend/lib/sales/jobs.js'
+import { recordJobRun } from '../../backend/lib/sales/api-usage.js'
 
 export const salesJobs = onSchedule(
   {
@@ -73,6 +74,16 @@ export const salesJobs = onSchedule(
   },
   async () => {
     if (!hasDatabase()) return
-    console.log('[salesJobs]', JSON.stringify(await runJobs()))
+    // Each run is kept for /admin → Cloud Centre (job_runs, migration 032).
+    const started = new Date()
+    let result
+    try {
+      result = await runJobs()
+    } catch (err) {
+      await recordJobRun({ query }, 'salesJobs', started, null, err)
+      throw err
+    }
+    await recordJobRun({ query }, 'salesJobs', started, result)
+    console.log('[salesJobs]', JSON.stringify(result))
   }
 )

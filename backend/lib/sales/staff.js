@@ -39,6 +39,8 @@ const PERMISSIONS = {
   'order.delete': ['owner', 'it'],
   // The Analyst page (sales, leads, campaigns, delivery KPIs; ad spend, rice types, kg target): owner and IT team only.
   'analyst.view': ['owner', 'it'],
+  // /admin → Cloud Centre: every Google Cloud and Firebase project, its usage and deploys (cloud.js): owner and IT team only.
+  'cloud.view': ['owner', 'it'],
   // Deleting an expo QR lead (a test or a mistake): owner and IT team only.
   'expo.delete': ['owner', 'it'],
   // The website's contact and bulk-order enquiries (/admin → Enquiries).
