@@ -82,11 +82,11 @@ function health(p, alerts) {
   return p.active ? 'good' : 'idle'
 }
 
-function ProjectCard({ p, alerts }) {
+function ProjectCard({ p, alerts, cream }) {
   const u = p.usage
   const lastDeploy = p.sites.flatMap((s) => s.releases).sort((a, b) => String(b.at).localeCompare(String(a.at)))[0]
   return (
-    <article className="cc-card">
+    <article className={`cc-card${cream ? ' is-cream' : ''}`}>
       <header className="cc-card-head">
         <span className={`cc-dot is-${health(p, alerts)}`} aria-hidden="true" />
         <div>
@@ -127,19 +127,17 @@ function Overview({ d }) {
   const lastDeploy = d.deploys[0]
   const apiCalls = d.api.daily.reduce((a, x) => a + x.calls, 0)
   const job = d.jobs.stats.find((s) => s.job === 'salesJobs')
-  const checked = d.uptime.targets.filter((t) => t.lastOk != null)
-  const sitesUp = checked.filter((t) => t.lastOk).length
+  const measured = d.uptime.targets.filter((t) => t.uptime != null)
+  const uptimeAvg = measured.length ? measured.reduce((a, t) => a + t.uptime, 0) / measured.length : null
   const errorKinds = active.reduce((a, p) => a + p.usage.errorGroups.length, 0)
   const errorTimes = active.reduce((a, p) => a + p.usage.errorGroups.reduce((s, g) => s + g.count, 0), 0)
   return (
     <div className="cc-stack">
       <Alerts alerts={d.alerts} googleError={d.googleError} />
       <div className="cc-tiles">
-        <Tile label="Sites up now" value={checked.length ? `${sitesUp}/${checked.length}` : '—'} foot={checked.length ? 'checked every 10 minutes' : 'checks start once live'} tone={checked.length && sitesUp < checked.length ? 'bad' : ''} />
+        <Tile label="Uptime, all sites" value={uptimeAvg == null ? '—' : <>{(uptimeAvg * 100).toFixed(2)}<sup>%</sup></>} foot={uptimeAvg == null ? 'checks start once live' : 'checked every 10 minutes'} tone={uptimeAvg != null && uptimeAvg < 0.99 ? 'bad' : ''} />
         <Tile label="Errors reported" value={num(errorTimes)} foot={`${errorKinds} kinds · see Errors & uptime`} tone={errorTimes ? 'warn' : ''} />
         <Tile label="Projects" value={num(d.totals.projects)} foot={`${d.totals.billed} billed · ${d.totals.firebase} Firebase`} />
-        <Tile label="Requests (all projects)" value={num(d.totals.requests)} foot={`${pct(d.totals.errors, d.totals.requests).toFixed(2)}% server errors`} tone={pct(d.totals.errors, d.totals.requests) > 2 ? 'bad' : ''} />
-        <Tile label="Hosting data served" value={bytes(d.totals.hostingBytes)} />
         <Tile label="Firestore reads" value={num(d.totals.firestoreReads)} />
         <Tile label="AI tokens (Gemini)" value={num(d.totals.aiTokens)} />
         <Tile label="Website API calls" value={num(apiCalls)} foot="counted by our server" />
@@ -147,7 +145,7 @@ function Overview({ d }) {
         <Tile label="Last deploy" value={lastDeploy ? ago(lastDeploy.at) : '—'} foot={lastDeploy ? `${lastDeploy.site} · ${lastDeploy.by}` : ''} />
       </div>
       <div className="cc-cards">
-        {active.map((p) => <ProjectCard key={p.id} p={p} alerts={d.alerts} />)}
+        {active.map((p, i) => <ProjectCard key={p.id} p={p} alerts={d.alerts} cream={i === 0} />)}
       </div>
     </div>
   )
@@ -730,6 +728,46 @@ function SettingsTab({ onAuthError }) {
   )
 }
 
+/** A ring of segments, filled in proportion (like the reference's gauge). */
+function Ring({ value, total, label }) {
+  const segments = 12
+  const filled = total ? Math.round((value / total) * segments) : 0
+  const r = 42
+  const c = 2 * Math.PI * r
+  const seg = c / segments
+  return (
+    <div className="cc-ring" role="img" aria-label={`${label}: ${value} of ${total}`}>
+      <svg viewBox="0 0 100 100">
+        {Array.from({ length: segments }, (_, i) => (
+          <circle key={i} cx="50" cy="50" r={r} fill="none" strokeWidth="9" strokeLinecap="round"
+            stroke={i < filled ? '#f3efe2' : 'rgba(255,255,255,0.14)'}
+            strokeDasharray={`${seg * 0.62} ${c}`} strokeDashoffset={-i * seg} />
+        ))}
+      </svg>
+      <div className="cc-ring-label"><div><strong>{total ? `${value}/${total}` : '—'}</strong><span>{label}</span></div></div>
+    </div>
+  )
+}
+
+/** The top of the page: the title, sites up as a ring, and three headline numbers. */
+function Hero({ d }) {
+  const checked = d?.uptime?.targets.filter((t) => t.lastOk != null) || []
+  const up = checked.filter((t) => t.lastOk).length
+  const errPct = d ? pct(d.totals.errors, d.totals.requests) : null
+  const [gb, unit] = !d ? ['—', ''] : d.totals.hostingBytes >= 1e9 ? [(d.totals.hostingBytes / 1e9).toFixed(2), 'GB'] : [(d.totals.hostingBytes / 1e6).toFixed(0), 'MB']
+  return (
+    <header className="cc-hero">
+      <h2 className="cc-title">Cloud<br />Centre</h2>
+      <Ring value={up} total={checked.length} label="sites up" />
+      <div className="cc-hero-stats">
+        <div className="cc-hero-stat"><span>Requests, all projects</span><strong>{d ? num(d.totals.requests) : '—'}</strong></div>
+        <div className="cc-hero-stat"><span>Server errors</span><strong>{errPct == null ? '—' : errPct.toFixed(2)}<sup>%</sup></strong></div>
+        <div className="cc-hero-stat"><span>Hosting data served</span><strong>{gb}<sup>{unit}</sup></strong></div>
+      </div>
+    </header>
+  )
+}
+
 function Centre({ onAuthError }) {
   const [days, setDays] = useState(7)
   const [tab, setTab] = useState('overview')
@@ -766,14 +804,15 @@ function Centre({ onAuthError }) {
 
   return (
     <div className="cc">
+      <nav className="cc-nav" role="tablist" aria-label="Cloud Centre sections">
+        {TABS.map((t) => <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'is-on' : ''} onClick={() => setTab(t.id)}>{t.label}</button>)}
+      </nav>
+      <Hero d={data} />
       <div className="cc-toolbar">
-        <div className="cc-seg" role="tablist" aria-label="Cloud Centre sections">
-          {TABS.map((t) => <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'is-on' : ''} onClick={() => setTab(t.id)}>{t.label}</button>)}
-        </div>
         <div className="cc-seg" role="group" aria-label="Period">
           {PERIODS.map(([d, label]) => <button key={d} type="button" className={days === d ? 'is-on' : ''} onClick={() => setDays(d)}>{label}</button>)}
-          <button type="button" className="cc-btn" onClick={load} disabled={loading}>{loading ? 'Loading…' : '↻ Refresh'}</button>
         </div>
+        <button type="button" className={`cc-round${loading ? ' is-spinning' : ''}`} onClick={load} disabled={loading} aria-label="Refresh" title="Refresh">↻</button>
       </div>
       {error && <p className="ad-alert" role="alert">{error}</p>}
       {!data && loading && <p className="cc-muted">Reading every project from Google Cloud… (about 5 seconds)</p>}
