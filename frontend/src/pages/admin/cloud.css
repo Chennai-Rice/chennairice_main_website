@@ -1,6 +1,6 @@
 /* /admin → Cloud Centre (CloudCentrePanel.jsx), in the admin palette. */
-.cc { display: grid; gap: 16px; }
-.cc-stack { display: grid; gap: 16px; }
+.cc { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.cc-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .cc-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
 .cc-seg { display: flex; flex-wrap: wrap; gap: 6px; }
 .cc-seg button, .cc-btn {
@@ -115,4 +115,24 @@ td.cc-mono { display: table-cell; font-size: 12px; color: var(--ad-ink); }
 @media (max-width: 1100px) {
   .cc-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cc-tiles-3 { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Phase 3: cost and security */
+.cc-alerts-one { margin: 0; padding: 12px 16px; border-radius: 14px; background: var(--ad-warn-bg); color: var(--ad-warn); font-size: 13.5px; }
+.cc-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.cc-costlist { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.cc-costlist li { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(60px, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; color: var(--ad-ink); }
+.cc-costlist-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc-costlist-bar { height: 8px; border-radius: 4px; background: var(--ad-bg); overflow: hidden; }
+.cc-costlist-bar span { display: block; height: 100%; border-radius: 4px; background: var(--ad-accent); }
+.cc-budgets { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.cc-budgets li { display: grid; gap: 6px; }
+.cc-budget-head { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 13.5px; color: var(--ad-ink); }
+.cc-budget-bar { height: 10px; border-radius: 5px; background: var(--ad-bg); overflow: hidden; }
+.cc-budget-bar span { display: block; height: 100%; border-radius: 5px; background: var(--ad-accent); }
+.cc-budget-bar span.is-good { background: var(--ad-up); }
+.cc-budget-bar span.is-warn { background: var(--ad-warn); }
+.cc-budget-bar span.is-bad { background: var(--ad-down); }
+@media (max-width: 900px) {
+  .cc-two { grid-template-columns: minmax(0, 1fr); }
 }

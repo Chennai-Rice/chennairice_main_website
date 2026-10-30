@@ -15,8 +15,10 @@ import './cloud.css'
 const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'projects', label: 'All projects' },
+  { id: 'cost', label: 'Cost' },
   { id: 'speed', label: 'Speed' },
   { id: 'errors', label: 'Errors & uptime' },
+  { id: 'security', label: 'Security' },
   { id: 'api', label: 'Website API' },
   { id: 'jobs', label: 'Background jobs' },
   { id: 'deploys', label: 'Deploys' },
@@ -310,6 +312,180 @@ function DeploysTab({ d }) {
   )
 }
 
+/** Loads one of the slower Cloud Centre pages (cost, security) on its own. */
+function useCloudPart(path, onAuthError) {
+  const [data, setData] = useState(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      setData(await staffJson(path))
+    } catch (err) {
+      if (!onAuthError(err)) setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [path, onAuthError])
+  useEffect(() => { load() }, [load])
+  return { data, error, loading }
+}
+
+function Budgets({ list, currency }) {
+  if (!list?.length) return <p className="cc-muted">No budgets set on the billing accounts.</p>
+  return (
+    <ul className="cc-budgets">
+      {list.map((b) => {
+        const share = b.share == null ? null : b.share
+        const tone = share == null ? '' : share >= 1 ? 'bad' : share >= 0.9 ? 'warn' : 'good'
+        return (
+          <li key={b.accountId + b.name}>
+            <div className="cc-budget-head">
+              <strong>{b.name}</strong>
+              <span className="cc-muted">{b.account}{b.projects.length ? ` · ${b.projects.join(', ')}` : ' · whole account'}</span>
+            </div>
+            <div className="cc-budget-bar"><span className={tone ? `is-${tone}` : ''} style={{ width: `${Math.min(100, (share || 0) * 100)}%` }} /></div>
+            <span className="cc-muted">
+              {b.spent == null ? 'Spend appears once the billing data arrives' : `${money(b.spent, currency)} spent this month`} of {money(b.amount, b.currency)}
+              {share != null && ` (${Math.round(share * 100)}%)`}{b.thresholds.length ? ` · alerts at ${b.thresholds.join(', ')}%` : ''}
+            </span>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+const money = (v, currency = 'INR') => (v == null ? '—' : `${currency === 'INR' ? '₹' : currency + ' '}${Number(v).toLocaleString('en-IN', { maximumFractionDigits: v < 100 ? 2 : 0 })}`)
+
+function CostTab({ days, onAuthError }) {
+  const { data: c, error, loading } = useCloudPart(`/api/admin/cloud/costs?days=${days === 1 ? 7 : days}`, onAuthError)
+  if (error) return <p className="ad-alert" role="alert">{error}</p>
+  if (!c) return <p className="cc-muted">{loading ? 'Reading the billing data…' : ''}</p>
+  if (!c.ready) {
+    return (
+      <div className="cc-stack">
+        <p className="cc-alerts-one">{c.error || c.note}</p>
+        <section className="cc-panel"><h3 className="cc-h3">Budgets</h3><Budgets list={c.budgets} /></section>
+      </div>
+    )
+  }
+  const cur = c.currency
+  const change = c.previous ? ((c.total - c.previous) / c.previous) * 100 : null
+  function csv() {
+    downloadCsv(`cloud-cost-${c.from}-to-${c.to}`, ['Project', `Cost (${cur})`], c.byProject.map((p) => [p.name, p.cost]))
+  }
+  const List = ({ title, rows }) => {
+    const max = Math.max(1, ...rows.map((r) => r.cost))
+    return (
+      <section className="cc-panel">
+        <h3 className="cc-h3">{title}</h3>
+        <ul className="cc-costlist">
+          {rows.map((r) => (
+            <li key={r.name}><span className="cc-costlist-name">{r.name}</span><span className="cc-costlist-bar"><span style={{ width: `${Math.max(1, (r.cost / max) * 100)}%` }} /></span><strong>{money(r.cost, cur)}</strong></li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+  return (
+    <div className="cc-stack">
+      <div className="cc-tiles">
+        <Tile label={`Cost, ${c.from} to ${c.to}`} value={money(c.total, cur)} foot={change == null ? 'no earlier period to compare' : `${change >= 0 ? '↑' : '↓'} ${Math.abs(change).toFixed(0)}% vs the ${c.days} days before`} tone={change > 25 ? 'warn' : ''} />
+        <Tile label="This month so far" value={money(c.monthToDate, cur)} foot={`forecast for the month ${money(c.forecast, cur)}`} />
+        <Tile label="Last month" value={money(c.lastMonth, cur)} />
+        <Tile label="Credits (free tier, offers)" value={money(c.credits, cur)} />
+        <Tile label="Website cost per paid order" value={money(c.website.perOrder, cur)} foot={`${money(c.website.cost, cur)} ÷ ${num(c.website.paidOrders)} orders`} />
+      </div>
+      <section className="cc-panel">
+        <div className="cc-panel-head"><h3 className="cc-h3">Cost per day</h3><button type="button" className="cc-btn" onClick={csv}>⬇ Download CSV</button></div>
+        <Bars points={c.daily} label="Cloud cost per day" />
+      </section>
+      <section className="cc-panel"><h3 className="cc-h3">Budgets (this month)</h3><Budgets list={c.budgets} currency={cur} /></section>
+      <div className="cc-two">
+        <List title="By project" rows={c.byProject} />
+        <List title="By service" rows={c.byService} />
+      </div>
+      <List title="Top cost items" rows={c.topItems} />
+      {c.resources.length > 0 && (
+        <section className="cc-panel">
+          <h3 className="cc-h3">Most expensive resources, last 30 days</h3>
+          <div className="cc-table-wrap">
+            <table className="cc-table">
+              <thead><tr><th>Resource</th><th>Service</th><th>Project</th><th className="num">Cost</th></tr></thead>
+              <tbody>{c.resources.map((r) => <tr key={r.project + r.resource}><td className="cc-mono">{r.resource}</td><td>{r.service}</td><td>{r.project}</td><td className="num">{money(r.net, cur)}</td></tr>)}</tbody>
+            </table>
+          </div>
+        </section>
+      )}
+      <p className="cc-foot">Google's billing export, refreshed hourly here (Google updates it several times a day) · read {when(c.fetchedAt)}{days === 1 ? ' · the cost tab shows at least 7 days' : ''}</p>
+    </div>
+  )
+}
+
+function SecurityTab({ onAuthError }) {
+  const { data: s, error, loading } = useCloudPart('/api/admin/cloud/security', onAuthError)
+  if (error) return <p className="ad-alert" role="alert">{error}</p>
+  if (!s) return <p className="cc-muted">{loading ? 'Checking access across the organisation…' : ''}</p>
+  const missing = Object.entries(s.complete).filter(([, ok]) => !ok).map(([k]) => k)
+  return (
+    <div className="cc-stack">
+      {missing.length > 0 && <p className="cc-alerts-one">Could not read: {missing.join(', ')}. The server account may be missing a viewer role.</p>}
+      {s.findings.length ? (
+        <ul className="cc-alerts">{s.findings.map((f, i) => <li key={i} className={`is-${f.level}`}>{f.text}</li>)}</ul>
+      ) : <p className="cc-ok">● No security problems found.</p>}
+      <div className="cc-tiles">
+        <Tile label="People and accounts with Owner / Editor" value={num(s.access.length)} foot={`${s.access.filter((a) => a.outside).length} outside the company`} tone={s.access.some((a) => a.outside) ? 'bad' : ''} />
+        <Tile label="Open to the internet" value={num(s.open.length)} foot={`${s.open.filter((o) => o.risk === 'check').length} to check`} tone={s.open.some((o) => o.risk === 'check') ? 'bad' : ''} />
+        <Tile label="Downloadable keys" value={num(s.keys.length)} foot={s.keys.length ? `oldest ${s.keys[0].ageDays} days` : 'none: good'} tone={s.keys.some((k) => k.ageDays > 90) ? 'warn' : ''} />
+        <Tile label="Service accounts" value={num(s.serviceAccounts)} />
+      </div>
+      <section className="cc-panel">
+        <h3 className="cc-h3">Who has full control (Owner or Editor)</h3>
+        <div className="cc-table-wrap">
+          <table className="cc-table">
+            <thead><tr><th>Account</th><th>Role</th><th>Where</th><th>Note</th></tr></thead>
+            <tbody>
+              {s.access.map((a, i) => (
+                <tr key={i}><td className={a.outside ? 'is-bad' : ''}>{a.member}<span className="cc-mono">{a.type === 'serviceAccount' ? 'service account' : a.type}</span></td><td>{a.role}</td><td>{a.where}</td><td className={a.outside ? 'is-bad' : 'cc-muted'}>{a.note || '—'}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section className="cc-panel">
+        <h3 className="cc-h3">Open to everyone on the internet</h3>
+        {s.open.length ? (
+          <div className="cc-table-wrap">
+            <table className="cc-table">
+              <thead><tr><th>What</th><th>Project</th><th>Access</th><th>Verdict</th></tr></thead>
+              <tbody>
+                {s.open.map((o, i) => (
+                  <tr key={i}><td><strong>{o.name}</strong><span className="cc-mono">{o.kind}</span></td><td>{o.project}</td><td className="cc-mono">{o.roles.join(', ')}</td>
+                    <td className={o.risk === 'check' ? 'is-bad' : 'cc-muted'}>{o.risk === 'check' ? 'Check: should this be public?' : 'Expected: a public website or API'}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <p className="cc-muted">Nothing is open to everyone.</p>}
+      </section>
+      {s.keys.length > 0 && (
+        <section className="cc-panel">
+          <h3 className="cc-h3">Downloadable service-account keys</h3>
+          <div className="cc-table-wrap">
+            <table className="cc-table">
+              <thead><tr><th>Service account</th><th>Project</th><th>Created</th><th className="num">Age</th></tr></thead>
+              <tbody>{s.keys.map((k, i) => <tr key={i}><td className="cc-mono">{k.account}</td><td>{k.project}</td><td>{when(k.created)}</td><td className={`num${k.ageDays > 90 ? ' is-bad' : ''}`}>{k.ageDays} days</td></tr>)}</tbody>
+            </table>
+          </div>
+        </section>
+      )}
+      <p className="cc-foot">Google Cloud Asset Inventory across the organisation, checked {when(s.checkedAt)} (every 30 minutes) · read-only</p>
+    </div>
+  )
+}
+
 /** "Check now": runs an uptime round or the next PageSpeed check, then reloads the page's figures. */
 function CheckNow({ kind, label, reload, onAuthError }) {
   const [busy, setBusy] = useState(false)
@@ -576,6 +752,8 @@ function Centre({ onAuthError }) {
 
   const body = useMemo(() => {
     if (tab === 'settings') return <SettingsTab onAuthError={onAuthError} />
+    if (tab === 'cost') return <CostTab days={days} onAuthError={onAuthError} />
+    if (tab === 'security') return <SecurityTab onAuthError={onAuthError} />
     if (!data) return null
     if (tab === 'projects') return <Projects d={data} />
     if (tab === 'speed') return <SpeedTab d={data} reload={load} onAuthError={onAuthError} />
@@ -584,7 +762,7 @@ function Centre({ onAuthError }) {
     if (tab === 'jobs') return <JobsTab d={data} />
     if (tab === 'deploys') return <DeploysTab d={data} />
     return <Overview d={data} />
-  }, [data, tab, load, onAuthError])
+  }, [data, tab, days, load, onAuthError])
 
   return (
     <div className="cc">

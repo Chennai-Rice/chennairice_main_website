@@ -2663,3 +2663,94 @@ test('cloud centre phase 2: uptime checks, alert emails once per problem, PageSp
     cloud.setGoogleForTests(null)
   }
 })
+
+test('cloud centre phase 3: costs from the billing export with budgets and forecast, and the security check', async () => {
+  const cloud = await import('../lib/sales/cloud.js')
+  const today = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10)
+  const lastMonthDay = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 15)).toISOString().slice(0, 10)
+  const bq = (fields, rows) => ({ jobComplete: true, schema: { fields: fields.map((name) => ({ name })) }, rows: rows.map((r) => ({ f: fields.map((f) => ({ v: r[f] == null ? null : String(r[f]) })) })) })
+  const costFields = ['project', 'service', 'sku', 'day', 'account', 'cost', 'credits', 'currency']
+  let tablesReady = false
+  const posted = []
+  const google = async (url, opts = {}) => {
+    if (url.includes('projects:search')) return { projects: [{ projectId: 'site-a', displayName: 'Site A', name: 'projects/111', state: 'ACTIVE' }, { projectId: 'db-b', displayName: 'DB B', name: 'projects/222', state: 'ACTIVE' }] }
+    if (url.includes('/datasets/billing_export/tables')) return tablesReady ? { tables: [{ tableReference: { tableId: 'gcp_billing_export_resource_v1_AAA' } }] } : {}
+    if (url.includes('/tables')) return {}
+    if (url.includes('bigquery/v2/projects/chennai-rice-website/queries')) {
+      posted.push(opts)
+      if (opts.body.query.includes('resource.name as resource')) return bq(['project', 'service', 'resource', 'net'], [{ project: 'db-b', service: 'Cloud SQL', resource: 'db1', net: 300 }])
+      return bq(costFields, [
+        { project: 'site-a', service: 'Cloud Run', sku: 'CPU', day: today, account: 'AAA', cost: 100, credits: -20, currency: 'INR' },
+        { project: 'db-b', service: 'Cloud SQL', sku: 'vCPU', day: today, account: 'AAA', cost: 300, credits: 0, currency: 'INR' },
+        { project: 'db-b', service: 'Cloud SQL', sku: 'vCPU', day: lastMonthDay, account: 'AAA', cost: 999, credits: 0, currency: 'INR' },
+      ])
+    }
+    if (url.includes('/billingAccounts?')) return { billingAccounts: [{ name: 'billingAccounts/AAA', displayName: 'Main account' }] }
+    if (url.includes('billingAccounts/AAA/budgets')) return { budgets: [{ displayName: 'Database', amount: { specifiedAmount: { currencyCode: 'INR', units: '3000' } }, budgetFilter: { projects: ['projects/222'] }, thresholdRules: [{ thresholdPercent: 0.5 }, { thresholdPercent: 0.9 }] }] }
+    if (url.includes('searchAllIamPolicies') && url.includes(encodeURIComponent('policy:(roles/owner OR roles/editor)'))) return { results: [{
+      assetType: 'cloudresourcemanager.googleapis.com/Project', resource: '//cloudresourcemanager.googleapis.com/projects/site-a', project: 'projects/111',
+      policy: { bindings: [
+        { role: 'roles/owner', members: ['user:admin@chennairiceindustries.com', 'user:someone@gmail.com'] },
+        { role: 'roles/editor', members: ['serviceAccount:111-compute@developer.gserviceaccount.com'] },
+      ] },
+    }] }
+    if (url.includes('searchAllIamPolicies')) return { results: [
+      { assetType: 'run.googleapis.com/Service', resource: '//run.googleapis.com/projects/site-a/locations/asia-south1/services/api', project: 'projects/111', policy: { bindings: [{ role: 'roles/run.invoker', members: ['allUsers'] }] } },
+      { assetType: 'storage.googleapis.com/Bucket', resource: '//storage.googleapis.com/open-bucket', project: 'projects/111', policy: { bindings: [{ role: 'roles/storage.objectViewer', members: ['allUsers'] }] } },
+    ] }
+    if (url.includes('ServiceAccountKey')) return { results: [{ name: '//iam.googleapis.com/projects/site-a/serviceAccounts/old@site-a.iam.gserviceaccount.com/keys/k1', project: 'projects/111', createTime: new Date(Date.now() - 120 * 86_400_000).toISOString() }] }
+    if (url.includes('iam.googleapis.com/ServiceAccount')) return { results: [{ name: 'a' }, { name: 'b' }] }
+    return {}
+  }
+  cloud.setGoogleForTests(google)
+  try {
+    // Before Google writes the first billing data.
+    const waiting = await api('GET', '/api/admin/cloud/costs?days=30', { token: OWNER })
+    assert.equal(waiting.status, 200)
+    assert.equal(waiting.body.ready, false)
+    assert.match(waiting.body.note, /first billing data/)
+
+    tablesReady = true
+    cloud.setGoogleForTests(google) // clears the cached table list
+    assert.equal((await api('GET', '/api/admin/cloud/costs', { token: tokens.sales })).status, 403)
+    const res = await api('GET', '/api/admin/cloud/costs?days=7', { token: OWNER })
+    assert.equal(res.status, 200, JSON.stringify(res.body))
+    const c = res.body
+    assert.equal(c.ready, true)
+    assert.equal(c.currency, 'INR')
+    assert.equal(c.total, 380) // 100 − 20 + 300; last month's 999 is more than 7 days back
+    assert.equal(c.monthToDate, 380)
+    assert.equal(c.lastMonth, 999)
+    assert.deepEqual(c.byProject[0], { name: 'db-b', cost: 300 })
+    assert.equal(c.credits, -20)
+    assert.ok(c.forecast >= 380)
+    const budget = c.budgets.find((b) => b.name === 'Database')
+    assert.equal(budget.amount, 3000)
+    assert.deepEqual(budget.projects, ['db-b'])
+    assert.equal(budget.spent, 300)
+    assert.equal(budget.share, 0.1)
+    assert.deepEqual(budget.thresholds, [50, 90])
+    assert.equal(c.resources[0].resource, 'db1')
+    assert.equal(c.website.paidOrders >= 0, true)
+    // Every query is capped and runs in the website project.
+    assert.ok(posted.every((p) => p.method === 'POST' && p.body.maximumBytesBilled === '1000000000' && p.body.useLegacySql === false))
+
+    const sec = await api('GET', '/api/admin/cloud/security', { token: OWNER })
+    assert.equal(sec.status, 200, JSON.stringify(sec.body))
+    const s = sec.body
+    assert.deepEqual(s.complete, { access: true, public: true, keys: true })
+    assert.equal(s.access[0].member, 'someone@gmail.com')
+    assert.equal(s.access[0].outside, true)
+    assert.equal(s.open.find((o) => o.name === 'api').risk, 'expected')
+    assert.equal(s.open.find((o) => o.name === 'open-bucket').risk, 'check')
+    assert.equal(s.keys[0].account, 'old@site-a.iam.gserviceaccount.com')
+    assert.ok(s.keys[0].ageDays >= 119)
+    const text = s.findings.map((f) => f.text).join(' | ')
+    assert.match(text, /someone@gmail\.com has owner on site-a/)
+    assert.match(text, /Storage bucket open-bucket \(site-a\) is open to everyone/)
+    assert.match(text, /days old/)
+    assert.match(text, /Editor role/)
+  } finally {
+    cloud.setGoogleForTests(null)
+  }
+})

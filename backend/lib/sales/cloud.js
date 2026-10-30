@@ -39,23 +39,34 @@ async function accessToken() {
   return token.value
 }
 
-async function googleGet(url) {
-  const res = await fetch(url, { headers: { Authorization: 'Bearer ' + await accessToken() }, signal: AbortSignal.timeout(20_000) })
+/** A Google API call: GET, or POST with a JSON body (BigQuery queries). */
+async function googleGet(url, { method = 'GET', body } = {}) {
+  const res = await fetch(url, {
+    method,
+    headers: { Authorization: 'Bearer ' + await accessToken(), ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(40_000),
+  })
   if (!res.ok) {
-    const err = new Error(`Google ${res.status} for ${url.split('?')[0]}`)
+    const detail = await res.json().then((j) => j.error?.message || '').catch(() => '')
+    const err = new Error(`Google ${res.status} for ${url.split('?')[0]}${detail ? `: ${detail.slice(0, 200)}` : ''}`)
     err.status = res.status
     throw err
   }
   return res.json()
 }
 let google = googleGet
+const resetHooks = []
 /** Tests answer Google's calls from fixtures. */
-export function setGoogleForTests(fn) { google = fn || googleGet; cache.clear() }
+export function setGoogleForTests(fn) { google = fn || googleGet; cache.clear(); for (const r of resetHooks) r() }
+/** For the cost and security pages (cloud-cost.js): the same Google access, test hooks and cache reset. */
+export const callGoogle = (url, opts) => google(url, opts)
+export const onGoogleReset = (fn) => resetHooks.push(fn)
 
 // 403 / 404 / 409: no such service in that project (e.g. not a Firebase project), so nothing to show.
-const soft = (p, fallback) => p.catch((err) => { if (![403, 404, 409].includes(err.status)) console.warn('[cloud]', err.message); return fallback })
+export const soft = (p, fallback) => p.catch((err) => { if (![403, 404, 409].includes(err.status)) console.warn('[cloud]', err.message); return fallback })
 
-async function pages(url, key, max = 5) {
+export async function pages(url, key, max = 5) {
   const out = []
   let next = ''
   for (let i = 0; i < max; i++) {
@@ -67,7 +78,7 @@ async function pages(url, key, max = 5) {
 }
 
 // ---- What exists ---------------------------------------------------------------
-async function listProjects() {
+export async function listProjects() {
   const rows = await pages(`https://cloudresourcemanager.googleapis.com/v3/projects:search?pageSize=100`, 'projects')
   return rows.map((p) => ({ id: p.projectId, name: p.displayName || p.projectId, number: p.name.split('/')[1], state: p.state }))
 }

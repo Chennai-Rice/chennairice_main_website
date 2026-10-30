@@ -17,6 +17,7 @@ import { listCatalog, checkDelivery } from './catalog.js'
 import { merchantFeed } from './merchant-feed.js'
 import { cloudOverview } from './cloud.js'
 import { cloudSettings, saveCloudSettings, checkUptime, checkSpeed } from './cloud-checks.js'
+import { cloudCosts, cloudSecurity } from './cloud-cost.js'
 import { createCheckoutSession, confirmCheckout, quoteCart } from './checkout.js'
 import { handleRazorpayWebhook } from './webhooks.js'
 import { runJobs } from './jobs.js'
@@ -448,6 +449,15 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/cloud', perm('cloud.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await cloudOverview({ query, days: req.query.days }))
+  }))
+  // What the projects cost (billing export in BigQuery, ?days=1|7|30|90) and the security check (cloud-cost.js).
+  admin.get('/cloud/costs', perm('cloud.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await cloudCosts({ query, days: req.query.days }))
+  }))
+  admin.get('/cloud/security', perm('cloud.view'), wrap(async (_req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await cloudSecurity())
   }))
   // Who gets the alert emails, and the PageSpeed API key (never sent back, only whether one is set).
   admin.get('/cloud/settings', perm('cloud.view'), wrap(async (_req, res) => res.json(await cloudSettings({ query }))))
