@@ -51,6 +51,8 @@ const isTestLink = (r) => /\{\{|<(campaign|ad)[-_ ]?(name|id)>/i.test(`${r.campa
 const channelOf = (r) => (isTestLink(r) ? 'test' : isUntaggedMetaAd(r) ? 'meta' : CHANNELS.find((c) => c.sources?.includes(r.source))?.key || 'other')
 const pretty = (v) => String(v || '').replace(/[<>]/g, '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim()
 const shortId = (v) => `…${String(v).slice(-4)}`
+// Rows are rebuilt on every render, so an open row is matched by what it is, not by object.
+const rowKey = (r) => `${r.source}|${r.campaign || ''}|${r.ad || ''}`
 /** The campaign a row belongs to, by name where we know it. */
 function campaignName(r) {
   const known = AD_NAMES[r.campaign]?.campaign || AD_NAMES[r.ad]?.campaign
@@ -85,7 +87,7 @@ export default function SourcesReport({ say, onAuthError }) {
   const [product, setProduct] = useState('')
   const [products, setProducts] = useState([])
   const [data, setData] = useState(null)
-  const [open, setOpen] = useState(null) // { row, orders }
+  const [open, setOpen] = useState(null) // { key, orders }
   const [help, setHelp] = useState(false)
   const [channel, setChannel] = useState('')
   const [find, setFind] = useState('')
@@ -106,11 +108,11 @@ export default function SourcesReport({ say, onAuthError }) {
   }, [days, product, say, onAuthError])
 
   async function showOrders(row) {
-    if (open && open.row === row) return setOpen(null)
+    if (open && open.key === rowKey(row)) return setOpen(null)
     try {
-      const q = new URLSearchParams({ days, product, source: row.source, campaign: row.campaign, ad: row.ad })
+      const q = new URLSearchParams({ days, product, source: row.source, campaign: row.campaign || '', ad: row.ad || '' })
       const d = await staffJson(`/api/admin/warehouse/sources/orders?${q}`)
-      setOpen({ row, orders: d.orders })
+      setOpen({ key: rowKey(row), orders: d.orders })
     } catch (err) {
       if (!onAuthError(err)) say(err.message, 'error')
     }
@@ -234,11 +236,12 @@ export default function SourcesReport({ say, onAuthError }) {
                                   {isUntaggedMetaAd(r) && <span className="wh-src-untagged" title="The ad's link has no utm_medium=paid, so it was recorded as a normal visit.">link not tagged as ad</span>}
                                   {r.orders > 0 && (
                                     <button type="button" className="src-show" onClick={(e) => { e.stopPropagation(); showOrders(r) }}>
-                                      {open?.row === r ? 'Hide orders' : 'Show orders'}
+                                      {open?.key === rowKey(r) ? 'Hide orders' : 'Show orders'}
                                     </button>
                                   )}
-                                  {open?.row === r && (
+                                  {open?.key === rowKey(r) && (
                                     <ul className="src-orders">
+                                      {!open.orders.length && <li className="wh-muted">No paid orders found for this row.</li>}
                                       {open.orders.map((o) => (
                                         <li key={o.order_number}>
                                           <strong className="wh-mono">{o.order_number}</strong> · {o.contact_name}{o.city ? `, ${o.city}` : ''} · <span className="wh-muted">{o.items}</span> · <strong>{rupees(o.total)}</strong>
