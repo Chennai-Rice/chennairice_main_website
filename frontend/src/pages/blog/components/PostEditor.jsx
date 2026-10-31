@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { renderMarkdown, slugify } from '../../../lib/markdown.jsx'
 import PostPreview from './PostPreview.jsx'
+import { hasFormatting, htmlToMarkdown } from '../../../lib/pasteToMarkdown.js'
 import {
   BlogError,
   COVER_TYPES,
@@ -13,6 +14,7 @@ import {
 const BLANK = {
   id: null,
   title: '',
+  cardTitle: '',
   slug: '',
   excerpt: '',
   contentMd: '',
@@ -41,6 +43,8 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
   const [notice, setNotice] = useState('')
   const [previewing, setPreviewing] = useState(false)
   const fileRef = useRef(null)
+  const bodyRef = useRef(null)
+  const bodyFileRef = useRef(null)
 
   /* Once the writer edits the address by hand, stop rewriting it from the
      title — otherwise a deliberate choice is undone by the next keystroke.
@@ -59,6 +63,54 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
 
   const preview = useMemo(() => renderMarkdown(draft.contentMd), [draft.contentMd])
 
+  // Text copied from Google Docs, Word or a web page keeps its headings, bold, links, lists and spacing:
+  // the clipboard's HTML is turned into Markdown at the cursor. Plain text pastes as usual.
+  const pasteBody = (event) => {
+    const pictures = [...(event.clipboardData?.files || [])].filter((f) => f.type.startsWith('image/'))
+    if (pictures.length) {
+      event.preventDefault()
+      addImages(pictures)
+      return
+    }
+    const html = event.clipboardData?.getData('text/html')
+    if (!html || !hasFormatting(html)) return
+    const markdown = htmlToMarkdown(html)
+    if (!markdown) return
+    event.preventDefault()
+    const box = event.target
+    const from = box.selectionStart
+    const to = box.selectionEnd
+    set({ contentMd: draft.contentMd.slice(0, from) + markdown + draft.contentMd.slice(to) })
+    requestAnimationFrame(() => box.setSelectionRange(from + markdown.length, from + markdown.length))
+  }
+
+  // Pictures inside the post: each is uploaded like the cover and written into the text as ![description](address)
+  // at the cursor. The words in the brackets (from the file name) are the description for screen readers.
+  const addImages = async (files) => {
+    const list = [...(files || [])].filter((f) => f.type.startsWith('image/'))
+    if (!list.length) return
+    const box = bodyRef.current
+    const from = box?.selectionStart ?? draft.contentMd.length
+    const to = box?.selectionEnd ?? from
+    setError('')
+    setBusy('image')
+    try {
+      const marks = []
+      for (const file of list) {
+        const { url } = await uploadCover(file)
+        const alt = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/[\[\]]/g, '').trim() || 'Image'
+        marks.push(`![${alt}](${url})`)
+      }
+      const text = '\n\n' + marks.join('\n\n') + '\n\n'
+      setDraft((cur) => ({ ...cur, contentMd: cur.contentMd.slice(0, from) + text + cur.contentMd.slice(to) }))
+      setNotice(`${marks.length > 1 ? 'Images' : 'Image'} added to the post. Change the words in the square brackets to describe ${marks.length > 1 ? 'each one' : 'it'}.`)
+    } catch (err) {
+      setError(err instanceof BlogError ? err.message : 'Could not upload that image.')
+    } finally {
+      setBusy('')
+    }
+  }
+
   const pickCover = async (event) => {
     const file = event.target.files?.[0]
     // Clear the input so choosing the same file twice still fires a change.
@@ -68,7 +120,7 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
     setError('')
     setBusy('cover')
     try {
-      const { path, url } = await uploadCover(file, author)
+      const { path, url } = await uploadCover(file)
       set({ coverPath: path, coverUrl: url })
       setNotice('Image uploaded. Add a short description of it below.')
     } catch (err) {
@@ -108,13 +160,13 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
 
     setBusy(status)
     try {
-      const saved = await savePost({ ...draft, status }, author)
+      const saved = await savePost({ ...draft, status })
       setDraft((current) => ({
         ...current,
         id: saved.id,
         slug: saved.slug,
         status: saved.status,
-        publishedAt: saved.published_at,
+        publishedAt: saved.publishedAt,
         excerpt: saved.excerpt || '',
       }))
       setSlugTouched(true)
@@ -169,6 +221,18 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
           placeholder="What is this post about?"
           onChange={(e) => onTitle(e.target.value)}
         />
+      </div>
+
+      <div className="st-field">
+        <label htmlFor="post-card-title">Card title (optional)</label>
+        <input
+          id="post-card-title"
+          className="st-input"
+          value={draft.cardTitle}
+          placeholder="A shorter title for the card on the journal list"
+          onChange={(e) => set({ cardTitle: e.target.value })}
+        />
+        <p className="st-hint">Leave blank to use the title above on the card. The post page always shows the full title.</p>
       </div>
 
       <div className="st-row">
@@ -291,14 +355,35 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
           that, so there is no width-dependent JavaScript here. */}
       <div className="st-panes">
         <div className={`st-pane${tab === 'write' ? ' is-active' : ''}`}>
-          <label className="st-field-label" htmlFor="post-body">Post</label>
+          <div className="st-cover-buttons">
+            <label className="st-field-label" htmlFor="post-body">Post</label>
+            <input
+              ref={bodyFileRef}
+              type="file"
+              multiple
+              className="st-sr"
+              accept={COVER_TYPES.join(',')}
+              onChange={(e) => { addImages(e.target.files); e.target.value = '' }}
+            />
+            <button type="button" className="st-btn" disabled={busy === 'image'} onClick={() => bodyFileRef.current?.click()}>
+              {busy === 'image' ? 'Uploading…' : 'Add image'}
+            </button>
+          </div>
           <textarea
             id="post-body"
+            ref={bodyRef}
             className="st-textarea"
             value={draft.contentMd}
             placeholder={HELP}
             spellCheck
             onChange={(e) => set({ contentMd: e.target.value })}
+            onPaste={pasteBody}
+            onDrop={(e) => {
+              if ([...(e.dataTransfer?.files || [])].some((f) => f.type.startsWith('image/'))) {
+                e.preventDefault()
+                addImages(e.dataTransfer.files)
+              }
+            }}
           />
           <p className="st-hint">
             Markdown: <code>## heading</code>, <code>**bold**</code>, <code>*italic*</code>,{' '}

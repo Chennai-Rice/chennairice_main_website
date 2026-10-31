@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "dev:all": "node scripts/dev-all.mjs",
+    "blog:local": "node scripts/blog-local-server.mjs",
     "prebuild": "node scripts/generate-sitemap.mjs",
     "postbuild": "node scripts/prerender-head.mjs"
   },

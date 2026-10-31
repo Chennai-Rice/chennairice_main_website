@@ -186,11 +186,11 @@ export const REPORTS = {
         `select phone, name, first_message, first_message_at, last_message, last_message_at, messages, source
            from whatsapp_contacts order by coalesce(first_message_at, created_at) desc nulls last`)
       return {
-        header: ['Name', 'Phone', 'Contest', 'Entries on WhatsApp', 'Entries on website', 'First message', 'First message on', 'Last message', 'Last message on', 'Messages sent'],
+        header: ['Name', 'Phone', 'Contest', 'Coupon entered', 'Entries on WhatsApp', 'Entries on website', 'First message', 'First message on', 'Last message', 'Last message on', 'Messages sent'],
         lines: rows.map((r) => {
           const m = by.get(String(r.phone).replace(/\D/g, '').slice(-10))
           const contest = !m ? 'Not registered' : m.whatsapp && m.website ? 'Both' : m.whatsapp ? 'WhatsApp' : 'Website'
-          return [r.name, r.phone, contest, m?.whatsapp || 0, m?.website || 0, r.first_message, r.first_message_at ? when(r.first_message_at) : '',
+          return [r.name, r.phone, contest, m ? 'Yes' : 'No', m?.whatsapp || 0, m?.website || 0, r.first_message, r.first_message_at ? when(r.first_message_at) : '',
             r.last_message, r.last_message_at ? when(r.last_message_at) : '', r.source === 'import' ? 'Not known' : r.messages]
         }),
       }

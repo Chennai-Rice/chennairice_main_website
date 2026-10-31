@@ -47,6 +47,7 @@ export function setTestEnv() {
   process.env.OWNER_EMAILS = 'owner@chennairice.test'
   process.env.SALES_NOTIFY_EMAIL = 'sales@chennairice.test'
   process.env.JOB_TOKEN = 'job-token-for-tests'
+  process.env.BLOG_BUCKET = 'memory'
   delete process.env.RESEND_API_KEY
   delete process.env.SMTP_HOST
   delete process.env.EMAIL_FROM

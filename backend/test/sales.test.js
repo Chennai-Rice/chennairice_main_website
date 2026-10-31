@@ -2802,3 +2802,59 @@ test('the Cloud Centre login (role cloud) opens the Cloud Centre and nothing els
     cloud.setGoogleForTests(null)
   }
 })
+
+test('the journal: a blog writer saves, publishes and uploads; readers see only published posts; the role opens nothing else', async () => {
+  const add = await api('POST', '/api/admin/staff', { token: OWNER, body: { email: 'writer@example.com', fullName: 'Writer', role: 'blog' } })
+  assert.equal(add.status, 200, JSON.stringify(add.body))
+  const W = 'writer@example.com|uid-writer'
+  const me = await api('GET', '/api/admin/me', { token: W })
+  assert.deepEqual(me.body.permissions, ['blog.manage'])
+  for (const path of ['/api/admin/orders', '/api/admin/dashboard', '/api/admin/staff', '/api/admin/cloud', '/api/admin/warehouse/orders']) {
+    assert.equal((await api('GET', path, { token: W })).status, 403, path)
+  }
+  assert.equal((await api('GET', '/api/admin/blog/posts')).status, 401)
+
+  // A picture: wrong type refused, a PNG stored and served back with a year of caching.
+  const png = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex')
+  const bad = await fetch(base + '/api/admin/blog/images', { method: 'POST', headers: { 'Content-Type': 'text/html', Authorization: 'Bearer ' + W }, body: '<b>x</b>' })
+  assert.equal(bad.status, 400)
+  const up = await fetch(base + '/api/admin/blog/images', { method: 'POST', headers: { 'Content-Type': 'image/png', Authorization: 'Bearer ' + W }, body: png })
+  assert.equal(up.status, 200)
+  const { path, url } = await up.json()
+  const img = await fetch(base + url)
+  assert.equal(img.status, 200)
+  assert.equal(img.headers.get('content-type'), 'image/png')
+  assert.match(img.headers.get('cache-control'), /immutable/)
+  assert.equal((await fetch(base + '/api/blog/images/not-a-picture.png')).status, 404)
+
+  // A draft is invisible to readers; publishing shows it, with the card title.
+  const row = { slug: 'super-slogan-contest', title: 'Write. Win. Witness the Rewards | Chennai Rice Super Slogan Contest 2026', card_title: 'Super Slogan Contest 2026',
+    excerpt: 'Put your thoughts into words.', content_md: '## Hello\n\nWords.', cover_path: path, cover_alt: 'Contest banner', status: 'draft', reading_minutes: 1, published_at: null }
+  const draft = await api('POST', '/api/admin/blog/posts', { token: W, body: { id: null, row } })
+  assert.equal(draft.status, 200, JSON.stringify(draft.body))
+  assert.equal(draft.body.post.status, 'draft')
+  assert.equal(draft.body.post.cardTitle, 'Super Slogan Contest 2026')
+  assert.equal((await api('GET', '/api/blog/posts')).body.posts.length, 0)
+  assert.equal((await api('GET', '/api/blog/posts/super-slogan-contest')).status, 404)
+
+  const id = draft.body.post.id
+  const live = await api('POST', '/api/admin/blog/posts', { token: W, body: { id, row: { ...row, status: 'published' } } })
+  assert.equal(live.status, 200, JSON.stringify(live.body))
+  assert.ok(live.body.post.publishedAt)
+  const list = (await api('GET', '/api/blog/posts')).body.posts
+  assert.equal(list.length, 1)
+  assert.equal(list[0].cardTitle, 'Super Slogan Contest 2026')
+  assert.equal(list[0].coverUrl, url)
+  assert.equal((await api('GET', '/api/blog/posts/super-slogan-contest')).body.post.contentMd, '## Hello\n\nWords.')
+
+  // A second post cannot take the same web address; a bad address is refused.
+  assert.equal((await api('POST', '/api/admin/blog/posts', { token: W, body: { id: null, row: { ...row, title: 'Other' } } })).status, 409)
+  assert.equal((await api('POST', '/api/admin/blog/posts', { token: W, body: { id: null, row: { ...row, slug: 'Bad Slug' } } })).status, 400)
+
+  // Unpublishing hides it again; deleting removes it.
+  await api('POST', '/api/admin/blog/posts', { token: W, body: { id, row: { ...row, status: 'draft' } } })
+  assert.equal((await api('GET', '/api/blog/posts')).body.posts.length, 0)
+  assert.equal((await api('GET', '/api/admin/blog/posts', { token: W })).body.posts.length, 1)
+  assert.equal((await api('DELETE', '/api/admin/blog/posts/' + id, { token: W })).status, 200)
+  assert.equal((await api('GET', '/api/admin/blog/posts', { token: W })).body.posts.length, 0)
+})

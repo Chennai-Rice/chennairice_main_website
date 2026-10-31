@@ -11,7 +11,6 @@
 // src/pages/admin/ are presentation only and must not query Supabase
 // directly, so the data contract stays in one reviewable place.
 import { supabase, hasSupabase } from '../lib/supabaseClient.js'
-import { getAuthor } from './blog.service.js'
 
 /** Rows pulled per table. Aggregation happens in the browser (see below). */
 const ROW_LIMIT = 5000
@@ -34,19 +33,16 @@ function requireClient() {
 /**
  * What this account may do here.
  *
- * /admin is the one staff portal, and the two jobs behind it are separate:
- * a row in admin_users grants the analytics sections, a row in
- * blog_authors grants the journal. Most accounts have one; an account may
- * have both, and then it sees both. Neither is inferred from the other —
- * reading individual visitors' browsing history and writing a blog post
- * are different responsibilities.
+ * A row in admin_users grants the analytics sections. The journal no longer
+ * lives in Supabase: it is behind the staff sign-in (blog.manage, see
+ * pages/blog/JournalGate.jsx), so it is not decided here.
  *
- * Both checks read back through RLS, so neither can be faked from the
+ * The check reads back through RLS, so it cannot be faked from the
  * browser: a non-member simply reads nothing.
  */
 export async function resolveAccess() {
-  const [analyst, author] = await Promise.all([isAdmin(), getAuthor()])
-  return { analyst, author, any: analyst || Boolean(author) }
+  const analyst = await isAdmin()
+  return { analyst, any: analyst }
 }
 
 export async function signIn(email, password) {
@@ -60,7 +56,7 @@ export async function signIn(email, password) {
   }
 
   // Signing in is not the same as being allowed in. Anyone with a Supabase
-  // account authenticates successfully; only a listed analyst or author may
+  // account authenticates successfully; only a listed analyst may
   // go further, so that is checked separately and the session is dropped
   // again if they are on neither list.
   const access = await resolveAccess()

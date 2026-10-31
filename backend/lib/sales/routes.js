@@ -51,6 +51,7 @@ import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { listReports, reportCsv } from './reports.js'
 import { contestReport } from './contest.js'
+import { publishedPosts, publishedPost, allPosts, openPost, savePost as saveBlogPost, deletePost as deleteBlogPost, saveImage, readImage, MAX_IMAGE_BYTES } from './blog.js'
 import { syncSettlements, importSettlementFile } from './settlements.js'
 import { accountsSummary, invoiceRegister, invoiceRegisterCsv, paymentsList, refundsList, period } from './accounts.js'
 import { invoicePdf } from './invoice-pdf.js'
@@ -105,6 +106,24 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   router.get('/api/catalog', wrap(async (_req, res) => {
     res.set('Cache-Control', 'public, max-age=60')
     res.json({ products: await listCatalog({ query }) })
+  }))
+
+  // ---- the journal (blog.js): readers, no sign-in ------------------------------
+  router.get('/api/blog/posts', wrap(async (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=60')
+    res.json({ posts: await publishedPosts({ query }) })
+  }))
+  router.get('/api/blog/posts/:slug', wrap(async (req, res) => {
+    const post = await publishedPost({ query }, req.params.slug)
+    if (!post) throw httpError('No such post', { status: 404, publicMessage: 'No such post.' })
+    res.set('Cache-Control', 'public, max-age=60')
+    res.json({ post })
+  }))
+  router.get('/api/blog/images/:name', wrap(async (req, res) => {
+    const { data, contentType } = await readImage(req.params.name)
+    // A picture's name is a fresh uuid, so what is stored under it never changes.
+    res.set('Cache-Control', 'public, max-age=31536000, immutable')
+    res.type(contentType).send(data)
   }))
 
   // Product feed for Google / Bing Merchant Center and AI shopping listings (merchant-feed.js).
@@ -444,6 +463,25 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.put('/advisor/cap', perm('analyst.view'), wrap(async (req, res) => {
     res.json(await setAdvisorCap(req.body?.capInr))
   }))
+  // /admin → Journal and /journal: write, publish and delete posts; upload a picture (blog.js).
+  admin.get('/blog/posts', perm('blog.manage'), wrap(async (_req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json({ posts: await allPosts({ query }) })
+  }))
+  admin.get('/blog/posts/:id', perm('blog.manage'), wrap(async (req, res) => {
+    const post = await openPost({ query }, req.params.id)
+    if (!post) throw httpError('No such post', { status: 404, publicMessage: 'That post could not be opened. It may have been deleted.' })
+    res.set('Cache-Control', 'no-store')
+    res.json({ post })
+  }))
+  admin.post('/blog/posts', perm('blog.manage'), wrap(async (req, res) => res.json({ post: await saveBlogPost({ query }, req.staff, req.body) })))
+  admin.delete('/blog/posts/:id', perm('blog.manage'), wrap(async (req, res) => res.json(await deleteBlogPost({ query }, req.params.id))))
+  admin.post('/blog/images', perm('blog.manage'), rateLimit({ windowMs: 60000, max: 60 }),
+    express.raw({ type: () => true, limit: MAX_IMAGE_BYTES + 1024 }),
+    wrap(async (req, res) => {
+      const buffer = Buffer.isBuffer(req.body) && req.body.length ? req.body : req.rawBody
+      res.json(await saveImage(buffer, req.headers['content-type']))
+    }))
   // /admin → Checkout journeys: the funnel and the people at each step.
   // /admin → Cloud Centre: all Google Cloud and Firebase projects (read-only), ?days=1|7|30.
   admin.get('/cloud', perm('cloud.view'), wrap(async (req, res) => {

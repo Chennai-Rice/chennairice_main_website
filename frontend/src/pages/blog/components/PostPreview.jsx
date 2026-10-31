@@ -52,13 +52,13 @@ export default function PostPreview({ draft, author, live, busy, onBack, onPubli
           <div className="st-pv-page">
             <article className="blog-card" style={{ maxWidth: 360, width: '100%' }}>
               <div className="blog-card-link">
-                <div className="blog-card-media">
+                <div className="blog-card-media" style={draft.coverUrl ? { '--cover': `url("${draft.coverUrl}")` } : undefined}>
                   {draft.coverUrl
                     ? <img src={draft.coverUrl} alt={draft.coverAlt} />
                     : <span className="blog-card-placeholder" aria-hidden="true" />}
                 </div>
                 <div className="blog-card-body">
-                  <h2 className="blog-card-title">{title}</h2>
+                  <h2 className="blog-card-title">{draft.cardTitle.trim() || title}</h2>
                   {excerpt && <p className="blog-card-excerpt">{excerpt}</p>}
                   <p className="blog-card-meta">
                     <span>{name}</span><span aria-hidden="true">·</span>

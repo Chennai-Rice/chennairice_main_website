@@ -47,3 +47,6 @@ firebase-debug.log
 
 # Local PostgreSQL data (backend/db/dev-server.js and the test suite)
 backend/.data/
+
+# Local blog test database and pictures (scripts/blog-local-server.mjs)
+scripts/.blog-local/
