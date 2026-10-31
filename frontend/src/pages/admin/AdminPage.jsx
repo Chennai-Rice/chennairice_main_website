@@ -18,7 +18,7 @@ import {
 } from '../../services/admin.service.js'
 import JournalGate from '../blog/JournalGate.jsx'
 import JournalPage from '../JournalPage.jsx'
-import { hasStaffSession, signInWithPassword, signOutStaff, staffJson } from '../../services/staffAuth.js'
+import { hasStaffSession, signInWriter, signOutStaff, staffJson } from '../../services/staffAuth.js'
 import CampaignsPanel from './CampaignsPanel.jsx'
 import EnquiriesPanel from './EnquiriesPanel.jsx'
 import AnalystPanel from './AnalystPanel.jsx'
@@ -218,17 +218,13 @@ function LoginScreen({ onSignedIn, onWriter }) {
     } catch (err) {
       // Not an analyst: a writer's login (role 'blog') opens the Journal.
       let why = ''
-      const writer = await signInWithPassword(email.trim(), password).catch((e) => { why = e.message; return null })
+      const writer = await signInWriter(email.trim(), password).catch((e) => { why = e.message; return null })
       if (writer?.role === 'blog') {
         onWriter()
         return
       }
-      if (writer) {
-        await signOutStaff()
-        why = `This staff account has the "${writer.role}" role, not the blog writer role.`
-      }
       const base = err instanceof AdminError ? err.message : 'Could not sign in. Please try again.'
-      setError(why ? `${base} Writer sign-in: ${why}` : base)
+      setError(why && why !== 'Wrong email or password.' ? `${base} Writer sign-in: ${why}` : base)
     } finally {
       setBusy(false)
     }

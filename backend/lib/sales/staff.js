@@ -11,6 +11,7 @@
 // from the panel, and OWNER_EMAILS can be emptied.
 import { query } from '../db.js'
 import { httpError, str } from './util.js'
+import { isWriterToken, verifyWriterToken, writerFromClaims } from './writer-login.js'
 
 // warehouse: the team at the mill who confirm and pack orders on /warehouse.
 // 'it' is the IT Team: Admin's access plus company settings.
@@ -120,6 +121,14 @@ export function staffAuth({ verifyIdToken } = {}) {
       const header = String(req.headers.authorization || '')
       const token = header.startsWith('Bearer ') ? header.slice(7).trim() : ''
       if (!token) throw httpError('Missing token', { status: 401, publicMessage: 'Please sign in.' })
+
+      // A blog writer's own login (writer-login.js): a JWT we signed, good for the 'blog' role only.
+      if (isWriterToken(token)) {
+        const writer = await writerFromClaims({ query }, verifyWriterToken(token))
+        if (!writer) throw httpError('Not staff', { status: 403, publicMessage: 'This account does not have access to the admin panel.' })
+        req.staff = writer
+        return next()
+      }
 
       let decoded
       const devLogin = token.startsWith('dev:') && devLoginEnabled()

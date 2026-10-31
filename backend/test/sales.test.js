@@ -2858,3 +2858,63 @@ test('the journal: a blog writer saves, publishes and uploads; readers see only 
   assert.equal((await api('DELETE', '/api/admin/blog/posts/' + id, { token: W })).status, 200)
   assert.equal((await api('GET', '/api/admin/blog/posts', { token: W })).body.posts.length, 0)
 })
+
+test('the blog writer signs in with email and password, gets a JWT that opens the Journal and nothing else, and is locked out after repeated wrong passwords', async () => {
+  const { hashPassword, signWriterToken } = await import('../lib/sales/writer-login.js')
+  let hop = 0
+  const login = (email, password) => api('POST', '/api/blog/login', { body: { email, password }, headers: { 'X-Forwarded-For': `10.77.0.${++hop}` } })
+  const PASSWORD = 'correct horse battery'
+
+  const add = await api('POST', '/api/admin/staff', { token: OWNER, body: { email: 'jwt-writer@example.com', fullName: 'JWT Writer', role: 'blog' } })
+  assert.equal(add.status, 200, JSON.stringify(add.body))
+  // No password set yet: no sign-in.
+  assert.equal((await login('jwt-writer@example.com', PASSWORD)).status, 401)
+  await db.query('update staff_users set password_hash = $2 where email = $1', ['jwt-writer@example.com', await hashPassword(PASSWORD)])
+
+  // Wrong password and unknown email say the same thing.
+  const wrong = await login('jwt-writer@example.com', 'not the password')
+  const unknown = await login('nobody@example.com', PASSWORD)
+  assert.equal(wrong.status, 401)
+  assert.equal(unknown.status, 401)
+  assert.equal(wrong.body.error, unknown.body.error)
+
+  // The right password gives a token that is a writer's and only a writer's.
+  const ok = await login('jwt-writer@example.com', PASSWORD)
+  assert.equal(ok.status, 200, JSON.stringify(ok.body))
+  const W = ok.body.token
+  assert.equal(ok.body.staff.role, 'blog')
+  assert.ok(!JSON.stringify(ok.body).includes('password'))
+  const me = await api('GET', '/api/admin/me', { token: W })
+  assert.deepEqual(me.body.permissions, ['blog.manage'])
+  assert.equal((await api('GET', '/api/admin/blog/posts', { token: W })).status, 200)
+  for (const path of ['/api/admin/orders', '/api/admin/dashboard', '/api/admin/staff', '/api/admin/cloud']) {
+    assert.equal((await api('GET', path, { token: W })).status, 403, path)
+  }
+
+  // A forged, altered, expired or unsigned token is refused.
+  const [head, body, sig] = W.split('.')
+  const claims = JSON.parse(Buffer.from(body, 'base64url').toString())
+  const forged = `${head}.${Buffer.from(JSON.stringify({ ...claims, exp: claims.exp + 99999 })).toString('base64url')}.${sig}`
+  assert.equal((await api('GET', '/api/admin/me', { token: forged })).status, 401)
+  const noneToken = `${Buffer.from('{"alg":"none","typ":"JWT"}').toString('base64url')}.${body}.`
+  assert.equal((await api('GET', '/api/admin/me', { token: noneToken })).status, 401)
+  const { rows: [row] } = await db.query(`select id, email from staff_users where email = 'jwt-writer@example.com'`)
+  const old = signWriterToken(row, Date.now() - 13 * 3600 * 1000).token
+  assert.equal((await api('GET', '/api/admin/me', { token: old })).status, 401)
+
+  // Switching the account off ends its token at once.
+  await db.query(`update staff_users set is_active = false where email = 'jwt-writer@example.com'`)
+  assert.equal((await api('GET', '/api/admin/me', { token: W })).status, 403)
+  assert.equal((await login('jwt-writer@example.com', PASSWORD)).status, 401)
+  await db.query(`update staff_users set is_active = true where email = 'jwt-writer@example.com'`)
+
+  // Only the 'blog' role can sign in this way, even if another account has a password hash.
+  await db.query(`update staff_users set password_hash = $1 where email = 'owner@chennairice.test'`, [await hashPassword(PASSWORD)])
+  assert.equal((await login('owner@chennairice.test', PASSWORD)).status, 401)
+
+  // Five wrong passwords lock the account, even for the right password afterwards.
+  for (let i = 0; i < 5; i++) assert.equal((await login('jwt-writer@example.com', 'wrong ' + i)).status, 401)
+  assert.equal((await login('jwt-writer@example.com', PASSWORD)).status, 429)
+  await db.query(`update staff_users set locked_until = null, login_failures = 0 where email = 'jwt-writer@example.com'`)
+  assert.equal((await login('jwt-writer@example.com', PASSWORD)).status, 200)
+})

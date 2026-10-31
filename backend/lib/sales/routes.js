@@ -51,6 +51,7 @@ import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { listReports, reportCsv } from './reports.js'
 import { contestReport } from './contest.js'
+import { loginWriter } from './writer-login.js'
 import { publishedPosts, publishedPost, allPosts, openPost, savePost as saveBlogPost, deletePost as deleteBlogPost, saveImage, readImage, MAX_IMAGE_BYTES } from './blog.js'
 import { syncSettlements, importSettlementFile } from './settlements.js'
 import { accountsSummary, invoiceRegister, invoiceRegisterCsv, paymentsList, refundsList, period } from './accounts.js'
@@ -109,6 +110,11 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   }))
 
   // ---- the journal (blog.js): readers, no sign-in ------------------------------
+  // The blog writer's own sign-in (writer-login.js): email and password for a JWT.
+  router.post('/api/blog/login', rateLimit({ windowMs: 60000, max: 10 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await loginWriter({ query }, req.body))
+  }))
   router.get('/api/blog/posts', wrap(async (_req, res) => {
     res.set('Cache-Control', 'public, max-age=60')
     res.json({ posts: await publishedPosts({ query }) })
