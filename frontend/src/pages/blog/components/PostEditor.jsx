@@ -308,8 +308,19 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
 
         <div className={`st-pane${tab === 'preview' ? ' is-active' : ''}`}>
           <p className="st-field-label">Preview</p>
-          <div className="st-preview blog-prose">
-            {draft.contentMd.trim() ? preview : <p className="st-hint">Nothing written yet.</p>}
+          <div className="st-preview">
+            {draft.contentMd.trim() || draft.title.trim() || draft.coverUrl ? (
+              <article className="blog-post">
+                <header className="blog-post-head">
+                  <h1 className="blog-post-title">{draft.title.trim() || 'Untitled post'}</h1>
+                  <p className="blog-post-meta"><span>{author?.display_name || ''}</span></p>
+                </header>
+                {draft.coverUrl && (
+                  <figure className="blog-post-cover"><img src={draft.coverUrl} alt={draft.coverAlt} /></figure>
+                )}
+                <div className="blog-prose">{preview}</div>
+              </article>
+            ) : <p className="st-hint">Nothing written yet.</p>}
           </div>
         </div>
       </div>
