@@ -35,8 +35,8 @@ const GIFTS = [
 const ICON = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", viewBox: "0 0 24 24", width: 30, height: 30 };
 const STEPS = [
   {
-    title: "Buy Chennai Rice",
-    text: "Purchase any Chennai Rice product and find the unique code.",
+    title: "Buy Kitchidi Ponni Chennai Rice",
+    text: "Purchase Kitchidi Ponni Chennai Rice product and find the unique code.",
     icon: (
       <svg {...ICON}>
         <path d="M3 4h2.2l2.1 10.2a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.1L20.5 8H6.2" />
@@ -95,11 +95,11 @@ export default function ContestPage() {
         <section className="contest-howto" aria-label="How to Participate">
           <img
             className="contest-howto-art"
-            src="/assets/contest-how-to-participate.webp"
+            src="/assets/contest-how-to-participate-v2.webp"
             width="2172"
             height="724"
             loading="lazy"
-            alt="How to Participate. 1, Buy Chennai Rice: purchase any Chennai Rice product and find the unique code. 2, Scan and Enter: scan the QR code and submit your details. 3, Share Your Slogan: win exciting prizes with your best slogan."
+            alt="How to Participate. 1, Buy Kitchidi Ponni Chennai Rice: purchase Kitchidi Ponni Chennai Rice product and find the unique code. 2, Scan and Enter: scan the QR code and submit your details. 3, Share Your Slogan: win exciting prizes with your best slogan."
           />
           <div className="contest-howto-mobile">
             <h2 className="contest-howto-title">How to Participate</h2>
