@@ -1,19 +1,16 @@
 // Meta (Facebook) Pixel, for ads measurement.
 //
-// The base code sits in index.html's <head> with consent revoked, so Meta
-// receives nothing until the visitor accepts the "marketing" cookie category
-// (see src/hooks/useMetaPixel.js), and is told to stop the moment that consent
-// is withdrawn. The usual
-// <noscript> image is left out on purpose: without JavaScript there is no
-// cookie banner, so there is no consent to track on.
+// Meta's base code sits in index.html's <head>: it sets up the pixel and sends
+// the first PageView on every page. This file sends the rest (a PageView per
+// page the visitor opens in the app, and the shop events), and tells Meta to
+// stop if the visitor rejects marketing cookies (src/hooks/useMetaPixel.js).
 
-export const META_PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID || '1648623053646936'
-// "Chennai Rice – Purchase Tracking" (Oct 2026): a second dataset that gets the same events,
-// set up for purchases on /order-confirmed. fbq sends each event to every pixel initialised.
-export const META_PURCHASE_PIXEL_ID = import.meta.env.VITE_META_PURCHASE_PIXEL_ID || '1172960135165184'
-const PIXEL_IDS = [...new Set([META_PIXEL_ID, META_PURCHASE_PIXEL_ID].filter(Boolean))]
+// "Chennai Rice – Purchase Tracking" (Oct 2026). The same ID is in index.html.
+export const META_PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID || '1172960135165184'
 
-let loaded = false
+// True when the <head> code already set the pixel up and sent this page's PageView.
+export const pixelFromHead = typeof window !== 'undefined' && typeof window.fbq === 'function'
+let loaded = pixelFromHead
 
 /** Meta's base code, unchanged apart from running on demand. */
 function injectBaseCode() {
@@ -30,29 +27,26 @@ function injectBaseCode() {
   /* eslint-enable */
 }
 
-/** Load (once) and switch the pixel on. Safe to call repeatedly. */
+/** Make sure the pixel is set up and sending. Safe to call repeatedly. */
 export function enableMetaPixel() {
-  if (typeof window === 'undefined' || !PIXEL_IDS.length) return
+  if (typeof window === 'undefined' || !META_PIXEL_ID) return
   if (!loaded) {
-    // index.html's <head> normally has the base code and both pixels already set up (consent revoked).
-    const ready = window.__crMetaPixels || []
     injectBaseCode()
-    for (const id of PIXEL_IDS) if (!ready.includes(id)) window.fbq('init', id)
+    window.fbq('init', META_PIXEL_ID)
     loaded = true
   }
   window.fbq('consent', 'grant')
 }
 
-/** Consent withdrawn: Meta stops receiving events from this page. */
+/** Marketing cookies rejected: Meta stops receiving events from this page. */
 export function disableMetaPixel() {
   if (loaded && window.fbq) window.fbq('consent', 'revoke')
 }
 
 /**
  * A standard Meta event (ViewContent, AddToCart, InitiateCheckout, Purchase,
- * Lead). Sent only while the visitor has accepted marketing cookies. An
- * eventId lets Meta match the same event arriving from the server later, so a
- * sale is counted once.
+ * Lead). An eventId lets Meta match the same event arriving from the server
+ * later, so a sale is counted once.
  */
 export function trackMetaEvent(name, data = {}, eventId) {
   if (!loaded || !window.fbq) return

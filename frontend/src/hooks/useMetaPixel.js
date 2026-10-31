@@ -1,20 +1,22 @@
 import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useCookieConsent } from './useCookieConsent.jsx'
-import { disableMetaPixel, enableMetaPixel, trackMetaPageView } from '../services/metaPixel.js'
+import { disableMetaPixel, enableMetaPixel, pixelFromHead, trackMetaPageView } from '../services/metaPixel.js'
 
 /**
- * Meta Pixel on the storefront: loaded only once the visitor accepts
- * marketing cookies, a PageView for every page they open after that, and
- * switched off again if they withdraw consent (footer → Cookie Preferences).
+ * Meta Pixel on the storefront: on from the first page (the base code in
+ * index.html's <head> sends that page's PageView), a PageView for every page
+ * opened after that, and switched off if the visitor rejects marketing cookies
+ * (cookie banner, or footer → Cookie Preferences).
  */
 export function useMetaPixel() {
-  const { allowMarketing } = useCookieConsent()
+  const { decided, allowMarketing } = useCookieConsent()
   const { pathname } = useLocation()
-  const lastTracked = useRef(null)
+  // The <head> code already counted the page the visitor landed on.
+  const lastTracked = useRef(pixelFromHead ? pathname : null)
 
   useEffect(() => {
-    if (!allowMarketing) {
+    if (decided && !allowMarketing) {
       disableMetaPixel()
       lastTracked.current = null
       return
@@ -25,5 +27,5 @@ export function useMetaPixel() {
       lastTracked.current = pathname
       trackMetaPageView()
     }
-  }, [allowMarketing, pathname])
+  }, [decided, allowMarketing, pathname])
 }

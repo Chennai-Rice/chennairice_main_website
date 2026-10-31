@@ -31,11 +31,9 @@
     ['pointerdown','keydown','scroll','touchstart'].forEach(function(e){w.addEventListener(e,load,{once:true,passive:true});});
     })(window,document,'script','dataLayer','GTM-K2RL4JBL');</script>
     <!-- End Google Tag Manager -->
-    <!-- Meta Pixel Code. Both datasets are set up here, with consent revoked first: Meta sends nothing until
-         the visitor accepts marketing cookies (src/hooks/useMetaPixel.js grants it, and sends the PageViews
-         and shop events, src/services/metaPixel.js). Not on the staff tools. -->
+    <!-- Facebook Pixel Code (Meta's base code, "Chennai Rice – Purchase Tracking"). The app sends the
+         later page views and shop events, including Purchase on /order-confirmed (src/services/metaPixel.js). -->
     <script>
-    if(!/^\/(admin|warehouse|cloud|blog\/studio)/.test(location.pathname)){
     !function(f,b,e,v,n,t,s)
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
     n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -44,13 +42,10 @@
     t.src=v;s=b.getElementsByTagName(e)[0];
     s.parentNode.insertBefore(t,s)}(window,document,'script',
     'https://connect.facebook.net/en_US/fbevents.js');
-    fbq('consent','revoke');
-    fbq('init','1648623053646936');
-    fbq('init','1172960135165184');
-    window.__crMetaPixels=['1648623053646936','1172960135165184'];
-    }
+     fbq('init', '1172960135165184');
+    fbq('track', 'PageView');
     </script>
-    <!-- End Meta Pixel Code -->
+    <!-- End Facebook Pixel Code (its <noscript> image is at the top of <body>: HTML does not allow an image in <head>) -->
     <script>if(location.pathname==='/')document.documentElement.className+=' is-home';</script>
     <style>
       /* Shown on the home page until the app has loaded (it is replaced when React starts), so the
@@ -119,6 +114,12 @@
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K2RL4JBL"
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
+    <!-- Facebook Pixel Code (noscript) -->
+    <noscript>
+     <img height="1" width="1" style="display:none" alt=""
+    src="https://www.facebook.com/tr?id=1172960135165184&ev=PageView&noscript=1"/>
+    </noscript>
+    <!-- End Facebook Pixel Code (noscript) -->
     <div id="root"><div id="boot" aria-hidden="true">
       <p class="boot-tag">South India’s No. 1 Non-Basmati Rice Manufacturer</p>
       <p class="boot-title">Premium Ponni &amp; Idli Rice from Erode</p>
