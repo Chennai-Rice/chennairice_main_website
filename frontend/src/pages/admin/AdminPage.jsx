@@ -16,7 +16,7 @@ import {
   signIn,
   signOut,
 } from '../../services/admin.service.js'
-import JournalPanel from '../blog/JournalPanel.jsx'
+import JournalGate from '../blog/JournalGate.jsx'
 import CampaignsPanel from './CampaignsPanel.jsx'
 import EnquiriesPanel from './EnquiriesPanel.jsx'
 import AnalystPanel from './AnalystPanel.jsx'
@@ -71,7 +71,7 @@ const ANALYTICS_NAV = [
   { id: 'cloud', label: 'Cloud Centre', subtitle: 'Every Google Cloud and Firebase project — health, usage, API, jobs and deploys', icon: 'pulse' },
 ]
 
-/* Section that needs a row in blog_authors. */
+/* The writing tool: behind the staff sign-in (blog.manage), like the other staff sections. */
 const JOURNAL_NAV = {
   id: 'journal',
   label: 'Journal',
@@ -122,7 +122,7 @@ export default function AdminPage() {
     let cancelled = false
 
     // A Supabase session in localStorage is not proof of access — the
-    // account could have been removed from admin_users or blog_authors
+    // account could have been removed from admin_users
     // since last login, so both are re-checked on every load rather than
     // trusted.
     getSession()
@@ -244,7 +244,7 @@ function Dashboard({ session, access, onSignOut }) {
   const nav = useMemo(() => {
     const items = []
     if (access.analyst) items.push(...ANALYTICS_NAV)
-    if (access.author) items.push(JOURNAL_NAV)
+    items.push(JOURNAL_NAV)
     return items
   }, [access])
 
@@ -431,11 +431,7 @@ function Dashboard({ session, access, onSignOut }) {
           <span className="ad-side-user-text">
             <span className="ad-side-email" title={session.user.email}>{session.user.email}</span>
             <span className="ad-muted ad-small">
-              {access.analyst && access.author
-                ? 'Analyst · Writer'
-                : access.analyst
-                  ? 'Analyst'
-                  : 'Writer'}
+              Analyst
             </span>
           </span>
         </div>
@@ -477,7 +473,7 @@ function Dashboard({ session, access, onSignOut }) {
           {/* The journal brings its own data and its own error handling —
               it shares nothing with the analytics queries. */}
           {view === 'journal' ? (
-            <JournalPanel author={access.author} />
+            <JournalGate />
           ) : view === 'analyst' ? (
             <AnalystPanel />
           ) : view === 'campaigns' ? (

@@ -341,7 +341,7 @@
 
 .st-cover-preview {
   position: relative;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 1.91 / 1;
   border-radius: 9px;
   overflow: hidden;
   background: var(--st-surface-2);
@@ -470,3 +470,10 @@
   text-align: left;
 }
 .st-pv-web { padding: 0 20px; }
+
+/* The page's heading size follows the browser width, so inside a half-width pane or a phone frame it
+   would be far too large; these keep the title in proportion to the pane it is drawn in. */
+.st-preview .blog-post-title { font-size: 1.75rem; }
+.st-preview .blog-post-head { margin-bottom: 20px; }
+.st-pv-frame.is-phone .blog-post-title { font-size: 1.75rem; }
+.st-pv-frame.is-phone .blog-card-title { font-size: 1.15rem; }

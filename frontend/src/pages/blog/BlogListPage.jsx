@@ -74,7 +74,7 @@ export default function BlogListPage() {
               <li key={post.id}>
                 <article className="blog-card">
                   <Link className="blog-card-link" to={`/blog/${post.slug}`}>
-                    <div className="blog-card-media">
+                    <div className="blog-card-media" style={post.coverUrl ? { '--cover': `url("${post.coverUrl}")` } : undefined}>
                       {post.coverUrl ? (
                         <img src={post.coverUrl} alt={post.coverAlt} loading="lazy" />
                       ) : (
@@ -85,7 +85,7 @@ export default function BlogListPage() {
                     </div>
 
                     <div className="blog-card-body">
-                      <h2 className="blog-card-title">{post.title}</h2>
+                      <h2 className="blog-card-title">{post.cardTitle || post.title}</h2>
                       {post.excerpt && <p className="blog-card-excerpt">{post.excerpt}</p>}
 
                       <p className="blog-card-meta">
