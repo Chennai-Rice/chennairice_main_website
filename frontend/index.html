@@ -31,6 +31,26 @@
     ['pointerdown','keydown','scroll','touchstart'].forEach(function(e){w.addEventListener(e,load,{once:true,passive:true});});
     })(window,document,'script','dataLayer','GTM-K2RL4JBL');</script>
     <!-- End Google Tag Manager -->
+    <!-- Meta Pixel Code. Both datasets are set up here, with consent revoked first: Meta sends nothing until
+         the visitor accepts marketing cookies (src/hooks/useMetaPixel.js grants it, and sends the PageViews
+         and shop events, src/services/metaPixel.js). Not on the staff tools. -->
+    <script>
+    if(!/^\/(admin|warehouse|cloud|blog\/studio)/.test(location.pathname)){
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window,document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('consent','revoke');
+    fbq('init','1648623053646936');
+    fbq('init','1172960135165184');
+    window.__crMetaPixels=['1648623053646936','1172960135165184'];
+    }
+    </script>
+    <!-- End Meta Pixel Code -->
     <script>if(location.pathname==='/')document.documentElement.className+=' is-home';</script>
     <style>
       /* Shown on the home page until the app has loaded (it is replaced when React starts), so the

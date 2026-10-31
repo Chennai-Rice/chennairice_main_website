@@ -1,8 +1,9 @@
 // Meta (Facebook) Pixel, for ads measurement.
 //
-// It is a marketing tracker, so it is only ever loaded after the visitor has
-// accepted the "marketing" cookie category (see src/hooks/useMetaPixel.js),
-// and Meta is told to stop the moment that consent is withdrawn. The usual
+// The base code sits in index.html's <head> with consent revoked, so Meta
+// receives nothing until the visitor accepts the "marketing" cookie category
+// (see src/hooks/useMetaPixel.js), and is told to stop the moment that consent
+// is withdrawn. The usual
 // <noscript> image is left out on purpose: without JavaScript there is no
 // cookie banner, so there is no consent to track on.
 
@@ -33,8 +34,10 @@ function injectBaseCode() {
 export function enableMetaPixel() {
   if (typeof window === 'undefined' || !PIXEL_IDS.length) return
   if (!loaded) {
+    // index.html's <head> normally has the base code and both pixels already set up (consent revoked).
+    const ready = window.__crMetaPixels || []
     injectBaseCode()
-    for (const id of PIXEL_IDS) window.fbq('init', id)
+    for (const id of PIXEL_IDS) if (!ready.includes(id)) window.fbq('init', id)
     loaded = true
   }
   window.fbq('consent', 'grant')
