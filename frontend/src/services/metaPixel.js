@@ -50,6 +50,8 @@ export function disableMetaPixel() {
  */
 export function trackMetaEvent(name, data = {}, eventId) {
   if (!loaded || !window.fbq) return
+  // Meta wants value as a plain number (no ₹ or commas); a string price would be flagged.
+  if ('value' in data) data = { ...data, value: Math.round((Number(data.value) || 0) * 100) / 100 }
   if (eventId) window.fbq("track", name, data, { eventID: eventId })
   else window.fbq("track", name, data)
 }
