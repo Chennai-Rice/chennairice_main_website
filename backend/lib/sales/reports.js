@@ -134,6 +134,23 @@ export const REPORTS = {
       }
     },
   },
+  whatsapp_once: {
+    label: 'WhatsApp: one message only',
+    note: 'People who messaged the business WhatsApp (AskEva) once, such as "hi" or "interested in the contest", and never wrote again. Contacts from the old AskEva export are left out: their message count is not known.',
+    period: true,
+    async build(q) {
+      const p = span(q)
+      const { rows } = await query(
+        `select phone, name, first_message, first_message_at, source from whatsapp_contacts
+          where messages = 1 and first_message_at is not null
+            and (first_message_at at time zone 'Asia/Kolkata')::date between $1 and $2
+          order by first_message_at desc`, [p.from, p.to])
+      return {
+        header: ['Messaged on', 'Name', 'Phone', 'Their message'],
+        lines: rows.map((r) => [when(r.first_message_at), r.name, r.phone, r.first_message]),
+      }
+    },
+  },
   checkout: {
     label: 'Checkout journeys',
     note: 'Each shopper’s path: cart → checkout → details → payment, and where they stopped or whether they bought.',
