@@ -169,6 +169,33 @@ export const REPORTS = {
       }
     },
   },
+  whatsapp_all: {
+    label: 'WhatsApp: all contacts with contest status',
+    note: 'Everyone who has messaged the business WhatsApp (AskEva), one row each, with how they registered in the Slogan Contest: on WhatsApp, on the website, or not at all, and how many entries. Filter the Contest column in Excel to split them.',
+    period: false,
+    async build() {
+      const { entries } = await contestEntries({ from: '2020-01-01', to: istDay() })
+      const by = new Map()
+      for (const e of entries) {
+        if (!e.mobile) continue
+        const m = by.get(e.mobile) || { whatsapp: 0, website: 0 }
+        m[e.source === 'whatsapp' ? 'whatsapp' : 'website'] += 1
+        by.set(e.mobile, m)
+      }
+      const { rows } = await query(
+        `select phone, name, first_message, first_message_at, last_message, last_message_at, messages, source
+           from whatsapp_contacts order by coalesce(first_message_at, created_at) desc nulls last`)
+      return {
+        header: ['Name', 'Phone', 'Contest', 'Entries on WhatsApp', 'Entries on website', 'First message', 'First message on', 'Last message', 'Last message on', 'Messages sent'],
+        lines: rows.map((r) => {
+          const m = by.get(String(r.phone).replace(/\D/g, '').slice(-10))
+          const contest = !m ? 'Not registered' : m.whatsapp && m.website ? 'Both' : m.whatsapp ? 'WhatsApp' : 'Website'
+          return [r.name, r.phone, contest, m?.whatsapp || 0, m?.website || 0, r.first_message, r.first_message_at ? when(r.first_message_at) : '',
+            r.last_message, r.last_message_at ? when(r.last_message_at) : '', r.source === 'import' ? 'Not known' : r.messages]
+        }),
+      }
+    },
+  },
   checkout: {
     label: 'Checkout journeys',
     note: 'Each shopper’s path: cart → checkout → details → payment, and where they stopped or whether they bought.',

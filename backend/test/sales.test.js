@@ -2072,7 +2072,7 @@ test('Reports: the owner lists and downloads each report as a CSV for a period; 
   assert.equal((await api('GET', '/api/admin/reports/orders.csv', { token: tokens.sales })).status, 403)
   const list = await api('GET', '/api/admin/reports', { token: OWNER })
   assert.equal(list.status, 200)
-  assert.deepEqual(list.body.reports.map((r) => r.id), ['orders', 'customers', 'signups', 'expo', 'enquiries', 'contest', 'whatsapp_once', 'whatsapp_unregistered', 'checkout'])
+  assert.deepEqual(list.body.reports.map((r) => r.id), ['orders', 'customers', 'signups', 'expo', 'enquiries', 'contest', 'whatsapp_once', 'whatsapp_unregistered', 'whatsapp_all', 'checkout'])
   for (const { id } of list.body.reports) {
     const r = await api('GET', `/api/admin/reports/${id}.csv?days=365`, { token: OWNER })
     assert.equal(r.status, 200, `${id}: ${JSON.stringify(r.body)}`)
