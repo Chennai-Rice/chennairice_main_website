@@ -16,7 +16,7 @@ import { httpError, str } from './util.js'
 // 'it' is the IT Team: Admin's access plus company settings.
 // accounts: the accounts team — invoices, payments, refunds and GST, read-only.
 // cloud: a login for /cloud (the Cloud Centre) and nothing else (Oct 2026).
-// blog: a writer for the journal (/journal) and nothing else (Oct 2026).
+// blog: a writer for the journal (signs in at /admin) and nothing else (Oct 2026).
 export const ROLES = ['owner', 'admin', 'it', 'sales', 'inventory', 'plant', 'dispatch', 'warehouse', 'accounts', 'cloud', 'blog']
 // The website's working roles: the Cloud Centre login sees none of the orders, stock or money.
 const STAFF = ROLES.filter((r) => r !== 'cloud' && r !== 'blog')

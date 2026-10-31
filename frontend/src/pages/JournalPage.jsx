@@ -6,8 +6,8 @@ import './admin/admin.css'
 import './cloud-page.css'
 
 /**
- * /journal — the writing tool on its own page (Oct 2026), for the writer's email-and-password login (role 'blog'),
- * which cannot open /admin or /warehouse. The same tool as /admin → Journal; staff only, not indexed.
+ * The writer's screen on /admin (Oct 2026): what a login with the 'blog' role sees after signing in at /admin, the Journal and
+ * nothing else. It has no address of its own (AdminPage renders it).
  */
 export default function JournalPage() {
   usePageMeta('Journal — Chennai Rice Industries', 'Staff only.', { noindex: true })

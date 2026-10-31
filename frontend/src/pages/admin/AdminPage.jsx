@@ -17,6 +17,8 @@ import {
   signOut,
 } from '../../services/admin.service.js'
 import JournalGate from '../blog/JournalGate.jsx'
+import JournalPage from '../JournalPage.jsx'
+import { hasStaffSession, signInWithPassword, signOutStaff, staffJson } from '../../services/staffAuth.js'
 import CampaignsPanel from './CampaignsPanel.jsx'
 import EnquiriesPanel from './EnquiriesPanel.jsx'
 import AnalystPanel from './AnalystPanel.jsx'
@@ -113,10 +115,21 @@ const NavIcon = ({ name }) => (
   </svg>
 )
 
+/** A writer's login (role 'blog') on the staff sign-in: they land straight in the Journal, nothing else. */
+async function isStaffWriter() {
+  if (!(await hasStaffSession())) return false
+  try {
+    return (await staffJson('/api/admin/me')).role === 'blog'
+  } catch {
+    return false
+  }
+}
+
 export default function AdminPage() {
   const [checking, setChecking] = useState(true)
   const [session, setSession] = useState(null)
   const [access, setAccess] = useState(null)
+  const [writer, setWriter] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -127,7 +140,11 @@ export default function AdminPage() {
     // trusted.
     getSession()
       .then(async (existing) => {
-        if (cancelled || !existing) return
+        if (cancelled) return
+        if (!existing) {
+          if (await isStaffWriter()) setWriter(true)
+          return
+        }
         const resolved = await resolveAccess()
         if (cancelled) return
         if (resolved.any) {
@@ -162,6 +179,8 @@ export default function AdminPage() {
     )
   }
 
+  if (writer) return <JournalPage />
+
   return session && access ? (
     <Dashboard
       session={session}
@@ -173,6 +192,7 @@ export default function AdminPage() {
     />
   ) : (
     <LoginScreen
+      onWriter={() => setWriter(true)}
       onSignedIn={async (resolved) => {
         setAccess(resolved)
         setSession(await getSession())
@@ -183,7 +203,7 @@ export default function AdminPage() {
 
 /* ---------------------------------------------------------------- login */
 
-function LoginScreen({ onSignedIn }) {
+function LoginScreen({ onSignedIn, onWriter }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -196,6 +216,13 @@ function LoginScreen({ onSignedIn }) {
     try {
       onSignedIn(await signIn(email.trim(), password))
     } catch (err) {
+      // Not an analyst: a writer's login (role 'blog') opens the Journal.
+      const writer = await signInWithPassword(email.trim(), password).catch(() => null)
+      if (writer?.role === 'blog') {
+        onWriter()
+        return
+      }
+      if (writer) await signOutStaff()
       setError(err instanceof AdminError ? err.message : 'Could not sign in. Please try again.')
     } finally {
       setBusy(false)

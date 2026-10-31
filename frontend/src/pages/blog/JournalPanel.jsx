@@ -12,7 +12,7 @@ import './studio.css'
  * The writing tool, as a panel rather than a page.
  *
  * It carries no login of its own and no shell: /admin is the one staff
- * portal, and this renders inside it (and on /journal) once a staff account
+ * portal, and this renders inside it once a staff account
  * with blog.manage signs in (JournalGate). What it may read and write is
  * decided by the server (backend/lib/sales/blog.js), not by the fact that it
  * is being shown.
