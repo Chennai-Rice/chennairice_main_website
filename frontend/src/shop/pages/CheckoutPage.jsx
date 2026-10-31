@@ -9,7 +9,7 @@ import { recordJourney, endJourney, journeyItems, journeyValue } from "../../ser
 import { formatRupees } from "../utils/format.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
-import { trackMetaEvent } from "../../services/metaPixel.js";
+import { trackMetaEvent, trackMetaPurchase } from "../../services/metaPixel.js";
 import { trackGooglePurchase } from "../../services/googleAnalytics.js";
 import {
   initiatePayment,
@@ -76,10 +76,12 @@ export default function CheckoutPage() {
   const [failure, setFailure] = useState("");
   const [confirmed, setConfirmed] = useState(fromHistory);
 
-  // Google Analytics / Google Ads: the sale, once, when the order-confirmed page opens (it only shows for a
-  // payment the server has confirmed). A refresh of the page is de-duplicated by the order number.
+  // Google Analytics / Google Ads and Meta: the sale, once, when the order-confirmed page opens (it only
+  // shows for a payment the server has confirmed), with the amount the gateway captured. A refresh of the
+  // page is de-duplicated by the order number.
   useEffect(() => {
     if (!onConfirmedPage || status !== "done" || !confirmed) return;
+    trackMetaPurchase({ orderNumber: confirmed.orderNumber, value: confirmed.amount, items: confirmed.items || [] });
     trackGooglePurchase({
       transactionId: confirmed.orderNumber,
       value: Number(confirmed.amount),
@@ -249,17 +251,7 @@ export default function CheckoutPage() {
         items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, packKg: i.packKg, qty: i.qty })),
       };
       setConfirmed(receipt);
-      // Meta: the sale, with the amount the gateway actually captured. The order
-      // number is the event ID, so a later server-side copy counts as the same sale.
-      trackMetaEvent(
-        "Purchase",
-        {
-          content_ids: items.map((i) => i.id), content_type: "product",
-          num_items: items.reduce((n, i) => n + i.qty, 0),
-          value: Number(result.amount ?? session.amount), currency: "INR",
-        },
-        "purchase-" + result.orderNumber
-      );
+      // The Meta Purchase event is sent when /order-confirmed opens (below the receipt state).
       // Checkout journey: purchased (the server checks the order really is paid).
       recordJourney("purchased", { orderId: session.orderId });
       endJourney();

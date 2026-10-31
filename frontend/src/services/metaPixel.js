@@ -7,6 +7,10 @@
 // cookie banner, so there is no consent to track on.
 
 export const META_PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID || '1648623053646936'
+// "Chennai Rice – Purchase Tracking" (Oct 2026): a second dataset that gets the same events,
+// set up for purchases on /order-confirmed. fbq sends each event to every pixel initialised.
+export const META_PURCHASE_PIXEL_ID = import.meta.env.VITE_META_PURCHASE_PIXEL_ID || '1172960135165184'
+const PIXEL_IDS = [...new Set([META_PIXEL_ID, META_PURCHASE_PIXEL_ID].filter(Boolean))]
 
 let loaded = false
 
@@ -27,10 +31,10 @@ function injectBaseCode() {
 
 /** Load (once) and switch the pixel on. Safe to call repeatedly. */
 export function enableMetaPixel() {
-  if (typeof window === 'undefined' || !META_PIXEL_ID) return
+  if (typeof window === 'undefined' || !PIXEL_IDS.length) return
   if (!loaded) {
     injectBaseCode()
-    window.fbq('init', META_PIXEL_ID)
+    for (const id of PIXEL_IDS) window.fbq('init', id)
     loaded = true
   }
   window.fbq('consent', 'grant')
@@ -51,6 +55,26 @@ export function trackMetaEvent(name, data = {}, eventId) {
   if (!loaded || !window.fbq) return
   if (eventId) window.fbq("track", name, data, { eventID: eventId })
   else window.fbq("track", name, data)
+}
+
+/**
+ * The sale, sent from /order-confirmed (shown only for a payment the server confirmed).
+ * Once per order in this browser tab, so a refresh of the page is not a second sale;
+ * the order number is the event ID, so Meta also merges a server-side copy of it.
+ */
+export function trackMetaPurchase({ orderNumber, value, items = [] }) {
+  if (!loaded || !window.fbq || !orderNumber) return false
+  const key = `cr.mpurchase.${orderNumber}`
+  try {
+    if (sessionStorage.getItem(key)) return false
+    sessionStorage.setItem(key, '1')
+  } catch { /* private mode: the event ID still de-duplicates at Meta */ }
+  trackMetaEvent('Purchase', {
+    content_ids: items.map((i) => i.id), content_type: 'product',
+    num_items: items.reduce((n, i) => n + (Number(i.qty) || 0), 0),
+    value: Number(value) || 0, currency: 'INR',
+  }, 'purchase-' + orderNumber)
+  return true
 }
 
 /** One page view. The site is a single-page app, so this runs on every route change. */
