@@ -5,6 +5,8 @@
 // page the visitor opens in the app, and the shop events), and tells Meta to
 // stop if the visitor rejects marketing cookies (src/hooks/useMetaPixel.js).
 
+import { readConsent } from '../lib/consentPolicy.js'
+
 // "Chennai Rice – Purchase Tracking" (Oct 2026). The same ID is in index.html.
 export const META_PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID || '1172960135165184'
 
@@ -74,6 +76,23 @@ export function trackMetaPurchase({ orderNumber, value, items = [] }) {
     value: Number(value) || 0, currency: 'INR',
   }, 'purchase-' + orderNumber)
   return true
+}
+
+/**
+ * Sent with the order, for the Purchase the server sends Meta once the payment is
+ * confirmed (backend/lib/sales/meta-capi.js): Meta's own browser cookies, this
+ * page, and the cookie choice (nothing is sent if marketing was rejected).
+ */
+export function metaCheckoutSignal() {
+  if (typeof window === 'undefined') return null
+  const cookie = (name) => (document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)')) || [])[1]
+  const choice = readConsent()
+  return {
+    fbp: cookie('_fbp'),
+    fbc: cookie('_fbc'),
+    url: window.location.origin + window.location.pathname,
+    consent: !choice ? 'unset' : choice.marketing ? 'granted' : 'denied',
+  }
 }
 
 /** One page view. The site is a single-page app, so this runs on every route change. */
