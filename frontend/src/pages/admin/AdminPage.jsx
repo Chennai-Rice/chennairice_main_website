@@ -217,13 +217,18 @@ function LoginScreen({ onSignedIn, onWriter }) {
       onSignedIn(await signIn(email.trim(), password))
     } catch (err) {
       // Not an analyst: a writer's login (role 'blog') opens the Journal.
-      const writer = await signInWithPassword(email.trim(), password).catch(() => null)
+      let why = ''
+      const writer = await signInWithPassword(email.trim(), password).catch((e) => { why = e.message; return null })
       if (writer?.role === 'blog') {
         onWriter()
         return
       }
-      if (writer) await signOutStaff()
-      setError(err instanceof AdminError ? err.message : 'Could not sign in. Please try again.')
+      if (writer) {
+        await signOutStaff()
+        why = `This staff account has the "${writer.role}" role, not the blog writer role.`
+      }
+      const base = err instanceof AdminError ? err.message : 'Could not sign in. Please try again.'
+      setError(why ? `${base} Writer sign-in: ${why}` : base)
     } finally {
       setBusy(false)
     }
