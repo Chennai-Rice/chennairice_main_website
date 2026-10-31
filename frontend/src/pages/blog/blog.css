@@ -157,7 +157,7 @@
 
 /* The title and cover use the wide column; the words stay at a comfortable reading width. */
 .blog-post .blog-prose {
-  max-width: 740px;
+  max-width: 860px;
   margin-inline: auto;
 }
 
