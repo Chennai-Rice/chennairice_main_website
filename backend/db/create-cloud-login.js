@@ -44,4 +44,4 @@ if (!staff) {
     : `Note: ${email} is already a staff account with the '${staff.role}' role, which was kept as it is.`)
 }
 await closePool()
-console.log(`Done. Sign in at https://chennairiceindustries.com/${role === 'blog' ? 'journal' : 'cloud'}`)
+console.log(`Done. Sign in at https://chennairiceindustries.com/${role === 'blog' ? 'admin' : 'cloud'}`)

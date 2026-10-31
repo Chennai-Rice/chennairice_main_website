@@ -158,7 +158,6 @@ const robots =
   'Disallow: /wishlist\n' +
   'Disallow: /warehouse\n' +
   'Disallow: /cloud\n' +
-  'Disallow: /journal\n' +
   '\n' +
   'Sitemap: ' + SITE + '/sitemap.xml\n'
 
