@@ -7,7 +7,7 @@ import { contestLeads } from './attribution.js'
 import { listExpoLeads } from './expo.js'
 import { listEnquiries } from './enquiries-admin.js'
 import { listJourneys } from './journeys.js'
-import { contestReport } from './contest.js'
+import { contestReport, contestEntries } from './contest.js'
 import { httpError, str } from './util.js'
 
 
@@ -131,6 +131,68 @@ export const REPORTS = {
           'Entered on', 'Marketing consent', 'Also bought on the website'],
         lines: r.list.map((e) => [when(e.at), e.name, e.phone, e.email, e.coupon, e.slogan, e.pack, e.shop, e.shopLocation, e.area, e.district, e.region,
           e.pincode, e.source === 'whatsapp' ? 'WhatsApp' : 'Website', e.consent ? 'Yes' : 'No', e.boughtOnline ? 'Yes' : 'No']),
+      }
+    },
+  },
+  whatsapp_once: {
+    label: 'WhatsApp: one message only',
+    note: 'People who messaged the business WhatsApp (AskEva) once, such as "hi" or "interested in the contest", and never wrote again. Contacts from the old AskEva export are left out: their message count is not known.',
+    period: true,
+    async build(q) {
+      const p = span(q)
+      const { rows } = await query(
+        `select phone, name, first_message, first_message_at, source from whatsapp_contacts
+          where messages = 1 and first_message_at is not null
+            and (first_message_at at time zone 'Asia/Kolkata')::date between $1 and $2
+          order by first_message_at desc`, [p.from, p.to])
+      return {
+        header: ['Messaged on', 'Name', 'Phone', 'Their message'],
+        lines: rows.map((r) => [when(r.first_message_at), r.name, r.phone, r.first_message]),
+      }
+    },
+  },
+  whatsapp_unregistered: {
+    label: 'WhatsApp: not registered in the contest',
+    note: 'Everyone who has messaged the business WhatsApp (AskEva) and never entered a coupon code in the Slogan Contest, whether on WhatsApp or the website: their first and last message and how many they sent. Matched by mobile number.',
+    period: false,
+    async build() {
+      const { entries } = await contestEntries({ from: '2020-01-01', to: istDay() })
+      const entered = new Set(entries.map((e) => e.mobile).filter(Boolean))
+      const { rows } = await query(
+        `select phone, name, first_message, first_message_at, last_message, last_message_at, messages, source
+           from whatsapp_contacts order by coalesce(last_message_at, first_message_at) desc nulls last`)
+      const mine = rows.filter((r) => !entered.has(String(r.phone).replace(/\D/g, '').slice(-10)))
+      return {
+        header: ['Name', 'Phone', 'First message', 'First message on', 'Last message', 'Last message on', 'Messages sent'],
+        lines: mine.map((r) => [r.name, r.phone, r.first_message, r.first_message_at ? when(r.first_message_at) : '',
+          r.last_message, r.last_message_at ? when(r.last_message_at) : '', r.source === 'import' ? 'Not known' : r.messages]),
+      }
+    },
+  },
+  whatsapp_all: {
+    label: 'WhatsApp: all contacts with contest status',
+    note: 'Everyone who has messaged the business WhatsApp (AskEva), one row each, with how they registered in the Slogan Contest: on WhatsApp, on the website, or not at all, and how many entries. Filter the Contest column in Excel to split them.',
+    period: false,
+    async build() {
+      const { entries } = await contestEntries({ from: '2020-01-01', to: istDay() })
+      const by = new Map()
+      for (const e of entries) {
+        if (!e.mobile) continue
+        const m = by.get(e.mobile) || { whatsapp: 0, website: 0 }
+        m[e.source === 'whatsapp' ? 'whatsapp' : 'website'] += 1
+        by.set(e.mobile, m)
+      }
+      const { rows } = await query(
+        `select phone, name, first_message, first_message_at, last_message, last_message_at, messages, source
+           from whatsapp_contacts order by coalesce(first_message_at, created_at) desc nulls last`)
+      return {
+        header: ['Name', 'Phone', 'Contest', 'Entries on WhatsApp', 'Entries on website', 'First message', 'First message on', 'Last message', 'Last message on', 'Messages sent'],
+        lines: rows.map((r) => {
+          const m = by.get(String(r.phone).replace(/\D/g, '').slice(-10))
+          const contest = !m ? 'Not registered' : m.whatsapp && m.website ? 'Both' : m.whatsapp ? 'WhatsApp' : 'Website'
+          return [r.name, r.phone, contest, m?.whatsapp || 0, m?.website || 0, r.first_message, r.first_message_at ? when(r.first_message_at) : '',
+            r.last_message, r.last_message_at ? when(r.last_message_at) : '', r.source === 'import' ? 'Not known' : r.messages]
+        }),
       }
     },
   },
