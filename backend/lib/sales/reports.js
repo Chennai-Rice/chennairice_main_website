@@ -7,7 +7,7 @@ import { contestLeads } from './attribution.js'
 import { listExpoLeads } from './expo.js'
 import { listEnquiries } from './enquiries-admin.js'
 import { listJourneys } from './journeys.js'
-import { contestReport } from './contest.js'
+import { contestReport, contestEntries } from './contest.js'
 import { httpError, str } from './util.js'
 
 
@@ -148,6 +148,24 @@ export const REPORTS = {
       return {
         header: ['Messaged on', 'Name', 'Phone', 'Their message'],
         lines: rows.map((r) => [when(r.first_message_at), r.name, r.phone, r.first_message]),
+      }
+    },
+  },
+  whatsapp_unregistered: {
+    label: 'WhatsApp: not registered in the contest',
+    note: 'Everyone who has messaged the business WhatsApp (AskEva) and never entered a coupon code in the Slogan Contest, whether on WhatsApp or the website: their first and last message and how many they sent. Matched by mobile number.',
+    period: false,
+    async build() {
+      const { entries } = await contestEntries({ from: '2020-01-01', to: istDay() })
+      const entered = new Set(entries.map((e) => e.mobile).filter(Boolean))
+      const { rows } = await query(
+        `select phone, name, first_message, first_message_at, last_message, last_message_at, messages, source
+           from whatsapp_contacts order by coalesce(last_message_at, first_message_at) desc nulls last`)
+      const mine = rows.filter((r) => !entered.has(String(r.phone).replace(/\D/g, '').slice(-10)))
+      return {
+        header: ['Name', 'Phone', 'First message', 'First message on', 'Last message', 'Last message on', 'Messages sent'],
+        lines: mine.map((r) => [r.name, r.phone, r.first_message, r.first_message_at ? when(r.first_message_at) : '',
+          r.last_message, r.last_message_at ? when(r.last_message_at) : '', r.source === 'import' ? 'Not known' : r.messages]),
       }
     },
   },
