@@ -46,6 +46,48 @@ function write(token) {
 
 let devToken = canUseLocalSignIn ? read() : null
 
+/* ------------------------------------------------ the blog writer's login */
+
+// A blog writer signs in with email and password and gets a JWT from our own backend (POST /api/blog/login,
+// backend/lib/sales/writer-login.js): no Firebase. Kept for the tab's lifetime and until it expires (12 hours).
+const WRITER_KEY = 'cr.writer.token'
+
+function readWriter() {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(WRITER_KEY) || 'null')
+    if (saved && Date.parse(saved.expiresAt) > Date.now()) return saved.token
+    sessionStorage.removeItem(WRITER_KEY)
+  } catch {
+    /* private mode or unreadable: signed out */
+  }
+  return null
+}
+
+let writerToken = readWriter()
+
+/** Email and password for the blog writer role; returns the staff profile. Throws the server's message when refused. */
+export async function signInWriter(email, password) {
+  let res
+  try {
+    res = await fetch('/api/blog/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: String(email || '').trim(), password: String(password || '') }),
+    })
+  } catch {
+    throw new Error('Could not reach the server. Please try again.')
+  }
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || 'Could not sign in. Please try again.')
+  writerToken = data.token
+  try {
+    sessionStorage.setItem(WRITER_KEY, JSON.stringify({ token: data.token, expiresAt: data.expiresAt }))
+  } catch {
+    /* private mode: signed in until the page is reloaded */
+  }
+  return data.staff
+}
+
 /* ------------------------------------------------------------- Firebase */
 
 // Loaded only on /warehouse, so shoppers never download the Firebase SDK.
@@ -70,6 +112,7 @@ async function currentUser() {
 
 async function bearer() {
   if (devToken) return devToken
+  if (writerToken && readWriter()) return writerToken
   const user = await currentUser()
   return user ? user.getIdToken() : null
 }
@@ -79,12 +122,19 @@ async function bearer() {
 /** Is someone signed in from an earlier visit? (Checks Firebase, so it is async.) */
 export async function hasStaffSession() {
   if (devToken) return true
+  if (writerToken && readWriter()) return true
   return Boolean(await currentUser())
 }
 
 export async function signOutStaff() {
   devToken = null
   write(null)
+  writerToken = null
+  try {
+    sessionStorage.removeItem(WRITER_KEY)
+  } catch {
+    /* nothing stored */
+  }
   if (canUseGoogleSignIn && firebasePromise) {
     const { auth, lib } = await firebase()
     await lib.signOut(auth).catch(() => {})

@@ -16,9 +16,7 @@ import { query, closePool } from '../lib/db.js'
 
 const email = String(process.env.CLOUD_LOGIN_EMAIL || '').trim().toLowerCase()
 const password = String(process.env.CLOUD_LOGIN_PASSWORD || '')
-// LOGIN_ROLE=blog makes a writer login for /journal instead (CLOUD_LOGIN_* names are kept for the Cloud Centre).
-const role = process.env.LOGIN_ROLE === 'blog' ? 'blog' : 'cloud'
-const name = process.env.CLOUD_LOGIN_NAME || (role === 'blog' ? 'Blog writer' : 'IT Team (Cloud Centre)')
+const name = process.env.CLOUD_LOGIN_NAME || 'IT Team (Cloud Centre)'
 
 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Set CLOUD_LOGIN_EMAIL to the login email.')
 if (password.length < 10) throw new Error('Set CLOUD_LOGIN_PASSWORD to a password of at least 10 characters.')
@@ -35,13 +33,13 @@ if (user) {
 
 const { rows: [staff] } = await query('select id, role, is_active from staff_users where email = $1', [email])
 if (!staff) {
-  await query(`insert into staff_users (email, firebase_uid, full_name, role) values ($1, $2, $3, $4)`, [email, user.uid, name, role])
-  console.log(`Staff account created with the ${role} role.`)
+  await query(`insert into staff_users (email, firebase_uid, full_name, role) values ($1, $2, $3, 'cloud')`, [email, user.uid, name])
+  console.log('Staff account created with the Cloud Centre role.')
 } else {
   await query('update staff_users set firebase_uid = $2, is_active = true where id = $1', [staff.id, user.uid])
-  console.log(staff.role === role
-    ? `Staff account already there (${role} role), switched on.`
+  console.log(staff.role === 'cloud'
+    ? 'Staff account already there (Cloud Centre role), switched on.'
     : `Note: ${email} is already a staff account with the '${staff.role}' role, which was kept as it is.`)
 }
 await closePool()
-console.log(`Done. Sign in at https://chennairiceindustries.com/${role === 'blog' ? 'admin' : 'cloud'}`)
+console.log('Done. Sign in at https://chennairiceindustries.com/cloud')
