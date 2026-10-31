@@ -214,8 +214,8 @@
    writing is the same thing a reader gets. */
 
 .blog-prose {
-  font-size: 16px;
-  line-height: 1.85;
+  font-size: 20px;
+  line-height: 1.8;
   color: #4f3f33;
 }
 
@@ -229,11 +229,11 @@
   margin-top: 38px;
 }
 
-.blog-prose h2.md-heading { font-size: 26px; }
-.blog-prose h3.md-heading { font-size: 21px; }
-.blog-prose h4.md-heading { font-size: 18px; }
+.blog-prose h2.md-heading { font-size: 34px; }
+.blog-prose h3.md-heading { font-size: 27px; }
+.blog-prose h4.md-heading { font-size: 23px; }
 .blog-prose h5.md-heading,
-.blog-prose h6.md-heading { font-size: 16px; }
+.blog-prose h6.md-heading { font-size: 20px; }
 
 .blog-prose a {
   color: var(--maroon);
@@ -255,7 +255,7 @@
   padding: 4px 0 4px 22px;
   border-left: 3px solid var(--gold);
   font-family: var(--serif);
-  font-size: 19px;
+  font-size: 24px;
   font-style: italic;
   line-height: 1.6;
   color: var(--heading);
@@ -312,5 +312,5 @@
 
 @media (max-width: 600px) {
   .blog-grid { grid-template-columns: 1fr; gap: 22px; }
-  .blog-prose { font-size: 15.5px; }
+  .blog-prose { font-size: 18px; }
 }

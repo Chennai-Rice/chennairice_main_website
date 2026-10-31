@@ -477,3 +477,7 @@
 .st-preview .blog-post-head { margin-bottom: 20px; }
 .st-pv-frame.is-phone .blog-post-title { font-size: 1.75rem; }
 .st-pv-frame.is-phone .blog-card-title { font-size: 1.15rem; }
+/* The body text follows the page's size on a computer; the narrow side pane and the phone preview use the phone size. */
+.st-preview .blog-prose,
+.st-pv-frame.is-phone .blog-prose { font-size: 18px; }
+.st-pv-frame.is-phone .blog-prose h2.md-heading { font-size: 26px; }
