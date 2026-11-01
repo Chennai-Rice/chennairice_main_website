@@ -286,7 +286,7 @@ export default function WarehousePage() {
   }
 
   return (
-    <div className={`wh-app${drawer ? ' has-drawer' : ''}`}>
+    <div className={`wh-app wh-shell${drawer ? ' has-drawer' : ''}`}>
       <aside className="wh-side" aria-label="Warehouse menu">
         <div className="wh-side-brand">
           <img src="/assets/warehouse-logo.png" alt="" width="44" height="44" />
