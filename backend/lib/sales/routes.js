@@ -200,7 +200,7 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   }))
 
   router.post('/api/checkout/session', rateLimit({ windowMs: 60000, max: 20 }), wrap(async (req, res) => {
-    res.json({ ok: true, ...(await createCheckoutSession(req.body)) })
+    res.json({ ok: true, ...(await createCheckoutSession(req.body, { ip: clientKey(req), userAgent: req.get('user-agent') })) })
   }))
 
   router.post('/api/checkout/verify', wrap(async (req, res) => {

@@ -9,7 +9,7 @@ import { recordJourney, endJourney, journeyItems, journeyValue } from "../../ser
 import { formatRupees } from "../utils/format.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
-import { trackMetaEvent, trackMetaPurchase } from "../../services/metaPixel.js";
+import { metaCheckoutSignal, trackMetaEvent, trackMetaPurchase } from "../../services/metaPixel.js";
 import { trackGooglePurchase } from "../../services/googleAnalytics.js";
 import {
   initiatePayment,
@@ -182,6 +182,7 @@ export default function CheckoutPage() {
           ...form,
           items: items.map((item) => ({ id: item.id, qty: item.qty })),
           attribution: currentAttribution(),
+          meta: metaCheckoutSignal(),
           ...(orderId ? { orderId } : {}),
           ...(excludeGateway.length ? { excludeGateway } : {}),
         });

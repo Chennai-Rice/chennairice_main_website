@@ -19,6 +19,7 @@ import { cleanAttribution, classify } from './attribution.js'
 import { moveStock, releaseForOrder } from './stock.js'
 import { queueEmail, templates, trackUrl } from './email.js'
 import { queueOrderPlaced, sendWhatsAppMessages } from '../whatsapp.js'
+import { cleanMetaSignal, sendPurchaseToMeta } from './meta-capi.js'
 import {
   httpError, str, toRupees, getSettings, recordOrderStatus, newShipmentId, newOrderNumber, reserveId, linkId,
 } from './util.js'
@@ -70,7 +71,7 @@ export async function quoteCart(body) {
 }
 
 /** Create the order and hold its stock, all or nothing. */
-export async function placeOrder(customer, items, rawAttribution = null) {
+export async function placeOrder(customer, items, rawAttribution = null, metaSignal = null) {
   return tx(async (db) => {
     const settings = await getSettings(db)
     const holdMinutes = Number(settings.reservation_minutes) || 30
@@ -98,8 +99,10 @@ export async function placeOrder(customer, items, rawAttribution = null) {
       city: customer.city, state: customer.state, pincode: customer.pincode,
     }
     // Where the buyer came from (ad, search, direct…), kept with the order.
-    const attribution = cleanAttribution(rawAttribution)
-    const traffic = classify(attribution)
+    const landed = cleanAttribution(rawAttribution)
+    const traffic = classify(landed)
+    // Meta's browser details for the server-side Purchase (meta-capi.js), kept beside the landing details.
+    const attribution = metaSignal ? { ...(landed || {}), meta: metaSignal } : landed
     const { rows: [order] } = await db.query(
       `insert into orders (order_number, customer_id, contact_name, contact_email, contact_phone,
                            shipping_address, ship_state, fulfilment_location_id,
@@ -161,13 +164,16 @@ function invalidUuid(id) {
   return !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
 }
 
-export async function createCheckoutSession(body) {
+/** @param {{ ip?: string, userAgent?: string }} [client] the buyer's address and browser, for Meta */
+export async function createCheckoutSession(body, client = {}) {
   const { customer, error } = buildGuestCustomer(body)
   if (error) throw httpError(error)
 
   const resumeId = str(body?.orderId)
   if (resumeId && invalidUuid(resumeId)) throw httpError('That order does not exist.', { status: 404 })
-  const order = resumeId ? await loadResumable(resumeId, customer.email) : await placeOrder(customer, body?.items, body?.attribution)
+  const order = resumeId
+    ? await loadResumable(resumeId, customer.email)
+    : await placeOrder(customer, body?.items, body?.attribution, cleanMetaSignal(body?.meta, client))
 
   const exclude = [].concat(body?.excludeGateway || []).map((g) => str(g).toLowerCase()).filter(Boolean)
   // If no gateway answers, the order stays pending with its stock held until
@@ -219,6 +225,8 @@ export async function markOrderPaid(args) {
   // The WhatsApp thank-you was queued with the order; send it now (best effort,
   // the 10-minute job retries it, and it never holds up the payment).
   if (!result.already) sendWhatsAppMessages({ limit: 5 }).catch(() => {})
+  // The Purchase to Meta from the server (best effort; the 10-minute job retries it).
+  if (!result.already) sendPurchaseToMeta(result.order.id).catch(() => {})
   return result
 }
 

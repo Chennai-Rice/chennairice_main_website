@@ -4,7 +4,7 @@
 //   1. cancel unpaid orders whose 30-minute stock hold has lapsed
 //   2. the team's summary email, once a day at 9:00 India time (digest.js): new orders and
 //      where they came from, cancellations, orders waiting too long, low stock
-//   3. send queued emails, retry CRM leads and WhatsApp messages
+//   3. send queued emails, retry CRM leads, WhatsApp messages and Purchases for Meta
 //   4. checkout journeys that stopped before paying, to NeoDove and Sales Daddy (journey-followup.js)
 //   5. the bank's UTIB code for settled payments (settlements.js), a catch-up for the settlement webhook
 import { query } from '../db.js'
@@ -17,6 +17,7 @@ import { sendWhatsAppMessages } from '../whatsapp.js'
 import { sendNeodoveLeads } from '../neodove.js'
 import { syncSettlements } from './settlements.js'
 import { followUpJourneys } from './journey-followup.js'
+import { sendPendingPurchases } from './meta-capi.js'
 
 export async function runJobs() {
   const expired = await expireUnpaidOrders()
@@ -28,6 +29,8 @@ export async function runJobs() {
   // Leads Sales Daddy could not take at the time are retried here.
   const crm = await sendCrmLeads({ query })
   const whatsapp = await sendWhatsAppMessages({ query })
+  // Purchases the server could not send to Meta at the time (meta-capi.js).
+  const metaCapi = await sendPendingPurchases().catch((err) => ({ error: err.message }))
   // Raw AskEva webhook calls are kept 90 days for checking, then dropped.
   await query("delete from askeva_events where received_at < now() - interval '90 days'").catch(() => {})
   // Sign-ups NeoDove could not take at the time; its raw webhook calls kept 90 days.
@@ -52,5 +55,5 @@ export async function runJobs() {
   }
   // Cloud Centre: uptime of every site, alert emails, and at night one PageSpeed check (cloud-checks.js).
   const cloud = await runCloudChecks({ query })
-  return { expired, digest, email, journeys, crm, whatsapp, neodove, settlements, cloud }
+  return { expired, digest, email, journeys, crm, whatsapp, metaCapi, neodove, settlements, cloud }
 }

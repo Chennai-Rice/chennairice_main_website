@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import SiteLayout from "../layouts/SiteLayout.jsx";
 import Breadcrumb from "../components/Breadcrumb.jsx";
@@ -99,16 +99,19 @@ export default function ProductDetailPage() {
   }, [product, sizes, seo]);
 
   // Meta: this product was viewed (once per product, with the pack size shown first).
+  // Sent only once that pack's price has loaded: Meta needs a value above zero.
   const viewedId = product?.id;
-  const viewedPrice = defaultSize?.price;
+  const viewedPrice = Number(defaultSize?.price) || 0;
+  const viewSent = useRef(null);
   useEffect(() => {
-    if (!viewedId) return;
+    if (!viewedId || viewedPrice <= 0 || viewSent.current === viewedId) return;
+    viewSent.current = viewedId;
     trackMetaEvent("ViewContent", {
       content_ids: [viewedId], content_name: product.name, content_type: "product",
       value: viewedPrice, currency: "INR",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewedId]);
+  }, [viewedId, viewedPrice]);
 
   // Pack size defaults to 10 kg once the product has loaded — keep the
   // selector in sync instead of getting stuck on the pre-load undefined.
