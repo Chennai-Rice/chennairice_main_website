@@ -81,7 +81,7 @@ function ContestPopupInner() {
     lastFocus.current = document.activeElement
     closeRef.current?.focus()
     const onKey = (e) => {
-      if (e.key === 'Escape' && !fromAd) close() // the ad sign-up is required
+      if (e.key === 'Escape') close() // the sign-up can be skipped too: it comes back after a day
       // Keep Tab inside the dialog.
       if (e.key === 'Tab') {
         const items = [...document.querySelectorAll('.contest-pop [data-focus]')]
@@ -157,10 +157,11 @@ function ContestPopupInner() {
 }
 
 /**
- * The popup for visitors from a Meta or Google ad: a short sign-up form (name,
- * mobile, email) that cannot be dismissed until it is filled in. The mobile is
- * confirmed with an OTP (MSG91) before the sign-up is saved with the ad the
- * visitor came from. With no SMS account configured the OTP step is skipped.
+ * The popup for visitors from a Meta or Google ad (or WhatsApp): a short sign-up form (name,
+ * mobile, email). The visitor can register or skip it (the ✕, "No thanks" or Escape), and it
+ * stays away for a day after that. The mobile is confirmed with an OTP (MSG91) before the
+ * sign-up is saved with the ad the visitor came from. With no SMS account configured the OTP
+ * step is skipped.
  */
 const RESEND_AFTER_S = 30
 
@@ -244,6 +245,11 @@ function AdSignup({ closeRef, close }) {
         aria-labelledby="contest-form-title"
         onClick={(e) => e.stopPropagation()}
       >
+        <button data-focus type="button" className="contest-pop-close" aria-label="Close" onClick={() => close()}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+          </svg>
+        </button>
         <div className="contest-pop-body">
           <p className="contest-pop-eyebrow">Super Slogan Contest</p>
           {step === 'done' ? (
@@ -315,6 +321,9 @@ function AdSignup({ closeRef, close }) {
                 {error && <p className="contest-form-error" role="alert">{error}</p>}
                 <button data-focus type="submit" className="contest-pop-cta contest-form-submit" disabled={busy}>
                   {busy ? 'Submitting…' : 'Submit'}
+                </button>
+                <button data-focus type="button" className="contest-form-link contest-form-skip" disabled={busy} onClick={() => close()}>
+                  No thanks, maybe later
                 </button>
                 <p className="contest-form-note">
                   We use these details only for the contest.{' '}
