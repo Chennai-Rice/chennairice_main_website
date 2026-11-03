@@ -288,9 +288,12 @@ export function renderMarkdown(source) {
       paragraph.push(lines[i].trim())
       i += 1
     }
+    // -> text <- centres the line (Markdown has no centring of its own).
+    const text = paragraph.join(' ')
+    const centred = /^->\s*([\s\S]*?)\s*<-$/.exec(text)
     push(
-      <p key={`b${key}`} className="md-p">
-        {inline(paragraph.join(' '))}
+      <p key={`b${key}`} className={centred ? 'md-p md-center' : 'md-p'}>
+        {inline(centred ? centred[1] : text)}
       </p>
     )
   }
@@ -311,6 +314,7 @@ export function plainText(source) {
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^->\s*|\s*<-$/gm, '')
     .replace(/^\s{0,3}>\s?/gm, '')
     .replace(/^\s{0,3}[-*+]\s+/gm, '')
     .replace(/^\s{0,3}\d+[.)]\s+/gm, '')

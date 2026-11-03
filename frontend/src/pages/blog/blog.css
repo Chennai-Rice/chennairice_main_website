@@ -310,6 +310,9 @@
   text-align: center;
 }
 
+/* A line written as `-> text <-` is centred (lib/markdown.jsx). */
+.blog-prose p.md-center { text-align: center; }
+
 /* A link on a line of its own is a button (lib/markdown.jsx): a row, centred, wrapping on small screens. */
 .blog-prose .md-buttons {
   display: flex;
