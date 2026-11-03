@@ -200,17 +200,21 @@ export function buildDataset(matrix, { sheetTitle = '', kind = 'calls' } = {}) {
     }
     const date = parseDate(cell(row, 'date'))
     const name = cell(row, 'name')
+    // a brand typed in the telecaller column ("Cholan") is not a person: it is counted as no telecaller, and names the brand
+    let telecaller = cell(row, 'telecaller')
+    const typedBrand = BRANDS.find((b) => b.toLowerCase() === telecaller.toLowerCase())
+    if (typedBrand) telecaller = ''
     rows.push({
       n: rows.length + 1,
       date,
       month: date ? date.slice(0, 7) : '',
-      brand: brandFrom === 'column' ? brandOf(cell(row, 'brand')) : brandFromText(`${remark} ${name}`) || 'Not specified',
+      brand: brandFrom === 'column' ? brandOf(cell(row, 'brand')) : brandFromText(`${remark} ${name} ${typedBrand || ''}`) || 'Not specified',
       platform: cell(row, 'platform') ? clean(cell(row, 'platform')) : 'Not specified',
       stage,
       status: status.status,
       outcome: kind === 'calls' ? callOutcome(remark) : '',
       statusText: statusFrom === 'column' ? cell(row, 'manager') || cell(row, 'status') : '',
-      telecaller: cell(row, 'telecaller') || 'Not assigned',
+      telecaller: telecaller || 'Not assigned',
       device: cell(row, 'device'),
       name: noName.test(name) ? '' : name,
       phone: cell(row, 'phone'),

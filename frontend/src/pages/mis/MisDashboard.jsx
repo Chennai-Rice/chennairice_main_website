@@ -548,6 +548,7 @@ function exportCalls(rows, { from, to, month }, word = 'calls') {
 const REPORT_BY = [['telecaller', 'Telecaller'], ['brand', 'Brand'], ['platform', 'Platform']]
 const PERIODS = [['daily', 'Daily'], ['monthly', 'Monthly'], ['all', 'All time']]
 const MIN_CALLS = 5
+const NO_DEVICES = [] // the report has no device columns
 
 const niceDay = (iso) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '')
@@ -594,7 +595,7 @@ function reportColumns(isCalls, devices, N) {
   const p = (f) => (l) => `${l[f].toFixed(1)}%`
   const cols = isCalls
     ? [[N.Many, 'calls', n('calls')], ['Connected', 'connected', n('connected')], ['Connect %', 'connectPct', p('connectPct')], ['RNR', 'rnr', n('rnr')], ['RNR %', 'rnrPct', p('rnrPct')],
-      ['Paused', 'paused', n('paused')], ['Invalid', 'invalid', n('invalid')], ['Enquiries', 'enquiries', n('enquiries')], ['Complaints', 'complaints', n('complaints')]]
+      ['Enquiries', 'enquiries', n('enquiries')], ['Complaints', 'complaints', n('complaints')]]
     : [[N.Many, 'calls', n('calls')], ['Positively closed', 'positive', n('positive')], ['Negatively closed', 'negative', n('negative')], ['In process', 'inProcess', n('inProcess')],
       ['Open', 'open', n('open')], ['Conversion %', 'conversion', p('conversion')], ['Enquiries', 'enquiries', n('enquiries')], ['Complaints', 'complaints', n('complaints')]]
   return [...cols.map(([h, key, show]) => ({ h, show, file: (l) => (/Pct$|conversion/.test(key) ? l[key].toFixed(1) : l[key]) })),
@@ -610,7 +611,7 @@ function Reports({ filtered, kind = 'calls', hasTelecaller = true, N }) {
   const [pick, setPick] = useState('')
   const byLabel = bys.find(([k]) => k === by)[1]
 
-  const devices = useMemo(() => (isCalls ? [...new Set(filtered.map((r) => r.device).filter(Boolean))].sort() : []), [filtered, isCalls])
+  const devices = NO_DEVICES
   const periods = useMemo(() => [...new Set(filtered.map((r) => periodOf(r, type)).filter(Boolean))].sort().reverse(), [filtered, type])
   const period = type === 'all' ? 'all' : periods.includes(pick) ? pick : periods[0] || ''
   const inPeriod = useMemo(() => (type === 'all' ? filtered : filtered.filter((r) => periodOf(r, type) === period)), [filtered, type, period])
@@ -708,7 +709,7 @@ function Reports({ filtered, kind = 'calls', hasTelecaller = true, N }) {
               <dt>Team</dt>
               <dd>
                 {isCalls
-                  ? `${num(team.calls)} calls · ${team.connectPct.toFixed(1)}% connected · ${team.rnrPct.toFixed(1)}% RNR · ${num(team.paused)} paused · ${num(team.invalid)} invalid`
+                  ? `${num(team.calls)} calls · ${team.connectPct.toFixed(1)}% connected · ${team.rnrPct.toFixed(1)}% RNR`
                   : `${num(team.calls)} leads · ${num(team.positive)} positively closed · ${team.conversion.toFixed(1)}% conversion`}
               </dd>
             </div>

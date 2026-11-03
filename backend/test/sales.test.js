@@ -3107,3 +3107,18 @@ test('the MIS dashboard also reads the LEADS tab: brand column, status from the 
     mis.setMisSourceForTests(null)
   }
 })
+
+test('the MIS dashboard does not count a brand typed in CALL HANDED BY as a telecaller', async () => {
+  const mis = await import('../lib/sales/mis.js')
+  mis.setMisSourceForTests(async () => ({
+    title: 'Calls',
+    values: [['DATE', 'NAME', 'PLATFORM', 'REQUIREMENTS', 'STAGE', 'DEVICE', 'CALL HANDED BY'], ['30-10-2026', 'A', 'INBOUND', 'Need rice', '', 'MOBILE', 'Cholan'], ['30-10-2026', 'B', 'INBOUND', 'Need rice', '', 'MOBILE', 'Ramya']],
+  }))
+  try {
+    const d = await mis.misData({ refresh: true })
+    assert.deepEqual(d.rows.map((r) => r.telecaller), ['Not assigned', 'Ramya'])
+    assert.deepEqual(d.rows.map((r) => r.brand), ['Cholan', 'Not specified'])
+  } finally {
+    mis.setMisSourceForTests(null)
+  }
+})
