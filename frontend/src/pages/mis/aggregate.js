@@ -18,10 +18,11 @@ export const monthLabel = (ym) => {
   return m ? `${MONTHS[Number(m[2]) - 1]} ${m[1]}` : 'No date'
 }
 
-/** The rows that pass the three filters ('' means all). */
-export function applyFilters(rows, { brand = '', platform = '', month = '' } = {}) {
+/** The rows that pass the filters ('' means all). from / to are YYYY-MM-DD, both days included; a call with no date is left out once either is set. */
+export function applyFilters(rows, { brand = '', platform = '', month = '', from = '', to = '' } = {}) {
   return rows.filter(
     (r) => (!brand || r.brand === brand) && (!platform || r.platform === platform) && (!month || (month === 'none' ? !r.month : r.month === month))
+      && (!from || (r.date && r.date >= from)) && (!to || (r.date && r.date <= to))
   )
 }
 

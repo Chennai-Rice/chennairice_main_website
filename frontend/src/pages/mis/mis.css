@@ -397,3 +397,8 @@ button.mis-metric:hover { transform: translateY(-2px); border-color: var(--accen
 
 .mis-rules { margin-top: 4px; }
 .mis-rules td, .mis-rules th { padding: 8px 12px; }
+
+.mis-range { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mis-range label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted, inherit); }
+.mis-range input { font: inherit; padding: 7px 9px; border-radius: 10px; border: 1px solid var(--line, #d9dde5); background: var(--card, #fff); color: inherit; }
+.mis-legend-item { display: flex; align-items: center; gap: 8px; width: 100%; }
