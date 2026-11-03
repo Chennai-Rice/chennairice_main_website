@@ -3072,3 +3072,38 @@ test('the MIS dashboard reads the calls log: columns by name, status worked out 
     mis.setMisSourceForTests(null)
   }
 })
+
+test('the MIS dashboard also reads the LEADS tab: brand column, status from the lead manager remark, no call outcomes', async () => {
+  const mis = await import('../lib/sales/mis.js')
+  mis.setMisSourceForTests(async () => ({
+    title: 'Calls',
+    values: [['S. NO', 'DATE', 'NAME', 'PLATFORM', 'REQUIREMENTS', 'STAGE', 'DEVICE', 'CALL HANDED BY'], ['1', '30-10-2026', 'Sabeena', 'INBOUND', 'RNR', '', 'MOBILE', 'Ramya']],
+    leads: {
+      title: 'LEADS',
+      values: [
+        ['LEADS', '', '', '', '', '', '', '', ''],
+        [],
+        ['S. NO', 'DATE', 'NAME', 'BRAND', 'PLATFORM', 'REQUIREMENTS', 'STAGE', 'STATUS', 'REMARKS BY LEAD MANAGER'],
+        ['1', '19-09-2026', 'Sakthi', 'CRI', 'INBOUND', 'Asking for Export', 'ENQUIRY', 'OPEN', 'Negatively Closed'],
+        ['2', '17-09-2026', 'Chandra Kumar', 'CRI', 'INBOUND', 'NA', '', 'CLOSED', 'Process'],
+        ['3', '25-09-2026', 'Thandapani', 'CRI', 'INBOUND', 'NA', '', 'OPEN', 'Positively closed'],
+        ['4', '12-10-2026', 'NA', 'CFF', 'INBOUND', 'Nayara Ponni Rice', 'ENQUIRY', 'OPEN', ''],
+      ],
+    },
+  }))
+  try {
+    const d = await mis.misData({ refresh: true })
+    assert.equal(d.kind, 'calls')
+    assert.equal(d.leads.kind, 'leads')
+    assert.equal(d.leads.mapping.brand, 'BRAND')
+    assert.equal(d.leads.mapping.manager, 'REMARKS BY LEAD MANAGER')
+    assert.equal(d.leads.mapping.remark, 'REQUIREMENTS')
+    assert.equal(d.leads.brandFrom, 'column')
+    assert.deepEqual(d.leads.rows.map((r) => r.status), ['Negatively closed', 'In Process', 'Positively closed', 'Open / Pending'])
+    assert.deepEqual(d.leads.rows.map((r) => r.brand), ['CRI', 'CRI', 'CRI', 'CFF'])
+    assert.ok(d.leads.rows.every((r) => r.outcome === ''))
+    assert.equal(d.leads.rows[3].name, '')
+  } finally {
+    mis.setMisSourceForTests(null)
+  }
+})

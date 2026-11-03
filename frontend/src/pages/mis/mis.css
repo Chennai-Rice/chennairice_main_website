@@ -418,3 +418,5 @@ button.mis-metric:hover { transform: translateY(-2px); border-color: var(--accen
   .mis, .mis-main { display: block !important; padding: 0 !important; }
   .mis-panel { box-shadow: none !important; break-inside: avoid; }
 }
+
+.mis-which { margin: 0 0 12px; }

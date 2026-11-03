@@ -16,7 +16,8 @@ import { BRANDS, brandFromText, classifyCall, callOutcome } from './mis-rules.js
 import { httpError } from './util.js'
 
 const SHEET_ID = () => process.env.MIS_SHEET_ID || '1J6J5zmeyEfM_RRHOy4HX6OKi8XFZ3fK4L1YtsyAKirM'
-const SHEET_GID = () => String(process.env.MIS_SHEET_GID || '500982816')
+const SHEET_GID = () => String(process.env.MIS_SHEET_GID || '500982816') // the CALLS tab
+const LEADS_GID = () => String(process.env.MIS_LEADS_GID || '0') // the LEADS tab
 const SERVICE_ACCOUNT = 'api-backend@chennai-rice-website.iam.gserviceaccount.com'
 const CACHE_MS = 3 * 60_000
 const MIN_REFRESH_MS = 20_000
@@ -40,6 +41,7 @@ const FIELDS = {
   phone: ['mobilenumber', 'phonenumber', 'mobileno', 'phoneno', 'mobile', 'phone', 'contact', 'whatsapp'],
   city: ['city', 'location', 'district', 'place', 'town'],
   product: ['productinterested', 'product', 'item'],
+  manager: ['remarksbyleadmanager', 'leadmanagerremarks', 'managerremarks', 'remarksbymanager'],
   remark: ['requirements', 'requirement', 'remarks', 'remark', 'comments', 'comment', 'notes', 'note', 'feedback'],
 }
 
@@ -156,7 +158,7 @@ function canonicalise(rows, field, skip = []) {
 // ------------------------------------------------------------------ dataset
 
 /** The sheet (rows of text) as the dashboard's data: clean rows plus what was found. */
-export function buildDataset(matrix, { sheetTitle = '' } = {}) {
+export function buildDataset(matrix, { sheetTitle = '', kind = 'calls' } = {}) {
   const grid = (matrix || []).map((r) => (Array.isArray(r) ? r.map((c) => String(c ?? '')) : []))
   const headerAt = grid.slice(0, 10).findIndex((r) => r.filter((c) => c.trim()).length >= 3)
   if (headerAt < 0) throw httpError('No header', { status: 422, publicMessage: 'The sheet has no header row with column names. The first rows should name the columns, such as Brand, Platform and Status.' })
@@ -167,7 +169,7 @@ export function buildDataset(matrix, { sheetTitle = '' } = {}) {
 
   // Status: a Status column when the sheet has one; otherwise it is read from the call's REQUIREMENTS text (mis-rules.js).
   // Brand: a Brand column when there is one; otherwise from the brand the text names (CRI, CFF, Cholan).
-  const statusFrom = cols.status != null ? 'column' : 'requirements'
+  const statusFrom = cols.status != null || cols.manager != null ? 'column' : 'requirements'
   const brandFrom = cols.brand != null ? 'column' : 'text'
   const unmappedStatuses = new Map()
   const rules = new Map() // rule label → { status, count, examples }
@@ -180,8 +182,10 @@ export function buildDataset(matrix, { sheetTitle = '' } = {}) {
     const remark = cell(row, 'remark')
     let status
     if (statusFrom === 'column') {
-      status = normStatus(cell(row, 'status'))
-      if (!status.known) unmappedStatuses.set(cell(row, 'status'), (unmappedStatuses.get(cell(row, 'status')) || 0) + 1)
+      // the lead manager's remark ("Positively closed", "Process") says how the lead ended; the STATUS drop-down is the fallback
+      const said = cell(row, 'manager') || cell(row, 'status')
+      status = normStatus(said)
+      if (!status.known) unmappedStatuses.set(said, (unmappedStatuses.get(said) || 0) + 1)
     } else {
       const call = classifyCall(remark, stage)
       status = { status: call.status }
@@ -204,8 +208,8 @@ export function buildDataset(matrix, { sheetTitle = '' } = {}) {
       platform: cell(row, 'platform') ? clean(cell(row, 'platform')) : 'Not specified',
       stage,
       status: status.status,
-      outcome: callOutcome(remark),
-      statusText: statusFrom === 'column' ? cell(row, 'status') : '',
+      outcome: kind === 'calls' ? callOutcome(remark) : '',
+      statusText: statusFrom === 'column' ? cell(row, 'manager') || cell(row, 'status') : '',
       telecaller: cell(row, 'telecaller') || 'Not assigned',
       device: cell(row, 'device'),
       name: noName.test(name) ? '' : name,
@@ -222,6 +226,7 @@ export function buildDataset(matrix, { sheetTitle = '' } = {}) {
 
   const mapping = Object.fromEntries(Object.entries(cols).map(([field, i]) => [field, headers[i]]))
   return {
+    kind, // 'calls' or 'leads'
     sheetTitle,
     headers: headers.filter(Boolean),
     mapping, // field → the sheet's column name that was used for it
@@ -306,20 +311,41 @@ async function readSheet() {
 
   const token = await sheetsToken()
   const meta = await google(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID()}?fields=sheets.properties(sheetId,title)`, token)
-  const tab = (meta.sheets || []).map((s) => s.properties).find((p) => String(p.sheetId) === SHEET_GID()) || meta.sheets?.[0]?.properties
-  if (!tab) throw httpError('No tab', { status: 502, publicMessage: 'The MIS sheet has no tabs to read.' })
-  const data = await google(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID()}/values/${encodeURIComponent(`'${tab.title.replace(/'/g, "''")}'`)}?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE`,
-    token)
-  return { title: tab.title, values: data.values || [] }
+  const tabs = (meta.sheets || []).map((x) => x.properties)
+  const read = async (tab) => {
+    const data = await google(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID()}/values/${encodeURIComponent(`'${tab.title.replace(/'/g, "''")}'`)}?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE`,
+      token)
+    return { title: tab.title, values: data.values || [] }
+  }
+  const calls = tabs.find((p) => String(p.sheetId) === SHEET_GID()) || tabs[0]
+  if (!calls) throw httpError('No tab', { status: 502, publicMessage: 'The MIS sheet has no tabs to read.' })
+  const out = await read(calls)
+  // The LEADS tab is optional: if it cannot be read the calls are still shown.
+  const leadsTab = tabs.find((p) => String(p.sheetId) === LEADS_GID()) || tabs.find((p) => /^leads$/i.test(p.title))
+  if (leadsTab && leadsTab.sheetId !== calls.sheetId) {
+    try {
+      out.leads = await read(leadsTab)
+    } catch (err) {
+      out.leadsError = err.publicMessage || err.message
+    }
+  }
+  return out
 }
 
 /** The dashboard's data. `refresh` asks for a fresh read (at most once every 20 seconds per server instance). */
 export async function misData({ refresh = false } = {}) {
   const age = cache ? Date.now() - cache.at : Infinity
   if (cache && (age < CACHE_MS ? !refresh || age < MIN_REFRESH_MS : false)) return cache.value
-  const { title, values } = await readSheet()
-  const value = { fetchedAt: new Date().toISOString(), ...buildDataset(values, { sheetTitle: title }) }
+  const { title, values, leads, leadsError } = await readSheet()
+  const value = { fetchedAt: new Date().toISOString(), ...buildDataset(values, { sheetTitle: title }), leads: null, leadsError: leadsError || '' }
+  if (leads) {
+    try {
+      value.leads = buildDataset(leads.values, { sheetTitle: leads.title, kind: 'leads' })
+    } catch (err) {
+      value.leadsError = err.publicMessage || err.message
+    }
+  }
   cache = { at: Date.now(), value }
   return value
 }

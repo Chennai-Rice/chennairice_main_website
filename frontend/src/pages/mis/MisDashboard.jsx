@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { signOutStaff, staffJson } from '../../services/staffAuth.js'
 import { STATUSES, STATUS_KEY, applyFilters, countBy, downloadCsv, groupTable, monthLabel, pct, summarise, topN } from './aggregate.js'
 import './mis.css'
@@ -37,6 +37,13 @@ const Icon = ({ name }) => (
 )
 
 const NAV = [['overview', 'Overview'], ['brands', 'Brands'], ['telecallers', 'Telecallers'], ['reports', 'Reports']]
+// The sheet has two tabs: CALLS (every call a telecaller made) and LEADS (the enquiries that became leads). The dashboard shows one at a time.
+const NOUNS = {
+  calls: { one: 'call', many: 'calls', One: 'Call', Many: 'Calls' },
+  leads: { one: 'lead', many: 'leads', One: 'Lead', Many: 'Leads' },
+}
+const NounContext = createContext(NOUNS.calls)
+
 const LOOKS = [['pro', 'Pro'], ['soft', 'Soft'], ['dark', 'Dark']]
 const REFRESH_MS = 5 * 60_000
 
@@ -66,6 +73,7 @@ export default function MisDashboard({ standalone = false }) {
   const [view, setView] = useState('overview')
   const [filters, setFilters] = useState({ brand: '', platform: '', month: '', from: '', to: '' })
   const [look, setLook] = useState(loadLook)
+  const [which, setWhich] = useState('calls')
 
   const load = useCallback(async (refresh = false) => {
     setLoading(true)
@@ -94,45 +102,61 @@ export default function MisDashboard({ standalone = false }) {
     }
   }
 
-  const rows = data?.rows || []
+  const ds = (which === 'leads' && data?.leads) || data
+  const N = ds?.kind === 'leads' ? NOUNS.leads : NOUNS.calls
+  const rows = ds?.rows || []
   const options = useMemo(() => {
     const uniq = (key) => [...new Set(rows.map((r) => r[key]))].sort((a, b) => String(a).localeCompare(String(b)))
     const months = [...new Set(rows.map((r) => r.month).filter(Boolean))].sort().reverse()
-    const named = uniq('brand').filter((b) => b !== 'Not specified' && !(data?.brands || []).includes(b))
-    const brands = [...(data?.brands || []), ...named, ...(rows.some((r) => r.brand === 'Not specified') ? ['Not specified'] : [])]
+    const named = uniq('brand').filter((b) => b !== 'Not specified' && !(ds?.brands || []).includes(b))
+    const brands = [...(ds?.brands || []), ...named, ...(rows.some((r) => r.brand === 'Not specified') ? ['Not specified'] : [])]
     return { brands, platforms: uniq('platform'), stages: uniq('stage'), months, hasNoDate: rows.some((r) => !r.month) }
-  }, [rows, data])
+  }, [rows, ds])
 
   const cols = useMemo(() => ({
-    phone: Boolean(data?.mapping?.phone),
-    city: Boolean(data?.mapping?.city),
-    device: Boolean(data?.mapping?.device),
-    remark: data?.mapping?.remark || 'Remarks',
-  }), [data])
+    phone: Boolean(ds?.mapping?.phone),
+    city: Boolean(ds?.mapping?.city),
+    device: Boolean(ds?.mapping?.device),
+    telecaller: Boolean(ds?.mapping?.telecaller),
+    remark: ds?.mapping?.remark || 'Remarks',
+  }), [ds])
   const filtered = useMemo(() => applyFilters(rows, filters), [rows, filters])
   const sum = useMemo(() => summarise(filtered), [filtered])
   // a month and a date range are two ways of saying the same thing: picking one clears the other
   const set = (patch) => setFilters((f) => ({ ...f, ...(patch.month ? { from: '', to: '' } : {}), ...(patch.from || patch.to ? { month: '' } : {}), ...patch }))
   const filtering = Boolean(filters.brand || filters.platform || filters.month || filters.from || filters.to)
+  const chooseData = (id) => {
+    setWhich(id)
+    setFilters((f) => ({ ...f, brand: '', platform: '' }))
+    if (view === 'telecallers') setView('overview')
+  }
   const clearFilters = () => setFilters({ brand: '', platform: '', month: '', from: '', to: '' })
 
   const title = NAV.find(([id]) => id === view)?.[1] || 'Overview'
   const subtitle = data
-    ? `${num(filtered.length)} call${filtered.length === 1 ? '' : 's'}${filtering ? ` of ${num(rows.length)}` : ''}${data.sheetTitle ? ` · ${data.sheetTitle}` : ''}`
+    ? `${num(filtered.length)} ${N.one}${filtered.length === 1 ? '' : 's'}${filtering ? ` of ${num(rows.length)}` : ''}${ds.sheetTitle ? ` · ${ds.sheetTitle}` : ''}`
     : ''
 
   return (
+    <NounContext.Provider value={N}>
     <div className={`mis mis-${look}${standalone ? ' is-standalone' : ''}`}>
       <aside className="mis-side">
         <div className="mis-brand">
           <img src="/assets/logo-full-v2.png" alt="" width="40" height="40" />
           <div>
             <strong>Chennai Rice</strong>
-            <span>Calls Dashboard</span>
+            <span>{N.Many} Dashboard</span>
           </div>
         </div>
+        {data?.leads && (
+          <div className="mis-theme mis-which" role="group" aria-label="Sheet tab">
+            {[['calls', 'Calls'], ['leads', 'Leads']].map(([id, label]) => (
+              <button key={id} type="button" className={which === id ? 'is-on' : ''} aria-pressed={which === id} onClick={() => chooseData(id)}>{label}</button>
+            ))}
+          </div>
+        )}
         <nav className="mis-nav" aria-label="Dashboard sections">
-          {NAV.map(([id, label]) => (
+          {NAV.filter(([id]) => id !== 'telecallers' || cols.telecaller).map(([id, label]) => (
             <button key={id} type="button" className={id === view ? 'is-active' : ''} aria-current={id === view ? 'page' : undefined}
               onClick={() => setView(id)}>
               <Icon name={id} /> {label}
@@ -168,7 +192,7 @@ export default function MisDashboard({ standalone = false }) {
               <DateRange filters={filters} set={set} />
               <Filters filters={filters} set={set} options={options} />
               {filtering && <button type="button" className="mis-link" onClick={clearFilters}>Clear filters</button>}
-              <button type="button" className="mis-btn mis-btn-primary" disabled={!filtered.length} onClick={() => exportCalls(filtered, filters)}>
+              <button type="button" className="mis-btn mis-btn-primary" disabled={!filtered.length} onClick={() => exportCalls(filtered, filters, N.many)}>
                 <Icon name="download" /> Export {num(filtered.length)}
               </button>
             </div>
@@ -183,14 +207,16 @@ export default function MisDashboard({ standalone = false }) {
         )}
         {!data && !error && <Skeleton />}
 
-        {data && <DataNotes data={data} />}
+        {data && ds && <DataNotes data={ds} />}
+        {data && !data.leads && data.leadsError && <p className="mis-warn">The LEADS tab could not be read: {data.leadsError}</p>}
 
-        {data && view === 'overview' && <Overview rows={filtered} sum={sum} set={set} brands={data.brands} hasDevice={cols.device} />}
-        {data && view === 'brands' && <GroupView rows={filtered} field="brand" label="Brand" always={data.brands} />}
-        {data && view === 'telecallers' && <GroupView rows={filtered} field="telecaller" label="Telecaller" />}
-        {data && view === 'reports' && <Reports filtered={filtered} />}
+        {data && view === 'overview' && <Overview rows={filtered} sum={sum} set={set} brands={ds.brands} hasDevice={cols.device} />}
+        {data && view === 'brands' && <GroupView rows={filtered} field="brand" label="Brand" always={ds.brands} />}
+        {data && view === 'telecallers' && cols.telecaller && <GroupView rows={filtered} field="telecaller" label="Telecaller" />}
+        {data && view === 'reports' && <Reports filtered={filtered} kind={ds.kind} hasTelecaller={cols.telecaller} N={N} />}
       </main>
     </div>
+    </NounContext.Provider>
   )
 }
 
@@ -249,9 +275,10 @@ function Skeleton() {
 
 /** What the server found in the sheet: how status and brand are decided, columns it could not match, and every column the sheet has. */
 function DataNotes({ data }) {
+  const N = useContext(NounContext)
   const fromText = data.statusFrom === 'requirements'
   const missing = ['status', 'platform', 'telecaller']
-    .filter((f) => data.missing.includes(f) && !(f === 'status' && fromText))
+    .filter((f) => data.missing.includes(f) && !(f === 'status' && fromText) && !(f === 'telecaller' && data.kind === 'leads'))
   const label = { status: 'Status', platform: 'Platform', telecaller: 'Telecaller' }
   const warn = missing.length > 0 || data.unmappedStatuses.length > 0
   const [open, setOpen] = useState(warn)
@@ -269,7 +296,7 @@ function DataNotes({ data }) {
       <button type="button" className="mis-link" onClick={() => setOpen(!open)}>{open ? 'Hide details' : 'About this data'}</button>
       {open && (
         <div className="mis-about">
-          <p><strong>{data.sheetTitle || 'MIS sheet'}</strong> · {num(data.rows.length)} calls read · dates read for {num(data.datesRead)}</p>
+          <p><strong>{data.sheetTitle || 'MIS sheet'}</strong> · {num(data.rows.length)} {N.many} read · dates read for {num(data.datesRead)}</p>
           {fromText && <p>The sheet has no Status column, so each call’s status is worked out from the words in <strong>{data.mapping.remark || 'the remarks'}</strong> (and the stage). The rules are listed below.</p>}
           {data.brandFrom === 'text' && <p>The sheet has no Brand column, so a call’s brand is read from what is written in it (CRI, CFF, Cholan). Add a <strong>BRAND</strong> column to the sheet for exact brand numbers.</p>}
           <p className="mis-about-h">Columns in your sheet</p>
@@ -325,8 +352,9 @@ function Metric({ tone, icon, label, value, note, onClick }) {
 
 /** A bar list. With `onPick`, each row is a button that filters by that value. */
 function Bars({ items, total, showPct = false, onPick }) {
+  const N = useContext(NounContext)
   const max = Math.max(1, ...items.map((i) => i.count))
-  if (!items.length) return <p className="mis-muted">No calls for this selection.</p>
+  if (!items.length) return <p className="mis-muted">No {N.many} for this selection.</p>
   return (
     <ul className="mis-bars">
       {items.map((it, n) => {
@@ -352,11 +380,12 @@ function Bars({ items, total, showPct = false, onPick }) {
 }
 
 function Donut({ parts, total }) {
+  const N = useContext(NounContext)
   const R = 64
   const C = 2 * Math.PI * R
   let used = 0
   return (
-    <svg viewBox="0 0 180 180" className="mis-donut" role="img" aria-label="Call status">
+    <svg viewBox="0 0 180 180" className="mis-donut" role="img" aria-label={`${N.One} status`}>
       <circle cx="90" cy="90" r={R} fill="none" className="mis-donut-bg" strokeWidth="24" />
       {parts.filter((p) => p.count > 0).map((p) => {
         const len = (p.count / total) * C
@@ -368,7 +397,7 @@ function Donut({ parts, total }) {
         return el
       })}
       <text x="90" y="88" textAnchor="middle" className="mis-donut-n">{num(total)}</text>
-      <text x="90" y="108" textAnchor="middle" className="mis-donut-l">calls</text>
+      <text x="90" y="108" textAnchor="middle" className="mis-donut-l">{N.many}</text>
     </svg>
   )
 }
@@ -378,30 +407,31 @@ const Chip = ({ status }) => <span className={`mis-chip st-chip-${STATUS_KEY[sta
 /* ---------------------------------------------------------------- screens */
 
 function Overview({ rows, sum, set, brands = [], hasDevice = false }) {
+  const N = useContext(NounContext)
   const status = STATUSES.map((s) => ({ label: s, count: rows.filter((r) => r.status === s).length }))
-  const share = (n) => (sum.total ? `${pct(n, sum.total)}% of calls` : '')
+  const share = (n) => (sum.total ? `${pct(n, sum.total)}% of ${N.many}` : '')
   return (
     <>
       <div className="mis-metrics">
-        <Metric tone="slate" icon="total" label="Total calls" value={num(sum.total)} note="In the selection" />
+        <Metric tone="slate" icon="total" label={`Total ${N.many}`} value={num(sum.total)} note="In the selection" />
         <Metric tone="green" icon="positive" label="Positively closed" value={num(sum.positive)} note={share(sum.positive)} />
         <Metric tone="red" icon="negative" label="Negatively closed" value={num(sum.negative)} note={share(sum.negative)} />
         <Metric tone="blue" icon="process" label="In process" value={num(sum.inProcess)} note={share(sum.inProcess)} />
         <Metric tone="amber" icon="open" label="Open / pending" value={num(sum.open)} note={share(sum.open)} />
-        <Metric tone="maroon" icon="conversion" label="Conversion" value={`${sum.conversion.toFixed(1)}%`} note="Positively closed ÷ all calls" />
+        <Metric tone="maroon" icon="conversion" label="Conversion" value={`${sum.conversion.toFixed(1)}%`} note={`Positively closed ÷ all ${N.many}`} />
         <Metric tone="teal" icon="enquiries" label="Enquiries" value={num(sum.enquiries)} note={share(sum.enquiries)} />
         <Metric tone="purple" icon="complaints" label="Complaints" value={num(sum.complaints)} note={share(sum.complaints)} />
       </div>
 
       <div className="mis-two">
         <section className="mis-panel">
-          <h2>Calls by stage</h2>
+          <h2>{N.Many} by stage</h2>
           <Bars items={topN(countBy(rows, 'stage'), 7)} total={sum.total} showPct />
         </section>
         <section className="mis-panel">
-          <h2>Call status</h2>
+          <h2>{N.One} status</h2>
           <div className="mis-status">
-            {sum.total > 0 ? <Donut parts={status} total={sum.total} /> : <p className="mis-muted">No calls for this selection.</p>}
+            {sum.total > 0 ? <Donut parts={status} total={sum.total} /> : <p className="mis-muted">No {N.many} for this selection.</p>}
             <ul className="mis-legend">
               {status.map((s) => (
                 <li key={s.label}>
@@ -417,12 +447,12 @@ function Overview({ rows, sum, set, brands = [], hasDevice = false }) {
 
       <div className="mis-two mis-two-even">
         <section className="mis-panel">
-          <h2>Calls by brand</h2>
+          <h2>{N.Many} by brand</h2>
           <p className="mis-hint">Click a row to filter the whole dashboard.</p>
           <Bars items={topN(withBrands(countBy(rows, 'brand'), brands), 8)} total={sum.total} onPick={(it) => set({ brand: it.label === 'Not specified' ? '' : it.label })} />
         </section>
         <section className="mis-panel">
-          <h2>Calls by month</h2>
+          <h2>{N.Many} by month</h2>
           <p className="mis-hint">Click a month to filter the whole dashboard.</p>
           <Bars items={countBy(rows, 'month').map((m) => ({ ...m, value: m.label, label: monthLabel(m.label) }))} total={sum.total}
             onPick={(it) => set({ month: it.value || 'none' })} />
@@ -431,13 +461,13 @@ function Overview({ rows, sum, set, brands = [], hasDevice = false }) {
 
       <div className={`mis-two mis-two-even${hasDevice ? '' : ' mis-one'}`}>
         <section className="mis-panel">
-          <h2>Calls by platform</h2>
+          <h2>{N.Many} by platform</h2>
           <p className="mis-hint">Click a row to filter the whole dashboard.</p>
           <Bars items={topN(countBy(rows, 'platform'), 10)} total={sum.total} onPick={(it) => set({ platform: it.label === 'Not specified' ? '' : it.label })} />
         </section>
         {hasDevice && (
           <section className="mis-panel">
-            <h2>Calls by device</h2>
+            <h2>{N.Many} by device</h2>
             <p className="mis-hint">How the call was made.</p>
             <Bars items={countBy(rows.map((r) => ({ ...r, device: r.device || 'Not specified' })), 'device')} total={sum.total} />
           </section>
@@ -456,6 +486,7 @@ function withBrands(items, brands) {
 const COLUMNS = [['label', null], ['total', 'Calls'], ['positive', 'Positive'], ['negative', 'Negative'], ['inProcess', 'In process'], ['open', 'Open'], ['complaints', 'Complaints'], ['conversion', 'Conversion']]
 
 function GroupView({ rows, field, label, always = [] }) {
+  const N = useContext(NounContext)
   const [sort, setSort] = useState({ key: 'total', dir: 'desc' })
   const table = useMemo(() => {
     const list = groupTable(rows, field)
@@ -473,7 +504,7 @@ function GroupView({ rows, field, label, always = [] }) {
             <tr>
               {COLUMNS.map(([key, text]) => (
                 <th key={key} className={key === 'label' ? '' : 'r'} aria-sort={sort.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
-                  <button type="button" onClick={() => sortBy(key)}>{text || label} <span aria-hidden="true">{arrow(key)}</span></button>
+                  <button type="button" onClick={() => sortBy(key)}>{key === 'total' ? N.Many : text || label} <span aria-hidden="true">{arrow(key)}</span></button>
                 </th>
               ))}
               <th className="mis-spread">Split</th>
@@ -494,7 +525,7 @@ function GroupView({ rows, field, label, always = [] }) {
                 </td>
               </tr>
             ))}
-            {!table.length && <tr><td colSpan="9" className="mis-muted">No calls for this selection.</td></tr>}
+            {!table.length && <tr><td colSpan="9" className="mis-muted">No {N.many} for this selection.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -509,9 +540,9 @@ const LEAD_COLUMNS = ['#', 'Date', 'Customer', 'Phone', 'City', 'Brand', 'Platfo
 const leadLine = (r) => [r.n, r.date, r.name, r.phone, r.city, r.brand, r.platform, r.device, r.product, r.stage, r.status, r.statusText, r.telecaller, r.remark]
 
 /** Downloads exactly the calls in view: the chosen dates, brand and platform. The file name carries the date range. */
-function exportCalls(rows, { from, to, month }) {
+function exportCalls(rows, { from, to, month }, word = 'calls') {
   const range = from || to ? ((from || to) === (to || from) ? from || to : `${from}_to_${to}`) : month || 'all'
-  downloadCsv(`mis-calls-${range}.csv`, LEAD_COLUMNS, rows.map(leadLine))
+  downloadCsv(`mis-${word}-${range}.csv`, LEAD_COLUMNS, rows.map(leadLine))
 }
 
 const REPORT_BY = [['telecaller', 'Telecaller'], ['brand', 'Brand'], ['platform', 'Platform']]
@@ -525,16 +556,21 @@ const niceDay = (iso) => {
 const periodOf = (r, type) => (type === 'daily' ? r.date : type === 'monthly' ? r.month : 'all')
 const periodLabel = (key, type) => (type === 'daily' ? niceDay(key) : type === 'monthly' ? monthLabel(key) : 'All time')
 
-/** One line of the report: how many calls got through, were not reached, paused, invalid, and what they were about. */
+/** One line of the report: how many got through, were not reached, paused, invalid, how they ended, and what they were about. */
 function tally(label, list, devices) {
   const count = (fn) => list.filter(fn).length
   const calls = list.length
   const connected = count((r) => r.outcome === 'connected')
   const rnr = count((r) => r.outcome === 'rnr')
+  const positive = count((r) => r.status === 'Positively closed')
   return {
-    label, calls, connected, rnr,
+    label, calls, connected, rnr, positive,
     connectPct: calls ? (connected / calls) * 100 : 0,
     rnrPct: calls ? (rnr / calls) * 100 : 0,
+    conversion: calls ? (positive / calls) * 100 : 0,
+    negative: count((r) => r.status === 'Negatively closed'),
+    inProcess: count((r) => r.status === 'In Process'),
+    open: count((r) => r.status === 'Open / Pending'),
     paused: count((r) => r.outcome === 'paused'),
     invalid: count((r) => r.outcome === 'invalid'),
     enquiries: count((r) => r.stage === 'Enquiry'),
@@ -552,29 +588,47 @@ function reportLines(rows, key, devices) {
   return [...groups].map(([label, list]) => tally(label, list, devices)).sort((a, b) => b.calls - a.calls || String(a.label).localeCompare(String(b.label)))
 }
 
-function Reports({ filtered }) {
-  const [by, setBy] = useState('telecaller')
+/** The report's columns: [heading, value for the file, value on screen]. Calls get connect / RNR figures, leads get how they closed. */
+function reportColumns(isCalls, devices, N) {
+  const n = (f) => (l) => num(l[f])
+  const p = (f) => (l) => `${l[f].toFixed(1)}%`
+  const cols = isCalls
+    ? [[N.Many, 'calls', n('calls')], ['Connected', 'connected', n('connected')], ['Connect %', 'connectPct', p('connectPct')], ['RNR', 'rnr', n('rnr')], ['RNR %', 'rnrPct', p('rnrPct')],
+      ['Paused', 'paused', n('paused')], ['Invalid', 'invalid', n('invalid')], ['Enquiries', 'enquiries', n('enquiries')], ['Complaints', 'complaints', n('complaints')]]
+    : [[N.Many, 'calls', n('calls')], ['Positively closed', 'positive', n('positive')], ['Negatively closed', 'negative', n('negative')], ['In process', 'inProcess', n('inProcess')],
+      ['Open', 'open', n('open')], ['Conversion %', 'conversion', p('conversion')], ['Enquiries', 'enquiries', n('enquiries')], ['Complaints', 'complaints', n('complaints')]]
+  return [...cols.map(([h, key, show]) => ({ h, show, file: (l) => (/Pct$|conversion/.test(key) ? l[key].toFixed(1) : l[key]) })),
+    ...devices.map((d) => ({ h: d, show: (l) => num(l.devices[d]), file: (l) => l.devices[d] }))]
+}
+
+function Reports({ filtered, kind = 'calls', hasTelecaller = true, N }) {
+  const isCalls = kind !== 'leads'
+  const bys = REPORT_BY.filter(([k]) => k !== 'telecaller' || hasTelecaller)
+  const [by0, setBy] = useState('telecaller')
+  const by = bys.some(([k]) => k === by0) ? by0 : bys[0][0]
   const [type, setType] = useState('daily')
   const [pick, setPick] = useState('')
-  const byLabel = REPORT_BY.find(([k]) => k === by)[1]
+  const byLabel = bys.find(([k]) => k === by)[1]
 
-  const devices = useMemo(() => [...new Set(filtered.map((r) => r.device).filter(Boolean))].sort(), [filtered])
+  const devices = useMemo(() => (isCalls ? [...new Set(filtered.map((r) => r.device).filter(Boolean))].sort() : []), [filtered, isCalls])
   const periods = useMemo(() => [...new Set(filtered.map((r) => periodOf(r, type)).filter(Boolean))].sort().reverse(), [filtered, type])
   const period = type === 'all' ? 'all' : periods.includes(pick) ? pick : periods[0] || ''
   const inPeriod = useMemo(() => (type === 'all' ? filtered : filtered.filter((r) => periodOf(r, type) === period)), [filtered, type, period])
   const lines = useMemo(() => reportLines(inPeriod, by, devices), [inPeriod, by, devices])
   const team = useMemo(() => tally('Team total', inPeriod, devices), [inPeriod, devices])
+  const columns = reportColumns(isCalls, devices, N)
 
   const best = (fn, order) => lines.filter(fn).sort(order)[0]
   const top = best(() => true, (a, b) => b.calls - a.calls)
-  const bestConnect = best((l) => l.calls >= MIN_CALLS, (a, b) => b.connectPct - a.connectPct)
+  const bestConnect = best((l) => l.calls >= MIN_CALLS, (a, b) => (isCalls ? b.connectPct - a.connectPct : b.conversion - a.conversion))
   const worstRnr = best((l) => l.calls >= MIN_CALLS && l.rnr > 0, (a, b) => b.rnrPct - a.rnrPct)
   const topEnq = best((l) => l.enquiries > 0, (a, b) => b.enquiries - a.enquiries)
 
-  const header = (first) => [first, 'Calls', 'Connected', 'Connect %', 'RNR', 'RNR %', 'Paused', 'Invalid', 'Enquiries', 'Complaints', ...devices]
-  const line = (l) => [l.label, l.calls, l.connected, l.connectPct.toFixed(1), l.rnr, l.rnrPct.toFixed(1), l.paused, l.invalid, l.enquiries, l.complaints, ...devices.map((d) => l.devices[d])]
-  const title = `${byLabel} – ${PERIODS.find(([k]) => k === type)[1]} Report${type === 'all' ? '' : ` – ${periodLabel(period, type)}`}`
-  const fileName = (extra) => `mis-${by}-${type}${extra}.csv`
+  const header = (first) => [first, ...columns.map((c) => c.h)]
+  const line = (l) => [l.label, ...columns.map((c) => c.file(l))]
+  const typeName = PERIODS.find(([k]) => k === type)[1]
+  const title = `${byLabel} – ${typeName} Report${type === 'all' ? '' : ` – ${periodLabel(period, type)}`}`
+  const fileName = (extra) => `mis-${isCalls ? '' : 'leads-'}${by}-${type}${extra}.csv`
 
   const download = () => downloadCsv(fileName(type === 'all' ? '' : `-${period}`), header(byLabel), [...lines.map(line), line(team)])
   const downloadAll = () => {
@@ -591,7 +645,7 @@ function Reports({ filtered }) {
     <>
       <div className="mis-reportbar">
         <select aria-label="Report" value={by} onChange={(e) => setBy(e.target.value)}>
-          {REPORT_BY.map(([k, t]) => <option key={k} value={k}>{t} – {PERIODS.find(([p]) => p === type)[1]}</option>)}
+          {bys.map(([k, t]) => <option key={k} value={k}>{t} – {typeName}</option>)}
         </select>
         <select aria-label="Period" value={type} onChange={(e) => { setType(e.target.value); setPick('') }}>
           {PERIODS.map(([k, t]) => <option key={k} value={k}>{t}</option>)}
@@ -607,36 +661,30 @@ function Reports({ filtered }) {
         <button type="button" className="mis-btn" onClick={() => window.print()}>Print / PDF</button>
       </div>
 
-      <h2 className="mis-report-title">{title}</h2>
+      <h2 className="mis-report-title">{N.Many} · {title}</h2>
       <section className="mis-panel">
         <div className="mis-scroll">
           <table className="mis-table mis-reporttable">
             <thead>
               <tr>
                 <th>{byLabel}</th>
-                {['Calls', 'Connected', 'Connect %', 'RNR', 'RNR %', 'Paused', 'Invalid', 'Enquiries', 'Complaints', ...devices].map((h) => <th key={h} className="r">{h}</th>)}
+                {columns.map((c) => <th key={c.h} className="r">{c.h}</th>)}
               </tr>
             </thead>
             <tbody>
               {lines.map((l) => (
                 <tr key={l.label}>
                   <td><strong>{l.label}</strong></td>
-                  <td className="r">{num(l.calls)}</td><td className="r">{num(l.connected)}</td><td className="r">{l.connectPct.toFixed(1)}%</td>
-                  <td className="r">{num(l.rnr)}</td><td className="r">{l.rnrPct.toFixed(1)}%</td>
-                  <td className="r">{num(l.paused)}</td><td className="r">{num(l.invalid)}</td><td className="r">{num(l.enquiries)}</td><td className="r">{num(l.complaints)}</td>
-                  {devices.map((d) => <td key={d} className="r">{num(l.devices[d])}</td>)}
+                  {columns.map((c) => <td key={c.h} className="r">{c.show(l)}</td>)}
                 </tr>
               ))}
               {lines.length > 0 && (
                 <tr className="mis-total">
                   <td>Team total</td>
-                  <td className="r">{num(team.calls)}</td><td className="r">{num(team.connected)}</td><td className="r">{team.connectPct.toFixed(1)}%</td>
-                  <td className="r">{num(team.rnr)}</td><td className="r">{team.rnrPct.toFixed(1)}%</td>
-                  <td className="r">{num(team.paused)}</td><td className="r">{num(team.invalid)}</td><td className="r">{num(team.enquiries)}</td><td className="r">{num(team.complaints)}</td>
-                  {devices.map((d) => <td key={d} className="r">{num(team.devices[d])}</td>)}
+                  {columns.map((c) => <td key={c.h} className="r">{c.show(team)}</td>)}
                 </tr>
               )}
-              {!lines.length && <tr><td colSpan={10 + devices.length} className="mis-muted">No calls for this selection.</td></tr>}
+              {!lines.length && <tr><td colSpan={1 + columns.length} className="mis-muted">No {N.many} for this selection.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -646,11 +694,24 @@ function Reports({ filtered }) {
         <section className="mis-panel mis-summary">
           <h2>Summary</h2>
           <dl>
-            <div><dt>Highest calls</dt><dd>{top ? `${top.label} – ${num(top.calls)} calls` : '—'}</dd></div>
-            <div><dt>Best connect rate ({MIN_CALLS}+ calls)</dt><dd>{bestConnect ? `${bestConnect.label} – ${bestConnect.connectPct.toFixed(1)}%` : '—'}</dd></div>
-            <div><dt>Highest RNR % ({MIN_CALLS}+ calls)</dt><dd>{worstRnr ? `${worstRnr.label} – ${num(worstRnr.rnr)} RNR (${worstRnr.rnrPct.toFixed(1)}%)` : '—'}</dd></div>
+            <div><dt>Highest {N.many}</dt><dd>{top ? `${top.label} – ${num(top.calls)} ${N.many}` : '—'}</dd></div>
+            {isCalls ? (
+              <>
+                <div><dt>Best connect rate ({MIN_CALLS}+ calls)</dt><dd>{bestConnect ? `${bestConnect.label} – ${bestConnect.connectPct.toFixed(1)}%` : '—'}</dd></div>
+                <div><dt>Highest RNR % ({MIN_CALLS}+ calls)</dt><dd>{worstRnr ? `${worstRnr.label} – ${num(worstRnr.rnr)} RNR (${worstRnr.rnrPct.toFixed(1)}%)` : '—'}</dd></div>
+              </>
+            ) : (
+              <div><dt>Best conversion ({MIN_CALLS}+ leads)</dt><dd>{bestConnect ? `${bestConnect.label} – ${bestConnect.conversion.toFixed(1)}%` : '—'}</dd></div>
+            )}
             <div><dt>Most enquiries</dt><dd>{topEnq ? `${topEnq.label} – ${num(topEnq.enquiries)}` : '—'}</dd></div>
-            <div><dt>Team</dt><dd>{num(team.calls)} calls · {team.connectPct.toFixed(1)}% connected · {team.rnrPct.toFixed(1)}% RNR · {num(team.paused)} paused · {num(team.invalid)} invalid</dd></div>
+            <div>
+              <dt>Team</dt>
+              <dd>
+                {isCalls
+                  ? `${num(team.calls)} calls · ${team.connectPct.toFixed(1)}% connected · ${team.rnrPct.toFixed(1)}% RNR · ${num(team.paused)} paused · ${num(team.invalid)} invalid`
+                  : `${num(team.calls)} leads · ${num(team.positive)} positively closed · ${team.conversion.toFixed(1)}% conversion`}
+              </dd>
+            </div>
           </dl>
         </section>
       )}
