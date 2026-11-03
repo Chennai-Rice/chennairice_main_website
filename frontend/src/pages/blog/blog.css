@@ -310,6 +310,13 @@
   text-align: center;
 }
 
+/* The line right under a picture (a winner's name) is centred and smaller. Nothing else about it changes. */
+.blog-prose .md-figure + p.md-p,
+.blog-prose p.md-p:has(.md-img) + p.md-p {
+  text-align: center;
+  font-size: 14px;
+}
+
 @media (max-width: 600px) {
   .blog-grid { grid-template-columns: 1fr; gap: 22px; }
   .blog-prose { font-size: 18px; }
