@@ -1086,6 +1086,9 @@ test('PIN code regions and the delivered-price sheets', async () => {
   }
   // The MRP shown is the bag's MRP + 60% of the Tamil Nadu delivery cost for its size.
   assert.deepEqual([[5, 619], [10, 1129], [26, 2699]].map(([kg, mrp]) => packPricing(kg, 100, mrp).mrp), [718, 1327, 3111])
+  // Kitchidi Ponni 5 kg stays at the old ₹555 (₹444 + ₹111) with its old MRP.
+  const kitchidi5 = packPricing(5, 444, 599, undefined, { oldMrp: true })
+  assert.deepEqual([kitchidi5.website, kitchidi5.mrp, kitchidi5.delivery.TN], [555, 599, 54])
 })
 
 test('sales by source: ad links and referrers become a source, orders and visits roll up by campaign and ad', async () => {

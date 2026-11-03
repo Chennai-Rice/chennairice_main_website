@@ -54,9 +54,9 @@ export const DELIVERY = {
 }
 
 // slug → { packKg: [list price, MRP before the delivery share, absorbed (only where the sheet differs
-// from the size's usual amount)] }. Item and variety as on the sheets.
+// from the size's usual amount), { oldMrp: true } to show the bag's MRP without the delivery share] }. Item and variety as on the sheets.
 export const PRICE_LIST = {
-  'kitchidi-ponni-rice': { 5: [515, 599], 26: [2470, 2699] },                  // Chennai Rice Premium Kitchidi Ponni Rice (pink bag)
+  'kitchidi-ponni-rice': { 5: [444, 599, undefined, { oldMrp: true }], 26: [2470, 2699] }, // Chennai Rice Premium Kitchidi Ponni Rice (pink bag); 5 kg kept at the old ₹555 and MRP
   'special-rajabhogam': { 5: [515, 599], 10: [1020, 1129], 26: [2470, 2699] }, // Chennai Rice-Red-Raj.Ponni · Vada Kolam Kitchidi Ponni (red bag)
   'vintage': { 5: [515, 619], 10: [1020, 1209], 26: [2470, 2899] },            // Vintage Spl Ponni · JSR Kolam
   'united-5kg': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },          // United · Shikaripura Amaan Ponni
@@ -71,10 +71,10 @@ export const PRICE_LIST = {
 }
 
 /** Website price, absorbed part and delivery charge per region (₹) for one pack. */
-export function packPricing(packKg, listPrice, mrp, absorbed) {
+export function packPricing(packKg, listPrice, mrp, absorbed, { oldMrp = false } = {}) {
   const size = DELIVERY[packKg]
   if (!size) throw new Error(`No delivery costs for ${packKg} kg packs.`)
-  mrp += Math.round(size.cost.TN * MRP_DELIVERY_SHARE)
+  if (!oldMrp) mrp += Math.round(size.cost.TN * MRP_DELIVERY_SHARE)
   const take = Math.max(0, Math.min(absorbed ?? size.absorbed, mrp - listPrice, MAX_PACK_PRICE - listPrice))
   const website = listPrice + take
   const delivery = Object.fromEntries(Object.entries(size.cost)
@@ -148,9 +148,9 @@ export async function applyPriceList({ pool, stock = 0, log = console.log } = {}
            (select id from product_variants where product_id = $1 and not (pack_kg = any($2)))`,
         [p.id, Object.keys(prices).map(Number)])
       const shown = []
-      for (const [kg, [listPrice, bagMrp, absorbedRupees]] of Object.entries(prices)) {
+      for (const [kg, [listPrice, bagMrp, absorbedRupees, opts]] of Object.entries(prices)) {
         const packKg = Number(kg)
-        const { website, mrp, delivery } = packPricing(packKg, listPrice, bagMrp, absorbedRupees)
+        const { website, mrp, delivery } = packPricing(packKg, listPrice, bagMrp, absorbedRupees, opts)
         const { rows: [v] } = await client.query(
           `insert into product_variants (product_id, sku, pack_kg, price_paise, mrp_paise, tax_rate_bp, reorder_level, is_active)
            values ($1, $2, $3, $4, $5, $6, 20, true)
