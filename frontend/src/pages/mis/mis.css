@@ -1,210 +1,279 @@
-/* The MIS dashboard (MisDashboard.jsx): soft pastel gradient, frosted cards, light and dark. Every rule is under .mis. */
+/* The MIS dashboard (MisDashboard.jsx). Clean, neutral and business-like: white cards on a light grey workspace, the
+   brand maroon as the one accent, one sans-serif face throughout, and light / dark. Every rule is under .mis. */
 .mis {
-  --mis-ink: #2d2640;
-  --mis-muted: #7a7292;
-  --mis-card: rgba(255, 255, 255, 0.72);
-  --mis-line: rgba(255, 255, 255, 0.85);
-  --mis-shadow: 0 8px 26px rgba(120, 90, 170, 0.14);
-  --mis-accent: #b86ad9;
-  --mis-side: linear-gradient(180deg, rgba(190, 200, 250, 0.75), rgba(214, 196, 245, 0.8));
-  --mis-nav-on: linear-gradient(90deg, #fcd9b0, #fbe6c6);
+  --bg: linear-gradient(135deg, #fbdbe8 0%, #ecd9f7 48%, #d8e5fb 100%);
+  --card: rgba(255, 255, 255, 0.78);
+  --line: rgba(255, 255, 255, 0.9);
+  --rule: rgba(150, 140, 190, 0.2);
+  --ink: #2d2640;
+  --muted: #7a7292;
+  --soft: rgba(150, 140, 190, 0.12);
+  --accent: #a96bd6;
+  --accent-2: #e58cb6;
+  --shadow: 0 8px 26px rgba(120, 90, 170, 0.13);
+  --side: linear-gradient(180deg, rgba(196, 204, 250, 0.85), rgba(217, 198, 246, 0.88));
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 20px;
   min-height: 640px;
-  padding: 14px;
+  padding: 16px;
   border-radius: 22px;
-  background: linear-gradient(135deg, #fbd9e6 0%, #ecd8f6 48%, #d6e4fb 100%);
-  color: var(--mis-ink);
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
 }
+.mis *, .mis *::before, .mis *::after { box-sizing: border-box; }
+.mis h1, .mis h2, .mis h3, .mis p, .mis button, .mis input, .mis select, .mis table { font-family: inherit; }
 .mis.is-standalone { min-height: 100vh; border-radius: 0; }
 
 .mis-dark {
-  --mis-ink: #ece8f8;
-  --mis-muted: #a79fc4;
-  --mis-card: rgba(44, 36, 72, 0.72);
-  --mis-line: rgba(255, 255, 255, 0.08);
-  --mis-shadow: 0 8px 26px rgba(0, 0, 0, 0.35);
-  --mis-side: linear-gradient(180deg, rgba(48, 44, 92, 0.9), rgba(60, 40, 90, 0.92));
-  --mis-nav-on: linear-gradient(90deg, #6d4a86, #5b4690);
-  background: linear-gradient(135deg, #261a3c 0%, #2c2147 48%, #1d2b52 100%);
+  --bg: linear-gradient(135deg, #261a3c 0%, #2c2147 48%, #1d2b52 100%);
+  --card: rgba(44, 36, 72, 0.78);
+  --line: rgba(255, 255, 255, 0.08);
+  --rule: rgba(255, 255, 255, 0.1);
+  --ink: #ece8f8;
+  --muted: #a79fc4;
+  --soft: rgba(255, 255, 255, 0.07);
+  --accent: #c9a0f0;
+  --accent-2: #f0a0c8;
+  --shadow: 0 8px 26px rgba(0, 0, 0, 0.35);
+  --side: linear-gradient(180deg, rgba(48, 44, 92, 0.92), rgba(60, 40, 90, 0.94));
 }
 
 /* ---------------------------------------------------------------- sidebar */
 .mis-side {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 16px 14px;
+  gap: 22px;
+  padding: 18px 14px;
   border-radius: 18px;
-  background: var(--mis-side);
-  box-shadow: var(--mis-shadow);
+  background: var(--side);
+  color: var(--ink);
+  box-shadow: var(--shadow);
 }
-.mis-brand { display: flex; align-items: center; gap: 10px; }
-.mis-brand img { border-radius: 50%; background: #fff; object-fit: contain; }
-.mis-brand strong { display: block; font-size: 14.5px; line-height: 1.2; }
-.mis-brand span { font-size: 12px; color: var(--mis-muted); }
+.mis-brand { display: flex; align-items: center; gap: 11px; padding: 2px 6px; }
+.mis-brand img { border-radius: 50%; background: #fff; object-fit: contain; flex: 0 0 auto; }
+.mis-brand strong { display: block; font-size: 15px; font-weight: 650; line-height: 1.2; }
+.mis-brand span { font-size: 12px; color: var(--muted); }
 .mis-nav { display: grid; gap: 4px; }
 .mis-nav button {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 11px;
   padding: 11px 14px;
   border: 0;
   border-radius: 12px;
   background: transparent;
   color: inherit;
-  font: inherit;
-  font-size: 14.5px;
+  font-size: 14px;
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
+  transition: background 0.15s ease;
 }
-.mis-nav button:hover { background: rgba(255, 255, 255, 0.35); }
-.mis-nav button.is-active { background: var(--mis-nav-on); font-weight: 600; box-shadow: 0 3px 10px rgba(180, 120, 60, 0.18); }
+.mis-nav button:hover { background: rgba(255, 255, 255, 0.4); }
+.mis-nav button.is-active { background: linear-gradient(90deg, #fcd9b0, #fbe6c6); font-weight: 600; box-shadow: 0 3px 10px rgba(180, 120, 60, 0.16); color: #3a2c1a; }
+.mis-dark .mis-nav button.is-active { background: linear-gradient(90deg, #6d4a86, #5b4690); color: #fff; }
 .mis-side-foot { margin-top: auto; display: grid; gap: 8px; }
-.mis-sync { display: flex; align-items: flex-start; gap: 7px; margin: 0; font-size: 12px; line-height: 1.4; color: var(--mis-muted); }
-.mis-dot { flex: 0 0 auto; width: 9px; height: 9px; margin-top: 4px; border-radius: 50%; background: #3fbf86; }
-.mis-dot.is-bad { background: #e0525a; }
-
-.mis-btn {
+.mis-sync { display: flex; align-items: flex-start; gap: 8px; margin: 0 4px 4px; font-size: 12px; line-height: 1.4; color: var(--muted); }
+.mis-dot { flex: 0 0 auto; width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; background: #3fbf86; box-shadow: 0 0 0 3px rgba(63, 191, 134, 0.2); }
+.mis-dot.is-bad { background: #e0525a; box-shadow: 0 0 0 3px rgba(224, 82, 90, 0.2); }
+.mis-side .mis-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding: 9px 14px;
-  border: 1px solid var(--mis-line);
+  border: 1px solid var(--line);
   border-radius: 12px;
-  background: var(--mis-card);
-  color: inherit;
-  font: inherit;
+  background: var(--card);
+  color: var(--ink);
   font-size: 13.5px;
+  font-weight: 500;
   cursor: pointer;
+  transition: background 0.15s ease;
 }
 .mis-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.95); color: #2d2640; }
 .mis-btn:disabled { opacity: 0.55; cursor: default; }
 .mis-btn-primary { background: linear-gradient(90deg, #c985e6, #e58cb6); border-color: transparent; color: #fff; font-weight: 600; }
 .mis-btn-primary:hover:not(:disabled) { background: linear-gradient(90deg, #b86ad9, #dd6fa3); color: #fff; }
 
-/* ------------------------------------------------------------------ main */
-.mis-main { min-width: 0; display: grid; align-content: start; gap: 16px; padding: 6px 8px 24px; }
-.mis-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
-.mis-head h1 {
-  margin: 0;
-  font-size: 30px;
-  font-weight: 700;
-  background: linear-gradient(90deg, #d98acb, #a77be0);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.mis-filters { display: flex; flex-wrap: wrap; gap: 10px; }
+/* ------------------------------------------------------------------- main */
+.mis-main { min-width: 0; display: grid; align-content: start; gap: 18px; padding: 4px 2px 28px; }
+.mis-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; }
+.mis-head h1 { margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.02em; background: linear-gradient(90deg, #d98acb, #a77be0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.mis-dark .mis-head h1 { background: linear-gradient(90deg, #f0a0c8, #c9a0f0); -webkit-background-clip: text; background-clip: text; }
+.mis-sub { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.mis-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .mis-filters select {
-  padding: 10px 14px;
-  border: 1px solid var(--mis-line);
+  padding: 9px 34px 9px 12px;
+  border: 1px solid var(--line);
   border-radius: 14px;
-  background: var(--mis-card);
-  color: inherit;
-  font: inherit;
-  font-size: 14px;
+  background-color: var(--card);
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
 }
-.mis-filters-inline { margin-top: 10px; }
-.mis-muted { margin: 0; color: var(--mis-muted); font-size: 13.5px; }
-.mis-link { border: 0; background: none; color: var(--mis-accent); font: inherit; font-size: 12.5px; text-decoration: underline; cursor: pointer; padding: 0; }
-.mis-alert { padding: 14px 16px; border-radius: 14px; background: #fde7e7; color: #8d2a2a; display: grid; gap: 10px; justify-items: start; }
+.mis-filters-inline { margin: 4px 0 8px; }
+.mis-muted { margin: 0; color: var(--muted); font-size: 13px; }
+.mis-count { margin: 2px 0 10px; }
+.mis-link { border: 0; background: none; color: #9a5bc8; font-size: 12.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; padding: 0; }
+.mis-alert { padding: 14px 16px; border: 1px solid #f1c4c4; border-radius: 12px; background: #fdeeee; color: #8d2a2a; display: grid; gap: 10px; justify-items: start; }
 .mis-alert p { margin: 0; }
-.mis-notes { display: grid; gap: 6px; justify-items: start; }
-.mis-warn { margin: 0; padding: 10px 14px; border-radius: 12px; background: rgba(255, 233, 170, 0.8); color: #6b5300; font-size: 13px; }
-.mis-about { padding: 10px 14px; border-radius: 12px; background: var(--mis-card); font-size: 12.5px; color: var(--mis-muted); }
-.mis-about p { margin: 3px 0; }
+.mis-dark .mis-alert { background: #3a1d24; border-color: #5b2a35; color: #ffc9d0; }
+.mis-notes { display: grid; gap: 8px; justify-items: start; }
+.mis-warn { margin: 0; padding: 10px 14px; border: 1px solid #f0d98a; border-radius: 10px; background: #fff8e1; color: #6b5300; font-size: 13px; }
+.mis-dark .mis-warn { background: #3a3014; border-color: #5e4d1c; color: #f6dc8f; }
+.mis-about { width: 100%; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font-size: 13px; color: var(--muted); }
+.mis-about p { margin: 0 0 6px; }
+.mis-about-h { margin-top: 10px !important; font-weight: 600; color: var(--ink); }
+.mis-about-m { margin-top: 8px !important; }
+.mis-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.mis-tag { padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--soft); font-size: 12px; color: var(--ink); }
+.mis-tag.is-used { border-color: transparent; background: rgba(169, 107, 214, 0.18); color: #7b3fb0; font-weight: 600; }
+.mis-dark .mis-tag.is-used { color: #dcc0f7; }
 
-/* --------------------------------------------------------------- metrics */
+/* ---------------------------------------------------------------- metrics */
 .mis-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 .mis-metric {
   display: grid;
-  gap: 6px;
-  padding: 18px 20px;
-  border: 1px solid var(--mis-line);
+  gap: 4px;
+  padding: 16px 18px 15px;
+  border: 1px solid var(--line);
   border-radius: 18px;
-  box-shadow: var(--mis-shadow);
+  box-shadow: var(--shadow);
+  min-height: 110px;
+  align-content: start;
 }
-.mis-metric span { font-size: 13.5px; color: var(--mis-muted); }
-.mis-metric strong { font-size: 34px; font-weight: 700; line-height: 1.1; }
-.tone-pink { background: linear-gradient(135deg, #fff3f8, #fbdcea); }
+.mis-metric-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mis-metric-top span { font-size: 13px; font-weight: 500; color: var(--muted); }
+.mis-metric-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; font-style: normal; }
+.mis-metric strong { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+.mis-metric small { font-size: 12px; color: var(--muted); }
+.tone-slate { background: linear-gradient(135deg, #fff3f8, #fbdcea); }
 .tone-green { background: linear-gradient(135deg, #f2fcf7, #cdf1df); }
 .tone-red { background: linear-gradient(135deg, #fff5f3, #f9d5d2); }
 .tone-blue { background: linear-gradient(135deg, #f4f8ff, #d3e4fb); }
-.tone-yellow { background: linear-gradient(135deg, #fffbea, #fcecb8); }
-.tone-lilac { background: linear-gradient(135deg, #f8f3ff, #e2d4f8); }
-.tone-cyan { background: linear-gradient(135deg, #f1fcff, #cdeef8); }
-.tone-peach { background: linear-gradient(135deg, #fff7f0, #fbdcc4); }
-.mis-dark .mis-metric { color: #2d2640; }
+.tone-amber { background: linear-gradient(135deg, #fffbea, #fcecb8); }
+.tone-maroon { background: linear-gradient(135deg, #f8f3ff, #e2d4f8); }
+.tone-teal { background: linear-gradient(135deg, #f1fcff, #cdeef8); }
+.tone-purple { background: linear-gradient(135deg, #fff7f0, #fbdcc4); }
+.mis-metric { color: #2d2640; }
+.mis-metric-top span, .mis-metric small { color: #6f6688; }
+.mis-metric-icon { background: rgba(255, 255, 255, 0.7) !important; color: #5b4b86 !important; }
 
-/* ---------------------------------------------------------------- panels */
-.mis-two { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 14px; }
+/* ----------------------------------------------------------------- panels */
+.mis-two { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px; }
 .mis-two-even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .mis-panel {
-  padding: 20px 22px;
-  border: 1px solid var(--mis-line);
+  padding: 20px 22px 22px;
+  border: 1px solid var(--line);
   border-radius: 18px;
-  background: var(--mis-card);
-  box-shadow: var(--mis-shadow);
+  background: var(--card);
+  box-shadow: var(--shadow);
   min-width: 0;
 }
-.mis-panel h2 { margin: 0 0 14px; font-size: 16px; font-weight: 700; }
-.mis-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
-.mis-bar-row { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; margin-bottom: 5px; }
-.mis-bar-row span:first-child { font-weight: 600; }
-.mis-bar-row span:last-child { color: var(--mis-muted); }
-.mis-bar-track { height: 9px; border-radius: 999px; background: rgba(150, 140, 190, 0.18); overflow: hidden; }
-.mis-bar { height: 100%; border-radius: 999px; }
-.mis-status { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; }
-.mis-donut { width: 170px; height: 170px; flex: 0 0 auto; }
-.mis-donut-n { font-size: 30px; font-weight: 700; fill: var(--mis-ink); }
-.mis-donut-l { font-size: 12px; fill: var(--mis-muted); }
-.mis-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; font-size: 14px; }
-.mis-legend i { display: inline-block; width: 11px; height: 11px; margin-right: 9px; border-radius: 3px; }
+.mis-panel h2 { margin: 0 0 14px; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; color: var(--ink); }
+.mis-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 13px; }
+.mis-bar-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; margin-bottom: 6px; }
+.mis-bar-row span:first-child { font-weight: 500; }
+.mis-bar-row span:last-child { color: var(--muted); }
+.mis-bar-row strong { color: var(--ink); font-weight: 650; }
+.mis-bar-row em { font-style: normal; }
+.mis-bar-track { height: 9px; border-radius: 999px; background: var(--soft); overflow: hidden; }
+.mis-bar { height: 100%; min-width: 4px; border-radius: 999px; }
+.mis-bar.is-muted { background: #cdc8e0; }
+.mis-dark .mis-bar.is-muted { background: #4a4666; }
+.mis-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 22px; }
+.mis-donut { width: 168px; height: 168px; flex: 0 0 auto; }
+.mis-donut-bg { stroke: var(--soft); }
+.mis-donut-n { font-size: 28px; font-weight: 700; fill: var(--ink); }
+.mis-donut-l { font-size: 12px; fill: var(--muted); }
+.mis-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; min-width: 190px; font-size: 13.5px; }
+.mis-legend li { display: flex; align-items: center; gap: 9px; }
+.mis-legend li strong { margin-left: auto; padding-left: 14px; }
+.mis-legend i, .mis-legend-row i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.mis-legend-row { display: flex; flex-wrap: wrap; gap: 16px; margin: 14px 0 0; font-size: 12.5px; color: var(--muted); }
+.mis-legend-row span { display: inline-flex; align-items: center; gap: 7px; }
 
-/* ---------------------------------------------------------------- tables */
+/* ----------------------------------------------------------------- tables */
 .mis-scroll { overflow-x: auto; }
+.mis-scroll-tall { max-height: 640px; overflow-y: auto; border: 1px solid var(--rule); border-radius: 12px; }
 .mis-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.mis-table th { padding: 10px 12px; text-align: left; font-weight: 600; font-size: 12.5px; color: var(--mis-muted); white-space: nowrap; border-bottom: 1px solid rgba(150, 140, 190, 0.25); }
-.mis-table td { padding: 11px 12px; border-bottom: 1px solid rgba(150, 140, 190, 0.14); vertical-align: top; }
-.mis-table tr:hover td { background: rgba(255, 255, 255, 0.35); }
-.mis-table small { color: var(--mis-muted); }
-.mis-table a { color: var(--mis-accent); text-decoration: none; }
-.mis-remark { max-width: 260px; color: var(--mis-muted); }
-.mis-spread { min-width: 150px; }
-.mis-stack { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: rgba(150, 140, 190, 0.18); }
-.mis-chip { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #2d2640; white-space: nowrap; }
-.mis-tools { display: grid; gap: 10px; margin-bottom: 10px; }
+.mis-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 10px 14px;
+  background: var(--soft);
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--rule);
+}
+.mis-table td { padding: 11px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.mis-table tbody tr:last-child td { border-bottom: 0; }
+.mis-table tbody tr:hover td { background: var(--soft); }
+.mis-table .r { text-align: right; }
+.mis-table .nowrap { white-space: nowrap; }
+.mis-table small { color: var(--muted); font-size: 12px; }
+.mis-table a { color: #9a5bc8; text-decoration: none; font-weight: 500; }
+.mis-table a:hover { text-decoration: underline; }
+.mis-n { color: var(--muted); }
+.mis-raw { display: block; margin-top: 2px; }
+.mis-remark { max-width: 280px; color: var(--muted); }
+.mis-spread { min-width: 160px; }
+.mis-stack { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: var(--soft); gap: 1px; }
+.mis-chip { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.mis-tools { display: grid; gap: 12px; margin-bottom: 8px; }
 .mis-tools input {
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
   padding: 10px 14px;
-  border: 1px solid var(--mis-line);
+  border: 1px solid var(--line);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.85);
   color: #2d2640;
-  font: inherit;
   font-size: 14px;
 }
+.mis-tools input:focus, .mis-filters select:focus { outline: 2px solid rgba(169, 107, 214, 0.45); outline-offset: 1px; }
 .mis-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.mis-chips button { padding: 7px 14px; border: 1px solid var(--mis-line); border-radius: 999px; background: var(--mis-card); color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
-.mis-chips button.is-on { background: linear-gradient(90deg, #c985e6, #e58cb6); color: #fff; border-color: transparent; font-weight: 600; }
-.mis-pager { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 14px; font-size: 13.5px; }
-.mis-reports { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-.mis-report { display: grid; gap: 10px; align-content: space-between; }
-.mis-report h2 { margin: 0; }
+.mis-chips button { padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink); font-size: 13px; font-weight: 500; cursor: pointer; }
+.mis-chips button:hover { background: var(--soft); }
+.mis-chips button.is-on { background: linear-gradient(90deg, #c985e6, #e58cb6); border-color: transparent; color: #fff; font-weight: 600; }
+.mis-pager { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 16px; font-size: 13.5px; color: var(--muted); }
+.mis-reports { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+.mis-report { display: flex; flex-direction: column; justify-content: space-between; gap: 16px; }
+.mis-report h2 { margin: 0 0 6px; }
 
-/* ----------------------------------------------------------- narrow screens */
+/* ---------------------------------------------------------------- loading */
+.mis-skel { display: grid; gap: 14px; }
+.mis-shimmer { background: linear-gradient(90deg, var(--card) 0%, var(--soft) 50%, var(--card) 100%) !important; background-size: 200% 100% !important; animation: mis-shimmer 1.4s ease-in-out infinite; }
+@keyframes mis-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .mis-shimmer { animation: none; } }
+
+/* ------------------------------------------------------------ narrow screens */
 @media (max-width: 1000px) {
-  .mis { grid-template-columns: minmax(0, 1fr); }
-  .mis-side { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .mis { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .mis-side { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px; }
   .mis-nav { display: flex; flex-wrap: wrap; }
-  .mis-side-foot { margin-top: 0; grid-auto-flow: column; align-items: center; }
+  .mis-side-foot { margin-top: 0; grid-auto-flow: column; align-items: center; margin-left: auto; }
   .mis-sync { display: none; }
   .mis-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mis-two, .mis-two-even { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 560px) {
   .mis { padding: 8px; }
-  .mis-head h1 { font-size: 24px; }
-  .mis-metric strong { font-size: 28px; }
+  .mis-head h1 { font-size: 22px; }
+  .mis-metric strong { font-size: 26px; }
+  .mis-side .mis-btn { padding: 8px 10px; }
 }

@@ -124,6 +124,31 @@ const brandOf = (v) => {
   return t ? (t === t.toLowerCase() || t === t.toUpperCase() ? (t.length <= 4 ? t.toUpperCase() : t.replace(/\b\w/g, (c) => c.toUpperCase())) : t) : 'Not specified'
 }
 
+/** Capital letters made readable: "UNAVO EXPO" → "Unavo Expo"; short codes (CRI, CFF) and mixed case stay as typed. */
+function pretty(v) {
+  const letters = v.replace(/[^A-Za-z]/g, '')
+  if (letters.length > 3 && letters === letters.toUpperCase()) return v.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase())
+  if (letters && letters === letters.toLowerCase()) return v.replace(/\b[a-z]/g, (c) => c.toUpperCase())
+  return v
+}
+
+/**
+ * One spelling per value: "Whatsapp Bot", "WHATSAPP BOT" and "WHATSAPPBOT" are the same platform, so they are counted
+ * together under the commonest spelling.
+ */
+function canonicalise(rows, field, skip = []) {
+  const variants = new Map() // key → Map(spelling → count)
+  for (const r of rows) {
+    const v = r[field]
+    const k = norm(v)
+    if (!v || !k || skip.includes(v)) continue
+    if (!variants.has(k)) variants.set(k, new Map())
+    variants.get(k).set(v, (variants.get(k).get(v) || 0) + 1)
+  }
+  const chosen = new Map([...variants].map(([k, m]) => [k, pretty([...m].sort((a, b) => b[1] - a[1])[0][0])]))
+  for (const r of rows) if (chosen.has(norm(r[field]))) r[field] = chosen.get(norm(r[field]))
+}
+
 // ------------------------------------------------------------------ dataset
 
 /** The sheet (rows of text) as the dashboard's data: clean rows plus what was found. */
@@ -160,6 +185,8 @@ export function buildDataset(matrix, { sheetTitle = '' } = {}) {
       remark: cell(row, 'remark'),
     })
   }
+
+  for (const [field, skip] of [['brand', ['Not specified']], ['platform', ['Not specified']], ['telecaller', ['Not assigned']], ['city', []]]) canonicalise(rows, field, skip)
 
   const mapping = Object.fromEntries(Object.entries(cols).map(([field, i]) => [field, headers[i]]))
   return {

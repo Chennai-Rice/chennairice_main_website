@@ -3,13 +3,21 @@
 
 export const STATUSES = ['Positively closed', 'Negatively closed', 'In Process', 'Open / Pending', 'Complaint']
 
-// The status colours of the reference dashboard.
+// One soft colour per status (the reference dashboard's): the ring, legend and split bars use the colour, the chips
+// use a tint of it with the darker ink.
 export const STATUS_COLOR = {
   'Positively closed': '#8fdcb9',
   'Negatively closed': '#f4a3a3',
   'In Process': '#f7dc94',
   'Open / Pending': '#9cc3f4',
   Complaint: '#c9a9ee',
+}
+export const STATUS_INK = {
+  'Positively closed': '#17714a',
+  'Negatively closed': '#a23a3a',
+  'In Process': '#85600b',
+  'Open / Pending': '#245a92',
+  Complaint: '#5f3fa3',
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -58,6 +66,13 @@ export function groupTable(rows, key) {
     groups.get(r[key]).push(r)
   }
   return [...groups].map(([label, list]) => ({ label, ...summarise(list) })).sort((a, b) => b.total - a.total || String(a.label).localeCompare(String(b.label)))
+}
+
+/** The biggest `n` groups, with the rest added up as "Others" (so a long list stays readable). */
+export function topN(items, n = 8) {
+  if (items.length <= n) return items
+  const rest = items.slice(n - 1)
+  return [...items.slice(0, n - 1), { label: 'Others', count: rest.reduce((a, b) => a + b.count, 0), muted: true }]
 }
 
 export const pct = (n, total) => (total ? ((n / total) * 100).toFixed(1) : '0.0')

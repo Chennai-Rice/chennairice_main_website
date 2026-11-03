@@ -2932,19 +2932,24 @@ test('the MIS dashboard: columns are found by name, statuses and dates are read,
       ['3', '2026-11-02', 'CFF', 'WhatsApp', 'C', '9000000003', 'Lead', 'Follow up', 'Priya', ''],
       ['4', '', 'CFF', 'Meta', 'D', '9000000004', 'Complaint', 'Complaint', 'Divya', ''],
       ['5', '03 Nov 2026', 'CFF', 'Meta', 'E', '9000000005', '', 'Weird text', '', ''],
+      ['6', '04 Nov 2026', 'CFF', 'WHATSAPP BOT', 'F', '9000000006', '', '', 'Priya', ''],
+      ['7', '04 Nov 2026', 'CFF', 'Whatsapp Bot', 'G', '9000000007', '', '', 'Priya', ''],
+      ['8', '04 Nov 2026', 'CFF', 'WHATSAPPBOT', 'H', '9000000008', '', '', 'Priya', ''],
       ['', '', '', '', '', '', '', '', '', ''],
     ],
   }))
   try {
     const data = await mis.misData({ refresh: true })
-    assert.equal(data.rows.length, 5)
+    assert.equal(data.rows.length, 8)
     assert.equal(data.mapping.brand, 'Brand')
     assert.equal(data.mapping.status, 'Lead Status')
     assert.equal(data.mapping.telecaller, 'Telecaller')
-    assert.deepEqual(data.rows.map((r) => r.status), ['Positively closed', 'Negatively closed', 'In Process', 'Complaint', 'Open / Pending'])
-    assert.deepEqual(data.rows.map((r) => r.brand), ['CRI', 'CRI', 'CFF', 'CFF', 'CFF'])
-    assert.deepEqual(data.rows.map((r) => r.date), ['2026-10-12', '2026-10-13', '2026-11-02', '', '2026-11-03'])
-    assert.deepEqual(data.rows.map((r) => r.stage), ['Enquiry', 'Not specified', 'Lead', 'Complaint', 'Not specified'])
+    assert.deepEqual(data.rows.slice(0, 5).map((r) => r.status), ['Positively closed', 'Negatively closed', 'In Process', 'Complaint', 'Open / Pending'])
+    // Spellings that differ only in capitals or spaces are one platform, under the commonest spelling.
+    assert.deepEqual(data.rows.slice(5).map((r) => r.platform), ['Whatsapp Bot', 'Whatsapp Bot', 'Whatsapp Bot'])
+    assert.deepEqual(data.rows.slice(0, 5).map((r) => r.brand), ['CRI', 'CRI', 'CFF', 'CFF', 'CFF'])
+    assert.deepEqual(data.rows.slice(0, 5).map((r) => r.date), ['2026-10-12', '2026-10-13', '2026-11-02', '', '2026-11-03'])
+    assert.deepEqual(data.rows.slice(0, 5).map((r) => r.stage), ['Enquiry', 'Not specified', 'Lead', 'Complaint', 'Not specified'])
     assert.equal(data.rows[4].telecaller, 'Not assigned')
     assert.deepEqual(data.unmappedStatuses, [{ value: 'Weird text', count: 1 }])
 
@@ -2967,7 +2972,7 @@ test('the MIS dashboard: columns are found by name, statuses and dates are read,
     assert.equal((await api('GET', '/api/admin/mis/data', { token: B })).status, 403)
     const seen = await api('GET', '/api/admin/mis/data', { token: M })
     assert.equal(seen.status, 200, JSON.stringify(seen.body))
-    assert.equal(seen.body.rows.length, 5)
+    assert.equal(seen.body.rows.length, 8)
     assert.equal((await api('GET', '/api/admin/mis/data', { token: OWNER })).status, 200)
     for (const path of ['/api/admin/orders', '/api/admin/dashboard', '/api/admin/staff', '/api/admin/blog/posts', '/api/admin/cloud']) {
       assert.equal((await api('GET', path, { token: M })).status, 403, path)
