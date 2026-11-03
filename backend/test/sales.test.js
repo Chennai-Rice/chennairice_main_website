@@ -2918,3 +2918,61 @@ test('the blog writer signs in with email and password, gets a JWT that opens th
   await db.query(`update staff_users set locked_until = null, login_failures = 0 where email = 'jwt-writer@example.com'`)
   assert.equal((await login('jwt-writer@example.com', PASSWORD)).status, 200)
 })
+
+test('the MIS dashboard: columns are found by name, statuses and dates are read, and only the mis, owner, admin and IT roles can open it', async () => {
+  const mis = await import('../lib/sales/mis.js')
+  const { hashPassword } = await import('../lib/sales/writer-login.js')
+  mis.setMisSourceForTests(async () => ({
+    title: 'Leads',
+    values: [
+      ['Chennai Rice Leads', '', ''],
+      ['S.No', 'Lead Date', 'Brand', 'Platform', 'Customer Name', 'Mobile Number', 'Stage', 'Lead Status', 'Telecaller', 'Remarks'],
+      ['1', '12/10/2026', 'cri', 'Meta', 'A', '9000000001', 'Enquiry', 'Positively Closed', 'Priya', ''],
+      ['2', '13-10-2026', 'CRI ', 'Google', 'B', '9000000002', '', 'Not interested', 'Divya', 'x'],
+      ['3', '2026-11-02', 'CFF', 'WhatsApp', 'C', '9000000003', 'Lead', 'Follow up', 'Priya', ''],
+      ['4', '', 'CFF', 'Meta', 'D', '9000000004', 'Complaint', 'Complaint', 'Divya', ''],
+      ['5', '03 Nov 2026', 'CFF', 'Meta', 'E', '9000000005', '', 'Weird text', '', ''],
+      ['', '', '', '', '', '', '', '', '', ''],
+    ],
+  }))
+  try {
+    const data = await mis.misData({ refresh: true })
+    assert.equal(data.rows.length, 5)
+    assert.equal(data.mapping.brand, 'Brand')
+    assert.equal(data.mapping.status, 'Lead Status')
+    assert.equal(data.mapping.telecaller, 'Telecaller')
+    assert.deepEqual(data.rows.map((r) => r.status), ['Positively closed', 'Negatively closed', 'In Process', 'Complaint', 'Open / Pending'])
+    assert.deepEqual(data.rows.map((r) => r.brand), ['CRI', 'CRI', 'CFF', 'CFF', 'CFF'])
+    assert.deepEqual(data.rows.map((r) => r.date), ['2026-10-12', '2026-10-13', '2026-11-02', '', '2026-11-03'])
+    assert.deepEqual(data.rows.map((r) => r.stage), ['Enquiry', 'Not specified', 'Lead', 'Complaint', 'Not specified'])
+    assert.equal(data.rows[4].telecaller, 'Not assigned')
+    assert.deepEqual(data.unmappedStatuses, [{ value: 'Weird text', count: 1 }])
+
+    // Who can open it: a MIS login (email and password), the owner; not a blog writer; and the MIS login opens nothing else.
+    let hop = 0
+    const login = (email, password) => api('POST', '/api/blog/login', { body: { email, password }, headers: { 'X-Forwarded-For': `10.88.0.${++hop}` } })
+    for (const [email, role] of [['mis-user@example.com', 'mis'], ['blog-two@example.com', 'blog']]) {
+      const add = await api('POST', '/api/admin/staff', { token: OWNER, body: { email, fullName: role, role } })
+      assert.equal(add.status, 200, JSON.stringify(add.body))
+      await db.query('update staff_users set password_hash = $2 where email = $1', [email, await hashPassword('a long enough password')])
+    }
+    const M = (await login('mis-user@example.com', 'a long enough password')).body.token
+    const B = (await login('blog-two@example.com', 'a long enough password')).body.token
+    assert.ok(M && B)
+    const me = await api('GET', '/api/admin/me', { token: M })
+    assert.equal(me.body.role, 'mis')
+    assert.deepEqual(me.body.permissions, ['mis.view'])
+
+    assert.equal((await api('GET', '/api/admin/mis/data')).status, 401)
+    assert.equal((await api('GET', '/api/admin/mis/data', { token: B })).status, 403)
+    const seen = await api('GET', '/api/admin/mis/data', { token: M })
+    assert.equal(seen.status, 200, JSON.stringify(seen.body))
+    assert.equal(seen.body.rows.length, 5)
+    assert.equal((await api('GET', '/api/admin/mis/data', { token: OWNER })).status, 200)
+    for (const path of ['/api/admin/orders', '/api/admin/dashboard', '/api/admin/staff', '/api/admin/blog/posts', '/api/admin/cloud']) {
+      assert.equal((await api('GET', path, { token: M })).status, 403, path)
+    }
+  } finally {
+    mis.setMisSourceForTests(null)
+  }
+})

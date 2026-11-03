@@ -15,6 +15,7 @@ const ROLES = [
   { key: 'it', label: 'IT Team', note: 'Everything an admin can do, plus company settings.' },
   { key: 'cloud', label: 'Cloud Centre only', note: 'Opens /cloud (the Cloud Centre: projects, uptime, errors, cost). No orders, customers or money. Its password login is set up with db/create-cloud-login.js.' },
   { key: 'blog', label: 'Blog writer', note: 'Signs in at /admin with an email and password and opens the Journal (write, preview and publish blog posts). Nothing else. The password is set with db/create-blog-writer.js.' },
+  { key: 'mis', label: 'MIS dashboard', note: 'Signs in at /admin with an email and password and opens the MIS dashboard (leads from the MIS Google Sheet). Nothing else. The password is set with db/create-password-login.js.' },
   { key: 'owner', label: 'Owner', note: 'Everything. Only an owner can add another owner.' },
 ]
 const LABEL = Object.fromEntries(ROLES.map((r) => [r.key, r.label]))
