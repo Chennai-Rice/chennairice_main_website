@@ -16,10 +16,10 @@ const linkOk = (v) => /^https?:\/\/\S+$/i.test(v.trim()) || /^\/(?!\/)\S*$/.test
  * "Edit buttons" lets the writer place buttons on the cover: drag to move, drag the round handle (or use the slider)
  * to resize, and set each one's text, link and colour. The changes go to the draft (onChange) and are saved with the post.
  */
-export default function PostPreview({ draft, author, live, busy, onBack, onPublish, onChange }) {
+export default function PostPreview({ draft, author, live, busy, onBack, onPublish, onChange, startEditing = false }) {
   const [device, setDevice] = useState('desktop')
-  const [editing, setEditing] = useState(false)
-  const [selected, setSelected] = useState('')
+  const [editing, setEditing] = useState(startEditing)
+  const [selected, setSelected] = useState(startEditing ? draft.coverButtons?.[0]?.id || '' : '')
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape' && !busy) onBack() }
