@@ -12,6 +12,7 @@
 // Google's answer is kept 3 minutes per server instance.
 import { GoogleAuth } from 'google-auth-library'
 import { parseCsv } from './advisor-files.js'
+import { BRANDS, brandFromText, classifyCall } from './mis-rules.js'
 import { httpError } from './util.js'
 
 const SHEET_ID = () => process.env.MIS_SHEET_ID || '1J6J5zmeyEfM_RRHOy4HX6OKi8XFZ3fK4L1YtsyAKirM'
@@ -33,12 +34,13 @@ const FIELDS = {
   platform: ['leadsource', 'platform', 'source', 'channel', 'medium'],
   stage: ['leadstage', 'leadtype', 'enquirytype', 'stage', 'type', 'category'],
   status: ['leadstatus', 'closurestatus', 'callstatus', 'status', 'outcome', 'result', 'disposition'],
-  telecaller: ['telecaller', 'tele caller', 'assignedto', 'handledby', 'calledby', 'executive', 'agent', 'caller', 'owner'],
+  telecaller: ['callhandedby', 'callhandledby', 'telecaller', 'tele caller', 'assignedto', 'handledby', 'handedby', 'calledby', 'executive', 'agent', 'caller', 'owner'],
+  device: ['device', 'dialer'],
   name: ['customername', 'leadname', 'clientname', 'name', 'customer'],
   phone: ['mobilenumber', 'phonenumber', 'mobileno', 'phoneno', 'mobile', 'phone', 'contact', 'whatsapp'],
   city: ['city', 'location', 'district', 'place', 'town'],
-  product: ['productinterested', 'product', 'requirement', 'item'],
-  remark: ['remarks', 'remark', 'comments', 'comment', 'notes', 'note', 'feedback'],
+  product: ['productinterested', 'product', 'item'],
+  remark: ['requirements', 'requirement', 'remarks', 'remark', 'comments', 'comment', 'notes', 'note', 'feedback'],
 }
 
 /** Finds each field's column in the header row. Returns { field: columnIndex } for the ones found. */
@@ -89,7 +91,7 @@ export function normStage(value) {
   if (/enquir/i.test(v)) return 'Enquiry'
   if (/complaint/i.test(v)) return 'Complaint'
   if (/^lead/i.test(v)) return 'Lead'
-  return v.replace(/\s+/g, ' ').replace(/^./, (c) => c.toUpperCase())
+  return pretty(v.replace(/\s+/g, ' ').replace(/^./, (c) => c.toUpperCase()))
 }
 
 const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 }
@@ -145,7 +147,9 @@ function canonicalise(rows, field, skip = []) {
     if (!variants.has(k)) variants.set(k, new Map())
     variants.get(k).set(v, (variants.get(k).get(v) || 0) + 1)
   }
-  const chosen = new Map([...variants].map(([k, m]) => [k, pretty([...m].sort((a, b) => b[1] - a[1])[0][0])]))
+  // The commonest spelling wins; on a tie the one with a space, then the one in mixed case ("Whatsapp Bot" over "WHATSAPPBOT").
+  const nicer = (v) => (/\s/.test(v) ? 2 : 0) + (v !== v.toUpperCase() && v !== v.toLowerCase() ? 1 : 0)
+  const chosen = new Map([...variants].map(([k, m]) => [k, pretty([...m].sort((a, b) => b[1] - a[1] || nicer(b[0]) - nicer(a[0]))[0][0])]))
   for (const r of rows) if (chosen.has(norm(r[field]))) r[field] = chosen.get(norm(r[field]))
 }
 
@@ -161,32 +165,59 @@ export function buildDataset(matrix, { sheetTitle = '' } = {}) {
   const cols = mapColumns(headers)
   const cell = (row, field) => (cols[field] == null ? '' : clean(row[cols[field]]))
 
+  // Status: a Status column when the sheet has one; otherwise it is read from the call's REQUIREMENTS text (mis-rules.js).
+  // Brand: a Brand column when there is one; otherwise from the brand the text names (CRI, CFF, Cholan).
+  const statusFrom = cols.status != null ? 'column' : 'requirements'
+  const brandFrom = cols.brand != null ? 'column' : 'text'
   const unmappedStatuses = new Map()
+  const rules = new Map() // rule label → { status, count, examples }
+  const unmatched = new Map() // remark text no rule matched → count
+  const noName = /^(n\/?a|na|nil|-|none)$/i
   const rows = []
   for (const row of grid.slice(headerAt + 1)) {
     if (!row.some((c) => c.trim())) continue
-    const status = normStatus(cell(row, 'status'))
-    if (!status.known) unmappedStatuses.set(cell(row, 'status'), (unmappedStatuses.get(cell(row, 'status')) || 0) + 1)
+    const stage = normStage(cell(row, 'stage'))
+    const remark = cell(row, 'remark')
+    let status
+    if (statusFrom === 'column') {
+      status = normStatus(cell(row, 'status'))
+      if (!status.known) unmappedStatuses.set(cell(row, 'status'), (unmappedStatuses.get(cell(row, 'status')) || 0) + 1)
+    } else {
+      const call = classifyCall(remark, stage)
+      status = { status: call.status }
+      if (call.rule) {
+        const r = rules.get(call.rule) || { status: call.status, count: 0, examples: new Set() }
+        r.count += 1
+        if (r.examples.size < 4 && remark) r.examples.add(remark.slice(0, 60))
+        rules.set(call.rule, r)
+      } else {
+        unmatched.set(remark, (unmatched.get(remark) || 0) + 1)
+      }
+    }
     const date = parseDate(cell(row, 'date'))
+    const name = cell(row, 'name')
     rows.push({
       n: rows.length + 1,
       date,
       month: date ? date.slice(0, 7) : '',
-      brand: brandOf(cell(row, 'brand')),
+      brand: brandFrom === 'column' ? brandOf(cell(row, 'brand')) : brandFromText(`${remark} ${name}`) || 'Not specified',
       platform: cell(row, 'platform') ? clean(cell(row, 'platform')) : 'Not specified',
-      stage: normStage(cell(row, 'stage')),
+      stage,
       status: status.status,
-      statusText: cell(row, 'status'),
+      statusText: statusFrom === 'column' ? cell(row, 'status') : '',
       telecaller: cell(row, 'telecaller') || 'Not assigned',
-      name: cell(row, 'name'),
+      device: cell(row, 'device'),
+      name: noName.test(name) ? '' : name,
       phone: cell(row, 'phone'),
       city: cell(row, 'city'),
       product: cell(row, 'product'),
-      remark: cell(row, 'remark'),
+      remark,
     })
   }
 
-  for (const [field, skip] of [['brand', ['Not specified']], ['platform', ['Not specified']], ['telecaller', ['Not assigned']], ['city', []]]) canonicalise(rows, field, skip)
+  const same = [['platform', ['Not specified']], ['telecaller', ['Not assigned']], ['device', []], ['city', []]]
+  if (brandFrom === 'column') same.push(['brand', ['Not specified']])
+  for (const [field, skip] of same) canonicalise(rows, field, skip)
 
   const mapping = Object.fromEntries(Object.entries(cols).map(([field, i]) => [field, headers[i]]))
   return {
@@ -194,6 +225,11 @@ export function buildDataset(matrix, { sheetTitle = '' } = {}) {
     headers: headers.filter(Boolean),
     mapping, // field → the sheet's column name that was used for it
     missing: Object.keys(FIELDS).filter((f) => cols[f] == null),
+    statusFrom, // 'column' or 'requirements' (worked out from the call's text)
+    brandFrom, // 'column' or 'text'
+    brands: BRANDS, // always listed, even before a call names them
+    statusRules: [...rules].map(([label, r]) => ({ label, status: r.status, count: r.count, examples: [...r.examples] })).sort((a, b) => b.count - a.count),
+    unmatchedTexts: [...unmatched].map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count).slice(0, 15),
     unmappedStatuses: [...unmappedStatuses].map(([value, count]) => ({ value, count })),
     datesRead: rows.filter((r) => r.date).length,
     rows,

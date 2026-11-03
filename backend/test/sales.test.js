@@ -3027,3 +3027,48 @@ test('the journal: buttons placed on the cover are saved cleaned (safe links onl
   const cleared = await api('POST', '/api/admin/blog/posts', { token: W, body: { id, row: { ...base, cover_buttons: [], cover_extra: 0, cover_fill: null } } })
   assert.deepEqual(cleared.body.post.coverButtons, [])
 })
+
+test('the MIS dashboard reads the calls log: columns by name, status worked out from REQUIREMENTS, brand from the text, spellings merged', async () => {
+  const mis = await import('../lib/sales/mis.js')
+  mis.setMisSourceForTests(async () => ({
+    title: 'Calls',
+    values: [
+      ['CALLS', '', '', '', '', '', '', ''],
+      [],
+      ['S. NO', 'DATE', 'NAME', 'PLATFORM', 'REQUIREMENTS', 'STAGE', 'DEVICE', 'CALL HANDED BY'],
+      ['1', '30-10-2026', 'Sabeena', 'INBOUND', 'call for Job vacancy', 'RANDOM', 'MOBILE', 'Ramya'],
+      ['2', '15/10/26', 'Vijayaragavan', 'UNAVO EXPO', 'Purchased', '', 'MOBILE', 'GAYATHRI'],
+      ['3', '15/10/2026', 'Sathish', 'UNAVO EXPO', 'RNR', '', 'NEO DOVE', 'GAYATHRI'],
+      ['4', '31-10-2026', 'raguman', 'WHATSAPPBOT', 'enq about slogan bag gift', '', 'NEO DOVE', 'gayathri'],
+      ['5', '31-10-2026', 'Guna', 'Whatsapp Bot', 'Customer will call if needed', '', 'NeO DOVE', 'Ramya'],
+      ['6', '31-10-2026', 'purushothaman', 'OUTBOUND', 'poor quality rice', 'COMPLAINT', 'MOBILE', 'lavanya'],
+      ['7', '29-10-2026', 'Naveen', 'INBOUND', 'Enquired about Cholan Franchise', 'ENQUIRY', '', 'INDHUJAA'],
+      ['8', '15-10-2026', 'Vasanth Sree Aryabhavan', 'UNAVO EXPO', 'Kolam rice 26kg, need 250bags monthly(CFF)', '', 'MOBILE', 'GAYATHRI'],
+      ['9', '10/2026', 'N/A', 'WEBSITE', 'No need', '', 'NEO DOVE', 'Ramya'],
+    ],
+  }))
+  try {
+    const d = await mis.misData({ refresh: true })
+    assert.deepEqual([d.mapping.date, d.mapping.name, d.mapping.platform, d.mapping.remark, d.mapping.stage, d.mapping.device, d.mapping.telecaller],
+      ['DATE', 'NAME', 'PLATFORM', 'REQUIREMENTS', 'STAGE', 'DEVICE', 'CALL HANDED BY'])
+    assert.equal(d.statusFrom, 'requirements')
+    assert.equal(d.brandFrom, 'text')
+    assert.deepEqual(d.brands, ['CRI', 'CFF', 'Cholan'])
+    assert.ok(d.missing.includes('status') && d.missing.includes('brand') && d.missing.includes('phone'))
+    assert.equal(d.rows.length, 9)
+    assert.deepEqual(d.rows.map((r) => r.status), ['Negatively closed', 'Positively closed', 'Open / Pending', 'In Process', 'In Process', 'Complaint', 'In Process', 'In Process', 'Negatively closed'])
+    assert.deepEqual(d.rows.map((r) => r.brand), ['Not specified', 'Not specified', 'Not specified', 'CRI', 'Not specified', 'Not specified', 'Cholan', 'CFF', 'Not specified'])
+    assert.deepEqual(d.rows.map((r) => r.date), ['2026-10-30', '2026-10-15', '2026-10-15', '2026-10-31', '2026-10-31', '2026-10-31', '2026-10-29', '2026-10-15', ''])
+    // One spelling each: the platform, the telecaller and the device.
+    assert.deepEqual(d.rows.slice(3, 5).map((r) => r.platform), ['Whatsapp Bot', 'Whatsapp Bot'])
+    assert.deepEqual([...new Set(d.rows.map((r) => r.telecaller))].sort(), ['Gayathri', 'Indhujaa', 'Lavanya', 'Ramya'])
+    assert.deepEqual([...new Set(d.rows.map((r) => r.device))].sort(), ['', 'Mobile', 'Neo Dove'])
+    assert.equal(d.rows[8].name, '') // "N/A" is no name
+    assert.equal(d.rows[0].stage, 'Random')
+    // The rules that decided are reported, with examples.
+    const bought = d.statusRules.find((r) => r.label.startsWith('Bought'))
+    assert.deepEqual([bought.status, bought.count, bought.examples], ['Positively closed', 1, ['Purchased']])
+  } finally {
+    mis.setMisSourceForTests(null)
+  }
+})

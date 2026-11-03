@@ -3,21 +3,13 @@
 
 export const STATUSES = ['Positively closed', 'Negatively closed', 'In Process', 'Open / Pending', 'Complaint']
 
-// One soft colour per status (the reference dashboard's): the ring, legend and split bars use the colour, the chips
-// use a tint of it with the darker ink.
-export const STATUS_COLOR = {
-  'Positively closed': '#8fdcb9',
-  'Negatively closed': '#f4a3a3',
-  'In Process': '#f7dc94',
-  'Open / Pending': '#9cc3f4',
-  Complaint: '#c9a9ee',
-}
-export const STATUS_INK = {
-  'Positively closed': '#17714a',
-  'Negatively closed': '#a23a3a',
-  'In Process': '#85600b',
-  'Open / Pending': '#245a92',
-  Complaint: '#5f3fa3',
+// The class suffix of each status; the colours themselves live in mis.css, one set per look (pro, soft, dark).
+export const STATUS_KEY = {
+  'Positively closed': 'pos',
+  'Negatively closed': 'neg',
+  'In Process': 'proc',
+  'Open / Pending': 'open',
+  Complaint: 'comp',
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
