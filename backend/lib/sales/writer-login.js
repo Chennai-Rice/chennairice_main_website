@@ -2,7 +2,7 @@
 //
 //   POST /api/blog/login { email, password }  →  { token, expiresAt, staff }
 //
-// The token is an HS256 JWT valid for 12 hours, accepted by the staff check (staff.js) for the 'blog' role only.
+// The token is an HS256 JWT valid for 12 hours, accepted by the staff check (staff.js) for the 'blog' and 'mis' roles only.
 // Passwords are stored as salted scrypt hashes in staff_users.password_hash and compared in constant time; five
 // wrong passwords in a row lock the account for 15 minutes. The signing key is BLOG_JWT_SECRET, or, when that is
 // not set, derived from the database password already held in Secret Manager.
@@ -12,6 +12,8 @@ import { httpError, str } from './util.js'
 
 const scrypt = promisify(scryptCb)
 const ISSUER = 'chennairice-writer'
+// Roles that sign in with their own email and password: the blog writer and the MIS dashboard.
+export const PASSWORD_ROLES = ['blog', 'mis']
 const LIFETIME_SECONDS = 12 * 3600
 const MAX_FAILURES = 5
 const LOCK_MINUTES = 15
@@ -50,7 +52,7 @@ export function signWriterToken(staff, now = Date.now()) {
   const key = signingKey()
   if (!key) throw httpError('No signing key', { status: 503, publicMessage: 'The writer login is not set up yet.' })
   const iat = Math.floor(now / 1000)
-  const body = `${b64(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))}.${b64(JSON.stringify({ iss: ISSUER, sub: staff.id, email: staff.email, role: 'blog', iat, exp: iat + LIFETIME_SECONDS }))}`
+  const body = `${b64(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))}.${b64(JSON.stringify({ iss: ISSUER, sub: staff.id, email: staff.email, role: staff.role, iat, exp: iat + LIFETIME_SECONDS }))}`
   return { token: `${body}.${b64(createHmac('sha256', key).update(body).digest())}`, expiresAt: new Date((iat + LIFETIME_SECONDS) * 1000).toISOString() }
 }
 
@@ -77,7 +79,7 @@ export function verifyWriterToken(token, now = Date.now()) {
     const given = Buffer.from(parts[2], 'base64url')
     if (given.length !== expected.length || !timingSafeEqual(given, expected)) throw bad()
     const claims = JSON.parse(Buffer.from(parts[1], 'base64url').toString())
-    if (claims.iss !== ISSUER || claims.role !== 'blog' || !claims.sub || !(claims.exp * 1000 > now)) throw bad()
+    if (claims.iss !== ISSUER || !PASSWORD_ROLES.includes(claims.role) || !claims.sub || !(claims.exp * 1000 > now)) throw bad()
     return claims
   } catch (err) {
     throw err.status ? err : bad()
@@ -91,7 +93,7 @@ export async function loginWriter({ query }, { email, password } = {}) {
   const address = str(email).toLowerCase()
   if (!address || !password) throw wrong
 
-  const { rows: [staff] } = await query(`select * from staff_users where email = $1 and role = 'blog' and is_active`, [address])
+  const { rows: [staff] } = await query(`select * from staff_users where email = $1 and role = any($2) and is_active`, [address, PASSWORD_ROLES])
   if (staff?.locked_until && new Date(staff.locked_until) > new Date()) {
     throw httpError('Locked', { status: 429, publicMessage: `Too many wrong passwords. Try again in ${LOCK_MINUTES} minutes.` })
   }
@@ -112,8 +114,8 @@ export async function loginWriter({ query }, { email, password } = {}) {
   return { token, expiresAt, staff: { email: staff.email, fullName: staff.full_name, role: staff.role } }
 }
 
-/** The active 'blog' staff row a token's claims point at, or null (removed, switched off, or no longer a writer). */
+/** The active staff row a token's claims point at (same role as the token), or null (removed, switched off, or the role changed). */
 export async function writerFromClaims({ query }, claims) {
-  const { rows: [staff] } = await query(`select * from staff_users where id::text = $1 and role = 'blog' and is_active`, [str(claims.sub)])
+  const { rows: [staff] } = await query(`select * from staff_users where id::text = $1 and role = $2 and is_active and role = any($3)`, [str(claims.sub), str(claims.role), PASSWORD_ROLES])
   return staff || null
 }

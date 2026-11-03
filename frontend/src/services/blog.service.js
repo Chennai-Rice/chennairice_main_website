@@ -122,6 +122,11 @@ export async function savePost(draft) {
     cover_alt: (draft.coverAlt || '').trim() || null,
     status: draft.status === 'published' ? 'published' : 'draft',
     reading_minutes: readingMinutes(contentMd),
+    // The buttons placed on the cover (preview → Edit buttons): sent only when the post uses them, or had them and now
+    // clears them, so posts that never used the feature save exactly as before.
+    ...((draft.coverButtons || []).length || draft.coverExtra || draft.coverFill || draft.coverTouched
+      ? { cover_buttons: draft.coverButtons || [], cover_extra: Number(draft.coverExtra) || 0, cover_fill: draft.coverFill || null }
+      : {}),
     // Kept when re-editing something already live, so a typo fix does not move the post back to the top.
     published_at: draft.status === 'published' ? draft.publishedAt || new Date().toISOString() : null,
   }

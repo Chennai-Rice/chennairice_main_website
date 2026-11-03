@@ -2929,3 +2929,207 @@ test('the blog writer signs in with email and password, gets a JWT that opens th
   await db.query(`update staff_users set locked_until = null, login_failures = 0 where email = 'jwt-writer@example.com'`)
   assert.equal((await login('jwt-writer@example.com', PASSWORD)).status, 200)
 })
+
+test('the MIS dashboard: columns are found by name, statuses and dates are read, and only the mis, owner, admin and IT roles can open it', async () => {
+  const mis = await import('../lib/sales/mis.js')
+  const { hashPassword } = await import('../lib/sales/writer-login.js')
+  mis.setMisSourceForTests(async () => ({
+    title: 'Leads',
+    values: [
+      ['Chennai Rice Leads', '', ''],
+      ['S.No', 'Lead Date', 'Brand', 'Platform', 'Customer Name', 'Mobile Number', 'Stage', 'Lead Status', 'Telecaller', 'Remarks'],
+      ['1', '12/10/2026', 'cri', 'Meta', 'A', '9000000001', 'Enquiry', 'Positively Closed', 'Priya', ''],
+      ['2', '13-10-2026', 'CRI ', 'Google', 'B', '9000000002', '', 'Not interested', 'Divya', 'x'],
+      ['3', '2026-11-02', 'CFF', 'WhatsApp', 'C', '9000000003', 'Lead', 'Follow up', 'Priya', ''],
+      ['4', '', 'CFF', 'Meta', 'D', '9000000004', 'Complaint', 'Complaint', 'Divya', ''],
+      ['5', '03 Nov 2026', 'CFF', 'Meta', 'E', '9000000005', '', 'Weird text', '', ''],
+      ['6', '04 Nov 2026', 'CFF', 'WHATSAPP BOT', 'F', '9000000006', '', '', 'Priya', ''],
+      ['7', '04 Nov 2026', 'CFF', 'Whatsapp Bot', 'G', '9000000007', '', '', 'Priya', ''],
+      ['8', '04 Nov 2026', 'CFF', 'WHATSAPPBOT', 'H', '9000000008', '', '', 'Priya', ''],
+      ['', '', '', '', '', '', '', '', '', ''],
+    ],
+  }))
+  try {
+    const data = await mis.misData({ refresh: true })
+    assert.equal(data.rows.length, 8)
+    assert.equal(data.mapping.brand, 'Brand')
+    assert.equal(data.mapping.status, 'Lead Status')
+    assert.equal(data.mapping.telecaller, 'Telecaller')
+    assert.deepEqual(data.rows.slice(0, 5).map((r) => r.status), ['Positively closed', 'Negatively closed', 'In Process', 'Complaint', 'Open / Pending'])
+    // Spellings that differ only in capitals or spaces are one platform, under the commonest spelling.
+    assert.deepEqual(data.rows.slice(5).map((r) => r.platform), ['Whatsapp Bot', 'Whatsapp Bot', 'Whatsapp Bot'])
+    assert.deepEqual(data.rows.slice(0, 5).map((r) => r.brand), ['CRI', 'CRI', 'CFF', 'CFF', 'CFF'])
+    assert.deepEqual(data.rows.slice(0, 5).map((r) => r.date), ['2026-10-12', '2026-10-13', '2026-11-02', '', '2026-11-03'])
+    assert.deepEqual(data.rows.slice(0, 5).map((r) => r.stage), ['Enquiry', 'Not specified', 'Lead', 'Complaint', 'Not specified'])
+    assert.equal(data.rows[4].telecaller, 'Not assigned')
+    assert.deepEqual(data.unmappedStatuses, [{ value: 'Weird text', count: 1 }])
+
+    // Who can open it: a MIS login (email and password), the owner; not a blog writer; and the MIS login opens nothing else.
+    let hop = 0
+    const login = (email, password) => api('POST', '/api/blog/login', { body: { email, password }, headers: { 'X-Forwarded-For': `10.88.0.${++hop}` } })
+    for (const [email, role] of [['mis-user@example.com', 'mis'], ['blog-two@example.com', 'blog']]) {
+      const add = await api('POST', '/api/admin/staff', { token: OWNER, body: { email, fullName: role, role } })
+      assert.equal(add.status, 200, JSON.stringify(add.body))
+      await db.query('update staff_users set password_hash = $2 where email = $1', [email, await hashPassword('a long enough password')])
+    }
+    const M = (await login('mis-user@example.com', 'a long enough password')).body.token
+    const B = (await login('blog-two@example.com', 'a long enough password')).body.token
+    assert.ok(M && B)
+    const me = await api('GET', '/api/admin/me', { token: M })
+    assert.equal(me.body.role, 'mis')
+    assert.deepEqual(me.body.permissions, ['mis.view'])
+
+    assert.equal((await api('GET', '/api/admin/mis/data')).status, 401)
+    assert.equal((await api('GET', '/api/admin/mis/data', { token: B })).status, 403)
+    const seen = await api('GET', '/api/admin/mis/data', { token: M })
+    assert.equal(seen.status, 200, JSON.stringify(seen.body))
+    assert.equal(seen.body.rows.length, 8)
+    assert.equal((await api('GET', '/api/admin/mis/data', { token: OWNER })).status, 200)
+    for (const path of ['/api/admin/orders', '/api/admin/dashboard', '/api/admin/staff', '/api/admin/blog/posts', '/api/admin/cloud']) {
+      assert.equal((await api('GET', path, { token: M })).status, 403, path)
+    }
+  } finally {
+    mis.setMisSourceForTests(null)
+  }
+})
+
+test('the journal: buttons placed on the cover are saved cleaned (safe links only, positions kept in range) and readers see them', async () => {
+  const { hashPassword } = await import('../lib/sales/writer-login.js')
+  const email = 'cover-writer@example.com'
+  const add = await api('POST', '/api/admin/staff', { token: OWNER, body: { email, fullName: 'Cover writer', role: 'blog' } })
+  assert.equal(add.status, 200, JSON.stringify(add.body))
+  await db.query('update staff_users set password_hash = $2 where email = $1', [email, await hashPassword('a long enough password')])
+  const W = (await api('POST', '/api/blog/login', { body: { email, password: 'a long enough password' }, headers: { 'X-Forwarded-For': '10.99.0.1' } })).body.token
+  assert.ok(W)
+
+  const base = { slug: 'cover-buttons', title: 'Cover buttons', content_md: 'Words.', status: 'published', cover_path: null }
+  // A post that never used the feature saves exactly as before and reads back with an empty set.
+  const plain = await api('POST', '/api/admin/blog/posts', { token: W, body: { id: null, row: base } })
+  assert.equal(plain.status, 200, JSON.stringify(plain.body))
+  assert.deepEqual(plain.body.post.coverButtons, [])
+  assert.equal(plain.body.post.coverExtra, 0)
+
+  const id = plain.body.post.id
+  const saved = await api('POST', '/api/admin/blog/posts', { token: W, body: { id, row: {
+    ...base,
+    cover_extra: 999,
+    cover_fill: '#3A0A10',
+    cover_buttons: [
+      { id: 'shop', text: 'Shop Kitchidi Ponni Rice', href: 'https://chennairiceindustries.com/products/kitchidi-ponni-rice', x: 30, y: 88.456, size: 2.5, color: 'white' },
+      { id: 'enter', text: 'ENTER NOW', href: '/contest', x: 140, y: -5, size: 99, color: 'purple' },
+      { id: 'evil', text: 'Click me', href: 'javascript:alert(1)', x: 50, y: 50, size: 2, color: 'white' },
+      { id: 'data', text: 'Data', href: 'data:text/html,<script>1</script>', x: 50, y: 50 },
+      { id: 'proto', text: 'Same host trick', href: '//evil.example.com', x: 50, y: 50 },
+      { id: 'blank', text: '', href: 'https://x.com', x: 50, y: 50 },
+    ],
+  } } })
+  assert.equal(saved.status, 200, JSON.stringify(saved.body))
+  const post = saved.body.post
+  assert.deepEqual(post.coverButtons.map((b) => b.id), ['shop', 'enter'])
+  assert.equal(post.coverButtons[0].y, 88.46)
+  assert.deepEqual([post.coverButtons[1].x, post.coverButtons[1].y, post.coverButtons[1].size, post.coverButtons[1].color], [100, 0, 6, 'white'])
+  assert.equal(post.coverExtra, 60)
+  assert.equal(post.coverFill, '#3a0a10')
+
+  // Readers get the saved buttons; clearing them works.
+  const read = (await api('GET', '/api/blog/posts/cover-buttons')).body.post
+  assert.equal(read.coverButtons.length, 2)
+  assert.equal(read.coverButtons[0].href, 'https://chennairiceindustries.com/products/kitchidi-ponni-rice')
+  const cleared = await api('POST', '/api/admin/blog/posts', { token: W, body: { id, row: { ...base, cover_buttons: [], cover_extra: 0, cover_fill: null } } })
+  assert.deepEqual(cleared.body.post.coverButtons, [])
+})
+
+test('the MIS dashboard reads the calls log: columns by name, status worked out from REQUIREMENTS, brand from the text, spellings merged', async () => {
+  const mis = await import('../lib/sales/mis.js')
+  mis.setMisSourceForTests(async () => ({
+    title: 'Calls',
+    values: [
+      ['CALLS', '', '', '', '', '', '', ''],
+      [],
+      ['S. NO', 'DATE', 'NAME', 'PLATFORM', 'REQUIREMENTS', 'STAGE', 'DEVICE', 'CALL HANDED BY'],
+      ['1', '30-10-2026', 'Sabeena', 'INBOUND', 'call for Job vacancy', 'RANDOM', 'MOBILE', 'Ramya'],
+      ['2', '15/10/26', 'Vijayaragavan', 'UNAVO EXPO', 'Purchased', '', 'MOBILE', 'GAYATHRI'],
+      ['3', '15/10/2026', 'Sathish', 'UNAVO EXPO', 'RNR', '', 'NEO DOVE', 'GAYATHRI'],
+      ['4', '31-10-2026', 'raguman', 'WHATSAPPBOT', 'enq about slogan bag gift', '', 'NEO DOVE', 'gayathri'],
+      ['5', '31-10-2026', 'Guna', 'Whatsapp Bot', 'Customer will call if needed', '', 'NeO DOVE', 'Ramya'],
+      ['6', '31-10-2026', 'purushothaman', 'OUTBOUND', 'poor quality rice', 'COMPLAINT', 'MOBILE', 'lavanya'],
+      ['7', '29-10-2026', 'Naveen', 'INBOUND', 'Enquired about Cholan Franchise', 'ENQUIRY', '', 'INDHUJAA'],
+      ['8', '15-10-2026', 'Vasanth Sree Aryabhavan', 'UNAVO EXPO', 'Kolam rice 26kg, need 250bags monthly(CFF)', '', 'MOBILE', 'GAYATHRI'],
+      ['9', '10/2026', 'N/A', 'WEBSITE', 'No need', '', 'NEO DOVE', 'Ramya'],
+    ],
+  }))
+  try {
+    const d = await mis.misData({ refresh: true })
+    assert.deepEqual([d.mapping.date, d.mapping.name, d.mapping.platform, d.mapping.remark, d.mapping.stage, d.mapping.device, d.mapping.telecaller],
+      ['DATE', 'NAME', 'PLATFORM', 'REQUIREMENTS', 'STAGE', 'DEVICE', 'CALL HANDED BY'])
+    assert.equal(d.statusFrom, 'requirements')
+    assert.equal(d.brandFrom, 'text')
+    assert.deepEqual(d.brands, ['CRI', 'CFF', 'Cholan'])
+    assert.ok(d.missing.includes('status') && d.missing.includes('brand') && d.missing.includes('phone'))
+    assert.equal(d.rows.length, 9)
+    assert.deepEqual(d.rows.map((r) => r.status), ['Negatively closed', 'Positively closed', 'Open / Pending', 'In Process', 'In Process', 'Complaint', 'In Process', 'In Process', 'Negatively closed'])
+    assert.deepEqual(d.rows.map((r) => r.brand), ['Not specified', 'Not specified', 'Not specified', 'CRI', 'Not specified', 'Not specified', 'Cholan', 'CFF', 'Not specified'])
+    assert.deepEqual(d.rows.map((r) => r.date), ['2026-10-30', '2026-10-15', '2026-10-15', '2026-10-31', '2026-10-31', '2026-10-31', '2026-10-29', '2026-10-15', ''])
+    // One spelling each: the platform, the telecaller and the device.
+    assert.deepEqual(d.rows.slice(3, 5).map((r) => r.platform), ['Whatsapp Bot', 'Whatsapp Bot'])
+    assert.deepEqual([...new Set(d.rows.map((r) => r.telecaller))].sort(), ['Gayathri', 'Indhujaa', 'Lavanya', 'Ramya'])
+    assert.deepEqual([...new Set(d.rows.map((r) => r.device))].sort(), ['', 'Mobile', 'Neo Dove'])
+    assert.equal(d.rows[8].name, '') // "N/A" is no name
+    assert.equal(d.rows[0].stage, 'Random')
+    // The rules that decided are reported, with examples.
+    const bought = d.statusRules.find((r) => r.label.startsWith('Bought'))
+    assert.deepEqual([bought.status, bought.count, bought.examples], ['Positively closed', 1, ['Purchased']])
+  } finally {
+    mis.setMisSourceForTests(null)
+  }
+})
+
+test('the MIS dashboard also reads the LEADS tab: brand column, status from the lead manager remark, no call outcomes', async () => {
+  const mis = await import('../lib/sales/mis.js')
+  mis.setMisSourceForTests(async () => ({
+    title: 'Calls',
+    values: [['S. NO', 'DATE', 'NAME', 'PLATFORM', 'REQUIREMENTS', 'STAGE', 'DEVICE', 'CALL HANDED BY'], ['1', '30-10-2026', 'Sabeena', 'INBOUND', 'RNR', '', 'MOBILE', 'Ramya']],
+    leads: {
+      title: 'LEADS',
+      values: [
+        ['LEADS', '', '', '', '', '', '', '', ''],
+        [],
+        ['S. NO', 'DATE', 'NAME', 'BRAND', 'PLATFORM', 'REQUIREMENTS', 'STAGE', 'STATUS', 'REMARKS BY LEAD MANAGER'],
+        ['1', '19-09-2026', 'Sakthi', 'CRI', 'INBOUND', 'Asking for Export', 'ENQUIRY', 'OPEN', 'Negatively Closed'],
+        ['2', '17-09-2026', 'Chandra Kumar', 'CRI', 'INBOUND', 'NA', '', 'CLOSED', 'Process'],
+        ['3', '25-09-2026', 'Thandapani', 'CRI', 'INBOUND', 'NA', '', 'OPEN', 'Positively closed'],
+        ['4', '12-10-2026', 'NA', 'CFF', 'INBOUND', 'Nayara Ponni Rice', 'ENQUIRY', 'OPEN', ''],
+      ],
+    },
+  }))
+  try {
+    const d = await mis.misData({ refresh: true })
+    assert.equal(d.kind, 'calls')
+    assert.equal(d.leads.kind, 'leads')
+    assert.equal(d.leads.mapping.brand, 'BRAND')
+    assert.equal(d.leads.mapping.manager, 'REMARKS BY LEAD MANAGER')
+    assert.equal(d.leads.mapping.remark, 'REQUIREMENTS')
+    assert.equal(d.leads.brandFrom, 'column')
+    assert.deepEqual(d.leads.rows.map((r) => r.status), ['Negatively closed', 'In Process', 'Positively closed', 'Open / Pending'])
+    assert.deepEqual(d.leads.rows.map((r) => r.brand), ['CRI', 'CRI', 'CRI', 'CFF'])
+    assert.ok(d.leads.rows.every((r) => r.outcome === ''))
+    assert.equal(d.leads.rows[3].name, '')
+  } finally {
+    mis.setMisSourceForTests(null)
+  }
+})
+
+test('the MIS dashboard does not count a brand typed in CALL HANDED BY as a telecaller', async () => {
+  const mis = await import('../lib/sales/mis.js')
+  mis.setMisSourceForTests(async () => ({
+    title: 'Calls',
+    values: [['DATE', 'NAME', 'PLATFORM', 'REQUIREMENTS', 'STAGE', 'DEVICE', 'CALL HANDED BY'], ['30-10-2026', 'A', 'INBOUND', 'Need rice', '', 'MOBILE', 'Cholan'], ['30-10-2026', 'B', 'INBOUND', 'Need rice', '', 'MOBILE', 'Ramya']],
+  }))
+  try {
+    const d = await mis.misData({ refresh: true })
+    assert.deepEqual(d.rows.map((r) => r.telecaller), ['Not assigned', 'Ramya'])
+    assert.deepEqual(d.rows.map((r) => r.brand), ['Cholan', 'Not specified'])
+  } finally {
+    mis.setMisSourceForTests(null)
+  }
+})

@@ -1,5 +1,5 @@
-// Creates (or resets) a blog writer's login: an email and a password for /admin, opening the Journal and nothing
-// else (Oct 2026). No Firebase: the backend checks the password itself and issues a JWT (lib/sales/writer-login.js).
+// Creates (or resets) a password login for /admin: the blog writer (opens the Journal) or the MIS user (opens the
+// MIS dashboard), and nothing else (Oct/Nov 2026). No Firebase: the backend checks the password itself and issues a JWT (lib/sales/writer-login.js).
 //
 // Run by someone who manages the database, in a PowerShell window that has the database settings (as for
 // npm run db:migrate) and these:

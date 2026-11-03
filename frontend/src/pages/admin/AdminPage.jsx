@@ -18,6 +18,8 @@ import {
 } from '../../services/admin.service.js'
 import JournalGate from '../blog/JournalGate.jsx'
 import JournalPage from '../JournalPage.jsx'
+import MisGate from '../mis/MisGate.jsx'
+import MisDashboard from '../mis/MisDashboard.jsx'
 import { hasStaffSession, signInWriter, signOutStaff, staffJson } from '../../services/staffAuth.js'
 import CampaignsPanel from './CampaignsPanel.jsx'
 import EnquiriesPanel from './EnquiriesPanel.jsx'
@@ -74,6 +76,8 @@ const ANALYTICS_NAV = [
 ]
 
 /* The writing tool: behind the staff sign-in (blog.manage), like the other staff sections. */
+const MIS_NAV = { id: 'mis', label: 'MIS dashboard', subtitle: 'Leads from the MIS Google Sheet: overview, brands, telecallers and reports', icon: 'grid' }
+
 const JOURNAL_NAV = {
   id: 'journal',
   label: 'Journal',
@@ -115,13 +119,15 @@ const NavIcon = ({ name }) => (
   </svg>
 )
 
-/** A writer's login (role 'blog') on the staff sign-in: they land straight in the Journal, nothing else. */
-async function isStaffWriter() {
-  if (!(await hasStaffSession())) return false
+/** A password login on the staff sign-in: the blog writer lands in the Journal and the MIS user in the MIS dashboard,
+ *  nothing else. Returns the role ('blog' or 'mis'), or '' for anyone else. */
+async function passwordRole() {
+  if (!(await hasStaffSession())) return ''
   try {
-    return (await staffJson('/api/admin/me')).role === 'blog'
+    const { role } = await staffJson('/api/admin/me')
+    return role === 'blog' || role === 'mis' ? role : ''
   } catch {
-    return false
+    return ''
   }
 }
 
@@ -129,7 +135,7 @@ export default function AdminPage() {
   const [checking, setChecking] = useState(true)
   const [session, setSession] = useState(null)
   const [access, setAccess] = useState(null)
-  const [writer, setWriter] = useState(false)
+  const [writer, setWriter] = useState('') // '' | 'blog' | 'mis': a password login that has its own screen
 
   useEffect(() => {
     let cancelled = false
@@ -142,7 +148,7 @@ export default function AdminPage() {
       .then(async (existing) => {
         if (cancelled) return
         if (!existing) {
-          if (await isStaffWriter()) setWriter(true)
+          setWriter(await passwordRole())
           return
         }
         const resolved = await resolveAccess()
@@ -179,6 +185,7 @@ export default function AdminPage() {
     )
   }
 
+  if (writer === 'mis') return <MisDashboard standalone />
   if (writer) return <JournalPage />
 
   return session && access ? (
@@ -192,7 +199,7 @@ export default function AdminPage() {
     />
   ) : (
     <LoginScreen
-      onWriter={() => setWriter(true)}
+      onWriter={(role) => setWriter(role)}
       onSignedIn={async (resolved) => {
         setAccess(resolved)
         setSession(await getSession())
@@ -216,11 +223,11 @@ function LoginScreen({ onSignedIn, onWriter }) {
     try {
       onSignedIn(await signIn(email.trim(), password))
     } catch (err) {
-      // Not an analyst: a writer's login (role 'blog') opens the Journal.
+      // Not an analyst: a password login (the blog writer, or the MIS user) opens its own screen.
       let why = ''
       const writer = await signInWriter(email.trim(), password).catch((e) => { why = e.message; return null })
-      if (writer?.role === 'blog') {
-        onWriter()
+      if (writer?.role === 'blog' || writer?.role === 'mis') {
+        onWriter(writer.role)
         return
       }
       const base = err instanceof AdminError ? err.message : 'Could not sign in. Please try again.'
@@ -272,6 +279,7 @@ function Dashboard({ session, access, onSignOut }) {
   const nav = useMemo(() => {
     const items = []
     if (access.analyst) items.push(...ANALYTICS_NAV)
+    items.push(MIS_NAV)
     items.push(JOURNAL_NAV)
     return items
   }, [access])
@@ -478,7 +486,7 @@ function Dashboard({ session, access, onSignOut }) {
           </div>
 
           <div className="ad-topbar-actions">
-            {view !== 'realtime' && view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
+            {view !== 'realtime' && view !== 'journal' && view !== 'mis' && view !== 'mis' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
               <label className="ad-select-wrap">
                 <span className="ad-sr">Date range</span>
                 <select className="ad-select" value={rangeId} onChange={(e) => setRangeId(e.target.value)}>
@@ -488,7 +496,7 @@ function Dashboard({ session, access, onSignOut }) {
                 </select>
               </label>
             )}
-            {view !== 'journal' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
+            {view !== 'journal' && view !== 'mis' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
               <button type="button" className="ad-btn ad-btn-quiet" onClick={refresh} disabled={loading}>
                 {loading ? 'Refreshing…' : 'Refresh'}
               </button>
@@ -502,6 +510,8 @@ function Dashboard({ session, access, onSignOut }) {
               it shares nothing with the analytics queries. */}
           {view === 'journal' ? (
             <JournalGate />
+          ) : view === 'mis' ? (
+            <MisGate />
           ) : view === 'analyst' ? (
             <AnalystPanel />
           ) : view === 'campaigns' ? (

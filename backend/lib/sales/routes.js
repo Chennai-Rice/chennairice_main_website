@@ -52,6 +52,7 @@ import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { listReports, reportCsv } from './reports.js'
 import { contestReport } from './contest.js'
 import { loginWriter } from './writer-login.js'
+import { misData } from './mis.js'
 import { publishedPosts, publishedPost, allPosts, openPost, savePost as saveBlogPost, deletePost as deleteBlogPost, saveImage, readImage, MAX_IMAGE_BYTES } from './blog.js'
 import { syncSettlements, importSettlementFile } from './settlements.js'
 import { accountsSummary, invoiceRegister, invoiceRegisterCsv, paymentsList, refundsList, period } from './accounts.js'
@@ -468,6 +469,11 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   }))
   admin.put('/advisor/cap', perm('analyst.view'), wrap(async (req, res) => {
     res.json(await setAdvisorCap(req.body?.capInr))
+  }))
+  // The MIS dashboard (mis.js): the leads of the MIS Google Sheet. ?refresh=1 reads the sheet again now.
+  admin.get('/mis/data', perm('mis.view'), rateLimit({ windowMs: 60000, max: 30 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await misData({ refresh: req.query.refresh === '1' }))
   }))
   // /admin → Journal and /journal: write, publish and delete posts; upload a picture (blog.js).
   admin.get('/blog/posts', perm('blog.manage'), wrap(async (_req, res) => {

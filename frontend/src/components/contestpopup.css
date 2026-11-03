@@ -530,6 +530,8 @@ button.contest-form-note { background: none; border: 0; cursor: pointer; text-de
   cursor: pointer;
 }
 .contest-form-link:disabled { color: #8a7a72; text-decoration: none; cursor: default; }
+/* "No thanks, maybe later": a quiet link under the Submit button, centred. */
+.contest-form-skip { display: block; width: 100%; margin: 2px auto 0; text-align: center; font-weight: 500; color: #6f5f58; }
 
 /* ---- Expo QR lead form (ExpoPopup): taller than the ad sign-up, so it scrolls inside the dialog. ---- */
 .contest-pop.contest-pop--expo { max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }
