@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { renderMarkdown } from '../../lib/markdown.jsx'
+import PostCover from './components/PostCover.jsx'
 import { fetchPostBySlug, formatPostDate } from '../../services/blog.service.js'
 import '../page.css'
 import './blog.css'
@@ -107,9 +108,7 @@ export default function BlogPostPage() {
           </header>
 
           {post.coverUrl && (
-            <figure className="blog-post-cover">
-              <img src={post.coverUrl} alt={post.coverAlt} />
-            </figure>
+            <PostCover url={post.coverUrl} alt={post.coverAlt} buttons={post.coverButtons || []} extra={post.coverExtra || 0} fill={post.coverFill || ''} />
           )}
 
           {/* renderMarkdown returns React elements, never an HTML string —

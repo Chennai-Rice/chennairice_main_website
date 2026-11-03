@@ -481,3 +481,30 @@
 .st-preview .blog-prose,
 .st-pv-frame.is-phone .blog-prose { font-size: 18px; }
 .st-pv-frame.is-phone .blog-prose h2.md-heading { font-size: 26px; }
+
+/* ---- Edit buttons (PostPreview.jsx): the panel above the cover, and the buttons as handles on it ---- */
+.st-pv-edit { display: grid; gap: 12px; padding: 14px 16px; margin: 0 0 12px; border: 1px solid var(--st-line, #e2dccf); border-radius: 12px; background: #fffdf6; }
+.st-pv-edit-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.st-pv-pick.is-on { background: #7a1622; border-color: #7a1622; color: #fff; }
+.st-pv-edit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; align-items: end; }
+.st-pv-edit-cover { padding-top: 10px; border-top: 1px dashed var(--st-line, #e2dccf); }
+.st-pv-edit input[type='range'] { width: 100%; }
+.st-pv-edit input[type='color'] { width: 56px; height: 36px; padding: 2px; border: 1px solid var(--st-line, #e2dccf); border-radius: 8px; background: #fff; cursor: pointer; }
+.st-pv-warn { color: #a23a3a; font-size: 12px; }
+.st-pv-del { align-self: end; }
+.blog-post-cover.is-editing { outline: 2px dashed rgba(122, 22, 34, 0.45); outline-offset: 3px; }
+.blog-post-cover .blog-cb.is-edit { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.blog-post-cover .blog-cb.is-edit:active { cursor: grabbing; }
+.blog-post-cover .blog-cb.is-selected { outline: 2px solid #f2c27a; outline-offset: 3px; }
+.blog-post-cover .blog-cb-handle {
+  position: absolute;
+  right: -0.55em;
+  bottom: -0.55em;
+  width: 1.1em;
+  height: 1.1em;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #7a1622;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  cursor: nwse-resize;
+}

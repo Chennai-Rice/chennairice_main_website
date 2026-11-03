@@ -2981,3 +2981,49 @@ test('the MIS dashboard: columns are found by name, statuses and dates are read,
     mis.setMisSourceForTests(null)
   }
 })
+
+test('the journal: buttons placed on the cover are saved cleaned (safe links only, positions kept in range) and readers see them', async () => {
+  const { hashPassword } = await import('../lib/sales/writer-login.js')
+  const email = 'cover-writer@example.com'
+  const add = await api('POST', '/api/admin/staff', { token: OWNER, body: { email, fullName: 'Cover writer', role: 'blog' } })
+  assert.equal(add.status, 200, JSON.stringify(add.body))
+  await db.query('update staff_users set password_hash = $2 where email = $1', [email, await hashPassword('a long enough password')])
+  const W = (await api('POST', '/api/blog/login', { body: { email, password: 'a long enough password' }, headers: { 'X-Forwarded-For': '10.99.0.1' } })).body.token
+  assert.ok(W)
+
+  const base = { slug: 'cover-buttons', title: 'Cover buttons', content_md: 'Words.', status: 'published', cover_path: null }
+  // A post that never used the feature saves exactly as before and reads back with an empty set.
+  const plain = await api('POST', '/api/admin/blog/posts', { token: W, body: { id: null, row: base } })
+  assert.equal(plain.status, 200, JSON.stringify(plain.body))
+  assert.deepEqual(plain.body.post.coverButtons, [])
+  assert.equal(plain.body.post.coverExtra, 0)
+
+  const id = plain.body.post.id
+  const saved = await api('POST', '/api/admin/blog/posts', { token: W, body: { id, row: {
+    ...base,
+    cover_extra: 999,
+    cover_fill: '#3A0A10',
+    cover_buttons: [
+      { id: 'shop', text: 'Shop Kitchidi Ponni Rice', href: 'https://chennairiceindustries.com/products/kitchidi-ponni-rice', x: 30, y: 88.456, size: 2.5, color: 'white' },
+      { id: 'enter', text: 'ENTER NOW', href: '/contest', x: 140, y: -5, size: 99, color: 'purple' },
+      { id: 'evil', text: 'Click me', href: 'javascript:alert(1)', x: 50, y: 50, size: 2, color: 'white' },
+      { id: 'data', text: 'Data', href: 'data:text/html,<script>1</script>', x: 50, y: 50 },
+      { id: 'proto', text: 'Same host trick', href: '//evil.example.com', x: 50, y: 50 },
+      { id: 'blank', text: '', href: 'https://x.com', x: 50, y: 50 },
+    ],
+  } } })
+  assert.equal(saved.status, 200, JSON.stringify(saved.body))
+  const post = saved.body.post
+  assert.deepEqual(post.coverButtons.map((b) => b.id), ['shop', 'enter'])
+  assert.equal(post.coverButtons[0].y, 88.46)
+  assert.deepEqual([post.coverButtons[1].x, post.coverButtons[1].y, post.coverButtons[1].size, post.coverButtons[1].color], [100, 0, 6, 'white'])
+  assert.equal(post.coverExtra, 60)
+  assert.equal(post.coverFill, '#3a0a10')
+
+  // Readers get the saved buttons; clearing them works.
+  const read = (await api('GET', '/api/blog/posts/cover-buttons')).body.post
+  assert.equal(read.coverButtons.length, 2)
+  assert.equal(read.coverButtons[0].href, 'https://chennairiceindustries.com/products/kitchidi-ponni-rice')
+  const cleared = await api('POST', '/api/admin/blog/posts', { token: W, body: { id, row: { ...base, cover_buttons: [], cover_extra: 0, cover_fill: null } } })
+  assert.deepEqual(cleared.body.post.coverButtons, [])
+})

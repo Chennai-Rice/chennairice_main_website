@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { renderMarkdown, slugify } from '../../../lib/markdown.jsx'
 import PostPreview from './PostPreview.jsx'
+import PostCover from './PostCover.jsx'
 import { hasFormatting, htmlToMarkdown } from '../../../lib/pasteToMarkdown.js'
 import {
   BlogError,
@@ -21,6 +22,10 @@ const BLANK = {
   coverPath: null,
   coverUrl: null,
   coverAlt: '',
+  coverButtons: [],
+  coverExtra: 0,
+  coverFill: '',
+  coverTouched: false,
   status: 'draft',
   publishedAt: null,
 }
@@ -168,6 +173,10 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
         status: saved.status,
         publishedAt: saved.publishedAt,
         excerpt: saved.excerpt || '',
+        coverButtons: saved.coverButtons || [],
+        coverExtra: saved.coverExtra || 0,
+        coverFill: saved.coverFill || '',
+        coverTouched: false,
       }))
       setSlugTouched(true)
       setNotice(
@@ -401,7 +410,7 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
                   <p className="blog-post-meta"><span>{author?.display_name || ''}</span></p>
                 </header>
                 {draft.coverUrl && (
-                  <figure className="blog-post-cover"><img src={draft.coverUrl} alt={draft.coverAlt} /></figure>
+                  <PostCover url={draft.coverUrl} alt={draft.coverAlt} buttons={draft.coverButtons || []} extra={draft.coverExtra || 0} fill={draft.coverFill || ''} />
                 )}
                 <div className="blog-prose">{preview}</div>
               </article>
@@ -416,6 +425,7 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
           author={author}
           live={live}
           busy={busy === 'published'}
+          onChange={set}
           onBack={() => setPreviewing(false)}
           onPublish={() => save('published')}
         />
