@@ -193,41 +193,6 @@
   box-shadow: 0 16px 36px rgba(90, 60, 30, 0.14);
 }
 
-/* The cover's own buttons (PostCover.jsx): a dark-red band under the picture, inside the same rounded cover, with white buttons. */
-.blog-cover-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 14px;
-  padding: 24px 20px 28px;
-  background: linear-gradient(180deg, #4a0710 0%, #2c040a 100%);
-}
-.blog-post-cover a.blog-cover-btn {
-  display: inline-block;
-  padding: 14px 30px;
-  border-radius: 999px;
-  background: #fff;
-  color: #6d1421;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.3;
-  letter-spacing: 0.02em;
-  text-align: center;
-  text-decoration: none;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-.blog-post-cover a.blog-cover-btn:hover {
-  background: #fff;
-  color: #4a0710;
-  transform: translateY(-2px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.36);
-}
-@media (max-width: 600px) {
-  .blog-cover-actions { padding: 18px 16px 22px; }
-  .blog-post-cover a.blog-cover-btn { width: 100%; padding: 13px 20px; font-size: 15px; }
-}
-
 .blog-post-cover img {
   display: block;
   width: 100%;

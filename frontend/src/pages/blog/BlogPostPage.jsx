@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { renderMarkdown, splitLeadButtons } from '../../lib/markdown.jsx'
-import PostCover from './components/PostCover.jsx'
+import { renderMarkdown } from '../../lib/markdown.jsx'
 import { fetchPostBySlug, formatPostDate } from '../../services/blog.service.js'
 import '../page.css'
 import './blog.css'
@@ -48,9 +47,7 @@ export default function BlogPostPage() {
 
   // Parsing is the expensive part of this page, so it happens once per post
   // rather than on every render.
-  // With a cover, the buttons the post starts with sit inside the cover; without one they stay in the text.
-  const lead = useMemo(() => (post?.coverUrl ? splitLeadButtons(post.contentMd) : { buttons: [], rest: post?.contentMd || '' }), [post])
-  const body = useMemo(() => (post ? renderMarkdown(lead.rest) : []), [post, lead])
+  const body = useMemo(() => (post ? renderMarkdown(post.contentMd) : []), [post])
 
   if (state === 'loading') {
     return (
@@ -110,7 +107,9 @@ export default function BlogPostPage() {
           </header>
 
           {post.coverUrl && (
-            <PostCover url={post.coverUrl} alt={post.coverAlt} buttons={lead.buttons} />
+            <figure className="blog-post-cover">
+              <img src={post.coverUrl} alt={post.coverAlt} />
+            </figure>
           )}
 
           {/* renderMarkdown returns React elements, never an HTML string —

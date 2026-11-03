@@ -304,27 +304,6 @@ export function renderMarkdown(source) {
 /* --------------------------------------------------------------- extras */
 
 /**
- * The buttons a post starts with (link-only lines before any other text) and the rest of the text. When a post has a
- * cover image, those buttons are drawn inside the cover (pages/blog/components/PostCover.jsx) instead of in the text.
- */
-export function splitLeadButtons(source) {
-  const lines = String(source || '').replace(/\r\n?/g, '\n').split('\n')
-  const buttons = []
-  let i = 0
-  while (i < lines.length) {
-    if (!lines[i].trim()) {
-      i += 1
-      continue
-    }
-    const m = BUTTON.exec(lines[i])
-    if (!m || !safeUrl(m[2])) break
-    buttons.push({ text: m[1].trim(), href: safeUrl(m[2]) })
-    i += 1
-  }
-  return { buttons, rest: lines.slice(i).join('\n') }
-}
-
-/**
  * The prose with its markup stripped. Used for the excerpt fallback and the
  * meta description, where syntax characters would show up as noise.
  */
