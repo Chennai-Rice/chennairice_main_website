@@ -10,8 +10,10 @@
 //   absorbed      = a fixed part of the delivery cost carried in the price
 //                   (5 kg ₹111, 10 kg ₹120, 26 kg ₹250; less where that
 //                   would cross MRP, or as the sheet sets for a pack)
+//   MRP           = the bag's MRP + 60% of the Tamil Nadu delivery cost for
+//                   that size (MRP_DELIVERY_SHARE), rounded to the rupee
 //   website price = list price + absorbed, the same in every region, and
-//                   never above MRP or ₹2,800 (MAX_PACK_PRICE) for any bag
+//                   never above that MRP or ₹2,800 (MAX_PACK_PRICE) for any bag
 //   delivery      = the region's delivery cost for that pack size − absorbed,
 //                   rounded to the rupee
 // The region comes from the customer's PIN code at checkout
@@ -38,6 +40,9 @@ export const EFFECTIVE_FROM = '2026-10-19'
 // No bag is sold for more than this on the website, whatever its size.
 export const MAX_PACK_PRICE = 2800
 
+// The share of the Tamil Nadu delivery cost added to each bag's MRP (19-10-2026).
+export const MRP_DELIVERY_SHARE = 0.6
+
 const REGION_NAMES = { TN: 'Tamil Nadu', SOUTH: 'South India', NORTH: 'North India', NE: 'North East' }
 
 // From the sheets, per pack size: each region's delivery cost for one pack
@@ -48,7 +53,7 @@ export const DELIVERY = {
   26: { absorbed: 250, cost: { TN: 687.23, SOUTH: 1374.46, NORTH: 2061.7, NE: 3092.54 } },
 }
 
-// slug → { packKg: [list price, MRP, absorbed (only where the sheet differs
+// slug → { packKg: [list price, MRP before the delivery share, absorbed (only where the sheet differs
 // from the size's usual amount)] }. Item and variety as on the sheets.
 export const PRICE_LIST = {
   'kitchidi-ponni-rice': { 5: [515, 599], 26: [2470, 2699] },                  // Chennai Rice Premium Kitchidi Ponni Rice (pink bag)
@@ -69,6 +74,7 @@ export const PRICE_LIST = {
 export function packPricing(packKg, listPrice, mrp, absorbed) {
   const size = DELIVERY[packKg]
   if (!size) throw new Error(`No delivery costs for ${packKg} kg packs.`)
+  mrp += Math.round(size.cost.TN * MRP_DELIVERY_SHARE)
   const take = Math.max(0, Math.min(absorbed ?? size.absorbed, mrp - listPrice, MAX_PACK_PRICE - listPrice))
   const website = listPrice + take
   const delivery = Object.fromEntries(Object.entries(size.cost)
@@ -142,9 +148,9 @@ export async function applyPriceList({ pool, stock = 0, log = console.log } = {}
            (select id from product_variants where product_id = $1 and not (pack_kg = any($2)))`,
         [p.id, Object.keys(prices).map(Number)])
       const shown = []
-      for (const [kg, [listPrice, mrp, absorbedRupees]] of Object.entries(prices)) {
+      for (const [kg, [listPrice, bagMrp, absorbedRupees]] of Object.entries(prices)) {
         const packKg = Number(kg)
-        const { website, delivery } = packPricing(packKg, listPrice, mrp, absorbedRupees)
+        const { website, mrp, delivery } = packPricing(packKg, listPrice, bagMrp, absorbedRupees)
         const { rows: [v] } = await client.query(
           `insert into product_variants (product_id, sku, pack_kg, price_paise, mrp_paise, tax_rate_bp, reorder_level, is_active)
            values ($1, $2, $3, $4, $5, $6, 20, true)
