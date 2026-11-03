@@ -2,8 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   canUseGoogleSignIn, canUseLocalSignIn, hasStaffSession, signInLocal, signInWithGoogle, signInWithPassword, staffJson,
 } from '../../services/staffAuth.js'
-import '../warehouse/warehouse.css'
-import '../warehouse/warehouse-pages.css'
+import './staffgate-base.css'
 import './staffgate.css'
 
 /**

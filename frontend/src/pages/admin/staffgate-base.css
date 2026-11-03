@@ -1,0 +1,6 @@
+/* The warehouse base styles the staff sign-in card needs, imported here as a copy on purpose: if StaffGate imported
+   warehouse.css and warehouse-pages.css directly, the build would share them as a separate stylesheet that loads
+   AFTER the warehouse page's own (warehouse-shell.css), and its rules would override the shell's, bringing the red
+   sidebar back on desktop. Copies keep /warehouse's stylesheet self-contained and in order. */
+@import '../warehouse/warehouse.css';
+@import '../warehouse/warehouse-pages.css';
