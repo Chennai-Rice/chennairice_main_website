@@ -71,3 +71,16 @@ export function classifyCall(text, stage = '') {
   for (const rule of RULES) if (rule.test(t, s)) return { status: rule.status, rule: rule.label }
   return { status: 'Open / Pending', rule: t ? null : NO_REMARK }
 }
+
+const PAUSED = /call paused|\bpaused\b/
+const INVALID = /wrong (number|no|enquiry)|incorrect no|not exist|does not exist|not in use|out of service|not in service|repeated number|invalid/
+const NOT_REACHED = /\brnr\b|not reachable|switched off|swiffed off|switch off|no incoming|incoming call not|network error|out of reach|call (cut|ended|disconnected|not connected)|cal not connected|disconnected the call|missed call|unavailable/
+
+/** How the call went, for the reports: 'paused', 'invalid' (wrong or dead number), 'rnr' (not reached) or 'connected'. */
+export function callOutcome(text) {
+  const t = String(text ?? '').toLowerCase().replace(/\s+/g, ' ').trim()
+  if (PAUSED.test(t)) return 'paused'
+  if (INVALID.test(t)) return 'invalid'
+  if (NOT_REACHED.test(t)) return 'rnr'
+  return 'connected'
+}

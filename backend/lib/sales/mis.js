@@ -12,7 +12,7 @@
 // Google's answer is kept 3 minutes per server instance.
 import { GoogleAuth } from 'google-auth-library'
 import { parseCsv } from './advisor-files.js'
-import { BRANDS, brandFromText, classifyCall } from './mis-rules.js'
+import { BRANDS, brandFromText, classifyCall, callOutcome } from './mis-rules.js'
 import { httpError } from './util.js'
 
 const SHEET_ID = () => process.env.MIS_SHEET_ID || '1J6J5zmeyEfM_RRHOy4HX6OKi8XFZ3fK4L1YtsyAKirM'
@@ -204,6 +204,7 @@ export function buildDataset(matrix, { sheetTitle = '' } = {}) {
       platform: cell(row, 'platform') ? clean(cell(row, 'platform')) : 'Not specified',
       stage,
       status: status.status,
+      outcome: callOutcome(remark),
       statusText: statusFrom === 'column' ? cell(row, 'status') : '',
       telecaller: cell(row, 'telecaller') || 'Not assigned',
       device: cell(row, 'device'),

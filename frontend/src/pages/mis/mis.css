@@ -402,3 +402,19 @@ button.mis-metric:hover { transform: translateY(-2px); border-color: var(--accen
 .mis-range label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted, inherit); }
 .mis-range input { font: inherit; padding: 7px 9px; border-radius: 10px; border: 1px solid var(--line, #d9dde5); background: var(--card, #fff); color: inherit; }
 .mis-legend-item { display: flex; align-items: center; gap: 8px; width: 100%; }
+
+.mis-reportbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+.mis-reportbar select { font: inherit; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line, #d9dde5); background: var(--card, #fff); color: inherit; }
+.mis-report-title { font-size: 20px; margin: 4px 0 12px; }
+.mis-reporttable th, .mis-reporttable td { white-space: nowrap; }
+.mis-total td { font-weight: 700; border-top: 2px solid var(--line, #d9dde5); }
+.mis-summary dl { margin: 8px 0 0; }
+.mis-summary dl > div { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--line, #e6e9ef); }
+.mis-summary dl > div:last-child { border-bottom: 0; }
+.mis-summary dt { color: var(--muted, #5b6472); }
+.mis-summary dd { margin: 0; font-weight: 700; text-align: right; }
+@media print {
+  .mis-side, .mis-filters, .mis-reportbar, .mis-notes, .mis-alert { display: none !important; }
+  .mis, .mis-main { display: block !important; padding: 0 !important; }
+  .mis-panel { box-shadow: none !important; break-inside: avoid; }
+}

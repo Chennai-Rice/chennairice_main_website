@@ -162,7 +162,7 @@ export default function MisDashboard({ standalone = false }) {
             <h1>{title}</h1>
             {subtitle && <p className="mis-sub">{subtitle}</p>}
           </div>
-          {data && view !== 'reports' && (
+          {data && (
             <div className="mis-filters">
               <Periods filters={filters} set={set} />
               <DateRange filters={filters} set={set} />
@@ -188,7 +188,7 @@ export default function MisDashboard({ standalone = false }) {
         {data && view === 'overview' && <Overview rows={filtered} sum={sum} set={set} brands={data.brands} hasDevice={cols.device} />}
         {data && view === 'brands' && <GroupView rows={filtered} field="brand" label="Brand" always={data.brands} />}
         {data && view === 'telecallers' && <GroupView rows={filtered} field="telecaller" label="Telecaller" />}
-        {data && view === 'reports' && <Reports filtered={filtered} filters={filters} set={set} options={options} />}
+        {data && view === 'reports' && <Reports filtered={filtered} />}
       </main>
     </div>
   )
@@ -211,7 +211,7 @@ function Periods({ filters, set }) {
 /** From / To calendar pickers: the dashboard and the export both cover just these days. */
 function DateRange({ filters, set }) {
   return (
-    <div className="mis-range" role="group" aria-label="Date range">
+    <div className="mis-range" role="group" aria-label="Date range" title="Pick one date for a single day, or both for a range">
       <label>From <input type="date" value={filters.from} max={filters.to || undefined} onChange={(e) => set({ from: e.target.value })} /></label>
       <label>To <input type="date" value={filters.to} min={filters.from || undefined} onChange={(e) => set({ to: e.target.value })} /></label>
     </div>
@@ -510,39 +510,150 @@ const leadLine = (r) => [r.n, r.date, r.name, r.phone, r.city, r.brand, r.platfo
 
 /** Downloads exactly the calls in view: the chosen dates, brand and platform. The file name carries the date range. */
 function exportCalls(rows, { from, to, month }) {
-  const range = from || to ? `${from || 'start'}_to_${to || 'today'}` : month || 'all'
+  const range = from || to ? ((from || to) === (to || from) ? from || to : `${from}_to_${to}`) : month || 'all'
   downloadCsv(`mis-calls-${range}.csv`, LEAD_COLUMNS, rows.map(leadLine))
 }
 
-function Reports({ filtered, filters, set, options }) {
-  const stamp = new Date().toISOString().slice(0, 10)
-  const summaryHeader = (name) => [name, 'Calls', 'Positively closed', 'Negatively closed', 'In Process', 'Open / Pending', 'Complaints', 'Enquiries', 'Conversion %']
-  const summaryRows = (key, rename = (x) => x) => groupTable(filtered, key).map((t) => [rename(t.label), t.total, t.positive, t.negative, t.inProcess, t.open, t.complaints, t.enquiries, t.conversion.toFixed(1)])
-  const reports = [
-    ['All calls', `Every call in the selection (${num(filtered.length)}), with every column the dashboard reads.`, () => exportCalls(filtered, filters)],
-    ['Summary by brand', 'Calls, closures and conversion for each brand.', () => downloadCsv(`mis-by-brand-${stamp}.csv`, summaryHeader('Brand'), summaryRows('brand'))],
-    ['Summary by telecaller', 'How each telecaller’s calls ended.', () => downloadCsv(`mis-by-telecaller-${stamp}.csv`, summaryHeader('Telecaller'), summaryRows('telecaller'))],
-    ['Summary by platform', 'Which platforms the calls came from and how they closed.', () => downloadCsv(`mis-by-platform-${stamp}.csv`, summaryHeader('Platform'), summaryRows('platform'))],
-    ['Summary by month', 'Calls and conversion month by month.', () => downloadCsv(`mis-by-month-${stamp}.csv`, summaryHeader('Month'), summaryRows('month', monthLabel))],
-  ]
+const REPORT_BY = [['telecaller', 'Telecaller'], ['brand', 'Brand'], ['platform', 'Platform']]
+const PERIODS = [['daily', 'Daily'], ['monthly', 'Monthly'], ['all', 'All time']]
+const MIN_CALLS = 5
+
+const niceDay = (iso) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '')
+  return m ? `${m[3]} ${monthLabel(`${m[1]}-${m[2]}`).slice(0, 3)} ${m[1]}` : 'No date'
+}
+const periodOf = (r, type) => (type === 'daily' ? r.date : type === 'monthly' ? r.month : 'all')
+const periodLabel = (key, type) => (type === 'daily' ? niceDay(key) : type === 'monthly' ? monthLabel(key) : 'All time')
+
+/** One line of the report: how many calls got through, were not reached, paused, invalid, and what they were about. */
+function tally(label, list, devices) {
+  const count = (fn) => list.filter(fn).length
+  const calls = list.length
+  const connected = count((r) => r.outcome === 'connected')
+  const rnr = count((r) => r.outcome === 'rnr')
+  return {
+    label, calls, connected, rnr,
+    connectPct: calls ? (connected / calls) * 100 : 0,
+    rnrPct: calls ? (rnr / calls) * 100 : 0,
+    paused: count((r) => r.outcome === 'paused'),
+    invalid: count((r) => r.outcome === 'invalid'),
+    enquiries: count((r) => r.stage === 'Enquiry'),
+    complaints: count((r) => r.status === 'Complaint'),
+    devices: Object.fromEntries(devices.map((d) => [d, count((r) => r.device === d)])),
+  }
+}
+
+function reportLines(rows, key, devices) {
+  const groups = new Map()
+  for (const r of rows) {
+    if (!groups.has(r[key])) groups.set(r[key], [])
+    groups.get(r[key]).push(r)
+  }
+  return [...groups].map(([label, list]) => tally(label, list, devices)).sort((a, b) => b.calls - a.calls || String(a.label).localeCompare(String(b.label)))
+}
+
+function Reports({ filtered }) {
+  const [by, setBy] = useState('telecaller')
+  const [type, setType] = useState('daily')
+  const [pick, setPick] = useState('')
+  const byLabel = REPORT_BY.find(([k]) => k === by)[1]
+
+  const devices = useMemo(() => [...new Set(filtered.map((r) => r.device).filter(Boolean))].sort(), [filtered])
+  const periods = useMemo(() => [...new Set(filtered.map((r) => periodOf(r, type)).filter(Boolean))].sort().reverse(), [filtered, type])
+  const period = type === 'all' ? 'all' : periods.includes(pick) ? pick : periods[0] || ''
+  const inPeriod = useMemo(() => (type === 'all' ? filtered : filtered.filter((r) => periodOf(r, type) === period)), [filtered, type, period])
+  const lines = useMemo(() => reportLines(inPeriod, by, devices), [inPeriod, by, devices])
+  const team = useMemo(() => tally('Team total', inPeriod, devices), [inPeriod, devices])
+
+  const best = (fn, order) => lines.filter(fn).sort(order)[0]
+  const top = best(() => true, (a, b) => b.calls - a.calls)
+  const bestConnect = best((l) => l.calls >= MIN_CALLS, (a, b) => b.connectPct - a.connectPct)
+  const worstRnr = best((l) => l.calls >= MIN_CALLS && l.rnr > 0, (a, b) => b.rnrPct - a.rnrPct)
+  const topEnq = best((l) => l.enquiries > 0, (a, b) => b.enquiries - a.enquiries)
+
+  const header = (first) => [first, 'Calls', 'Connected', 'Connect %', 'RNR', 'RNR %', 'Paused', 'Invalid', 'Enquiries', 'Complaints', ...devices]
+  const line = (l) => [l.label, l.calls, l.connected, l.connectPct.toFixed(1), l.rnr, l.rnrPct.toFixed(1), l.paused, l.invalid, l.enquiries, l.complaints, ...devices.map((d) => l.devices[d])]
+  const title = `${byLabel} – ${PERIODS.find(([k]) => k === type)[1]} Report${type === 'all' ? '' : ` – ${periodLabel(period, type)}`}`
+  const fileName = (extra) => `mis-${by}-${type}${extra}.csv`
+
+  const download = () => downloadCsv(fileName(type === 'all' ? '' : `-${period}`), header(byLabel), [...lines.map(line), line(team)])
+  const downloadAll = () => {
+    const out = []
+    for (const p of periods.length ? periods : ['all']) {
+      const list = type === 'all' ? filtered : filtered.filter((r) => periodOf(r, type) === p)
+      for (const l of reportLines(list, by, devices)) out.push([periodLabel(p, type), ...line(l)])
+      out.push([periodLabel(p, type), ...line(tally('Team total', list, devices))])
+    }
+    downloadCsv(fileName('-all-periods'), ['Period', ...header(byLabel)], out)
+  }
+
   return (
     <>
-      <section className="mis-panel">
-        <h2>Choose what to include</h2>
-        <div className="mis-filters mis-filters-inline"><Periods filters={filters} set={set} /><DateRange filters={filters} set={set} /><Filters filters={filters} set={set} options={options} /></div>
-        <p className="mis-muted mis-count">{num(filtered.length)} calls selected</p>
-      </section>
-      <div className="mis-reports">
-        {reports.map(([name, note, run]) => (
-          <section key={name} className="mis-panel mis-report">
-            <div>
-              <h2>{name}</h2>
-              <p className="mis-muted">{note}</p>
-            </div>
-            <button type="button" className="mis-btn mis-btn-primary" onClick={run} disabled={!filtered.length}><Icon name="download" /> Download CSV</button>
-          </section>
-        ))}
+      <div className="mis-reportbar">
+        <select aria-label="Report" value={by} onChange={(e) => setBy(e.target.value)}>
+          {REPORT_BY.map(([k, t]) => <option key={k} value={k}>{t} – {PERIODS.find(([p]) => p === type)[1]}</option>)}
+        </select>
+        <select aria-label="Period" value={type} onChange={(e) => { setType(e.target.value); setPick('') }}>
+          {PERIODS.map(([k, t]) => <option key={k} value={k}>{t}</option>)}
+        </select>
+        {type !== 'all' && (
+          <select aria-label="Which period" value={period} onChange={(e) => setPick(e.target.value)} disabled={!periods.length}>
+            {periods.map((p) => <option key={p} value={p}>{periodLabel(p, type)}</option>)}
+            {!periods.length && <option value="">No dates</option>}
+          </select>
+        )}
+        <button type="button" className="mis-btn mis-btn-primary" onClick={download} disabled={!inPeriod.length}><Icon name="download" /> Download Excel</button>
+        <button type="button" className="mis-btn" onClick={downloadAll} disabled={!filtered.length}>Download all periods</button>
+        <button type="button" className="mis-btn" onClick={() => window.print()}>Print / PDF</button>
       </div>
+
+      <h2 className="mis-report-title">{title}</h2>
+      <section className="mis-panel">
+        <div className="mis-scroll">
+          <table className="mis-table mis-reporttable">
+            <thead>
+              <tr>
+                <th>{byLabel}</th>
+                {['Calls', 'Connected', 'Connect %', 'RNR', 'RNR %', 'Paused', 'Invalid', 'Enquiries', 'Complaints', ...devices].map((h) => <th key={h} className="r">{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((l) => (
+                <tr key={l.label}>
+                  <td><strong>{l.label}</strong></td>
+                  <td className="r">{num(l.calls)}</td><td className="r">{num(l.connected)}</td><td className="r">{l.connectPct.toFixed(1)}%</td>
+                  <td className="r">{num(l.rnr)}</td><td className="r">{l.rnrPct.toFixed(1)}%</td>
+                  <td className="r">{num(l.paused)}</td><td className="r">{num(l.invalid)}</td><td className="r">{num(l.enquiries)}</td><td className="r">{num(l.complaints)}</td>
+                  {devices.map((d) => <td key={d} className="r">{num(l.devices[d])}</td>)}
+                </tr>
+              ))}
+              {lines.length > 0 && (
+                <tr className="mis-total">
+                  <td>Team total</td>
+                  <td className="r">{num(team.calls)}</td><td className="r">{num(team.connected)}</td><td className="r">{team.connectPct.toFixed(1)}%</td>
+                  <td className="r">{num(team.rnr)}</td><td className="r">{team.rnrPct.toFixed(1)}%</td>
+                  <td className="r">{num(team.paused)}</td><td className="r">{num(team.invalid)}</td><td className="r">{num(team.enquiries)}</td><td className="r">{num(team.complaints)}</td>
+                  {devices.map((d) => <td key={d} className="r">{num(team.devices[d])}</td>)}
+                </tr>
+              )}
+              {!lines.length && <tr><td colSpan={10 + devices.length} className="mis-muted">No calls for this selection.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {lines.length > 0 && (
+        <section className="mis-panel mis-summary">
+          <h2>Summary</h2>
+          <dl>
+            <div><dt>Highest calls</dt><dd>{top ? `${top.label} – ${num(top.calls)} calls` : '—'}</dd></div>
+            <div><dt>Best connect rate ({MIN_CALLS}+ calls)</dt><dd>{bestConnect ? `${bestConnect.label} – ${bestConnect.connectPct.toFixed(1)}%` : '—'}</dd></div>
+            <div><dt>Highest RNR % ({MIN_CALLS}+ calls)</dt><dd>{worstRnr ? `${worstRnr.label} – ${num(worstRnr.rnr)} RNR (${worstRnr.rnrPct.toFixed(1)}%)` : '—'}</dd></div>
+            <div><dt>Most enquiries</dt><dd>{topEnq ? `${topEnq.label} – ${num(topEnq.enquiries)}` : '—'}</dd></div>
+            <div><dt>Team</dt><dd>{num(team.calls)} calls · {team.connectPct.toFixed(1)}% connected · {team.rnrPct.toFixed(1)}% RNR · {num(team.paused)} paused · {num(team.invalid)} invalid</dd></div>
+          </dl>
+        </section>
+      )}
     </>
   )
 }
