@@ -1072,6 +1072,13 @@ test('PIN code regions and the delivered-price sheets', async () => {
     [10, 566, 739, undefined, 686, { TN: 210, SOUTH: 409, NORTH: 673, NE: 937 }],
     [26, 2249, 2899, undefined, 2499, { TN: 437, SOUTH: 1124, NORTH: 1812, NE: 2843 }],
     [26, 1350, 1749, undefined, 1600, { TN: 437, SOUTH: 1124, NORTH: 1812, NE: 2843 }],
+    // Price list of 19-10-2026: never above MRP, and never above ₹2,800 for any bag.
+    [5, 515, 619, undefined, 619, { TN: 61, SOUTH: 160, NORTH: 292, NE: 425 }],
+    [5, 501, 599, undefined, 599, { TN: 67, SOUTH: 166, NORTH: 298, NE: 431 }],
+    [10, 1020, 1129, undefined, 1129, { TN: 221, SOUTH: 420, NORTH: 684, NE: 948 }],
+    [26, 2470, 2899, undefined, 2720, { TN: 437, SOUTH: 1124, NORTH: 1812, NE: 2843 }],
+    [26, 2470, 2699, undefined, 2699, { TN: 458, SOUTH: 1145, NORTH: 1833, NE: 2864 }],
+    [26, 2700, 2899, undefined, 2800, { TN: 587, SOUTH: 1274, NORTH: 1962, NE: 2993 }],
   ]
   for (const [kg, list, mrp, absorbed, website, delivery] of sheet) {
     const p = packPricing(kg, list, mrp, absorbed)
