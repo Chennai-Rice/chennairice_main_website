@@ -310,6 +310,34 @@
   text-align: center;
 }
 
+/* A link on a line of its own is a button (lib/markdown.jsx): a row, centred, wrapping on small screens. */
+.blog-prose .md-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+}
+.blog-prose a.md-button {
+  display: inline-block;
+  padding: 14px 28px;
+  border-radius: 999px;
+  background: var(--maroon);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 6px 16px rgba(90, 17, 22, 0.22);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.blog-prose a.md-button:hover {
+  background: var(--maroon-deep, #5a1116);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
 /* The line right under a picture (a winner's name) is centred and smaller. Nothing else about it changes. */
 .blog-prose .md-figure + p.md-p,
 .blog-prose p.md-p:has(.md-img) + p.md-p {

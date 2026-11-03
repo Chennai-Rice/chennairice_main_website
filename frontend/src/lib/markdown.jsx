@@ -133,6 +133,8 @@ const HEADING = /^(#{1,6})\s+(.*)$/
 const QUOTE = /^\s{0,3}>\s?(.*)$/
 const RULE = /^\s{0,3}([-*_])\s*(\1\s*){2,}$/
 const FENCE = /^\s{0,3}```/
+// A line that is only a link, such as [Shop now](https://…) or [**ENTER NOW**](…): drawn as a button.
+const BUTTON = /^\s*(?:\*\*)?\[(?:\*\*)?([^\]]+?)(?:\*\*)?\]\(((?:[^()\s]|\([^()\s]*\))+)\)(?:\*\*)?\s*$/
 
 /**
  * Turns Markdown into React elements.
@@ -241,6 +243,36 @@ export function renderMarkdown(source) {
       continue
     }
 
+    // Link-only lines become buttons; links on consecutive lines (blank lines between are fine) share one row.
+    const first = BUTTON.exec(line)
+    if (first && safeUrl(first[2])) {
+      const buttons = []
+      let j = i
+      while (j < lines.length) {
+        if (!lines[j].trim()) { j += 1; continue }
+        const m = BUTTON.exec(lines[j])
+        if (!m || !safeUrl(m[2])) break
+        buttons.push({ text: m[1].trim(), href: safeUrl(m[2]) })
+        i = j + 1
+        j += 1
+      }
+      push(
+        <div key={`b${key}`} className="md-buttons">
+          {buttons.map((b, n) => (
+            <a
+              key={n}
+              className="md-button"
+              href={b.href}
+              {...(/^https?:/i.test(b.href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+            >
+              {b.text}
+            </a>
+          ))}
+        </div>
+      )
+      continue
+    }
+
     // Paragraph: consecutive non-blank lines that start no other block.
     const paragraph = []
     while (
@@ -275,6 +307,7 @@ export function renderMarkdown(source) {
 export function plainText(source) {
   return String(source || '')
     .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/^\s*(?:\*\*)?\[(?:\*\*)?[^\]]+?(?:\*\*)?\]\([^)]*\)(?:\*\*)?\s*$/gm, ' ')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/^#{1,6}\s+/gm, '')
