@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { plainText, readingMinutes, renderMarkdown } from '../../../lib/markdown.jsx'
+import { plainText, readingMinutes, renderMarkdown, splitLeadButtons } from '../../../lib/markdown.jsx'
+import PostCover from './PostCover.jsx'
 import { formatPostDate } from '../../../services/blog.service.js'
 import '../blog.css'
 
@@ -18,7 +19,8 @@ export default function PostPreview({ draft, author, live, busy, onBack, onPubli
   }, [onBack, busy])
 
   // The same fallbacks the save applies (blog.service.js), so what is shown here is what gets stored.
-  const body = useMemo(() => renderMarkdown(draft.contentMd), [draft.contentMd])
+  const lead = useMemo(() => (draft.coverUrl ? splitLeadButtons(draft.contentMd) : { buttons: [], rest: draft.contentMd }), [draft.coverUrl, draft.contentMd])
+  const body = useMemo(() => renderMarkdown(lead.rest), [lead])
   const excerpt = useMemo(() => {
     const typed = (draft.excerpt || '').trim()
     const text = plainText(draft.contentMd)
@@ -82,7 +84,7 @@ export default function PostPreview({ draft, author, live, busy, onBack, onPubli
                 </p>
               </header>
               {draft.coverUrl && (
-                <figure className="blog-post-cover"><img src={draft.coverUrl} alt={draft.coverAlt} /></figure>
+                <PostCover url={draft.coverUrl} alt={draft.coverAlt} buttons={lead.buttons} />
               )}
               <div className="blog-prose">{body}</div>
             </article>

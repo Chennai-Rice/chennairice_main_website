@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
-import { renderMarkdown, slugify } from '../../../lib/markdown.jsx'
+import { renderMarkdown, slugify, splitLeadButtons } from '../../../lib/markdown.jsx'
+import PostCover from './PostCover.jsx'
 import PostPreview from './PostPreview.jsx'
 import { hasFormatting, htmlToMarkdown } from '../../../lib/pasteToMarkdown.js'
 import {
@@ -61,7 +62,8 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
     set(slugTouched ? { title: value } : { title: value, slug: slugify(value) })
   }
 
-  const preview = useMemo(() => renderMarkdown(draft.contentMd), [draft.contentMd])
+  const lead = useMemo(() => (draft.coverUrl ? splitLeadButtons(draft.contentMd) : { buttons: [], rest: draft.contentMd }), [draft.coverUrl, draft.contentMd])
+  const preview = useMemo(() => renderMarkdown(lead.rest), [lead])
 
   // Text copied from Google Docs, Word or a web page keeps its headings, bold, links, lists and spacing:
   // the clipboard's HTML is turned into Markdown at the cursor. Plain text pastes as usual.
@@ -401,7 +403,7 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
                   <p className="blog-post-meta"><span>{author?.display_name || ''}</span></p>
                 </header>
                 {draft.coverUrl && (
-                  <figure className="blog-post-cover"><img src={draft.coverUrl} alt={draft.coverAlt} /></figure>
+                  <PostCover url={draft.coverUrl} alt={draft.coverAlt} buttons={lead.buttons} />
                 )}
                 <div className="blog-prose">{preview}</div>
               </article>
