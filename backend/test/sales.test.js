@@ -3122,3 +3122,50 @@ test('the MIS dashboard does not count a brand typed in CALL HANDED BY as a tele
     mis.setMisSourceForTests(null)
   }
 })
+
+test('NeoDove team campaigns: sign-ups, checkout leads and bulk enquiries are shared equally between Gayathri, Ramya and Lavanya', async () => {
+  const http = await import('node:http')
+  const got = []
+  const fakeNeo = http.createServer((req, res) => {
+    let body = ''
+    req.on('data', (c) => (body += c)).on('end', () => { got.push({ path: req.url, body: JSON.parse(body) }); res.end('OK') })
+  })
+  await new Promise((r) => fakeNeo.listen(0, r))
+  const { sendNeodoveLeads, recordBulkEnquiry, recordSignup, poolAgents } = await import('../lib/neodove.js')
+  const url = `http://127.0.0.1:${fakeNeo.address().port}`
+  Object.assign(process.env, { NEODOVE_ENDPOINT_GAYATHRI: url + '/gayathri', NEODOVE_ENDPOINT_RAMYA: url + '/ramya', NEODOVE_ENDPOINT_LAVANYA: url + '/lavanya' })
+  try {
+    assert.deepEqual(poolAgents(), ['gayathri', 'ramya', 'lavanya'])
+    await db.query(`update neodove_outbox set status = 'failed' where status = 'queued'`)
+    await db.query(`update neodove_outbox set agent = null`) // earlier tests' rows do not count
+    // 2 sign-ups, 2 checkout journeys, 2 bulk enquiries
+    await recordSignup(db, { name: 'S One', phone: '9700000001', source: 'whatsapp' })
+    await recordSignup(db, { name: 'S Two', phone: '9700000002', source: 'whatsapp' })
+    for (const [i, kind] of [[3, 'checkout_payment'], [4, 'checkout_details']]) {
+      await db.query(`insert into neodove_outbox (mobile, campaign, payload) values ($1, $2, $3)`, ['970000000' + i, kind, { name: 'C' + i, mobile: 9700000000 + i }])
+    }
+    assert.ok(await recordBulkEnquiry(db, { name: 'B Five', phone: '97000 00005', company: 'Five Traders', buyerType: 'wholesaler', gstin: '33AAAAA0000A1Z5' }))
+    assert.ok(await recordBulkEnquiry(db, { name: 'B Six', phone: '9700000006', company: 'Six Stores', buyerType: 'retailer', gstin: '33AAAAA0000A1Z6' }))
+    assert.equal(await recordBulkEnquiry(db, { name: 'B Six', phone: '9700000006' }), null) // once a week per mobile
+    const r = await sendNeodoveLeads({ query: db.query, limit: 100 })
+    assert.deepEqual([r.sent, r.byAgent], [6, { gayathri: 2, ramya: 2, lavanya: 2 }], JSON.stringify(r))
+    assert.deepEqual(['/gayathri', '/ramya', '/lavanya'].map((p) => got.filter((g) => g.path === p).length), [2, 2, 2])
+    assert.equal(got.find((g) => g.path === '/ramya').body.Telecaller, 'Ramya')
+    const bulk = got.find((g) => g.body.Source === 'Bulk order form')
+    assert.deepEqual([bulk.body.Company, bulk.body['Buyer type']], ['Five Traders', 'wholesaler'])
+    // The next lead goes to the one with the fewest (all equal: the first in order), then keeps balancing.
+    await recordSignup(db, { name: 'S Seven', phone: '9700000007', source: 'whatsapp' })
+    await recordSignup(db, { name: 'S Eight', phone: '9700000008', source: 'whatsapp' })
+    const r2 = await sendNeodoveLeads({ query: db.query, limit: 100 })
+    assert.deepEqual(r2.byAgent, { gayathri: 1, ramya: 1 })
+    // An agent whose campaign is not set up yet is left out.
+    delete process.env.NEODOVE_ENDPOINT_RAMYA
+    assert.deepEqual(poolAgents(), ['gayathri', 'lavanya'])
+    await recordSignup(db, { name: 'S Nine', phone: '9700000009', source: 'whatsapp' })
+    const r3 = await sendNeodoveLeads({ query: db.query, limit: 100 })
+    assert.deepEqual(r3.byAgent, { lavanya: 1 })
+  } finally {
+    for (const k of ['NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA']) delete process.env[k]
+    fakeNeo.close()
+  }
+})
