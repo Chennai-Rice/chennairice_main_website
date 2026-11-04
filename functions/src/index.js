@@ -48,7 +48,9 @@ export const api = onRequest(
     // the secret NeoDove's webhook sends (backend/lib/neodove.js).
     // META_CAPI_TOKEN: the Meta Conversions API access token for the server-side
     // Purchase (backend/lib/sales/meta-capi.js).
-    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY', 'AUTOMATION_API_KEY', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'ASKEVA_WEBHOOK_KEY', 'NEODOVE_ENDPOINT', 'NEODOVE_WEBHOOK_KEY', 'META_CAPI_TOKEN'],
+    // META_ADS_TOKEN: a Meta system user token with ads_read, for Analyst → Campaigns → Meta ads
+    // (backend/lib/sales/meta-ads.js).
+    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY', 'AUTOMATION_API_KEY', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'ASKEVA_WEBHOOK_KEY', 'NEODOVE_ENDPOINT', 'NEODOVE_WEBHOOK_KEY', 'META_CAPI_TOKEN', 'META_ADS_TOKEN'],
     // Runs as the backend account that phase1-setup.ps1 allowed into Cloud SQL
     // (Cloud SQL client) and nothing else.
     serviceAccount: 'api-backend@chennai-rice-website.iam.gserviceaccount.com',

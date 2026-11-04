@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { staffJson } from '../../services/staffAuth.js'
 import { Confirm, Icon } from './shared.jsx'
 import AnalystOverview from './AnalystOverview.jsx'
@@ -380,7 +380,88 @@ function LeadsTab({ data }) {
   )
 }
 
-function CampaignsTab({ data, onAdd }) {
+/**
+ * Meta ads — live: each Meta campaign for the period with Ads Manager's figures (from the Marketing API,
+ * backend/lib/sales/meta-ads.js) beside the website's own visits, sign-ups and orders for it. A campaign
+ * opens to its ads. Loaded on its own so the rest of the page never waits for Meta.
+ */
+function MetaAdsPanel({ period }) {
+  const [state, setState] = useState({ data: null, error: '', loading: true })
+  const [open, setOpen] = useState(() => new Set())
+  const load = useCallback((refresh = false) => {
+    setState((s) => ({ ...s, loading: true, error: '' }))
+    staffJson(`/api/admin/analyst/meta-ads?from=${period.from}&to=${period.to}${refresh ? '&refresh=1' : ''}`)
+      .then((data) => setState({ data, error: '', loading: false }))
+      .catch((err) => setState((s) => ({ ...s, error: err.message || 'Could not reach Meta.', loading: false })))
+  }, [period.from, period.to])
+  useEffect(() => { load() }, [load])
+  const d = state.data
+  const toggle = (id) => setOpen((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const money2 = (n) => inr(n, 2)
+  const pctOf = (n) => (n == null ? '—' : `${Number(n).toFixed(2)}%`)
+  const head = ['Campaign', 'Goal', 'Status', 'Spent', 'Impressions', 'Reach', 'Link clicks', 'Landing page views', 'Cost / LPV',
+    'CTR', 'CPC', 'CPM', 'Website visits', 'Sign-ups', 'Orders', 'Revenue', 'Cost / order', 'ROAS']
+  const cells = (r) => [
+    r.goal ?? '', r.status, money2(r.spend), count(r.impressions), count(r.reach), count(r.linkClicks), count(r.landingPageViews),
+    money2(r.costPerLandingPageView), pctOf(r.ctr), money2(r.cpc), money2(r.cpm),
+    count(r.site.visits), count(r.site.leads), count(r.site.orders), inr(r.site.revenue), r.costPerOrder == null ? '—' : money2(r.costPerOrder),
+    r.roas == null ? '—' : `${r.roas}×`,
+  ]
+  return (
+    <Panel title="Meta ads — live" wide
+      note="Straight from Meta Ads Manager for this period, next to what the website recorded from the same campaign. Click a campaign to see its ads.">
+      {!d && state.loading && <p className="wh-empty">Loading from Meta…</p>}
+      {state.error && <p className="wh-error">{state.error}</p>}
+      {d && !d.connected && (
+        <p className="wh-empty">Not connected to Meta yet. Add a Meta system user token with <strong>ads_read</strong> on ad account {d.account} as the secret <code>META_ADS_TOKEN</code>.</p>
+      )}
+      {d?.connected && (
+        <>
+          <section className="an-stats an-meta-stats">
+            <Tile hero label="Spent on Meta" value={inr(d.totals.spend)} note={`${count(d.campaigns.length)} campaigns`} icon="print" />
+            <Tile label="Landing page views" value={count(d.totals.landingPageViews)} note={`${money2(d.totals.costPerLandingPageView)} each`} icon="users" />
+            <Tile label="Website visits" value={count(d.totals.visits)} note="Counted by the website from the ad links" icon="reports" />
+            <Tile label="Orders" value={count(d.totals.orders)} note={d.totals.costPerOrder == null ? 'No orders from these ads yet' : `${money2(d.totals.costPerOrder)} per order`} icon="orders" />
+            <Tile label="ROAS" value={d.totals.roas == null ? '—' : `${d.totals.roas}×`} note={`${inr(d.totals.revenue)} revenue ÷ spend`} icon="reports" />
+          </section>
+          {d.campaigns.length ? (
+            <div className="an-table-wrap">
+              <table className="an-table an-meta-table">
+                <thead><tr>{head.map((h, i) => <th key={h} className={i > 2 ? 'is-num' : ''}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {d.campaigns.map((c) => (
+                    <Fragment key={c.id}>
+                      <tr className="an-meta-campaign" onClick={() => toggle(c.id)}>
+                        <td data-label="Campaign">
+                          <button type="button" className="an-meta-toggle" aria-expanded={open.has(c.id)}>{open.has(c.id) ? '▾' : '▸'}</button>
+                          <strong>{c.name}</strong>
+                          <span className="an-meta-id">ID {c.id}{c.budget ? ` · budget ${inr(c.budget.amount)}/${c.budget.per}` : ''}</span>
+                        </td>
+                        {cells(c).map((v, i) => <td key={head[i + 1]} className={i > 1 ? 'is-num' : ''} data-label={head[i + 1]}>{v}</td>)}
+                      </tr>
+                      {open.has(c.id) && c.ads.map((a) => (
+                        <tr key={a.id} className="an-meta-ad">
+                          <td data-label="Ad"><span className="an-meta-adname">{a.name}</span><span className="an-meta-id">{a.adSet} · ID {a.id}</span></td>
+                          {cells(a).map((v, i) => <td key={head[i + 1]} className={i > 1 ? 'is-num' : ''} data-label={head[i + 1]}>{v}</td>)}
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <p className="wh-empty">No Meta campaigns ran in this period.</p>}
+          <p className="wh-muted wh-small an-meta-foot">
+            Updated {new Date(d.fetchedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} · Meta's figures can change for up to 3 days.
+            {' '}<button type="button" className="wh-btn wh-btn--outline wh-btn--small" disabled={state.loading} onClick={() => load(true)}>{state.loading ? 'Refreshing…' : 'Refresh from Meta'}</button>
+          </p>
+        </>
+      )}
+    </Panel>
+  )
+}
+
+function CampaignsTab({ data, period, onAdd }) {
   const c = data.campaigns
   // Cost per lead / order and ROAS over the campaigns that have spend entered.
   const totals = c.byCampaign.filter((r) => r.spend > 0).reduce((a, r) => ({ leads: a.leads + r.leads, orders: a.orders + r.orders, revenue: a.revenue + r.revenue }), { leads: 0, orders: 0, revenue: 0 })
@@ -393,6 +474,8 @@ function CampaignsTab({ data, onAdd }) {
   ]
   return (
     <>
+      <div className="an-grid"><MetaAdsPanel period={period} /></div>
+      <h2 className="an-section-title">Spend entered by hand</h2>
       <section className="an-stats">
         <Tile hero label="Ad spend" value={inr(c.totalSpend)} note="Entered under Settings" icon="print" />
         <Tile label="Cost per lead" value={c.totalSpend && totals.leads ? inr(c.totalSpend / totals.leads) : '—'} note={`${count(totals.leads)} leads from campaigns with spend`} icon="users" />
@@ -728,7 +811,7 @@ export default function AnalystView({ say, onAuthError, name = '' }) {
           : tab === 'ceo' ? <CeoReport ceo={data.ceo} />
             : tab === 'sales' ? <SalesTab data={data} rice={rice} />
               : tab === 'leads' ? <LeadsTab data={data} />
-                : tab === 'campaigns' ? <CampaignsTab data={data} onAdd={() => setTab('settings')} />
+                : tab === 'campaigns' ? <CampaignsTab data={data} period={period} onAdd={() => setTab('settings')} />
                   : <DeliveryTab data={data} />}
     </div>
   )

@@ -280,3 +280,15 @@
 .an-status.is-amber i { background: #e0a200; }
 .an-status.is-blue i { background: #2f6fd6; }
 .an-status.is-red i { background: #d0342c; }
+
+/* Campaigns → Meta ads — live (MetaAdsPanel): campaigns that open to their ads. */
+.an-section-title { margin: 28px 0 12px; font-size: 17px; color: var(--an-ink-2); }
+.an-meta-stats { margin: 4px 0 16px; }
+.an-meta-table td:first-child { min-width: 240px; }
+.an-meta-campaign { cursor: pointer; }
+.an-meta-campaign td { background: #fdf8f3; font-weight: 600; }
+.an-meta-toggle { border: 0; background: none; padding: 0 6px 0 0; font-size: 13px; color: var(--an-muted); cursor: pointer; }
+.an-meta-id { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; color: var(--an-muted); }
+.an-meta-ad td:first-child { padding-left: 30px; }
+.an-meta-adname { font-weight: 500; }
+.an-meta-foot { margin-top: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

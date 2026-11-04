@@ -44,7 +44,8 @@ import { askAssistant } from './assistant.js'
 import { askAdvisor, advisorUsage, setAdvisorCap } from './advisor.js'
 import { recordJourney, listJourneys, deleteJourneys } from './journeys.js'
 import { saveAdvisorFile, MAX_FILE_BYTES } from './advisor-files.js'
-import { analystReport, analystSettings, setRiceType, setMonthlyTarget, addAdSpend, deleteAdSpend } from './analyst.js'
+import { analystReport, analystPeriod, analystSettings, setRiceType, setMonthlyTarget, addAdSpend, deleteAdSpend } from './analyst.js'
+import { metaAdsReport } from './meta-ads.js'
 import { checkAutomationKey, automationContacts } from './automation.js'
 import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
@@ -535,6 +536,12 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/analyst', perm('analyst.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await analystReport(req.query))
+  }))
+  // Analyst → Campaigns: Meta's live campaign and ad figures beside the website's visits, sign-ups and orders.
+  admin.get('/analyst/meta-ads', perm('analyst.view'), rateLimit({ windowMs: 60000, max: 30 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    const p = analystPeriod(req.query)
+    res.json(await metaAdsReport({ from: p.from, to: p.to, refresh: req.query.refresh === '1' }))
   }))
   // Analyst → Contest: the Super Slogan Contest entries (read from the coupon site's Firestore).
   admin.get('/contest', perm('analyst.view'), wrap(async (req, res) => {
