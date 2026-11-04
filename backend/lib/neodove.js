@@ -48,7 +48,9 @@ export const NEODOVE_AGENTS = { gayathri: 'NEODOVE_ENDPOINT_GAYATHRI', ramya: 'N
 const AGENT_NAMES = { gayathri: 'Gayathri', ramya: 'Ramya', lavanya: 'Lavanya' }
 const agentEndpoint = (agent) => String(process.env[NEODOVE_AGENTS[agent]] || '').trim()
 // https only (a plain http address is accepted for this machine, for the tests).
-const usable = (url) => /^https:\/\/\S+$/.test(url) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url)
+const usable = (url) => (/^https:\/\/\S+$/.test(url) && (url.match(/https?:\/\//g) || []).length === 1) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url)
+/** Telecallers whose endpoint is set but is not one clean link (for example the link pasted twice): nothing is sent until it is fixed. */
+export const badAgentEndpoints = () => Object.keys(NEODOVE_AGENTS).filter((a) => agentEndpoint(a) && !usable(agentEndpoint(a)))
 /** The telecallers whose campaign has a real endpoint. */
 export const poolAgents = () => Object.keys(NEODOVE_AGENTS).filter((a) => usable(agentEndpoint(a)))
 export const neodoveEnabled = (campaign = 'signup') => poolAgents().length > 0 || usable(endpoint(campaign))
@@ -279,6 +281,11 @@ async function post(body, url) {
  * without an endpoint yet keeps its leads queued. Never throws.
  */
 export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQuery } = {}) {
+  const bad = badAgentEndpoints()
+  if (bad.length) {
+    console.error('[neodove] sending is paused: the endpoint of', bad.join(', '), 'is not one clean https link')
+    return { sent: 0, failed: 0, skipped: 'bad endpoint: ' + bad.join(', ') }
+  }
   const campaigns = enabledCampaigns()
   if (!hasDatabase() || !campaigns.length) return { sent: 0, failed: 0, skipped: campaigns.length ? 'no database' : 'no NeoDove endpoint' }
   let sent = 0

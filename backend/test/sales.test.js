@@ -3180,3 +3180,62 @@ test('NeoDove team campaigns: sign-ups, checkout leads and bulk enquiries are sh
     fakeNeo.close()
   }
 })
+
+test('NeoDove team campaigns, end to end through the real routes: a sign-up, a bulk enquiry and a checkout that stopped go to three different telecallers', async () => {
+  const http = await import('node:http')
+  const got = []
+  const fakeNeo = http.createServer((req, res) => {
+    let body = ''
+    req.on('data', (c) => (body += c)).on('end', () => { got.push({ path: req.url, body: JSON.parse(body) }); res.end('OK') })
+  })
+  await new Promise((r) => fakeNeo.listen(0, r))
+  const url = `http://127.0.0.1:${fakeNeo.address().port}`
+  const { followUpJourneys } = await import('../lib/sales/journey-followup.js')
+  const { sendNeodoveLeads } = await import('../lib/neodove.js')
+  Object.assign(process.env, { NEODOVE_ENDPOINT_GAYATHRI: url + '/gayathri', NEODOVE_ENDPOINT_RAMYA: url + '/ramya', NEODOVE_ENDPOINT_LAVANYA: url + '/lavanya' })
+  try {
+    await db.query(`update neodove_outbox set status = 'failed' where status = 'queued'`)
+    await db.query(`update neodove_outbox set agent = null`)
+    // 1. sign-up from the ad pop-up
+    const su = await api('POST', '/api/contest/lead', { body: { name: 'Test Signup', phone: '9811100001', email: 'e2e1@example.com', attribution: { utm_source: 'facebook', utm_medium: 'paid' }, page: '/rice-products' } })
+    assert.equal(su.status, 200, JSON.stringify(su.body))
+    // 2. bulk enquiry from the form
+    const { app: realApp } = await import('../server/app.js')
+    const realServer = await new Promise((r) => { const sv = realApp.listen(0, () => r(sv)) })
+    const bulk = await fetch(`http://127.0.0.1:${realServer.address().port}/api/bulk-order`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'wholesaler', company: 'Test Traders', gstin: '33AAAAA0000A1Z5', name: 'Test Bulk', email: 'e2e2@example.com', phone: '9811100002', message: 'test' }),
+    })
+    realServer.close()
+    assert.ok([200, 500, 503].includes(bulk.status), 'the form saves to Supabase, which the test has not got; the NeoDove side must still have run: ' + bulk.status)
+    // 3. a checkout that stopped at the details step, 40 minutes ago
+    const id = crypto.randomUUID()
+    await db.query(
+      `insert into checkout_journeys (id, stage, started_at, updated_at, steps, items, value_paise, contact_name, contact_phone, city, state, pincode, traffic_source)
+       values ($1, 'details', now() - interval '45 minutes', now() - interval '40 minutes', $2, $3, 121800, 'Test Checkout', '9811100003', 'Erode', 'Tamil Nadu', '638102', 'direct')`,
+      [id, { cart: new Date(), checkout: new Date(), details: new Date() }, JSON.stringify([{ id: 'kitchidi-ponni-rice-26', name: 'Kitchidi Ponni Rice 26 kg', qty: 1, price: 609 }])])
+    await followUpJourneys({ query: db.query })
+    await sendNeodoveLeads({ query: db.query, limit: 100 })
+    const by = Object.fromEntries(got.map((g) => [g.body.name, g.path]))
+    console.log('NeoDove received:', JSON.stringify(by))
+    assert.deepEqual(Object.keys(by).sort(), ['Test Bulk', 'Test Checkout', 'Test Signup'])
+    assert.deepEqual([...new Set(Object.values(by))].sort(), ['/gayathri', '/lavanya', '/ramya'])
+  } finally {
+    for (const k of ['NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA']) delete process.env[k]
+    fakeNeo.close()
+  }
+})
+
+test('NeoDove: a telecaller endpoint pasted twice pauses sending instead of failing leads', async () => {
+  const { sendNeodoveLeads, badAgentEndpoints, poolAgents } = await import('../lib/neodove.js')
+  const one = 'https://aaaa.neodove.com/integration/custom/bbbb/leads'
+  Object.assign(process.env, { NEODOVE_ENDPOINT_GAYATHRI: one + one, NEODOVE_ENDPOINT_RAMYA: one })
+  try {
+    assert.deepEqual(badAgentEndpoints(), ['gayathri'])
+    assert.deepEqual(poolAgents(), ['ramya'])
+    const r = await sendNeodoveLeads({ query: db.query })
+    assert.match(r.skipped, /bad endpoint: gayathri/)
+  } finally {
+    for (const k of ['NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA']) delete process.env[k]
+  }
+})
