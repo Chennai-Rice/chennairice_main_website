@@ -47,6 +47,33 @@ function isWhatsApp(a) {
 
 const FROM_EXPO = 'cr.attribution.fromExpo'
 
+// Google's click IDs from an ad link. The Google tag only loads once the visitor accepts cookies, often
+// on a later page, when the ID is no longer in the address; without it Google Ads cannot tie the sale to
+// the click. So the ID is kept in this tab (sessionStorage, nothing sent anywhere) and handed to the
+// Google tag when it loads after consent (googleAnalytics.js). Rejected cookies: it is never used.
+const GOOGLE_CLICK = 'cr.attribution.googleClick'
+export const GOOGLE_CLICK_PARAMS = ['gclid', 'gbraid', 'wbraid']
+
+function keepGoogleClick(url) {
+  const click = {}
+  for (const p of GOOGLE_CLICK_PARAMS) {
+    const v = url.searchParams.get(p)
+    if (v && /^[\w-]{1,200}$/.test(v)) click[p] = v
+  }
+  if (!Object.keys(click).length) return
+  try { window.sessionStorage.setItem(GOOGLE_CLICK, JSON.stringify(click)) } catch { /* storage blocked */ }
+}
+
+/** The Google ad click this tab came from ({ gclid } / { gbraid } / { wbraid }), or null. */
+export function keptGoogleClick() {
+  try {
+    const click = JSON.parse(window.sessionStorage.getItem(GOOGLE_CLICK) || 'null')
+    return click && typeof click === 'object' ? click : null
+  } catch {
+    return null
+  }
+}
+
 /** Did this browsing session start from the QR code at an expo? */
 export function isExpoVisit() {
   try {
@@ -96,6 +123,7 @@ export function captureAttribution() {
   }
   if (url.searchParams.get('fbclid')) a.fbclid = true
   if (url.searchParams.get('gclid') || url.searchParams.get('gbraid') || url.searchParams.get('wbraid')) a.gclid = true
+  keepGoogleClick(url)
   let ref = ''
   try {
     const r = document.referrer ? new URL(document.referrer) : null

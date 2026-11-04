@@ -5,6 +5,8 @@
 // src/hooks/useGoogleAnalytics.js), and told to stop collecting the moment
 // that consent is withdrawn. With no Measurement ID set it does nothing.
 
+import { keptGoogleClick, GOOGLE_CLICK_PARAMS } from './attribution.js'
+
 export const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-SWQD75DWP6'
 
 // Google Ads: the account id (AW-…) and the label of its "Purchase" conversion, from Google Ads → Goals →
@@ -35,8 +37,35 @@ export function enableGoogleAnalytics() {
   const s = document.createElement('script')
   s.async = true
   s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_MEASUREMENT_ID)}`
+  const putBack = showGoogleClick()
+  if (putBack) s.addEventListener('load', () => setTimeout(putBack, 3000), { once: true })
   document.head.appendChild(s)
   loaded = true
+}
+
+/**
+ * The Google tag reads the ad click ID (gclid…) from the page address when it starts. When the visitor
+ * accepted cookies on a later page than the one the ad opened, the ID is put back into the address
+ * (without reloading or a new history entry) while the tag starts, then taken out again.
+ * Returns the function that takes it out, or null when there is nothing to do.
+ */
+function showGoogleClick() {
+  const click = keptGoogleClick()
+  if (!click) return null
+  const url = new URL(window.location.href)
+  if (GOOGLE_CLICK_PARAMS.some((p) => url.searchParams.has(p))) return null // still in the address
+  const original = url.href
+  for (const [p, v] of Object.entries(click)) url.searchParams.set(p, v)
+  try {
+    window.history.replaceState(window.history.state, '', url.href)
+  } catch {
+    return null
+  }
+  const shown = url.href
+  return () => {
+    // Only if the visitor is still on that address (a new page has its own clean address).
+    if (window.location.href === shown) window.history.replaceState(window.history.state, '', original)
+  }
 }
 
 /** Consent withdrawn: Google Analytics stops sending anything from this page. */
