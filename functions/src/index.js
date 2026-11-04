@@ -51,7 +51,7 @@ export const api = onRequest(
     // META_ADS_TOKEN: a Meta system user token with ads_read, for Analyst → Campaigns → Meta ads
     // (backend/lib/sales/meta-ads.js). SALESDADDY_MCP_TOKEN: a read-only Sales Daddy AI-assistant token
     // (Marketing & ads), for Analyst → Campaigns → Google Ads (backend/lib/sales/google-ads.js).
-    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY', 'AUTOMATION_API_KEY', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'ASKEVA_WEBHOOK_KEY', 'NEODOVE_ENDPOINT', 'NEODOVE_WEBHOOK_KEY', 'META_CAPI_TOKEN', 'META_ADS_TOKEN', 'SALESDADDY_MCP_TOKEN'],
+    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY', 'AUTOMATION_API_KEY', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'ASKEVA_WEBHOOK_KEY', 'NEODOVE_ENDPOINT', 'NEODOVE_WEBHOOK_KEY', 'META_CAPI_TOKEN', 'SALESDADDY_MCP_TOKEN'], // add 'META_ADS_TOKEN' once that secret is saved
     // Runs as the backend account that phase1-setup.ps1 allowed into Cloud SQL
     // (Cloud SQL client) and nothing else.
     serviceAccount: 'api-backend@chennai-rice-website.iam.gserviceaccount.com',
