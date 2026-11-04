@@ -1838,7 +1838,7 @@ test('NeoDove: not-converted sign-ups go to NeoDove once; call results come back
     assert.equal((await db.query(`select status from lead_status where mobile = '9500044444'`)).rows[0].status, 'qualified')
     // Tagged "NeoDove call"; a number Sales Daddy does not have is created as Manual, not Website.
     const { rows: [call] } = await db.query(`select payload from crm_outbox where kind = 'call_result' order by id desc limit 1`)
-    assert.deepEqual([call.payload.lead.tags, call.payload.lead.source], [['NeoDove call'], 'manual'])
+    assert.deepEqual([call.payload.lead.tags, call.payload.lead.source], [['NeoDove call', 'WhatsApp'], 'manual']) // plus the kind of lead it was
     assert.deepEqual(call.payload.custom, { neodove_agent: 'Priya', neodove_result: 'Interested · Qualified' }) // NeoDove Agent / Result columns
     let out = await sdStatus()
     assert.deepEqual(out.moved, [S.qualified])
@@ -3219,6 +3219,10 @@ test('NeoDove team campaigns, end to end through the real routes: a sign-up, a b
     const by = Object.fromEntries(got.map((g) => [g.body.name, g.path]))
     console.log('NeoDove received:', JSON.stringify(by))
     assert.deepEqual(Object.keys(by).sort(), ['Test Bulk', 'Test Checkout', 'Test Signup'])
+    const type = Object.fromEntries(got.map((g) => [g.body.name, g.body['Lead type']]))
+    console.log('Lead types:', JSON.stringify(type))
+    assert.deepEqual([type['Test Bulk'], type['Test Checkout']], ['Bulk enquiry', 'Checkout: left at details'])
+    assert.ok(type['Test Signup'] && type['Test Signup'] !== 'undefined')
     assert.deepEqual([...new Set(Object.values(by))].sort(), ['/gayathri', '/lavanya', '/ramya'])
   } finally {
     for (const k of ['NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA']) delete process.env[k]

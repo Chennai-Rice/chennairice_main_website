@@ -12,6 +12,7 @@
 // Run by the 10-minute job (jobs.js). Never throws.
 import { query as defaultQuery } from '../db.js'
 import { crmMobile, crmLead, crmEnabled } from '../crm.js'
+import { leadType } from '../neodove.js'
 
 const WAIT_MINUTES = 30
 // Journeys from before this went live, or long stale, are left alone.
@@ -44,6 +45,7 @@ export function neodovePayload(j, mobile) {
     Place: [j.city, j.state, j.pincode].filter(Boolean).join(', '),
     Order: j.order_number || '',
     Error: j.last_error || '',
+    'Lead type': leadType(`checkout_${followupKind(j.stage)}`),
     Source: j.traffic_source || '',
     'Last step': when(j.updated_at),
   }

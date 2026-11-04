@@ -32,6 +32,18 @@ import { hasDatabase, query as defaultQuery } from './db.js'
 import { crmMobile, crmLead, sendCrmLeads, crmEnabled } from './crm.js'
 import { httpError, safeEqual } from './sales/util.js'
 
+/** What kind of lead it is, for the telecaller's lead details and the tag on the call result in Sales Daddy. */
+const SOURCE_TYPES = {
+  meta_ads_facebook: 'Meta Ads', meta_ads_instagram: 'Meta Ads', meta_ads: 'Meta Ads', google_ads: 'Google Ads', whatsapp: 'WhatsApp',
+  facebook: 'Social media', instagram: 'Social media', google_search: 'Google search', expo: 'Expo QR',
+}
+export function leadType(campaign, source) {
+  if (campaign === 'bulk_enquiry') return 'Bulk enquiry'
+  if (campaign === 'checkout_payment') return 'Checkout: payment not completed'
+  if (campaign === 'checkout_details') return 'Checkout: left at details'
+  return SOURCE_TYPES[source] || 'Website sign-up'
+}
+
 const MAX_ATTEMPTS = 8
 const BACKOFF = [1, 5, 15, 30, 60, 120, 360, 720] // minutes
 
@@ -161,7 +173,10 @@ export async function recordNeodoveWebhook(payload) {
       // On to Sales Daddy: a note, and the Qualified / Not qualified stage (unless they bought).
       // Tagged "NeoDove call" (CRM_TAGS). A number Sales Daddy does not have yet — one of the team's
       // other NeoDove campaigns — is created with the Manual source, not Website.
-      const lead = crmLead('call_result', { name: row.name || r.name || `Lead ${r.mobile}`, phone: r.mobile, email: row.email, source: 'manual' })
+      // The kind of lead it was (Meta Ads, Google Ads, WhatsApp, Bulk enquiry…) as a tag, when we sent this mobile to NeoDove.
+      const { rows: [sentAs] } = await defaultQuery(`select campaign from neodove_outbox where mobile = $1 order by created_at desc limit 1`, [r.mobile])
+      const lead = crmLead('call_result', { name: row.name || r.name || `Lead ${r.mobile}`, phone: r.mobile, email: row.email, source: 'manual',
+        tags: sentAs ? [leadType(sentAs.campaign, row.source)] : [] })
       if (!lead.name || lead.mobile.length < 10) continue
       const note = [
         `NeoDove call: ${r.disposition || 'no disposition'}${verdict ? ' · ' + LABEL[verdict] : ''}${r.connected === false && r.disposition !== 'Not connected' ? ' (call not connected)' : ''}`,
@@ -210,7 +225,7 @@ export async function recordSignup(db, { name, phone, email, source, sourceLabel
     const payload = {
       // NeoDove's own example sends the mobile as a number.
       name, mobile: Number(mobile), email: email || '',
-      Source: sourceLabel || source || '', Campaign: campaign || '', Ad: ad || '', Page: page || '',
+      'Lead type': leadType('signup', source), Source: sourceLabel || source || '', Campaign: campaign || '', Ad: ad || '', Page: page || '',
       'Signed up': fmt(new Date()),
     }
     const { rows: [o] } = await db.query(
@@ -236,7 +251,7 @@ export async function recordBulkEnquiry(db, { name, phone, email, company, buyer
     if (recent) return null
     const payload = {
       name: name || company || 'Bulk enquiry', mobile: Number(mobile), email: email || '',
-      Source: 'Bulk order form', Company: company || '', 'Buyer type': buyerType || '', GSTIN: gstin || '', Message: message || '',
+      'Lead type': leadType('bulk_enquiry'), Source: 'Bulk order form', Company: company || '', 'Buyer type': buyerType || '', GSTIN: gstin || '', Message: message || '',
       'Enquired': fmt(new Date()),
     }
     const { rows: [o] } = await db.query(`insert into neodove_outbox (mobile, campaign, payload) values ($1, 'bulk_enquiry', $2) returning id`, [mobile, payload])
