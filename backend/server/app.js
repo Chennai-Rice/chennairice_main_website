@@ -22,6 +22,7 @@ import {
 } from '../lib/consent.js'
 import { buildContactRow, buildBulkOrderRow, insertEnquiry } from '../lib/enquiries.js'
 import { pushCrmLead } from '../lib/crm.js'
+import { recordBulkEnquiry, sendNeodoveLeads } from '../lib/neodove.js'
 import {
   buildSessionRow,
   insertSession,
@@ -136,6 +137,15 @@ app.post('/api/bulk-order', async (req, res) => {
     ].filter(Boolean).join('\n'),
     custom: { gstin: row.gstin, quantity: row.quantity_kg || '', buyer_type: row.buyer_type },
   })
+
+  // And to NeoDove: shared between the telecallers' campaigns (best effort).
+  try {
+    const id = await recordBulkEnquiry({ query }, { name: row.representative_name, phone: row.phone, email: row.email, company: row.company_or_name,
+      buyerType: row.buyer_type === 'other' ? row.other_type || 'Other' : row.buyer_type, gstin: row.gstin, message: row.message })
+    if (id) await sendNeodoveLeads({ id })
+  } catch (err) {
+    console.error('[neodove] bulk enquiry:', err.message)
+  }
 
   try {
     const stored = await insertEnquiry('bulk_order_enquiries', row)

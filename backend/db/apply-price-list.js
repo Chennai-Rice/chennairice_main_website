@@ -56,7 +56,7 @@ export const DELIVERY = {
 // slug → { packKg: [list price, MRP before the delivery share, absorbed (only where the sheet differs
 // from the size's usual amount), { oldMrp: true } to show the bag's MRP without the delivery share] }. Item and variety as on the sheets.
 export const PRICE_LIST = {
-  'kitchidi-ponni-rice': { 5: [444, 599, undefined, { oldMrp: true }], 26: [2470, 2699] }, // Chennai Rice Premium Kitchidi Ponni Rice (pink bag); 5 kg kept at the old ₹555 and MRP
+  'kitchidi-ponni-rice': { 5: [515, 599, 40, { oldMrp: true }], 26: [2470, 2699] }, // Chennai Rice Premium Kitchidi Ponni Rice (pink bag); 5 kg: retail ₹515, website price kept at ₹555 (₹40 absorbed) and the old MRP, so Tamil Nadu pays ₹125 delivery, ₹680 in all (4 Nov 2026)
   'special-rajabhogam': { 5: [515, 599], 10: [1020, 1129], 26: [2470, 2699] }, // Chennai Rice-Red-Raj.Ponni · Vada Kolam Kitchidi Ponni (red bag)
   'vintage': { 5: [515, 619], 10: [1020, 1209], 26: [2470, 2899] },            // Vintage Spl Ponni · JSR Kolam
   'united-5kg': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },          // United · Shikaripura Amaan Ponni
@@ -66,7 +66,7 @@ export const PRICE_LIST = {
   'a1-special-ponni': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },    // A1 Ponni Rice · Akshaya Amman Ponni
   'chennai-bullets': { 5: [501, 599], 10: [990, 1129], 26: [2400, 2699] },     // Chennai Bullets · TN RNR / Kodad Bapatla / KA KNM
   'alibaba': { 5: [501, 599], 10: [990, 1129], 26: [2400, 2699] },             // Alibaba · TN RNR / Kodad Bapatla / KA KNM
-  'special-idly-rice': { 5: [255, 349, 85], 10: [566, 739], 26: [1350, 1749] }, // Special Idly Rice (Pink) · Kalli Muthan kar (5 kg: the ₹255 offer, ₹85 absorbed)
+  'special-idly-rice': { 5: [295, 349, 45], 10: [566, 739], 26: [1350, 1749] }, // Special Idly Rice (Pink) · Kalli Muthan kar (5 kg: retail ₹295, website price kept at ₹340 (₹45 absorbed), so Tamil Nadu pays ₹120 delivery, ₹460 in all; 4 Nov 2026)
   // Chennai Rice Jeera Rice (Jeera Old, 26 kg ₹1,200) is on the sheet but not sold online.
 }
 
