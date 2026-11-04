@@ -46,6 +46,7 @@ export function neodovePayload(j, mobile) {
     Order: j.order_number || '',
     Error: j.last_error || '',
     'Lead type': leadType(`checkout_${followupKind(j.stage)}`),
+    tags: leadType(`checkout_${followupKind(j.stage)}`),
     Source: j.traffic_source || '',
     'Last step': when(j.updated_at),
   }

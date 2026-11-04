@@ -225,7 +225,7 @@ export async function recordSignup(db, { name, phone, email, source, sourceLabel
     const payload = {
       // NeoDove's own example sends the mobile as a number.
       name, mobile: Number(mobile), email: email || '',
-      'Lead type': leadType('signup', source), Source: sourceLabel || source || '', Campaign: campaign || '', Ad: ad || '', Page: page || '',
+      'Lead type': leadType('signup', source), tags: leadType('signup', source), Source: sourceLabel || source || '', Campaign: campaign || '', Ad: ad || '', Page: page || '',
       'Signed up': fmt(new Date()),
     }
     const { rows: [o] } = await db.query(
@@ -251,7 +251,7 @@ export async function recordBulkEnquiry(db, { name, phone, email, company, buyer
     if (recent) return null
     const payload = {
       name: name || company || 'Bulk enquiry', mobile: Number(mobile), email: email || '',
-      'Lead type': leadType('bulk_enquiry'), Source: 'Bulk order form', Company: company || '', 'Buyer type': buyerType || '', GSTIN: gstin || '', Message: message || '',
+      'Lead type': leadType('bulk_enquiry'), tags: leadType('bulk_enquiry'), Source: 'Bulk order form', Company: company || '', 'Buyer type': buyerType || '', GSTIN: gstin || '', Message: message || '',
       'Enquired': fmt(new Date()),
     }
     const { rows: [o] } = await db.query(`insert into neodove_outbox (mobile, campaign, payload) values ($1, 'bulk_enquiry', $2) returning id`, [mobile, payload])
@@ -360,4 +360,37 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
     console.error('[neodove]', err.message)
   }
   return { sent, failed, byAgent }
+}
+
+/**
+ * Gives the leads sent to NeoDove before "Lead type" existed their type, through the campaign's "update only" link
+ * (the endpoint plus ?update=true, which only changes leads NeoDove already has). Each row is marked with its type
+ * (payload."Lead type"), so a second run skips it. With `apply` false nothing is sent: the result only counts.
+ */
+export async function backfillLeadTypes({ query = defaultQuery, apply = false, limit = 500 } = {}) {
+  const pool = poolAgents()
+  const { rows } = await query(
+    `select o.id, o.mobile, o.campaign, o.agent, o.payload, l.source
+       from neodove_outbox o left join lead_status l on l.mobile = o.mobile
+      where o.status = 'sent' and not (o.payload ? 'Lead type') order by o.created_at limit $1`, [limit])
+  const out = { found: rows.length, updated: 0, failed: 0, byType: {}, skipped: 0 }
+  for (const r of rows) {
+    const type = leadType(r.campaign, r.source)
+    out.byType[type] = (out.byType[type] || 0) + 1
+    if (!apply) continue
+    const base = pool.includes(r.agent) ? agentEndpoint(r.agent) : endpoint(r.campaign)
+    if (!usable(base)) { out.skipped++; continue }
+    const url = base + (base.includes('?') ? '&' : '?') + 'update=true'
+    const body = { name: r.payload?.name || 'Lead', mobile: Number(r.mobile), email: r.payload?.email || '', 'Lead type': type }
+    let result
+    try { result = await post(body, url) } catch (err) { result = { status: 0, text: err.message } }
+    if (result.status >= 200 && result.status < 300) {
+      out.updated++
+      await query(`update neodove_outbox set payload = payload || jsonb_build_object('Lead type', $2::text) where id = $1`, [r.id, type])
+    } else {
+      out.failed++
+      console.error('[neodove] backfill refused:', result.status, String(result.text).slice(0, 120))
+    }
+  }
+  return out
 }
