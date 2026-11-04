@@ -284,7 +284,7 @@
 /* Campaigns → Meta ads — live (MetaAdsPanel): campaigns that open to their ads. */
 .an-section-title { margin: 28px 0 12px; font-size: 17px; color: var(--an-ink-2); }
 .an-meta-stats { margin: 4px 0 16px; }
-.an-meta-table td:first-child { min-width: 240px; }
+.an-meta-table td:first-child, .an-meta-campaign td:first-child, .an-meta-ad td:first-child { min-width: 240px; }
 .an-meta-campaign { cursor: pointer; }
 .an-meta-campaign td { background: #fdf8f3; font-weight: 600; }
 .an-meta-toggle { border: 0; background: none; padding: 0 6px 0 0; font-size: 13px; color: var(--an-muted); cursor: pointer; }

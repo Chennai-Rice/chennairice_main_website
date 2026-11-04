@@ -461,6 +461,72 @@ function MetaAdsPanel({ period }) {
   )
 }
 
+/**
+ * Google Ads — live: each Google Ads campaign (through Sales Daddy, backend/lib/sales/google-ads.js) beside
+ * the website's own visits, sign-ups and orders from it. Google's figures cover the last N days up to today.
+ */
+function GoogleAdsPanel({ period }) {
+  const [state, setState] = useState({ data: null, error: '', loading: true })
+  const load = useCallback((refresh = false) => {
+    setState((s) => ({ ...s, loading: true, error: '' }))
+    staffJson(`/api/admin/analyst/google-ads?from=${period.from}&to=${period.to}${refresh ? '&refresh=1' : ''}`)
+      .then((data) => setState({ data, error: '', loading: false }))
+      .catch((err) => setState((s) => ({ ...s, error: err.message || 'Could not reach Google Ads.', loading: false })))
+  }, [period.from, period.to])
+  useEffect(() => { load() }, [load])
+  const d = state.data
+  const money2 = (n) => inr(n, 2)
+  const site = [
+    { label: 'Website visits', value: (r) => count(r.site.visits), num: true },
+    { label: 'Sign-ups', value: (r) => count(r.site.leads), num: true },
+    { label: 'Orders', value: (r) => count(r.site.orders), num: true },
+    { label: 'Revenue', value: (r) => inr(r.site.revenue), num: true },
+  ]
+  const cols = [
+    { label: 'Campaign', value: (r) => (r.untagged
+      ? <span className="an-meta-adname">{r.name}</span>
+      : <><strong>{r.name}</strong><span className="an-meta-id">ID {r.id}{r.dailyBudget ? ` · budget ${inr(r.dailyBudget)}/day` : ''}</span></>) },
+    { label: 'Type', value: (r) => r.type ?? '' },
+    { label: 'Status', value: (r) => r.status ?? '' },
+    { label: 'Spent', value: (r) => (r.untagged ? '' : money2(r.spend)), num: true },
+    { label: 'Impressions', value: (r) => (r.untagged ? '' : count(r.impressions)), num: true },
+    { label: 'Clicks', value: (r) => (r.untagged ? '' : count(r.clicks)), num: true },
+    { label: 'CTR', value: (r) => (r.ctr == null ? (r.untagged ? '' : '—') : `${Number(r.ctr).toFixed(2)}%`), num: true },
+    { label: 'CPC', value: (r) => (r.untagged ? '' : money2(r.cpc)), num: true },
+    { label: 'Google conversions', value: (r) => (r.untagged ? '' : count(r.conversions)), num: true },
+    ...site,
+    { label: 'Cost / order', value: (r) => (r.costPerOrder == null ? (r.untagged ? '' : '—') : money2(r.costPerOrder)), num: true },
+    { label: 'ROAS', value: (r) => (r.roas == null ? (r.untagged ? '' : '—') : `${r.roas}×`), num: true },
+  ]
+  return (
+    <Panel title="Google Ads — live" wide
+      note={d?.connected ? `Google's figures are for the last ${d.days} day${d.days === 1 ? '' : 's'} up to today; the website's are for the period chosen above. Google's own conversion count appears once the Purchase conversion tag reports.` : 'Straight from Google Ads, next to what the website recorded from the same campaign.'}>
+      {!d && state.loading && <p className="wh-empty">Loading from Google Ads…</p>}
+      {state.error && <p className="wh-error">{state.error}</p>}
+      {d && !d.connected && (
+        <p className="wh-empty">Not connected yet. In Sales Daddy → Settings → Integrations → AI Assistants, create a read-only token with Marketing &amp; ads and save it as the secret <code>SALESDADDY_MCP_TOKEN</code>.</p>
+      )}
+      {d?.connected && (
+        <>
+          <section className="an-stats an-meta-stats">
+            <Tile hero label="Spent on Google" value={inr(d.totals.spend)} note={`${count(d.campaigns.length)} campaign${d.campaigns.length === 1 ? '' : 's'} · last ${d.days} days`} icon="print" />
+            <Tile label="Clicks" value={count(d.totals.clicks)} note={`${money2(d.totals.cpc)} each`} icon="users" />
+            <Tile label="Website visits" value={count(d.totals.visits)} note="Google Ads visits the website counted" icon="reports" />
+            <Tile label="Orders" value={count(d.totals.orders)} note={d.totals.costPerOrder == null ? 'No orders from Google Ads yet' : `${money2(d.totals.costPerOrder)} per order`} icon="orders" />
+            <Tile label="ROAS" value={d.totals.roas == null ? '—' : `${d.totals.roas}×`} note={`${inr(d.totals.revenue)} revenue ÷ spend`} icon="reports" />
+          </section>
+          <Table cols={cols} rows={d.untagged ? [...d.campaigns, d.untagged] : d.campaigns} rowClass={(r) => (r.untagged ? 'an-meta-ad' : 'an-meta-campaign')}
+            empty="No Google Ads campaigns ran in this period." />
+          <p className="wh-muted wh-small an-meta-foot">
+            {d.account ? `Account ${String(d.account).replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')} · ` : ''}Updated {new Date(d.fetchedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}.
+            {' '}<button type="button" className="wh-btn wh-btn--outline wh-btn--small" disabled={state.loading} onClick={() => load(true)}>{state.loading ? 'Refreshing…' : 'Refresh from Google'}</button>
+          </p>
+        </>
+      )}
+    </Panel>
+  )
+}
+
 function CampaignsTab({ data, period, onAdd }) {
   const c = data.campaigns
   // Cost per lead / order and ROAS over the campaigns that have spend entered.
@@ -474,7 +540,7 @@ function CampaignsTab({ data, period, onAdd }) {
   ]
   return (
     <>
-      <div className="an-grid"><MetaAdsPanel period={period} /></div>
+      <div className="an-grid"><MetaAdsPanel period={period} /><GoogleAdsPanel period={period} /></div>
       <h2 className="an-section-title">Spend entered by hand</h2>
       <section className="an-stats">
         <Tile hero label="Ad spend" value={inr(c.totalSpend)} note="Entered under Settings" icon="print" />
