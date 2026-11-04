@@ -31,17 +31,49 @@ const inChannel = (channel, source) => !channel || (CHANNELS.find((c) => c.key =
 // A Meta campaign ID (e.g. 120251768166180156) means the visit came from a Meta ad, even
 // when the ad's link said "facebook" / "instagram" without utm_medium=paid.
 const META_ID = /^\d{12,}$/
-// Names for the Meta campaign and ad IDs that ad links carry (from Meta Ads Manager, Oct 2026).
-// New ads tagged with the parameters under "How to tag your ads" send their names directly.
+// Names for the Meta campaign, ad set and ad IDs that ad links carry ({{campaign.id}}, {{ad.id}}), from Meta
+// Ads Manager (account 1204684567608575, 4 Nov 2026). Ads tagged with names ({{campaign.name}}) need no entry.
 const AD_NAMES = {
-  '120251724928590156': { campaign: 'OVERVIEW CREATIVE 14/10' },
-  '120251724928570156': { campaign: 'OVERVIEW CREATIVE 14/10', ad: 'slogan contest' },
-  '120251713475410156': { campaign: 'SLOGAN READY TRAFFIC - 13/10' },
-  '120251713475400156': { campaign: 'SLOGAN READY TRAFFIC - 13/10', ad: 'Single image' },
-  '120251712405340156': { campaign: 'COUPON VANTHACHI - 13-10-26 | Awareness' },
-  '120251712405330156': { campaign: 'COUPON VANTHACHI - 13-10-26 | Awareness', ad: 'Creative' },
-  '120251768166170156': { campaign: 'Sales - Kichadi Ponni Rice' },
-  '120251768166180156': { campaign: 'Sales - Kichadi Ponni Rice', ad: 'New Sales ad' },
+  // Campaigns
+  '120252047257960156': { campaign: "CR_KitchidiPonni_Website_Sales" },
+  '120252076739410156': { campaign: "CR_Kitchidi_Ponni_Traffic" },
+  '120252082470920156': { campaign: "CR_Kitchidi_Ponni_Traffic 1" },
+  '120251768166170156': { campaign: "Sales - Kichadi Ponni Rice" },
+  '120251724928590156': { campaign: "OVERVIEW CREATIVE 14/10" },
+  '120251713475410156': { campaign: "SLOGAN READY TRAFFIC - 13/10" },
+  '120251712405340156': { campaign: "COUPON VANTHACHI - 13-10-26 | Awareness" },
+  '120251725750570156': { campaign: "Post: Chennai Rice Amma taste (boosted)" },
+  // Ad sets
+  '120252047257940156': { campaign: "CR_KitchidiPonni_Website_Sales", adSet: "prabhu image - chennai" },
+  '120252076599020156': { campaign: "CR_KitchidiPonni_Website_Sales", adSet: "prabhu image – Erode" },
+  '120252076598980156': { campaign: "CR_KitchidiPonni_Website_Sales", adSet: "prabhu image – Coimbatore" },
+  '120252076599000156': { campaign: "CR_KitchidiPonni_Website_Sales", adSet: "prabhu image – Madurai" },
+  '120252076739400156': { campaign: "CR_Kitchidi_Ponni_Traffic", adSet: "Prabhu Dialogue" },
+  '120252082470930156': { campaign: "CR_Kitchidi_Ponni_Traffic 1", adSet: "Jingle 10 to 40 sec" },
+  '120251768166190156': { campaign: "Sales - Kichadi Ponni Rice", adSet: "New Sales ad set" },
+  '120251724928580156': { campaign: "OVERVIEW CREATIVE 14/10", adSet: "ad set 02" },
+  '120251713475390156': { campaign: "SLOGAN READY TRAFFIC - 13/10", adSet: "AD SET 01" },
+  '120251712405320156': { campaign: "COUPON VANTHACHI - 13-10-26 | Awareness", adSet: "ad set 1" },
+  // Ads
+  '120252047257950156': { campaign: "CR_KitchidiPonni_Website_Sales", adSet: "prabhu image - chennai", ad: "parisu vettai - poster" },
+  '120252075114730156': { campaign: "CR_KitchidiPonni_Website_Sales", adSet: "prabhu image - chennai", ad: "jingle 20 sec" },
+  '120252076599010156': { campaign: "CR_KitchidiPonni_Website_Sales", adSet: "prabhu image – Erode", ad: "jingle 20 sec" },
+  '120252076599030156': { campaign: "CR_KitchidiPonni_Website_Sales", adSet: "prabhu image – Erode", ad: "parisu vettai - poster" },
+  '120252076598990156': { campaign: "CR_KitchidiPonni_Website_Sales", adSet: "prabhu image – Coimbatore", ad: "parisu vettai - poster" },
+  '120252076599040156': { campaign: "CR_KitchidiPonni_Website_Sales", adSet: "prabhu image – Coimbatore", ad: "jingle 20 sec" },
+  '120252076599050156': { campaign: "CR_KitchidiPonni_Website_Sales", adSet: "prabhu image – Madurai", ad: "jingle 20 sec" },
+  '120252076598840156': { campaign: "CR_KitchidiPonni_Website_Sales", adSet: "prabhu image – Madurai", ad: "parisu vettai - poster" },
+  '120252079355870156': { campaign: "CR_Kitchidi_Ponni_Traffic", adSet: "Prabhu Dialogue", ad: "dialogue - 20 sec" },
+  '120252076739420156': { campaign: "CR_Kitchidi_Ponni_Traffic", adSet: "Prabhu Dialogue", ad: "dialogue - 10 sec" },
+  '120252079355860156': { campaign: "CR_Kitchidi_Ponni_Traffic", adSet: "Prabhu Dialogue", ad: "dialogue - 30 sec" },
+  '120252083685750156': { campaign: "CR_Kitchidi_Ponni_Traffic 1", adSet: "Jingle 10 to 40 sec", ad: "JINGLE 30 SEC" },
+  '120252082470940156': { campaign: "CR_Kitchidi_Ponni_Traffic 1", adSet: "Jingle 10 to 40 sec", ad: "JINGLE 40 SEC" },
+  '120252084014500156': { campaign: "CR_Kitchidi_Ponni_Traffic 1", adSet: "Jingle 10 to 40 sec", ad: "JINGLE 15 SEC" },
+  '120251768166180156': { campaign: "Sales - Kichadi Ponni Rice", adSet: "New Sales ad set", ad: "New Sales ad" },
+  '120251724928570156': { campaign: "OVERVIEW CREATIVE 14/10", adSet: "ad set 02", ad: "slogan contest" },
+  '120251713475400156': { campaign: "SLOGAN READY TRAFFIC - 13/10", adSet: "AD SET 01", ad: "Single image" },
+  '120251712405330156': { campaign: "COUPON VANTHACHI - 13-10-26 | Awareness", adSet: "ad set 1", ad: "Creative" },
+  '120251725752490156': { campaign: "Post: Chennai Rice Amma taste (boosted)", ad: "Post: \"Chennai Rice Amma taste…\"" },
 }
 const isMetaId = (v) => META_ID.test(v || '') || Boolean(AD_NAMES[v])
 const isUntaggedMetaAd = (r) => ['facebook', 'instagram'].includes(r.source) && (isMetaId(r.campaign) || isMetaId(r.ad))
@@ -63,9 +95,11 @@ function campaignName(r) {
 }
 /** What a row adds under its campaign: where it ran and which ad / placement. */
 function rowDetail(r) {
-  const ad = AD_NAMES[r.ad]?.ad || (META_ID.test(r.ad || '') ? `ad ${shortId(r.ad)}` : pretty(r.ad))
+  const known = AD_NAMES[r.ad] || {}
+  const ad = known.ad || (META_ID.test(r.ad || '') ? `ad ${shortId(r.ad)}` : pretty(r.ad))
   const viaAd = !AD_NAMES[r.ad] && AD_NAMES[r.campaign]?.ad ? AD_NAMES[r.campaign].ad : ''
-  return [r.label.replace(' (not an ad)', ''), viaAd, ad].filter(Boolean).join(' · ')
+  // Ad set (city / audience) before the ad, when the ad is a known Meta ad.
+  return [r.label.replace(' (not an ad)', ''), known.adSet, viaAd, ad].filter(Boolean).join(' · ')
 }
 const GROUP_LABEL = { test: 'Test or broken links (not real ads)' }
 
