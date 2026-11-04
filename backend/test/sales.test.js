@@ -3223,6 +3223,7 @@ test('NeoDove team campaigns, end to end through the real routes: a sign-up, a b
     console.log('Lead types:', JSON.stringify(type))
     assert.deepEqual([type['Test Bulk'], type['Test Checkout']], ['Bulk enquiry', 'Checkout: left at details'])
     assert.ok(type['Test Signup'] && type['Test Signup'] !== 'undefined')
+    assert.ok(got.every((g) => g.body.tags === g.body['Lead type'])) // also sent as `tags`, in case NeoDove turns that key into tags
     assert.deepEqual([...new Set(Object.values(by))].sort(), ['/gayathri', '/lavanya', '/ramya'])
   } finally {
     for (const k of ['NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA']) delete process.env[k]
@@ -3241,5 +3242,34 @@ test('NeoDove: a telecaller endpoint pasted twice pauses sending instead of fail
     assert.match(r.skipped, /bad endpoint: gayathri/)
   } finally {
     for (const k of ['NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA']) delete process.env[k]
+  }
+})
+
+test('NeoDove: leads sent before get their Lead type through the update-only link, once', async () => {
+  const http = await import('node:http')
+  const got = []
+  const fakeNeo = http.createServer((req, res) => {
+    let body = ''
+    req.on('data', (c) => (body += c)).on('end', () => { got.push({ url: req.url, body: JSON.parse(body) }); res.end('OK') })
+  })
+  await new Promise((r) => fakeNeo.listen(0, r))
+  const { backfillLeadTypes } = await import('../lib/neodove.js')
+  const url = `http://127.0.0.1:${fakeNeo.address().port}`
+  Object.assign(process.env, { NEODOVE_ENDPOINT_GAYATHRI: url + '/gayathri', NEODOVE_ENDPOINT_RAMYA: url + '/ramya', NEODOVE_ENDPOINT_LAVANYA: url + '/lavanya' })
+  try {
+    await db.query(`update neodove_outbox set payload = payload || '{"Lead type": "x"}'::jsonb`) // earlier tests' rows are not part of this
+    await db.query(`insert into lead_status (mobile, name, source, status) values ('9722200001', 'Old Meta', 'meta_ads_instagram', 'not_converted') on conflict (mobile) do nothing`)
+    await db.query(`insert into neodove_outbox (mobile, campaign, agent, status, payload) values
+      ('9722200001', 'signup', 'ramya', 'sent', '{"name":"Old Meta","mobile":9722200001,"email":"a@b.co"}'),
+      ('9722200002', 'bulk_enquiry', 'lavanya', 'sent', '{"name":"Old Bulk","mobile":9722200002}')`)
+    const dry = await backfillLeadTypes({ query: db.query })
+    assert.deepEqual([dry.found, got.length, dry.byType], [2, 0, { 'Meta Ads': 1, 'Bulk enquiry': 1 }])
+    const done = await backfillLeadTypes({ query: db.query, apply: true })
+    assert.deepEqual([done.updated, done.failed], [2, 0])
+    assert.deepEqual(got.map((g) => [g.url, g.body['Lead type']]).sort(), [['/lavanya?update=true', 'Bulk enquiry'], ['/ramya?update=true', 'Meta Ads']])
+    assert.equal((await backfillLeadTypes({ query: db.query, apply: true })).found, 0) // once only
+  } finally {
+    for (const k of ['NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA']) delete process.env[k]
+    fakeNeo.close()
   }
 })
