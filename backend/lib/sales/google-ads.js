@@ -3,7 +3,7 @@
 // Ads: visits (traffic_visits), sign-ups (contest_leads) and paid orders, with cost per order and ROAS.
 //
 // Google's figures come through the Sales Daddy CRM, which is linked to the Google Ads account: its MCP
-// server (https://mcp.salesdaddy.in/mcp, JSON-RPC over HTTP) answers the google_ads_campaigns tool for
+// server (https://api.salesdaddy.in/mcp, JSON-RPC over HTTP) answers the google_ads_campaigns tool for
 // the last N days up to today. The website's records carry the campaign from the ad link's utm_campaign
 // (Final URL suffix), matched to a campaign by ID or name; Google Ads visits without one are listed
 // separately, as "campaign not in the link".
@@ -14,7 +14,7 @@
 import { query as defaultQuery } from '../db.js'
 import { httpError } from './util.js'
 
-const MCP_URL = () => process.env.SALESDADDY_MCP_URL || 'https://mcp.salesdaddy.in/mcp'
+const MCP_URL = () => process.env.SALESDADDY_MCP_URL || 'https://api.salesdaddy.in/mcp'
 const WORKSPACE = () => process.env.SALESDADDY_WORKSPACE_ID || '55e68042-1618-486e-bf58-e948aa0d6ff0'
 const CACHE_MS = 5 * 60000
 const cache = new Map()
