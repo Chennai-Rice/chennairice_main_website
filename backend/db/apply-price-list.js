@@ -6,11 +6,14 @@
 //
 // "Regional delivered price" sheets (Oct 2026) for 5, 10 and 26 kg packs:
 // Tamil Nadu, South, North and North East. For every pack the sheets take the
-// list price (price list of 09-10-2026) and:
+// list price (price list of 19-10-2026) and:
 //   absorbed      = a fixed part of the delivery cost carried in the price
 //                   (5 kg ₹111, 10 kg ₹120, 26 kg ₹250; less where that
 //                   would cross MRP, or as the sheet sets for a pack)
-//   website price = list price + absorbed, the same in every region
+//   MRP           = the bag's MRP + 60% of the Tamil Nadu delivery cost for
+//                   that size (MRP_DELIVERY_SHARE), rounded to the rupee
+//   website price = list price + absorbed, the same in every region, and
+//                   never above that MRP or ₹2,800 (MAX_PACK_PRICE) for any bag
 //   delivery      = the region's delivery cost for that pack size − absorbed,
 //                   rounded to the rupee
 // The region comes from the customer's PIN code at checkout
@@ -32,7 +35,13 @@ import { getPool, closePool } from '../lib/db.js'
 import { moveStock } from '../lib/sales/stock.js'
 import { defaultTaxRateBp, skuFor } from './seed.js'
 
-export const EFFECTIVE_FROM = '2026-10-13'
+export const EFFECTIVE_FROM = '2026-10-19'
+
+// No bag is sold for more than this on the website, whatever its size.
+export const MAX_PACK_PRICE = 2800
+
+// The share of the Tamil Nadu delivery cost added to each bag's MRP (19-10-2026).
+export const MRP_DELIVERY_SHARE = 0.6
 
 const REGION_NAMES = { TN: 'Tamil Nadu', SOUTH: 'South India', NORTH: 'North India', NE: 'North East' }
 
@@ -44,28 +53,29 @@ export const DELIVERY = {
   26: { absorbed: 250, cost: { TN: 687.23, SOUTH: 1374.46, NORTH: 2061.7, NE: 3092.54 } },
 }
 
-// slug → { packKg: [list price, MRP, absorbed (only where the sheet differs
-// from the size's usual amount)] }. Item and variety as on the sheets.
+// slug → { packKg: [list price, MRP before the delivery share, absorbed (only where the sheet differs
+// from the size's usual amount), { oldMrp: true } to show the bag's MRP without the delivery share] }. Item and variety as on the sheets.
 export const PRICE_LIST = {
-  'vintage': { 5: [471, 619], 10: [930, 1209], 26: [2249, 2899] },             // Vintage Spl Ponni · JSR Kolam
-  'special-rajabhogam': { 5: [441, 599], 10: [870, 1129], 26: [2099, 2699] },  // Chennai Rice · Vada Kolam Kitchidi Ponni (red bag)
-  'vijaya-nagaram': { 5: [471, 619], 10: [930, 1209], 26: [2249, 2899] },      // Vijayanagaram · Shikaripura Amaan Ponni
-  'united-5kg': { 5: [471, 619], 10: [930, 1209], 26: [2249, 2899] },          // United · Shikaripura Amaan Ponni
-  'viruchagam': { 5: [471, 619], 10: [930, 1209], 26: [2249, 2899] },          // Viruchagam · Shikaripura Amaan Ponni
-  'nayara-super-aged': { 5: [471, 619], 10: [930, 1209], 26: [2249, 2899] },   // Nayara · Akshaya Amman Ponni
-  'a1-special-ponni': { 5: [471, 619], 10: [930, 1209], 26: [2249, 2899] },    // A1 Ponni Rice · Akshaya Amman Ponni
-  'chennai-bullets': { 5: [441, 599], 10: [870, 1129], 26: [2099, 2699] },     // Chennai Bullets · TN RNR / Kodad Bapatla / KA KNM
-  'alibaba': { 5: [441, 599], 10: [870, 1129], 26: [2099, 2699] },             // Alibaba · TN RNR / Kodad Bapatla / KA KNM
-  'special-idly-rice': { 5: [255, 349, 85], 10: [566, 739], 26: [1350, 1749] }, // Special Idly Rice (Pink) · Kalli Muthan kar (5 kg sheet: ₹85 absorbed)
-  'kitchidi-ponni-rice': { 5: [444, 599], 26: [2099, 2699] },                  // Chennai Rice Premium Kitchidi Ponni Rice (pink bag)
-  // Broken Rice (Jeera Old) is on the sheets but not sold online.
+  'kitchidi-ponni-rice': { 5: [444, 599, undefined, { oldMrp: true }], 26: [2470, 2699] }, // Chennai Rice Premium Kitchidi Ponni Rice (pink bag); 5 kg kept at the old ₹555 and MRP
+  'special-rajabhogam': { 5: [515, 599], 10: [1020, 1129], 26: [2470, 2699] }, // Chennai Rice-Red-Raj.Ponni · Vada Kolam Kitchidi Ponni (red bag)
+  'vintage': { 5: [515, 619], 10: [1020, 1209], 26: [2470, 2899] },            // Vintage Spl Ponni · JSR Kolam
+  'united-5kg': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },          // United · Shikaripura Amaan Ponni
+  'vijaya-nagaram': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },      // Vijayanagaram · Shikaripura Amaan Ponni
+  'viruchagam': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },          // Viruchagam · Shikaripura Amaan Ponni
+  'nayara-super-aged': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },   // Nayara · Akshaya Amman Ponni
+  'a1-special-ponni': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },    // A1 Ponni Rice · Akshaya Amman Ponni
+  'chennai-bullets': { 5: [501, 599], 10: [990, 1129], 26: [2400, 2699] },     // Chennai Bullets · TN RNR / Kodad Bapatla / KA KNM
+  'alibaba': { 5: [501, 599], 10: [990, 1129], 26: [2400, 2699] },             // Alibaba · TN RNR / Kodad Bapatla / KA KNM
+  'special-idly-rice': { 5: [255, 349, 85], 10: [566, 739], 26: [1350, 1749] }, // Special Idly Rice (Pink) · Kalli Muthan kar (5 kg: the ₹255 offer, ₹85 absorbed)
+  // Chennai Rice Jeera Rice (Jeera Old, 26 kg ₹1,200) is on the sheet but not sold online.
 }
 
 /** Website price, absorbed part and delivery charge per region (₹) for one pack. */
-export function packPricing(packKg, listPrice, mrp, absorbed) {
+export function packPricing(packKg, listPrice, mrp, absorbed, { oldMrp = false } = {}) {
   const size = DELIVERY[packKg]
   if (!size) throw new Error(`No delivery costs for ${packKg} kg packs.`)
-  const take = Math.min(absorbed ?? size.absorbed, mrp - listPrice)
+  if (!oldMrp) mrp += Math.round(size.cost.TN * MRP_DELIVERY_SHARE)
+  const take = Math.max(0, Math.min(absorbed ?? size.absorbed, mrp - listPrice, MAX_PACK_PRICE - listPrice))
   const website = listPrice + take
   const delivery = Object.fromEntries(Object.entries(size.cost)
     .map(([code, cost]) => [code, Math.max(0, Math.round(cost - take))]))
@@ -138,9 +148,9 @@ export async function applyPriceList({ pool, stock = 0, log = console.log } = {}
            (select id from product_variants where product_id = $1 and not (pack_kg = any($2)))`,
         [p.id, Object.keys(prices).map(Number)])
       const shown = []
-      for (const [kg, [listPrice, mrp, absorbedRupees]] of Object.entries(prices)) {
+      for (const [kg, [listPrice, bagMrp, absorbedRupees, opts]] of Object.entries(prices)) {
         const packKg = Number(kg)
-        const { website, delivery } = packPricing(packKg, listPrice, mrp, absorbedRupees)
+        const { website, mrp, delivery } = packPricing(packKg, listPrice, bagMrp, absorbedRupees, opts)
         const { rows: [v] } = await client.query(
           `insert into product_variants (product_id, sku, pack_kg, price_paise, mrp_paise, tax_rate_bp, reorder_level, is_active)
            values ($1, $2, $3, $4, $5, $6, 20, true)
