@@ -30,6 +30,7 @@ export const DEFAULT_PRIZES = [
   { key: 'p250', label: '₹250 OFF', kind: 'amount', amount: 250, minOrder: 2500, region: null, chance: 1 },
 ]
 const NAME = /^[\p{L}][\p{L} .'-]{0,79}$/u
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 /** The prizes in the settings, checked; the defaults when none are set or they do not add up. */
 export function spinPrizes(settings = {}) {
@@ -110,17 +111,21 @@ async function codeFor(db, codeId) {
 }
 
 /**
- * The spin. body: { name, phone, deviceId, attribution }. A mobile number that has spun gets its first
- * prize back (already: true); a browser that spun with another number is refused.
+ * The spin. body: { email, phone, name?, deviceId, attribution }. A mobile number that has spun gets its
+ * first prize back (already: true); a browser that spun with another number is refused.
  */
 export async function spin(db, body = {}, { ip = '' } = {}) {
   const settings = await getSettings(db)
   if (!enabled(settings)) throw httpError('Spin is off', { status: 404, publicMessage: 'Spin & Win is not running right now.' })
-  const name = str(body.name).replace(/\s+/g, ' ')
+  const typedName = str(body.name).replace(/\s+/g, ' ')
+  const email = str(body.email).toLowerCase()
   const phone = cleanMobile(body.phone)
   const deviceId = str(body.deviceId).replace(/[^a-zA-Z0-9-]/g, '').slice(0, 64) || null
-  if (!NAME.test(name)) throw httpError('Bad name', { publicMessage: 'Please enter your name.' })
+  if (typedName && !NAME.test(typedName)) throw httpError('Bad name', { publicMessage: 'Please check your name.' })
+  if (!EMAIL.test(email) || email.length > 200) throw httpError('Bad email', { publicMessage: 'Please enter a valid email address.' })
   if (!phone) throw httpError('Bad phone', { publicMessage: 'Please enter a valid 10-digit mobile number.' })
+  // The lead needs a name: the one typed, else the email's name part ("priya.s" → "Priya S").
+  const name = typedName || email.split('@')[0].replace(/[._\d-]+/g, ' ').trim().replace(/\b\p{L}/gu, (c) => c.toUpperCase()) || 'Spin & Win'
 
   const { rows: [had] } = await db.query('select * from spins where phone = $1', [phone])
   if (had) return { already: true, ...prizeView(had, await codeFor(db, had.code_id)) }
@@ -150,9 +155,9 @@ export async function spin(db, body = {}, { ip = '' } = {}) {
     }
     if (!code) throw new Error('Could not make a spin code')
     const { rows: [row] } = await t.query(
-      `insert into spins (phone, name, prize_key, prize_label, code_id, device_id, ip, attribution)
-       values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (phone) do nothing returning *`,
-      [phone, name, prize.key, prize.label, code.id, deviceId, str(ip).slice(0, 60) || null, cleanAttribution(body.attribution)])
+      `insert into spins (phone, name, prize_key, prize_label, code_id, device_id, ip, attribution, email)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (phone) do nothing returning *`,
+      [phone, name, prize.key, prize.label, code.id, deviceId, str(ip).slice(0, 60) || null, cleanAttribution(body.attribution), email])
     // The same number spun a moment ago: undo this code, the first spin stands.
     if (!row) { await t.query('delete from discount_codes where id = $1', [code.id]); return null }
     return { row, code }
@@ -166,11 +171,11 @@ export async function spin(db, body = {}, { ip = '' } = {}) {
   const gives = describe(result.code)
   const fields = { Prize: gives, Code: result.code.code, 'Valid till': new Date(result.code.expires_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) }
   pushCrmLead('spin_wheel', {
-    name, phone, source: 'website',
+    name, phone, email, source: 'website',
     note: `Spin & Win: won ${gives} (code ${result.code.code}, valid ${days} days).`,
     custom: { came_from: 'Spin & Win', prize: gives, code: result.code.code },
   }).catch(() => {})
-  recordWebsiteLead(db, 'spin_wheel', { name, phone, fields })
+  recordWebsiteLead(db, 'spin_wheel', { name, phone, fields: { ...fields, Email: email } })
     .then((id) => (id ? sendNeodoveLeads({ id }) : null)).catch(() => {})
 
   return { already: false, ...prizeView(result.row, result.code) }
