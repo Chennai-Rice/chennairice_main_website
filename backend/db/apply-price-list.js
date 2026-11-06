@@ -75,12 +75,12 @@ export const PRICE_LIST = {
   // 5 kg: base, MRP, hidden · 10 kg: base, MRP, hidden · 26 kg: base, MRP, hidden (pricing sheets, Nov 2026)
   'kitchidi-ponni-rice': { 5: [515, 699, 40, { ...SHEET_5, inHouse: 60 }], 26: [2470, 2999, 179, SHEET_26] }, // Chennai Rice Premium Kitchidi Ponni Rice (pink bag)
   'special-rajabhogam': { 5: [515, 699, 75, SHEET_5], 10: [1020, 1299, 120, SHEET_10], 26: [2470, 2999, 129, SHEET_26] }, // Chennai Rice-Red-Raj.Ponni · Vada Kolam Kitchidi Ponni (red bag)
-  'vintage': { 5: [515, 699, 75, SHEET_5], 10: [1020, 1299, 90, SHEET_10], 26: [2470, 2999, 129, SHEET_26] },               // Vintage Spl Ponni · JSR Kolam
+  'vintage': { 5: [515, 699, 75, SHEET_5], 10: [1020, 1299, 120, SHEET_10], 26: [2470, 2999, 129, SHEET_26] },               // Vintage Spl Ponni · JSR Kolam
   'united-5kg': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 120, SHEET_10], 26: [2400, 2899, 99, SHEET_26] },             // United · Shikaripura Amaan Ponni
   'vijaya-nagaram': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 120, SHEET_10], 26: [2400, 2899, 99, SHEET_26] },         // Vijayanagaram · Shikaripura Amaan Ponni
   'viruchagam': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 120, SHEET_10], 26: [2400, 2899, 99, SHEET_26] },             // Viruchagam · Shikaripura Amaan Ponni
-  'nayara-super-aged': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 120, SHEET_10], 26: [2400, 2899, 149, SHEET_26] },     // Nayara · Akshaya Amman Ponni
-  'a1-special-ponni': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 150, SHEET_10], 26: [2400, 2899, 99, SHEET_26] },       // A1 Ponni Rice · Akshaya Amman Ponni
+  'nayara-super-aged': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 120, SHEET_10], 26: [2400, 2899, 99, SHEET_26] },     // Nayara · Akshaya Amman Ponni
+  'a1-special-ponni': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 120, SHEET_10], 26: [2400, 2899, 99, SHEET_26] },       // A1 Ponni Rice · Akshaya Amman Ponni
   'chennai-bullets': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 120, SHEET_10], 26: [2400, 2899, 99, SHEET_26] },        // Chennai Bullets · TN RNR / Kodad Bapatla / KA KNM
   // Not on the sheets: priced as its twin, Chennai Bullets (the same on every earlier list).
   'alibaba': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 120, SHEET_10], 26: [2400, 2899, 99, SHEET_26] },                // Alibaba · TN RNR / Kodad Bapatla / KA KNM

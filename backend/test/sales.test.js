@@ -1437,7 +1437,7 @@ test('26 kg pricing sheet (Nov 2026): website price, MRP, hidden part, ₹589 Ta
     'kitchidi-ponni-rice': [2470, 2999, 2649, 179, 2849, 589, 3238],
     'special-rajabhogam': [2470, 2999, 2599, 129, 2799, 589, 3188],
     vintage: [2470, 2999, 2599, 129, 2799, 589, 3188],
-    'nayara-super-aged': [2400, 2899, 2549, 149, 2749, 589, 3138],
+    'nayara-super-aged': [2400, 2899, 2499, 99, 2699, 589, 3088],
     'a1-special-ponni': [2400, 2899, 2499, 99, 2699, 589, 3088],
     'vijaya-nagaram': [2400, 2899, 2499, 99, 2699, 589, 3088],
     viruchagam: [2400, 2899, 2499, 99, 2699, 589, 3088],
@@ -1456,8 +1456,8 @@ test('26 kg pricing sheet (Nov 2026): website price, MRP, hidden part, ₹589 Ta
   const small = [
     ['kitchidi-ponni-rice', 5, [515, 699, 555, 40, 60, 125]], ['special-rajabhogam', 5, [515, 699, 590, 75, 49, 90]],
     ['vintage', 5, [515, 699, 590, 75, 49, 90]], ['united-5kg', 5, [501, 679, 576, 75, 49, 90]], ['special-idly-rice', 5, [295, 449, 370, 75, 49, 90]],
-    ['special-rajabhogam', 10, [1020, 1299, 1140, 120, 100, 120]], ['vintage', 10, [1020, 1299, 1110, 90, 100, 120]],
-    ['a1-special-ponni', 10, [990, 1279, 1140, 150, 100, 120]], ['nayara-super-aged', 10, [990, 1279, 1110, 120, 100, 120]],
+    ['special-rajabhogam', 10, [1020, 1299, 1140, 120, 100, 120]], ['vintage', 10, [1020, 1299, 1140, 120, 100, 120]],
+    ['a1-special-ponni', 10, [990, 1279, 1110, 120, 100, 120]], ['nayara-super-aged', 10, [990, 1279, 1110, 120, 100, 120]],
     ['special-idly-rice', 10, [566, 799, 686, 120, 100, 120]],
   ]
   for (const [slug, kg, want] of small) {
