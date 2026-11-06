@@ -3332,3 +3332,19 @@ test('AskEva: replies from a campaign list number, or the campaign button, are n
   const { rows: ev } = await db.query(`select count(*)::int n from askeva_events where payload::text like '%97333000_1%' or payload::text like '%9733300002%'`)
   assert.equal(ev[0].n, 0)
 })
+
+test('Ad campaigns: reports and sign-ups take a From-To date range (India dates, one day = same date twice)', async () => {
+  const { reportRange, contestLeads, sourcesReport } = await import('../lib/sales/attribution.js')
+  const today = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
+  assert.deepEqual(reportRange({ from: '2026-11-03', to: '2026-11-01' }), { from: '2026-11-01', to: '2026-11-03' })
+  assert.deepEqual(reportRange({ from: '2026-11-01' }), { from: '2026-11-01', to: today })
+  assert.equal(reportRange({ days: 1 }).from, today)
+  await db.query(`insert into contest_leads (name, phone, email, source, created_at) values
+    ('Range Old', '9744400001', 'o@b.co', 'meta_ads', now() - interval '10 days'), ('Range Now', '9744400002', 'n@b.co', 'google_ads', now())
+    on conflict (phone) do nothing`)
+  const phones = (rows) => rows.map((l) => l.phone).filter((p) => p.startsWith('974440'))
+  assert.deepEqual(phones(await contestLeads({ query: db.query }, { from: today, to: today })), ['9744400002'])
+  assert.deepEqual(phones(await contestLeads({ query: db.query }, { from: '2024-01-01', to: today })).sort(), ['9744400001', '9744400002'])
+  const r = await sourcesReport({ query: db.query }, { from: today, to: today })
+  assert.deepEqual([r.from, r.to], [today, today])
+})

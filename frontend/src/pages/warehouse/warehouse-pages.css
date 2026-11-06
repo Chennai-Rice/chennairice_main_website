@@ -467,3 +467,22 @@
   .src-card { padding: 12px; border-radius: 14px; }
   .src-card-value { font-size: 20px; }
 }
+
+/* Contest sign-ups: today's count, source chips, search and pages (Ad campaigns). */
+.lead-today { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; padding: 12px 16px; margin: 4px 0 14px; border-radius: 14px; background: rgba(214, 36, 159, 0.07); border: 1px solid rgba(214, 36, 159, 0.18); }
+.lead-today-main { display: flex; align-items: baseline; gap: 8px; }
+.lead-today-main strong { font-size: 1.9rem; line-height: 1; }
+.lead-today-split { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.9rem; }
+.lead-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.lead-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.lead-chip { border: 1px solid rgba(0, 0, 0, 0.14); background: #fff; color: inherit; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 0.88rem; cursor: pointer; }
+.lead-chip span { opacity: 0.65; margin-left: 4px; }
+.lead-chip.is-active { background: #2c2219; border-color: #2c2219; color: #fff; }
+.lead-chip:focus-visible { outline: 2px solid #d6249f; outline-offset: 2px; }
+.lead-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(0, 0, 0, 0.08); }
+.lead-pager-btns { display: flex; align-items: center; gap: 10px; }
+.lead-pager-size { display: flex; align-items: center; gap: 6px; }
+@media (max-width: 600px) {
+  .lead-tools .wh-src-find { width: 100%; }
+  .lead-pager { justify-content: center; }
+}

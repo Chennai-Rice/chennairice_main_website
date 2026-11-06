@@ -313,7 +313,7 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
   const pickAgent = async () => {
     if (last === undefined) {
       const { rows: [r] } = await query(
-        `select agent from neodove_outbox where agent = any($1::text[]) order by coalesce(sent_at, next_try_at) desc limit 1`, [pool])
+        `select agent from neodove_outbox where agent = any($1::text[]) order by coalesce(sent_at, next_try_at) desc, created_at desc limit 1`, [pool])
       last = r?.agent ?? null
     }
     last = pool[(pool.indexOf(last) + 1) % pool.length]

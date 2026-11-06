@@ -72,6 +72,7 @@ Renaming a stage: keep the start of the name above, or change `CRM_STAGES` in
 | `SALESDADDY_API_KEY` | Sales Daddy Developer API key (`sd_live_…`, Leads scope). The key's user must be able to close deals (Company Admin) for the Converted stage. |
 | `ASKEVA_TOKEN` | AskEva API token — WhatsApp "order placed" message |
 | `ASKEVA_WEBHOOK_KEY` | Secret AskEva sends in the `X-API-Key` header of the webhook |
+| `CFF_TAP_WEBHOOK_KEY` | The Chennai Fresh Foods backend's AskEva key (its secret `askeva-webhook-key`), for the Diwali contest taps below |
 
 Set with `firebase functions:secrets:set NAME --project chennai-rice-website`,
 then deploy functions (keys are read at deploy).
@@ -93,3 +94,18 @@ Raw webhook calls are kept 90 days in `askeva_events`; contacts in
   — `failed` with `own_number_not_allowed` is expected for team numbers.
 - Tests: `npm test` in `backend` (fake Sales Daddy covers leads, notes, stages,
   repeat customers, retries, AskEva).
+
+## Diwali slogan contest → Chennai Fresh Foods, not here
+
+The contest (AskEva template `diwali_slogan_contest`, Nov 2026) is sent from
+this WhatsApp number but belongs to Chennai Fresh Foods. A tap on its button
+**ஆர்டர் செய்ய** is handed to the CFF backend
+(`cff-api` on Cloud Run, `/api/askeva/webhook`), which makes the lead in the
+**Chennai Fresh Foods** Sales Daddy workspace. Code: `backend/lib/cff-contest.js`.
+
+- The check runs **before** the retailer-campaign block, so a blocked
+  retailer's tap still reaches Chennai Fresh Foods.
+- A tap is never saved here (no contact, no askeva_events row) and never sent
+  to this site's Sales Daddy workspace.
+- If CFF cannot be reached, the webhook answers 502 and AskEva sends it again.
+- Button texts: `CFF_CONTEST_BUTTONS` (separated by `|`), default `ஆர்டர் செய்ய`.
