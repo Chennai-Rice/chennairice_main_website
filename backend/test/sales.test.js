@@ -1450,7 +1450,9 @@ test('Final price list (Nov 2026): website prices top bag to bottom, in-house a 
       const p = packPricing(kg, list, mrp, absorbed, opts)
       assert.equal(p.website, WEB[kg][i], slug + ' ' + kg)
       assert.ok(p.website <= p.mrp && p.website <= 2800, slug + ' ' + kg)
-      assert.ok(p.inHouse >= RANGE[kg][0] && p.inHouse <= RANGE[kg][1] && p.inHouse > last, slug + ' ' + kg + ' in-house ' + p.inHouse)
+      // 10 kg: ₹90 for every bag; 5 and 26 kg rise over their range, top bag lowest.
+      if (kg === 10) assert.equal(p.inHouse, 90, slug + ' 10 kg in-house')
+      else assert.ok(p.inHouse >= RANGE[kg][0] && p.inHouse <= RANGE[kg][1] && p.inHouse > last, slug + ' ' + kg + ' in-house ' + p.inHouse)
       last = p.inHouse
     })
   }
