@@ -9,14 +9,16 @@ const PIN = /^[1-9]\d{5}$/;
  * pricing checkout charges, so what is shown is what the customer pays.
  * Brings the saved cart's prices up to date. Until the quote arrives (or if
  * the server cannot be reached) the cart's own subtotal is shown.
+ * With a delivery method ("courier" / "in_house"), the charge is that method's
+ * when the PIN code gets it; deliveryOptions lists what the PIN code gets.
  */
-export default function useCartQuote(pincode = "") {
+export default function useCartQuote(pincode = "", deliveryMethod = "courier") {
   const { items, subtotal, syncPrices } = useCart();
   const [quote, setQuote] = useState(null);
   const [error, setError] = useState("");
 
   const pin = PIN.test(String(pincode).trim()) ? String(pincode).trim() : "";
-  const key = useMemo(() => items.map((i) => `${i.id}:${i.qty}`).join(",") + "@" + pin, [items, pin]);
+  const key = useMemo(() => items.map((i) => `${i.id}:${i.qty}`).join(",") + "@" + pin + "/" + deliveryMethod, [items, pin, deliveryMethod]);
 
   useEffect(() => {
     if (!items.length) {
@@ -30,7 +32,7 @@ export default function useCartQuote(pincode = "") {
         const res = await fetch("/api/checkout/quote", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: items.map((i) => ({ id: i.id, qty: i.qty })), pincode: pin }),
+          body: JSON.stringify({ items: items.map((i) => ({ id: i.id, qty: i.qty })), pincode: pin, deliveryMethod }),
           signal: ctrl.signal,
         });
         const data = await res.json().catch(() => null);
@@ -60,6 +62,9 @@ export default function useCartQuote(pincode = "") {
     subtotal: sub,
     shipping,
     region: quote?.region || null, // { code, name }
+    // [{ method: "courier" | "in_house", charge, promise }] once the PIN code is known
+    deliveryOptions: quote?.deliveryOptions || [],
+    deliveryMethod: quote?.deliveryMethod || null,
     total: sub + (shipping || 0),
     hasPin: Boolean(pin),
     error,

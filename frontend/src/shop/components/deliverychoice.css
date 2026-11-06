@@ -1,0 +1,84 @@
+/* Checkout → "How should we deliver?" (DeliveryChoice.jsx). */
+.delivery-choice {
+  margin: 20px 0 4px;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 10px;
+}
+.delivery-choice-title {
+  padding: 0;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: var(--ink-900, #2b1b16);
+}
+.delivery-option {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--cream-300, #e6dac2);
+  border-radius: 14px;
+  background: var(--cream-50, #fdfbf5);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.delivery-option:hover { border-color: var(--gold-500, #c08a2d); }
+.delivery-option input { width: 18px; height: 18px; margin: 0; accent-color: var(--maroon-600, #6e1b22); }
+.delivery-option.is-selected {
+  border-color: var(--maroon-600, #6e1b22);
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(110, 27, 34, 0.08);
+}
+.delivery-option-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--cream-200, #f3ebdb);
+  color: var(--maroon-600, #6e1b22);
+}
+.delivery-option-text { display: grid; gap: 2px; min-width: 0; }
+.delivery-option-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-weight: 600;
+  color: var(--ink-900, #2b1b16);
+}
+.delivery-option-when { font-size: 14px; color: var(--ink-500, #7a6459); }
+.delivery-option-gain { font-size: 13px; font-weight: 600; color: #2f7a46; }
+.delivery-option-price { font-weight: 700; color: var(--ink-900, #2b1b16); white-space: nowrap; }
+
+/* The team's own delivery: warm gold, so it reads as the special option. */
+.delivery-option--own {
+  border-color: var(--gold-300, #e8c766);
+  background: linear-gradient(180deg, #fffaf0, #fdf3dc);
+}
+.delivery-option--own .delivery-option-icon { background: #fbe9bd; color: var(--gold-600, #a87a22); }
+.delivery-option--own.is-selected { border-color: var(--gold-600, #a87a22); background: #fffaf0; }
+.delivery-option-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--maroon-600, #6e1b22);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 480px) {
+  .delivery-option { grid-template-columns: auto 1fr auto; padding: 12px 14px; gap: 10px; }
+  .delivery-option-icon { display: none; }
+}
+
+/* Order confirmed: the note for orders the team delivers. */
+.receipt-own-delivery {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fdf3dc;
+  color: var(--ink-700, #4e3a32);
+}

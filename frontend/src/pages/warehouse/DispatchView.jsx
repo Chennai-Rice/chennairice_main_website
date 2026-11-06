@@ -232,7 +232,8 @@ export default function DispatchView({ say, onAuthError }) {
                 </span>
                 <span role="cell" className="wh-td-address">
                   <Icon name="pin" size={15} className="wh-pin" />
-                  <span>{o.address.city} - {o.address.pincode}<br /><span className="wh-muted wh-small">{o.address.state}</span></span>
+                  <span>{o.address.city} - {o.address.pincode}<br /><span className="wh-muted wh-small">{o.address.state}</span>
+                    {o.deliveryMethod === 'in_house' && <><br /><span className="wh-badge wh-badge--own" title="The customer chose delivery by our own team">Our delivery</span></>}</span>
                 </span>
                 <span role="cell">
                   {tab === 'dispatched' ? (
@@ -282,7 +283,7 @@ export default function DispatchView({ say, onAuthError }) {
       {ship && (
         <ShipDialog
           title={ship.mode === 'edit' ? `Shipping details: ${ship.order.orderNumber}` : `Pack & dispatch ${ship.order.orderNumber}`}
-          subtitle={`${ship.order.customer.name} · ${ship.order.address.city} · ${ship.order.packs} packs, ${ship.order.totalKg} kg`}
+          subtitle={`${ship.order.customer.name} · ${ship.order.address.city} · ${ship.order.packs} packs, ${ship.order.totalKg} kg${ship.order.deliveryMethod === 'in_house' ? ' · Our delivery: use Own vehicle' : ''}`}
           initial={ship.mode === 'edit' ? { ...ship.order.shipment, vehicle: ship.order.shipment.vehicle } : {}}
           submitLabel={ship.mode === 'edit' ? 'Save details' : 'Mark as dispatched'}
           busy={busy}

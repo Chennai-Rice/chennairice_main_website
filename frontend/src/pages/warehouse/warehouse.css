@@ -446,6 +446,8 @@ button.wh-kpi:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(8
 .wh-badge--pay-partially_refunded { background: var(--wh-warn-bg); color: var(--wh-warn); }
 .wh-badge--pay-failed { background: var(--wh-bad-bg, #fbe4e4); color: var(--wh-bad, #a3242f); }
 .wh-badge--pay-pending { background: var(--wh-warn-bg); color: var(--wh-warn); }
+.wh-badge--own { background: #fdf3dc; color: #8a5a12; border: 1px solid #e8c766; margin-top: 3px; }
+.wh-own-note { padding: 8px 12px; border-radius: 8px; background: #fdf3dc; color: #6b4610; }
 .wh-badge--flag { background: var(--wh-warn-bg); color: var(--wh-warn); margin-top: 3px; }
 .wh-status {
   justify-self: start;

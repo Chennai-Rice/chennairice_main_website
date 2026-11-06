@@ -119,6 +119,9 @@ function paymentMethod(payment) {
   return payment.method === 'card' && payment.card_last4 ? `${label} ending ${payment.card_last4}` : label
 }
 
+/** The customer chose delivery by Chennai Rice's own team (delivery.js), not the courier. */
+const ownDelivery = (order) => order.delivery_method === 'in_house'
+
 /** {{Variables}} for templates/order-confirmation.html. */
 function orderConfirmationVars(order, payment) {
   const a = order.shipping_address || {}
@@ -127,6 +130,7 @@ function orderConfirmationVars(order, payment) {
     'Order ID': order.order_number,
     'Order Date': placedDate(order),
     'Delivery Charge': Number(order.shipping_paise) ? formatInr(order.shipping_paise) : '',
+    'Delivery Label': ownDelivery(order) ? 'Chennai Rice delivery (our own team)' : 'Delivery charge',
     'Total Amount': formatInr(order.total_paise),
     'Payment Method': paymentMethod(payment),
     'Payment Status': PAYMENT_STATUS[order.payment_status] || order.payment_status,
@@ -191,8 +195,9 @@ export const templates = {
         `Your GST invoice is attached to this email.\n\n` +
         `Order ID: ${order.order_number}\nPlaced:   ${placedDate(order)}\n\n` +
         `${itemsText(items)}\n` +
-        (Number(order.shipping_paise) ? `  Delivery charge  ${formatInr(order.shipping_paise)}\n` : '') +
+        (Number(order.shipping_paise) ? `  ${ownDelivery(order) ? 'Chennai Rice delivery' : 'Delivery charge'}  ${formatInr(order.shipping_paise)}\n` : '') +
         `\nTotal paid: ${formatInr(order.total_paise)} (incl. GST)\n\n` +
+        (ownDelivery(order) ? 'Our own team will bring your order and will call you before they come.\n\n' : '') +
         `Delivering to:\n${[order.contact_name, ...addressLines(order.shipping_address), order.contact_phone].join('\n')}\n\n` +
         `${trackLine(order)}\nDownload your invoice: ${invoiceUrl(order)}\n\n` +
         `Chennai Rice Industries\n+91 70666 46667`,
@@ -210,7 +215,7 @@ export const templates = {
         `${order.contact_name} (${order.contact_phone}) paid ${formatInr(order.total_paise)}.\n` +
         (who.earlierOrders == null ? '' : (isNew ? 'New customer: this is their first order.\n' : `Repeat customer: ${who.earlierOrders} earlier paid order${who.earlierOrders === 1 ? '' : 's'}.\n`)) +
         `Came from: ${from || 'Direct / typed the address'}\n` +
-        `Ship to: ${order.shipping_address.city}, ${order.ship_state}\n\n${itemsText(items)}\n\n` +
+        `Ship to: ${order.shipping_address.city}, ${order.ship_state}${ownDelivery(order) ? ' · OUR DELIVERY (own vehicle)' : ''}\n\n${itemsText(items)}\n\n` +
         `Confirm it in the admin panel.`,
     }
   },

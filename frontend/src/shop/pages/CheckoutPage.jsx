@@ -9,6 +9,7 @@ import { recordJourney, endJourney, journeyItems, journeyValue } from "../../ser
 import { formatRupees } from "../utils/format.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
+import DeliveryChoice from "../components/DeliveryChoice.jsx";
 import { metaCheckoutSignal, trackMetaEvent, trackMetaPurchase } from "../../services/metaPixel.js";
 import { trackGooglePurchase } from "../../services/googleAnalytics.js";
 import {
@@ -65,7 +66,14 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState(EMPTY_FORM);
-  const { subtotal, shipping, region, total, hasPin, error: quoteError } = useCartQuote(form.pincode);
+  // Courier, or Chennai Rice's own team where it delivers (offered once the PIN code is known).
+  const [deliveryChoice, setDeliveryChoice] = useState("courier");
+  const { subtotal, shipping, region, total, hasPin, deliveryOptions, deliveryMethod, error: quoteError } = useCartQuote(form.pincode, deliveryChoice);
+  // A PIN code the team does not cover goes back to the courier.
+  useEffect(() => {
+    if (deliveryChoice !== "courier" && deliveryOptions.length && !deliveryOptions.some((o) => o.method === deliveryChoice)) setDeliveryChoice("courier");
+  }, [deliveryOptions, deliveryChoice]);
+  const ownDelivery = deliveryMethod === "in_house";
   const [errors, setErrors] = useState({});
   // After payment the receipt moves to /order-confirmed (a page of its own
   // for ad and Tag Manager conversion tracking). The receipt rides in the
@@ -180,6 +188,7 @@ export default function CheckoutPage() {
       try {
         session = await initiatePayment({
           ...form,
+          deliveryMethod: deliveryMethod || "courier",
           items: items.map((item) => ({ id: item.id, qty: item.qty })),
           attribution: currentAttribution(),
           meta: metaCheckoutSignal(),
@@ -249,6 +258,7 @@ export default function CheckoutPage() {
         // What was bought, kept on the receipt (the cart is emptied below) for the Google purchase event
         // sent when the order-confirmed page opens.
         shipping: shipping || 0,
+        deliveryMethod: session.deliveryMethod || deliveryMethod || "courier",
         items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, packKg: i.packKg, qty: i.qty })),
       };
       setConfirmed(receipt);
@@ -293,6 +303,11 @@ export default function CheckoutPage() {
             {/* No confirmation email is sent yet — nothing in this app sends
                 mail — so this says to keep the reference rather than promising
                 a message that will never arrive. */}
+            {confirmed.deliveryMethod === "in_house" && (
+              <p className="receipt-own-delivery">
+                <strong>Chennai Rice delivery:</strong> our own team will bring your order. We will call before we come.
+              </p>
+            )}
             <p>
               Keep your order number safe — quote it if you need to ask us anything about this
               order.
@@ -474,6 +489,8 @@ export default function CheckoutPage() {
                 </label>
               </div>
 
+              <DeliveryChoice options={deliveryOptions} value={deliveryMethod || deliveryChoice} onChange={setDeliveryChoice} disabled={busy} />
+
               {(failure || quoteError) && (
                 <p className="field-error checkout-failure" role="alert">
                   {failure || quoteError}
@@ -506,7 +523,10 @@ export default function CheckoutPage() {
                   <dd>{count}</dd>
                 </div>
                 <div className="summary-row">
-                  <dt>Delivery charge {region && <span className="summary-sub">({region.name})</span>}</dt>
+                  <dt>
+                    {ownDelivery ? "Chennai Rice delivery" : "Delivery charge"}
+                    {region && !ownDelivery && <span className="summary-sub"> ({region.name})</span>}
+                  </dt>
                   <dd>{shipping == null ? (hasPin ? "—" : "Enter PIN code") : formatRupees(shipping)}</dd>
                 </div>
                 <div className="summary-row summary-row--total">

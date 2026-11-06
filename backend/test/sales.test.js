@@ -1056,6 +1056,80 @@ test('delivery charge: by PIN code region, per pack, with its GST on the invoice
   }
 })
 
+test('in-house delivery: a flat ₹100 choice in Tamil Nadu, checked again at order time, shown to the warehouse', async () => {
+  const { rows: [v] } = await db.query(
+    `select v.id, v.price_paise from product_variants v join products p on p.id = v.product_id
+      where p.slug = 'alibaba' and v.pack_kg = 10`)
+  await db.query('update stock_levels set on_hand = on_hand + 10 where variant_id = $1', [v.id])
+  await db.query(`insert into shipping_zones (code, name) values ('TN', 'Tamil Nadu'), ('SOUTH', 'South India')`)
+  await db.query(`update shipping_zones set is_active = false, is_default = false where code not in ('TN', 'SOUTH')`)
+  await db.query(`insert into variant_region_prices (variant_id, region, price_paise, delivery_paise) values
+    ($1, 'TN', $2, 21000), ($1, 'SOUTH', $2, 40900)`, [v.id, v.price_paise])
+  const quote = (pincode, deliveryMethod, qty = 2) =>
+    api('POST', '/api/checkout/quote', { body: { pincode, deliveryMethod, items: [{ id: 'alibaba-10kg', qty }] } })
+  const setting = (key, value) => db.query(
+    `insert into company_settings (key, value) values ($1, $2) on conflict (key) do update set value = excluded.value`, [key, value])
+  try {
+    // Tamil Nadu: both choices; courier stays the default, in-house is ₹100 for the whole order.
+    const tn = await quote('641001')
+    assert.equal(tn.status, 200, JSON.stringify(tn.body))
+    assert.equal(tn.body.deliveryMethod, 'courier')
+    assert.equal(tn.body.shipping, 420)
+    assert.deepEqual(tn.body.deliveryOptions.map((o) => [o.method, o.charge]), [['courier', 420], ['in_house', 100]])
+    const own = await quote('641001', 'in_house')
+    assert.equal(own.body.deliveryMethod, 'in_house')
+    assert.equal(own.body.shipping, 100)
+    assert.equal(own.body.total, own.body.subtotal + 100)
+
+    // Kerala: courier only.
+    const kerala = await quote('682001', 'in_house', 1)
+    assert.deepEqual(kerala.body.deliveryOptions.map((o) => o.method), ['courier'])
+    assert.equal(kerala.body.deliveryMethod, 'courier')
+
+    // An order that says in-house for a PIN outside the area is refused, never switched quietly.
+    const tampered = await api('POST', '/api/checkout/session', {
+      body: { ...buyer({ pincode: '682001', city: 'Kochi', state: 'Kerala' }), deliveryMethod: 'in_house', items: [{ id: 'alibaba-10kg', qty: 1 }] },
+      headers: { 'X-Forwarded-For': '10.9.9.1' },
+    })
+    assert.equal(tampered.status, 422, JSON.stringify(tampered.body))
+    assert.match(tampered.body.error, /not available for this PIN code/)
+    const unknown = await api('POST', '/api/checkout/session', {
+      body: { ...buyer(), deliveryMethod: 'drone', items: [{ id: 'alibaba-10kg', qty: 1 }] },
+      headers: { 'X-Forwarded-For': '10.9.9.2' },
+    })
+    assert.equal(unknown.status, 400, JSON.stringify(unknown.body))
+
+    // A real in-house order: ₹100 charged, saved as in_house, shown as such in the warehouse list.
+    const { session, verify } = await buy([{ id: 'alibaba-10kg', qty: 2 }], { ...buyer(), deliveryMethod: 'in_house' })
+    assert.equal(verify.status, 200, JSON.stringify(verify.body))
+    assert.equal(session.amount, own.body.total)
+    assert.equal(session.deliveryMethod, 'in_house')
+    const { rows: [o] } = await db.query('select * from orders where id = $1', [session.orderId])
+    assert.equal(o.delivery_method, 'in_house')
+    assert.equal(Number(o.shipping_paise), 10000)
+    const { listWarehouseOrders } = await import('../lib/sales/warehouse.js')
+    const list = await listWarehouseOrders({ tab: 'all', delivery: 'in_house' })
+    assert.ok(list.orders.some((r) => r.id === o.id && r.deliveryMethod === 'in_house'))
+    assert.ok(!(await listWarehouseOrders({ tab: 'all', delivery: 'courier' })).orders.some((r) => r.id === o.id))
+    const { templates } = await import('../lib/sales/email.js')
+    assert.match(templates.orderPlaced(o, []).text, /Chennai Rice delivery {2}₹100/)
+
+    // The settings: a different charge and area, then switched off.
+    await setting('in_house_delivery_paise', '5000')
+    await setting('in_house_delivery_pins', '600, 638104')
+    assert.equal((await quote('600001', 'in_house')).body.shipping, 50)
+    assert.deepEqual((await quote('641001')).body.deliveryOptions.map((o) => o.method), ['courier'])
+    assert.equal((await quote('638104', 'in_house')).body.deliveryMethod, 'in_house')
+    await setting('in_house_delivery_enabled', 'false')
+    assert.deepEqual((await quote('600001', 'in_house')).body.deliveryOptions.map((o) => o.method), ['courier'])
+  } finally {
+    await db.query(`delete from company_settings where key like 'in_house_delivery_%'`)
+    await db.query('delete from variant_region_prices where variant_id = $1', [v.id])
+    await db.query(`delete from shipping_zones where code in ('TN', 'SOUTH')`)
+    await db.query(`update shipping_zones set is_active = true, is_default = true where code = 'ALL_INDIA'`)
+  }
+})
+
 test('PIN code regions and the delivered-price sheets', async () => {
   const { regionForPincode } = await import('../lib/sales/regions.js')
   const cases = { '600001': 'TN', '641001': 'TN', '605001': 'TN', '682001': 'SOUTH', '560001': 'SOUTH', '500001': 'SOUTH',

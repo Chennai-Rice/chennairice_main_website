@@ -15,6 +15,7 @@ import { tx, query } from '../db.js'
 import { createSessionWithFailover, getGateway } from '../gateways.js'
 import { priceCart, quoteShipping } from './catalog.js'
 import { deliveryTaxRateBp } from './tax.js'
+import { deliveryOptions, chooseDelivery } from './delivery.js'
 import { cleanAttribution, classify } from './attribution.js'
 import { moveStock, releaseForOrder } from './stock.js'
 import { queueEmail, templates, trackUrl } from './email.js'
@@ -34,6 +35,7 @@ export function buildGuestCustomer(body) {
     name: f('name'), email: f('email').toLowerCase(), phone: f('phone'),
     addressLine1: f('addressLine1'), addressLine2: f('addressLine2'), city: f('city'),
     state: f('state'), pincode: f('pincode'), landmark: f('landmark'),
+    deliveryMethod: f('deliveryMethod') || 'courier',
   }
   if (!c.name || c.name.length > 120) return { error: 'Please tell us your name.' }
   if (!c.email || !EMAIL_PATTERN.test(c.email) || c.email.length > 200) return { error: 'A valid email address is required.' }
@@ -52,9 +54,14 @@ export function buildGuestCustomer(body) {
 export async function quoteCart(body) {
   const priced = await priceCart({ query }, body?.items, { shipState: str(body?.state), pincode: str(body?.pincode) })
   // Regional pricing needs the PIN code for the delivery charge; without one, shipping is null.
-  const shipping = priced.regional
+  const courier = priced.regional
     ? priced.deliveryPaise
     : await quoteShipping({ query }, { state: body?.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg })
+  // Courier, and Chennai Rice's own delivery where it covers the PIN code; the charge shown is the chosen one.
+  const settings = await getSettings({ query })
+  const options = priced.regional || str(body?.pincode) ? deliveryOptions(courier, str(body?.pincode), settings) : []
+  const chosen = options.find((o) => o.method === str(body?.deliveryMethod)) || options[0] || null
+  const shipping = chosen ? chosen.paise : courier
   return {
     lines: priced.lines.map((l) => ({
       id: l.slug + '-' + l.packKg + 'kg', name: l.name, packKg: l.packKg, qty: l.quantity,
@@ -63,6 +70,8 @@ export async function quoteCart(body) {
     })),
     subtotal: toRupees(priced.subtotalPaise),
     shipping: shipping == null ? null : toRupees(shipping),
+    deliveryMethod: chosen?.method || (shipping == null ? null : 'courier'),
+    deliveryOptions: options.map((o) => ({ method: o.method, charge: toRupees(o.paise), promise: o.promise })),
     region: priced.region,
     total: toRupees(priced.subtotalPaise + (shipping || 0)),
     taxIncluded: toRupees(priced.taxPaise),
@@ -80,10 +89,13 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
     if (!loc) throw httpError('No fulfilment location is set up.', { status: 503, publicMessage: 'Ordering is temporarily unavailable.' })
 
     const priced = await priceCart(db, items, { shipState: customer.state, pincode: customer.pincode })
-    const shipping = priced.regional
+    const courier = priced.regional
       ? priced.deliveryPaise
       : await quoteShipping(db, { state: customer.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg })
-    if (shipping == null) throw httpError('Please add a valid 6-digit PIN code.')
+    if (courier == null) throw httpError('Please add a valid 6-digit PIN code.')
+    // The chosen delivery, checked again here: never a method the PIN code does not get, never another amount.
+    const delivery = chooseDelivery(courier, customer.pincode, customer.deliveryMethod, settings)
+    const shipping = delivery.paise
     // GST inside the delivery charge, kept with the order for its invoice.
     const shippingTaxRateBp = deliveryTaxRateBp(settings)
 
@@ -107,14 +119,14 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
       `insert into orders (order_number, customer_id, contact_name, contact_email, contact_phone,
                            shipping_address, ship_state, fulfilment_location_id,
                            subtotal_paise, shipping_paise, total_paise, tax_paise, reservation_expires_at,
-                           shipping_tax_rate_bp, attribution, traffic_source, traffic_campaign, traffic_ad)
+                           shipping_tax_rate_bp, attribution, traffic_source, traffic_campaign, traffic_ad, delivery_method)
        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now() + make_interval(mins => $13), $14,
-               $15, $16, $17, $18)
+               $15, $16, $17, $18, $19)
        returning *`,
       [await reserveId(db, 'order', newOrderNumber), cust.id, customer.name, customer.email, customer.phone,
         address, customer.state, loc.id, priced.subtotalPaise, shipping,
         priced.subtotalPaise + shipping, priced.taxPaise, holdMinutes, shipping ? shippingTaxRateBp : 0,
-        attribution, traffic.source, traffic.campaign || null, traffic.ad || null]
+        attribution, traffic.source, traffic.campaign || null, traffic.ad || null, delivery.method]
     )
     await linkId(db, order.order_number, order.id)
 
@@ -204,6 +216,7 @@ export async function createCheckoutSession(body, client = {}) {
     orderId: order.id,
     orderNumber: order.order_number,
     amount: toRupees(order.total_paise),
+    deliveryMethod: order.delivery_method,
     currency: 'INR',
     gateway: session.gateway,
     gatewayLabel: session.label,

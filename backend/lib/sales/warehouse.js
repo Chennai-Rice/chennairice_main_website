@@ -61,6 +61,9 @@ export function filterSql(f, params) {
     where.push(`exists (select 1 from order_items x where x.order_id = o.id and x.pack_kg = ${add(Number(f.pack))})`)
   }
 
+  if (f.delivery === 'in_house') where.push(`o.delivery_method = 'in_house'`)
+  else if (f.delivery === 'courier') where.push(`o.delivery_method = 'courier'`)
+
   if (f.state === 'tn') where.push(`lower(o.ship_state) in ('tamil nadu', 'tn')`)
   else if (f.state === 'other') where.push(`lower(o.ship_state) not in ('tamil nadu', 'tn')`)
 
@@ -114,6 +117,8 @@ function shapeRow(r) {
     packs: r.packs,
     totalKg: Number(r.total_kg),
     needsAttention: r.needs_attention,
+    // 'in_house' = the customer chose delivery by our own team (delivery.js).
+    deliveryMethod: r.delivery_method || 'courier',
     // Shown as a red badge: waiting past the reminder times in jobs.js.
     overdue:
       r.status === 'placed' && hoursWaiting > 4 ? 'Waiting over 4 hours to confirm'
@@ -140,7 +145,7 @@ export async function listWarehouseOrders(f = {}, { maxLimit = MAX_PAGE, money =
   const listParams = [...params, TABS[tab]]
   const { rows } = await query(
     `select o.id, o.order_number, o.shipment_id, o.status, o.payment_status, ${WHEN} as placed_at, o.shipped_at,
-            o.contact_name, o.contact_phone, o.shipping_address, o.needs_attention, o.total_paise,
+            o.contact_name, o.contact_phone, o.shipping_address, o.needs_attention, o.total_paise, o.delivery_method,
             (select json_build_object('id', sh.id, 'method', sh.method, 'carrier', sh.carrier_name,
                     'trackingNumber', sh.tracking_number, 'lrNumber', sh.lr_number, 'vehicle', sh.vehicle_number,
                     'trackingUrl', sh.tracking_url, 'driverName', sh.driver_name, 'driverPhone', sh.driver_phone,
