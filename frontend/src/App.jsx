@@ -40,6 +40,7 @@ const ContestPage = lazy(() => import('./shop/pages/ContestPage.jsx'))
 const FounderPage = lazy(() => import('./shop/pages/FounderPage.jsx'))
 const CartPage = lazy(() => import('./shop/pages/CartPage.jsx'))
 const CheckoutPage = lazy(() => import('./shop/pages/CheckoutPage.jsx'))
+const ReferPage = lazy(() => import('./shop/pages/ReferPage.jsx'))
 const WishlistPage = lazy(() => import('./shop/pages/WishlistPage.jsx'))
 const InfrastructurePage = lazy(() => import('./pages/infrastructure/InfrastructurePage.jsx'))
 
@@ -225,6 +226,8 @@ export default function App() {
           />
         ))}
         <Route path="/cart" element={<CartPage />} />
+        {/* Refer a friend: a customer's code and rewards. */}
+        <Route path="/refer" element={<ReferPage />} />
         {/* Checkout is built and working, but stays behind VITE_CHECKOUT_ENABLED
             until payments go live. Gating the route (not just the cart button)
             means typing /checkout directly lands on Coming Soon too. */}

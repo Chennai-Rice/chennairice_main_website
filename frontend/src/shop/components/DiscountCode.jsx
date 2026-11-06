@@ -14,6 +14,16 @@ export default function DiscountCode({ applied, discount, error, checking, onApp
     if (applied) { setOpen(true); setText(applied); }
   }, [applied]);
 
+  // The customer's referral reward: used by itself (no code typed), nothing to remove.
+  if (discount?.auto && !applied) {
+    return (
+      <div className="summary-row discount-row">
+        <dt>Referral reward <span className="discount-code-chip">Thank you!</span></dt>
+        <dd>−{formatRupees(discount.amount)}</dd>
+      </div>
+    );
+  }
+
   if (applied && discount) {
     return (
       <div className="summary-row discount-row">
@@ -29,7 +39,7 @@ export default function DiscountCode({ applied, discount, error, checking, onApp
   if (!open) {
     return (
       <div className="discount-open">
-        <button type="button" className="discount-link" onClick={() => setOpen(true)} disabled={disabled}>Have a discount code?</button>
+        <button type="button" className="discount-link" onClick={() => setOpen(true)} disabled={disabled}>Have a discount or referral code?</button>
       </div>
     );
   }
@@ -42,7 +52,7 @@ export default function DiscountCode({ applied, discount, error, checking, onApp
 
   return (
     <div className="discount-box">
-      <label className="discount-label" htmlFor="discount-code">Discount code</label>
+      <label className="discount-label" htmlFor="discount-code">Discount code, or a friend's referral code or mobile number</label>
       <div className="discount-entry">
         <input
           id="discount-code"
@@ -50,7 +60,7 @@ export default function DiscountCode({ applied, discount, error, checking, onApp
           value={text}
           onChange={(e) => setText(e.target.value.toUpperCase())}
           onKeyDown={(e) => { if (e.key === "Enter") apply(e); }}
-          placeholder="e.g. DIWALI50"
+          placeholder="e.g. DIWALI50 or 98765 43210"
           autoComplete="off"
           autoCapitalize="characters"
           maxLength={24}

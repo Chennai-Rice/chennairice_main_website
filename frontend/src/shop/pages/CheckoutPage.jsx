@@ -11,6 +11,7 @@ import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
 import DeliveryChoice from "../components/DeliveryChoice.jsx";
 import DiscountCode from "../components/DiscountCode.jsx";
+import ReferralShare from "../components/ReferralShare.jsx";
 
 // The discount code for this visit (sessionStorage): typed here, or filled in by Spin & Win or a referral.
 export const DISCOUNT_CODE_KEY = "cr.checkout.code";
@@ -103,7 +104,7 @@ export default function CheckoutPage() {
   const setDiscountCode = useCallback((code) => { setDiscountCodeState(code); saveDiscountCode(code); }, []);
   const {
     subtotal, shipping, region, total, hasPin, deliveryOptions, deliveryMethod, discount, discountError, error: quoteError,
-  } = useCartQuote(form.pincode, deliveryChoice, { discountCode, phone: form.phone });
+  } = useCartQuote(form.pincode, deliveryChoice, { discountCode, phone: form.phone, email: form.email });
   const ownDelivery = deliveryMethod === "in_house";
   const [errors, setErrors] = useState({});
   // After payment the receipt moves to /order-confirmed (a page of its own
@@ -301,6 +302,8 @@ export default function CheckoutPage() {
         discount: session.discount?.amount || 0,
         coupon: session.discount?.code || "",
         deliveryMethod: session.deliveryMethod || deliveryMethod || "courier",
+        // The customer's own referral code (while Refer a friend is on), to share from the receipt.
+        referralCode: result.referralCode || null,
         items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, packKg: i.packKg, qty: i.qty })),
       };
       setConfirmed(receipt);
@@ -352,6 +355,7 @@ export default function CheckoutPage() {
                 <strong>Chennai Rice delivery:</strong> our own team will bring your order. We will call before we come.
               </p>
             )}
+            {confirmed.referralCode && <ReferralShare code={confirmed.referralCode} compact />}
             <p>
               Keep your order number safe — quote it if you need to ask us anything about this
               order.

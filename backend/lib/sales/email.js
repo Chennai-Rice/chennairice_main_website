@@ -188,7 +188,7 @@ const shipmentRef = (s) =>
   s.method === 'pickup' ? 'pickup' : s.tracking_number || s.lr_number || s.vehicle_number || null
 
 export const templates = {
-  orderPlaced(order, items, payment = null) {
+  orderPlaced(order, items, payment = null, { referralCode = null } = {}) {
     return {
       template: 'order_placed',
       subject: `Order Confirmed - ${order.order_number}`,
@@ -203,8 +203,9 @@ export const templates = {
         (ownDelivery(order) ? 'Our own team will bring your order and will call you before they come.\n\n' : '') +
         `Delivering to:\n${[order.contact_name, ...addressLines(order.shipping_address), order.contact_phone].join('\n')}\n\n` +
         `${trackLine(order)}\nDownload your invoice: ${invoiceUrl(order)}\n\n` +
+        (referralCode ? `Refer a friend: share your code ${referralCode}. Your friend gets money off their first order, and you get a reward when it is delivered. ${SITE}/refer\n\n` : '') +
         `Chennai Rice Industries\n+91 70666 46667`,
-      html: renderTemplate('order-confirmation.html', orderConfirmationVars(order, payment), orderConfirmationItems(items)),
+      html: renderTemplate('order-confirmation.html', { ...orderConfirmationVars(order, payment), 'Referral Code': referralCode || '', 'Refer URL': SITE + '/refer' }, orderConfirmationItems(items)),
     }
   },
   // `who`: { source: label of where the buyer came from, campaign, ad, earlierOrders: paid orders before this one }

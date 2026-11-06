@@ -53,6 +53,8 @@ import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { listDiscountCodes, createDiscountCode, setDiscountCodeActive } from './discounts.js'
 import { spinConfig, spin, spinAdmin, saveSpinSettings } from './spin.js'
+import { myReferral, referralAdmin, saveReferralSettings, cancelReferralReward } from './referrals.js'
+import { referralsOn } from './discounts.js'
 import { listReports, reportCsv } from './reports.js'
 import { contestReport } from './contest.js'
 import { loginWriter } from './writer-login.js'
@@ -62,7 +64,7 @@ import { syncSettlements, importSettlementFile } from './settlements.js'
 import { accountsSummary, invoiceRegister, invoiceRegisterCsv, paymentsList, refundsList, period } from './accounts.js'
 import { invoicePdf } from './invoice-pdf.js'
 import { query } from '../db.js'
-import { httpError, safeEqual } from './util.js'
+import { httpError, safeEqual, getSettings } from './util.js'
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next)
 
@@ -162,6 +164,13 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   router.get('/api/spin', wrap(async (_req, res) => { res.set('Cache-Control', 'no-store'); res.json(await spinConfig({ query })) }))
   router.post('/api/spin', rateLimit({ windowMs: 10 * 60000, max: 8 }), wrap(async (req, res) => {
     res.json(await spin({ query }, req.body, { ip: clientKey(req) }))
+  }))
+
+  // Refer a friend: whether it is running, and a customer's code and rewards (mobile number + order email).
+  router.get('/api/referral', wrap(async (_req, res) => { res.set('Cache-Control', 'no-store'); res.json({ enabled: referralsOn(await getSettings({ query })) }) }))
+  router.post('/api/referral/me', rateLimit({ windowMs: 10 * 60000, max: 10 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await myReferral({ query }, req.body))
   }))
 
   router.post('/api/expo/lead', rateLimit({ windowMs: 10 * 60000, max: 20 }), wrap(async (req, res) => {
@@ -649,6 +658,10 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.post('/discounts', wrap(async (req, res) => res.json({ code: await createDiscountCode({ query }, req.staff, req.body) })))
   admin.patch('/discounts/:id', wrap(async (req, res) => res.json({ code: await setDiscountCodeActive({ query }, req.staff, req.params.id, req.body?.active) })))
   // Warehouse → Settings → Spin & Win (owners and IT): prizes, chances, budget, on/off, and how it is doing.
+  // Warehouse → Settings → Refer a friend (owners and IT): amounts, limit, on/off, top referrers, rewards.
+  admin.get('/referrals', wrap(async (req, res) => res.json(await referralAdmin({ query }, req.staff))))
+  admin.put('/referrals', wrap(async (req, res) => res.json(await saveReferralSettings({ query }, req.staff, req.body))))
+  admin.post('/referrals/rewards/:id/cancel', wrap(async (req, res) => res.json(await cancelReferralReward({ query }, req.staff, req.params.id))))
   admin.get('/spin', wrap(async (req, res) => res.json(await spinAdmin({ query }, req.staff))))
   admin.put('/spin', wrap(async (req, res) => res.json(await saveSpinSettings({ query }, req.staff, req.body))))
   admin.get('/shipping-zones', perm('shipping.manage'), wrap(async (_req, res) => res.json({ zones: await listZones() })))

@@ -12,7 +12,7 @@
 //
 // A use counts once the order is paid, or while its payment is still open (the stock hold); an order
 // that expires unpaid frees it again.
-import { httpError, str, phoneKey, toRupees, formatInr } from './util.js'
+import { httpError, str, phoneKey, toRupees, formatInr, getSettings } from './util.js'
 import { regionForPincode } from './regions.js'
 import { requirePermission } from './staff.js'
 
@@ -35,22 +35,48 @@ export function describe(c) {
   return `${formatInr(c.amount_paise).replace('.00', '')} off`
 }
 
-/** The code row for what was typed, or null. `lock` takes the row lock inside an order's transaction. */
+/** A mobile number typed instead of a code: "98765 43210", "+91 98765 43210". */
+const asMobile = (typed) => {
+  let d = str(typed).replace(/\D/g, '')
+  if (d.length === 12 && d.startsWith('91')) d = d.slice(2)
+  if (d.length === 11 && d.startsWith('0')) d = d.slice(1)
+  return /^[6-9]\d{9}$/.test(d) && !/[A-Za-z]/.test(str(typed)) ? d : ''
+}
+
+/**
+ * The code row for what was typed, or null. A friend's mobile number finds that customer's referral code.
+ * `lock` takes the row lock inside an order's transaction.
+ */
 async function findCode(db, typed, { lock = false } = {}) {
+  const mobile = asMobile(typed)
+  if (mobile) {
+    const { rows: [c] } = await db.query(
+      `select c.* from referrers r join discount_codes c on c.id = r.code_id where r.phone = $1${lock ? ' for update of c' : ''}`, [mobile])
+    return c || null
+  }
   const code = cleanCode(typed)
   if (!/^[A-Z0-9-]{3,24}$/.test(code)) return null
   const { rows: [c] } = await db.query(`select * from discount_codes where code = $1${lock ? ' for update' : ''}`, [code])
   return c || null
 }
 
+/** Refer a friend is switched on (Warehouse → Settings → Refer a friend). */
+export const referralsOn = (settings = {}) => str(settings.referral_enabled).toLowerCase() === 'true'
+const sameAddress = (a = {}, b = {}) =>
+  str(a.pincode) === str(b.pincode) && str(a.line1).toLowerCase().replace(/[^a-z0-9]/g, '') === str(b.line1).toLowerCase().replace(/[^a-z0-9]/g, '')
+
 /**
  * Check a code for this cart and customer.
  * @returns {{ code, discountPaise, label } | { error }} never throws for a code that does not apply
  */
-export async function evaluateDiscount(db, typed, { phone, pincode, subtotalPaise, shippingPaise, excludeOrderId = null, lock = false }) {
+export async function evaluateDiscount(db, typed, { phone, email, address, pincode, subtotalPaise, shippingPaise, excludeOrderId = null, lock = false }) {
   if (!cleanCode(typed)) return null
   const c = await findCode(db, typed, { lock })
+  if (!c && asMobile(typed)) return fail('We could not find a referral for that mobile number. Please check it, or type their code.')
   if (!c || !c.is_active) return fail('We could not find that code. Please check it and try again.')
+  if (['referral', 'reward'].includes(c.source) && !referralsOn(await getSettings(db))) {
+    return fail('Refer a friend is not running right now.')
+  }
   const now = Date.now()
   if (c.starts_at && new Date(c.starts_at).getTime() > now) return fail(`This code can be used from ${istDate(c.starts_at)}.`)
   if (c.expires_at && new Date(c.expires_at).getTime() <= now) return fail(`This code expired on ${istDate(c.expires_at)}.`)
@@ -60,6 +86,21 @@ export async function evaluateDiscount(db, typed, { phone, pincode, subtotalPais
   if (needsPhone && mobile.length !== 10) return fail('Enter your mobile number above to use this code.')
   if (c.locked_phone && c.locked_phone !== mobile) return fail('This code belongs to another mobile number.')
   if (c.owner_phone && c.owner_phone === mobile) return fail('You cannot use your own code. Share it with a friend.')
+  if (c.locked_email) {
+    if (!str(email)) return fail('Enter your email above to use this reward.')
+    if (str(email).toLowerCase() !== c.locked_email) return fail('This reward belongs to another customer.')
+  }
+  if (c.source === 'referral') {
+    // Not the referrer under another number: the same email, or (at order time) the same address.
+    const { rows: [ref] } = await db.query('select * from referrers where code_id = $1', [c.id])
+    if (ref && str(email) && str(email).toLowerCase() === ref.email) return fail('You cannot use your own code. Share it with a friend.')
+    if (ref && address) {
+      const { rows: theirs } = await db.query(
+        `select shipping_address from orders where right(regexp_replace(contact_phone, '\\D', '', 'g'), 10) = $1
+            and payment_status in ('paid', 'partially_refunded') order by placed_at desc limit 20`, [ref.phone])
+      if (theirs.some((o) => sameAddress(o.shipping_address, address))) return fail('You cannot use your own code. Share it with a friend.')
+    }
+  }
 
   if (c.region) {
     if (!/^[1-9]\d{5}$/.test(str(pincode))) return fail('Enter your PIN code to use this code.')
@@ -75,12 +116,6 @@ export async function evaluateDiscount(db, typed, { phone, pincode, subtotalPais
     const { rows: [{ n }] } = await db.query(`select count(*)::int as n from orders o where ${others}`, params)
     if (n >= c.max_uses) return fail('This code has been used up.')
   }
-  {
-    const { rows: [{ n }] } = await db.query(
-      `select count(*)::int as n from orders o where ${others} and right(regexp_replace(o.contact_phone, '\\D', '', 'g'), 10) = $3`,
-      [...params, mobile])
-    if (n >= c.uses_per_phone) return fail('You have already used this code.')
-  }
   if (c.first_order_only) {
     const { rows: [{ n }] } = await db.query(
       `select count(*)::int as n from orders o
@@ -89,6 +124,12 @@ export async function evaluateDiscount(db, typed, { phone, pincode, subtotalPais
     if (n) return fail('This offer is for first orders only.')
   }
 
+  {
+    const { rows: [{ n }] } = await db.query(
+      `select count(*)::int as n from orders o where ${others} and right(regexp_replace(o.contact_phone, '\\D', '', 'g'), 10) = $3`,
+      [...params, mobile])
+    if (n >= c.uses_per_phone) return fail('You have already used this code.')
+  }
   let off
   if (c.kind === 'free_delivery') {
     if (shippingPaise == null) return fail('Enter your PIN code to use this code.')
@@ -104,9 +145,39 @@ export async function evaluateDiscount(db, typed, { phone, pincode, subtotalPais
   return { code: c, discountPaise: off, label: describe(c) }
 }
 
-/** For the order: the code's row and amount, or a 422 with what is wrong. No code = no discount. */
+/**
+ * The customer's referral reward that applies to this cart, when they typed no code: earliest to expire
+ * first. Rewards are locked to their mobile number and email. null when there is none.
+ */
+export async function autoReward(db, cart) {
+  const mobile = phoneKey(cart.phone)
+  const email = str(cart.email).toLowerCase()
+  if (mobile.length !== 10 || !email) return null
+  const { rows } = await db.query(
+    `select code from discount_codes where source = 'reward' and is_active and locked_phone = $1 and locked_email = $2
+        and (expires_at is null or expires_at > now()) order by expires_at nulls last, created_at limit 5`, [mobile, email])
+  for (const { code } of rows) {
+    const r = await evaluateDiscount(db, code, cart)
+    if (r && !r.error) return { ...r, auto: true }
+  }
+  return null
+}
+
+/** For the quote: the typed code checked, or else a reward of the customer's. */
+export async function quoteDiscount(db, typed, cart) {
+  if (cleanCode(typed)) return evaluateDiscount(db, typed, cart)
+  return autoReward(db, cart)
+}
+
+/**
+ * For the order: the code's row and amount, or a 422 with what is wrong. No code: the customer's reward
+ * when one applies (the same one the quote showed), else no discount.
+ */
 export async function applyDiscount(db, typed, cart) {
-  if (!cleanCode(typed)) return { code: null, discountPaise: 0 }
+  if (!cleanCode(typed)) {
+    const reward = await autoReward(db, { ...cart, lock: true })
+    return reward || { code: null, discountPaise: 0 }
+  }
   const r = await evaluateDiscount(db, typed, { ...cart, lock: true })
   if (r.error) throw httpError('Discount code refused: ' + r.error, { status: 422, publicMessage: r.error })
   return r

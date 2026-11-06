@@ -16,7 +16,8 @@ import { createSessionWithFailover, getGateway } from '../gateways.js'
 import { priceCart, quoteShipping } from './catalog.js'
 import { deliveryTaxRateBp } from './tax.js'
 import { deliveryOptions, chooseDelivery } from './delivery.js'
-import { evaluateDiscount, applyDiscount, cleanCode } from './discounts.js'
+import { quoteDiscount, applyDiscount, cleanCode } from './discounts.js'
+import { ensureReferrer } from './referrals.js'
 import { cleanAttribution, classify } from './attribution.js'
 import { moveStock, releaseForOrder } from './stock.js'
 import { queueEmail, templates, trackUrl } from './email.js'
@@ -66,8 +67,9 @@ export async function quoteCart(body) {
   const shipping = chosen ? chosen.paise : courier
   // A discount code, checked the same way as when the order is placed; one that does not apply is
   // explained (discountError) and the cart is still priced without it.
-  const d = await evaluateDiscount({ query }, body?.discountCode, {
-    phone: body?.phone, pincode: str(body?.pincode), subtotalPaise: priced.subtotalPaise, shippingPaise: shipping,
+  // Without a code, a referral reward of the customer's (mobile number + email) is used by itself.
+  const d = await quoteDiscount({ query }, body?.discountCode, {
+    phone: body?.phone, email: body?.email, pincode: str(body?.pincode), subtotalPaise: priced.subtotalPaise, shippingPaise: shipping,
   })
   const discountPaise = d && !d.error ? d.discountPaise : 0
   return {
@@ -81,7 +83,7 @@ export async function quoteCart(body) {
     deliveryMethod: chosen?.method || (shipping == null ? null : 'courier'),
     deliveryOptions: options.map((o) => ({ method: o.method, charge: toRupees(o.paise), promise: o.promise })),
     region: priced.region,
-    discount: d && !d.error ? { code: d.code.code, amount: toRupees(d.discountPaise), label: d.label } : null,
+    discount: d && !d.error ? { code: d.code.code, amount: toRupees(d.discountPaise), label: d.label, auto: Boolean(d.auto), source: d.code.source } : null,
     discountError: d?.error || null,
     total: toRupees(priced.subtotalPaise + (shipping || 0) - discountPaise),
     taxIncluded: toRupees(priced.taxPaise),
@@ -109,7 +111,8 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
     // The discount code, checked again inside this transaction (its row locked, so two orders cannot
     // both take the last use). A code that no longer applies stops the order with the reason.
     const discount = await applyDiscount(db, customer.discountCode, {
-      phone: customer.phone, pincode: customer.pincode, subtotalPaise: priced.subtotalPaise, shippingPaise: shipping,
+      phone: customer.phone, email: customer.email, pincode: customer.pincode, subtotalPaise: priced.subtotalPaise, shippingPaise: shipping,
+      address: { line1: customer.addressLine1, pincode: customer.pincode },
     })
     // GST inside the delivery charge, kept with the order for its invoice.
     const shippingTaxRateBp = deliveryTaxRateBp(settings)
@@ -146,6 +149,14 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
         discount.discountPaise, discount.code?.id || null, discount.code?.code || null]
     )
     await linkId(db, order.order_number, order.id)
+    // Bought with a friend's referral code: remembered, so the friend is rewarded once it is delivered.
+    if (discount.code?.source === 'referral') {
+      const { rows: [ref] } = await db.query('select id from referrers where code_id = $1', [discount.code.id])
+      if (ref) {
+        await db.query('update orders set referrer_id = $2 where id = $1', [order.id, ref.id])
+        order.referrer_id = ref.id
+      }
+    }
 
     for (const l of priced.lines) {
       await db.query(
@@ -326,7 +337,9 @@ async function markOrderPaidTx({ paymentRowId, outcome, actor }) {
       `select i.*, p.image_url from order_items i
          left join product_variants v on v.id = i.variant_id left join products p on p.id = v.product_id
         where i.order_id = $1 order by i.product_name`, [order.id])
-    const forCustomer = templates.orderPlaced(updated, items, paid)
+    // The customer's own referral code, for the email and the order-confirmed page (while Refer a friend is on).
+    const referrer = await ensureReferrer(db, updated).catch(() => null)
+    const forCustomer = templates.orderPlaced(updated, items, paid, { referralCode: referrer?.code || null })
     await queueEmail(db, {
       to: updated.contact_email, ...forCustomer, orderId: order.id, dedupeKey: 'placed:' + order.id,
       attachments: [{ kind: 'invoice', orderId: order.id }], // GST invoice PDF, made when sent
@@ -334,7 +347,7 @@ async function markOrderPaidTx({ paymentRowId, outcome, actor }) {
     await queueOrderPlaced(db, updated, trackUrl(updated))
     // The team hears about new orders in the daily 9 o'clock summary (digest.js), not one email each.
 
-    return { order: updated, payment: paid, already: false, mismatch: problems.length > 0 && outcome.amountPaise !== Number(order.total_paise) }
+    return { order: updated, payment: paid, referralCode: referrer?.code || null, already: false, mismatch: problems.length > 0 && outcome.amountPaise !== Number(order.total_paise) }
   })
 }
 
@@ -366,7 +379,7 @@ export async function confirmCheckout(body) {
 
   if (order.payment_status === 'paid') {
     const { rows: [settled] } = await query(`select * from payments where order_id = $1 and status = 'paid'`, [order.id])
-    return receipt(order, settled, { alreadyConfirmed: true })
+    return receipt(order, settled, { alreadyConfirmed: true, referralCode: await referralCodeFor(order) })
   }
 
   const { rows: [pending] } = await query(
@@ -413,7 +426,15 @@ export async function confirmCheckout(body) {
       publicMessage: 'We received a payment of a different amount. Our team will contact you shortly.',
     })
   }
-  return receipt(result.order, result.payment)
+  return receipt(result.order, result.payment, { referralCode: result.referralCode || (await referralCodeFor(result.order)) })
+}
+
+/** The customer's referral code, if they have one (for a receipt shown again). */
+async function referralCodeFor(order) {
+  const { rows: [r] } = await query(
+    `select c.code from referrers r join discount_codes c on c.id = r.code_id
+      where r.phone = right(regexp_replace($1, '\\D', '', 'g'), 10) and c.is_active`, [order.contact_phone])
+  return r?.code || null
 }
 
 /** Cancel unpaid orders whose stock hold has lapsed, and free the stock. */

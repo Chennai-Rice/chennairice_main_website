@@ -6,6 +6,7 @@
 // Every step checks the person's role, locks the order row so two people
 // cannot move the same order at once, writes the status history and an audit
 // row, and queues the customer email — all in one transaction.
+import { releaseReferralReward } from './referrals.js'
 import { tx, query } from '../db.js'
 import { createRefund as razorpayRefund } from '../razorpay.js'
 import { moveStock, releaseForOrder } from './stock.js'
@@ -514,6 +515,8 @@ export async function deliverShipment(staff, shipmentId, body = {}) {
     if (!open && order.status === 'shipped') {
       updated = await setStatus(db, staff, order, 'delivered', { delivered_at: new Date() }, note)
       await queueEmail(db, { to: updated.contact_email, ...templates.orderDelivered(updated), orderId: order.id, dedupeKey: 'delivered:' + order.id })
+      // Bought with a friend's referral code: the friend's reward, now that it has arrived.
+      await releaseReferralReward(db, updated)
     }
     return { order: updated, shipment: done }
   })

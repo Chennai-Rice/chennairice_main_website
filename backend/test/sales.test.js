@@ -1173,7 +1173,7 @@ test('discount codes: made by the owner, checked at quote and order, locked to a
 
     // ₹50 off with two packs; the order and the invoice carry it.
     const two = await quote({ discountCode: 'TRY50', phone: '9876543210', items: [{ id: 'alibaba-10kg', qty: 2 }] })
-    assert.deepEqual(two.body.discount, { code: 'TRY50', amount: 50, label: '₹50 off' })
+    assert.deepEqual(two.body.discount, { code: 'TRY50', amount: 50, label: '₹50 off', auto: false, source: 'manual' })
     assert.equal(two.body.total, two.body.subtotal + two.body.shipping - 50)
     const { session: s1, verify } = await buy([{ id: 'alibaba-10kg', qty: 2 }], { ...buyer({ phone: '+91 90000 11111', email: 'code1@example.com' }), discountCode: 'TRY50' })
     assert.equal(verify.status, 200, JSON.stringify(verify.body))
@@ -1300,6 +1300,125 @@ test('Spin & Win: off until switched on, one spin per mobile and browser, prize 
     await db.query('delete from spins')
     await db.query(`delete from discount_codes where source = 'spin'`)
     await db.query(`delete from company_settings where key like 'spin_%'`)
+  }
+})
+
+test('Refer a friend: code after paying, friend saves on a first order, never their own, reward on delivery used by itself', async () => {
+  const { rows: [v] } = await db.query(
+    `select v.id from product_variants v join products p on p.id = v.product_id where p.slug = 'alibaba' and v.pack_kg = 10`)
+  await db.query('update stock_levels set on_hand = on_hand + 20 where variant_id = $1', [v.id])
+  const cart = [{ id: 'alibaba-10kg', qty: 1 }]
+  const lakshmi = buyer({ name: 'Lakshmi Narayanan', phone: '9845000001', email: 'lakshmi.ref@example.com', addressLine1: '7 Temple Street', pincode: '641002' })
+  const priya = buyer({ name: 'Priya S', phone: '9845000002', email: 'priya.ref@example.com', addressLine1: '22 Lake View', pincode: '641004' })
+  const ravi = buyer({ name: 'Ravi K', phone: '9845000003', email: 'ravi.ref@example.com', addressLine1: '3 Mill Road', pincode: '641005' })
+  const quote = (who, extra = {}) => api('POST', '/api/checkout/quote', { body: { items: cart, pincode: who.pincode, phone: who.phone, email: who.email, ...extra } })
+  try {
+    // Off: no codes are made.
+    const before = await buy(cart, lakshmi)
+    assert.equal(before.verify.body.referralCode, null)
+    assert.equal((await api('POST', '/api/referral/me', { body: { phone: lakshmi.phone, email: lakshmi.email } })).status, 404)
+
+    assert.equal((await api('PUT', '/api/admin/referrals', { token: tokens.sales, body: { enabled: true } })).status, 403)
+    const on = await api('PUT', '/api/admin/referrals', { token: OWNER, body: { enabled: true, friend: 50, reward: 60, cap: 2, days: 60 } })
+    assert.equal(on.status, 200, JSON.stringify(on.body))
+    assert.equal((await api('GET', '/api/referral')).body.enabled, true)
+
+    // Lakshmi's code: at /refer with her mobile + order email (not with another email).
+    assert.equal((await api('POST', '/api/referral/me', { body: { phone: lakshmi.phone, email: 'other@example.com' } })).status, 404)
+    const me = await api('POST', '/api/referral/me', { body: { phone: '+91 98450 00001', email: 'LAKSHMI.REF@example.com' } })
+    assert.equal(me.status, 200, JSON.stringify(me.body))
+    assert.match(me.body.code, /^LAKSHMI\d{2,3}$/)
+    assert.equal(me.body.friendGets, 50)
+    assert.equal(me.body.youGet, 60)
+    assert.equal(me.body.friends, 0)
+    const code = me.body.code
+    // Her next paid order shows the same code on the receipt and in the email.
+    const second = await buy(cart, lakshmi)
+    assert.equal(second.verify.body.referralCode, code)
+    const { rows: [mail] } = await db.query(`select body_text, body_html from email_outbox where order_id = $1 and template = 'order_placed'`, [second.session.orderId])
+    assert.match(mail.body_text, new RegExp('share your code ' + code))
+    assert.ok(mail.body_html.includes(code))
+
+    // Priya: the code, or Lakshmi's mobile number, gives ₹50 off her first order.
+    const byCode = await quote(priya, { discountCode: code.toLowerCase() })
+    assert.equal(byCode.body.discount.amount, 50, JSON.stringify(byCode.body))
+    const byMobile = await quote(priya, { discountCode: '+91 98450 00001' })
+    assert.equal(byMobile.body.discount.code, code)
+    assert.match((await quote(priya, { discountCode: '9845099999' })).body.discountError, /referral for that mobile/)
+    // Never Lakshmi herself: her mobile, her email, or her address under another number.
+    assert.match((await quote(lakshmi, { discountCode: code })).body.discountError, /your own code/)
+    assert.match((await quote({ ...priya, email: lakshmi.email }, { discountCode: code })).body.discountError, /your own code/)
+    const sameHouse = await api('POST', '/api/checkout/session', {
+      body: { ...buyer({ name: 'L N', phone: '9845000009', email: 'ln2@example.com', addressLine1: '7, Temple street', pincode: '641002' }), discountCode: code, items: cart },
+      headers: { 'X-Forwarded-For': '10.6.6.1' },
+    })
+    assert.equal(sameHouse.status, 422)
+    assert.match(sameHouse.body.error, /your own code/)
+
+    const friend = await buy(cart, { ...priya, discountCode: code })
+    assert.equal(friend.verify.status, 200, JSON.stringify(friend.verify.body))
+    const { rows: [fo] } = await db.query('select * from orders where id = $1', [friend.session.orderId])
+    assert.equal(Number(fo.discount_paise), 5000)
+    assert.ok(fo.referrer_id)
+    // Priya is a customer now: the referral is for first orders only.
+    assert.match((await quote(priya, { discountCode: code })).body.discountError, /first orders only/)
+
+    // Delivered: Lakshmi's reward, locked to her mobile + email, used by itself at her checkout; emailed to her.
+    const { releaseReferralReward } = await import('../lib/sales/referrals.js')
+    const reward = await releaseReferralReward(db, fo)
+    assert.ok(reward)
+    assert.equal(Number(reward.amount_paise), 6000)
+    assert.equal(reward.locked_phone, '9845000001')
+    assert.equal(reward.locked_email, 'lakshmi.ref@example.com')
+    assert.equal(await releaseReferralReward(db, fo), null) // once per order
+    const { rows: [rmail] } = await db.query(`select subject from email_outbox where dedupe_key = $1`, ['referral-reward:' + fo.id])
+    assert.match(rmail.subject, /₹60 off is waiting/)
+    const auto = await quote(lakshmi)
+    assert.equal(auto.body.discount.auto, true)
+    assert.equal(auto.body.discount.amount, 60)
+    assert.equal(auto.body.total, auto.body.subtotal + auto.body.shipping - 60)
+    assert.equal((await quote({ ...lakshmi, email: 'someone@example.com' })).body.discount, null)
+    const stats = await api('POST', '/api/referral/me', { body: { phone: lakshmi.phone, email: lakshmi.email } })
+    assert.equal(stats.body.friends, 1)
+    assert.equal(stats.body.available, 60)
+    // Her next order uses it without a code.
+    const third = await buy(cart, lakshmi)
+    const { rows: [to] } = await db.query('select * from orders where id = $1', [third.session.orderId])
+    assert.equal(Number(to.discount_paise), 6000)
+    assert.equal(to.discount_code, reward.code)
+    assert.equal((await api('POST', '/api/referral/me', { body: { phone: lakshmi.phone, email: lakshmi.email } })).body.used, 60)
+
+    // Monthly limit (2): Ravi's order makes the second reward; a third friend's would be over the limit.
+    const ravisOrder = await buy(cart, { ...ravi, discountCode: code })
+    const { rows: [ro] } = await db.query('select * from orders where id = $1', [ravisOrder.session.orderId])
+    const r2 = await releaseReferralReward(db, ro)
+    assert.ok(r2)
+    await api('PUT', '/api/admin/referrals', { token: OWNER, body: { cap: 1 } })
+    const meena = buyer({ name: 'Meena', phone: '9845000004', email: 'meena.ref@example.com', addressLine1: '9 Hill Lane', pincode: '641006' })
+    const meenasOrder = await buy(cart, { ...meena, discountCode: code })
+    assert.equal(Number((await db.query('select discount_paise from orders where id = $1', [meenasOrder.session.orderId])).rows[0].discount_paise), 5000)
+    const { rows: [mo] } = await db.query('select * from orders where id = $1', [meenasOrder.session.orderId])
+    assert.equal(await releaseReferralReward(db, mo), null)
+    assert.equal((await db.query('select status from referral_rewards where friend_order_id = $1', [mo.id])).rows[0].status, 'over_limit')
+
+    // The team takes back a reward: its code stops working.
+    const admin = await api('GET', '/api/admin/referrals', { token: OWNER })
+    assert.equal(admin.body.top[0].code, code)
+    assert.equal(admin.body.top[0].friends, 3)
+    const given = admin.body.recent.find((x) => x.code === r2.code)
+    assert.equal((await api('POST', '/api/admin/referrals/rewards/' + given.id + '/cancel', { token: OWNER })).status, 200)
+    assert.equal((await quote(lakshmi)).body.discount, null)
+
+    // Switched off: codes stop working.
+    await api('PUT', '/api/admin/referrals', { token: OWNER, body: { enabled: false } })
+    const off = await quote(buyer({ phone: '9845000005', email: 'new@example.com', addressLine1: '1 New St', pincode: '641007' }), { discountCode: code })
+    assert.match(off.body.discountError, /not running/)
+  } finally {
+    await db.query(`delete from referral_rewards`)
+    await db.query(`update orders set referrer_id = null, discount_code_id = null where referrer_id is not null or discount_code_id is not null`)
+    await db.query(`delete from referrers`)
+    await db.query(`delete from discount_codes where source in ('referral', 'reward')`)
+    await db.query(`delete from company_settings where key like 'referral_%'`)
   }
 })
 

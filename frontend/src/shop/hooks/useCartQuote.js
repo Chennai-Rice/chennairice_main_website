@@ -14,18 +14,22 @@ const PIN = /^[1-9]\d{5}$/;
  * With a discount code (and the mobile number, which some codes are locked to), the server checks it:
  * `discount` is what it takes off, `discountError` why it does not apply.
  */
-export default function useCartQuote(pincode = "", deliveryMethod = "courier", { discountCode = "", phone = "" } = {}) {
+export default function useCartQuote(pincode = "", deliveryMethod = "courier", { discountCode = "", phone = "", email = "" } = {}) {
   const { items, subtotal, syncPrices } = useCart();
   const [quote, setQuote] = useState(null);
   const [error, setError] = useState("");
 
   const pin = PIN.test(String(pincode).trim()) ? String(pincode).trim() : "";
   const code = String(discountCode || "").trim().toUpperCase();
-  // The mobile number matters only with a code, so typing it does not re-price an ordinary cart.
-  const mobile = code ? String(phone || "").replace(/\D/g, "").slice(-10) : "";
+  // The mobile number and email matter for a code, and for a referral reward of the customer's (used by
+  // itself). They are sent once complete, so typing them does not re-price the cart at every key.
+  const digits = String(phone || "").replace(/\D/g, "").slice(-10);
+  const mobile = digits.length === 10 ? digits : "";
+  const typedEmail = String(email || "").trim().toLowerCase();
+  const mail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typedEmail) ? typedEmail : "";
   const key = useMemo(
-    () => items.map((i) => `${i.id}:${i.qty}`).join(",") + "@" + pin + "/" + deliveryMethod + "#" + code + "~" + (mobile.length === 10 ? mobile : ""),
-    [items, pin, deliveryMethod, code, mobile],
+    () => items.map((i) => `${i.id}:${i.qty}`).join(",") + "@" + pin + "/" + deliveryMethod + "#" + code + "~" + mobile + "~" + mail,
+    [items, pin, deliveryMethod, code, mobile, mail],
   );
 
   useEffect(() => {
@@ -42,7 +46,9 @@ export default function useCartQuote(pincode = "", deliveryMethod = "courier", {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             items: items.map((i) => ({ id: i.id, qty: i.qty })), pincode: pin, deliveryMethod,
-            ...(code ? { discountCode: code, phone: mobile } : {}),
+            ...(code ? { discountCode: code } : {}),
+            ...(mobile ? { phone: mobile } : {}),
+            ...(mail ? { email: mail } : {}),
           }),
           signal: ctrl.signal,
         });
@@ -76,7 +82,8 @@ export default function useCartQuote(pincode = "", deliveryMethod = "courier", {
     // [{ method: "courier" | "in_house", charge, promise }] once the PIN code is known
     deliveryOptions: quote?.deliveryOptions || [],
     deliveryMethod: quote?.deliveryMethod || null,
-    discount: code && quote?.discount ? quote.discount : null, // { code, amount, label }
+    // { code, amount, label, auto }; auto = the customer's referral reward, used without a code typed
+    discount: quote?.discount && (code || quote.discount.auto) ? quote.discount : null,
     discountError: code ? quote?.discountError || "" : "",
     total: quote ? quote.total : sub,
     hasPin: Boolean(pin),
