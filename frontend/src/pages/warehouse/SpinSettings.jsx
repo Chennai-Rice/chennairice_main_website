@@ -54,7 +54,7 @@ export default function SpinSettings({ say, onAuthError }) {
     <section className="wh-panel">
       <h2 className="wh-panel-title">Spin &amp; Win</h2>
       <p className="wh-muted wh-small">
-        Visitors type their name and mobile number and spin once. Every spin wins a discount code that works only with that
+        Visitors type their email and mobile number and spin once. Every spin wins a discount code that works only with that
         mobile number, for the days set below. The website picks the prize by the chances below; visitors never see the chances.
       </p>
 

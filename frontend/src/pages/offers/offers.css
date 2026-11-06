@@ -1,0 +1,39 @@
+/* /offers dashboard (OffersPage.jsx). Uses the warehouse panel styles (wh-*) for the panels inside. */
+.of-page { min-height: 100vh; background: var(--wh-bg, #f8f4ec); color: var(--wh-ink, #2b1d17); padding: 24px 16px 48px; box-sizing: border-box; }
+.of-header, .of-tabs, .of-main { max-width: 1180px; margin-left: auto; margin-right: auto; }
+.of-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.of-brand { display: flex; align-items: center; gap: 14px; }
+.of-logo { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--wh-maroon, #6e1420); color: #fff; font-weight: 800; }
+.of-title { margin: 0; font-size: 28px; line-height: 1.1; }
+.of-sub { margin: 2px 0 0; color: #7a6459; font-size: 14px; }
+.of-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.of-tab { padding: 10px 18px; border: 1px solid var(--wh-line, #ece3d6); border-radius: 999px; background: #fff; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.of-tab.is-active { background: var(--wh-maroon, #6e1420); border-color: var(--wh-maroon, #6e1420); color: #fff; }
+.of-main { display: grid; gap: 18px; }
+.of-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.of-card {
+  display: grid; gap: 4px; padding: 20px; text-align: left;
+  border: 1px solid var(--wh-line, #ece3d6); border-radius: 18px; background: #fff; color: inherit; font: inherit; cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.of-card:hover { box-shadow: 0 10px 24px rgba(74, 44, 34, 0.1); transform: translateY(-1px); }
+.of-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.of-card-title { font-weight: 700; font-size: 17px; }
+.of-pill { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.of-pill.is-on { background: #e8f3ea; color: #2f7a46; }
+.of-pill.is-off { background: #f3ebe4; color: #8a7766; }
+.of-big { font-size: 34px; font-weight: 800; color: var(--wh-maroon, #6e1420); line-height: 1.1; }
+.of-unit { font-size: 13px; color: #7a6459; margin-bottom: 6px; }
+.of-line { font-size: 14px; }
+.of-open { margin-top: 8px; font-size: 14px; font-weight: 700; color: var(--wh-maroon, #6e1420); }
+.of-alert { padding: 12px 14px; border-radius: 10px; background: #fdecec; color: #b3261e; }
+.of-toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 50;
+  padding: 12px 18px; border-radius: 12px; background: #2b1d17; color: #fff; font-size: 14px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  max-width: calc(100% - 32px);
+}
+.of-toast.is-error { background: #b3261e; }
+@media (max-width: 560px) {
+  .of-title { font-size: 22px; }
+  .of-tab { padding: 8px 14px; font-size: 14px; }
+}

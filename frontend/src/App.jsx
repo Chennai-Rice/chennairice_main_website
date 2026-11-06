@@ -50,6 +50,8 @@ const InfrastructurePage = lazy(() => import('./pages/infrastructure/Infrastruct
 const AdminPage = lazy(() => import('./pages/admin/AdminPage.jsx'))
 // Staff-only order screen for the mill; loaded only when visited.
 const WarehousePage = lazy(() => import('./pages/warehouse/WarehousePage.jsx'))
+// Staff-only offers dashboard (Spin & Win, Refer a friend, discount codes).
+const OffersPage = lazy(() => import('./pages/offers/OffersPage.jsx'))
 const CloudPage = lazy(() => import('./pages/CloudPage.jsx'))
 // Local test only (npm run dev): the journal on a local test database. Not part of any production build.
 const DevJournalPage = import.meta.env.DEV ? lazy(() => import('./pages/DevJournalPage.jsx')) : null
@@ -125,7 +127,7 @@ export default function App() {
      It gets no marketing chrome and, importantly, no visitor tracking:
      whoever is reading the numbers or writing the posts must not appear
      inside them. */
-  const isTool = pathname.startsWith('/admin') || pathname.startsWith('/warehouse') || pathname.startsWith('/cloud') || pathname.startsWith('/dev/')
+  const isTool = pathname.startsWith('/admin') || pathname.startsWith('/warehouse') || pathname.startsWith('/offers') || pathname.startsWith('/cloud') || pathname.startsWith('/dev/')
   const isStorefront = !isTool && !isEmbedded
 
   return (
@@ -146,6 +148,14 @@ export default function App() {
           element={
             <Suspense fallback={null}>
               <AdminPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/offers"
+          element={
+            <Suspense fallback={null}>
+              <OffersPage />
             </Suspense>
           }
         />

@@ -2,9 +2,6 @@ import TeamView from './TeamView.jsx'
 import SourcesReport from './SourcesReport.jsx'
 import AlertEmails from './AlertEmails.jsx'
 import InHouseDelivery from './InHouseDelivery.jsx'
-import DiscountCodes from './DiscountCodes.jsx'
-import SpinSettings from './SpinSettings.jsx'
-import ReferralSettings from './ReferralSettings.jsx'
 import ExpoLeads from './ExpoLeads.jsx'
 import { useEffect, useMemo, useState } from 'react'
 import { staffFetch, staffJson } from '../../services/staffAuth.js'
@@ -387,9 +384,13 @@ export function SettingsView({ me, prefs, setPrefs, location, onSignOut, say, on
       {me.permissions?.includes('settings.manage') && <AlertEmails say={say} onAuthError={onAuthError} />}
 
       {me.permissions?.includes('settings.manage') && <InHouseDelivery say={say} onAuthError={onAuthError} />}
-      {me.permissions?.includes('settings.manage') && <DiscountCodes say={say} onAuthError={onAuthError} />}
-      {me.permissions?.includes('settings.manage') && <SpinSettings say={say} onAuthError={onAuthError} />}
-      {me.permissions?.includes('settings.manage') && <ReferralSettings say={say} onAuthError={onAuthError} />}
+      {me.permissions?.includes('settings.manage') && (
+        <section className="wh-panel">
+          <h2 className="wh-panel-title">Offers</h2>
+          <p className="wh-muted wh-small">Spin &amp; Win, Refer a friend and discount codes have their own dashboard.</p>
+          <a className="wh-btn wh-btn--primary" href="/offers">Open Offers</a>
+        </section>
+      )}
 
       <section className="wh-panel">
         <h2 className="wh-panel-title">Preferences</h2>
