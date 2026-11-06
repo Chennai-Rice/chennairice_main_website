@@ -41,6 +41,8 @@ export const NAV_LINKS = [
   { label: 'Blog', to: '/blog' },
   { label: 'Contact', to: '/contact-us' },
   { label: 'Track Order', to: '/track-order' },
+  // Refer a friend: a customer's code and rewards (only useful while it is switched on in /offers).
+  { label: 'Refer a Friend', to: '/refer' },
 ]
 
 // The Super Slogan Contest logo in the bar (after the links on desktop,

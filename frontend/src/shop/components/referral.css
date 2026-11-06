@@ -93,3 +93,8 @@
 .refer-state--available { color: #2f7a46; font-weight: 700; }
 .refer-state--used, .refer-state--expired, .refer-state--cancelled { color: var(--ink-500, #7a6459); }
 @media (max-width: 400px) { .refer-stat strong { font-size: 18px; } }
+
+/* /refer: how "signing in" works */
+.refer-how { padding: 12px 14px; border-radius: 12px; background: #fdf3dc; color: var(--ink-700, #4e3a32); font-size: 14px; }
+.refer-how strong { display: block; margin-bottom: 4px; color: var(--maroon-600, #6e1b22); }
+.refer-how ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }

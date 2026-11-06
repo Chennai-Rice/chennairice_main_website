@@ -35,6 +35,10 @@ export default function ReferPage() {
         body: JSON.stringify({ phone: form.phone, email: form.email }),
       });
       const data = await res.json().catch(() => null);
+      if (res.status === 429) throw new Error("Too many tries in a short time. To keep codes safe, please wait 10 minutes and try again.");
+      if (res.status === 404 && /could not find/i.test(data?.error || "")) {
+        throw new Error("We could not find a paid order with this mobile number and email. Check that both are exactly as on your order (see your Order Confirmed email). If you have not ordered yet, your code comes with your first order.");
+      }
       if (!res.ok) throw new Error(data?.error || "Please try again in a minute.");
       setMe(data);
     } catch (err) {
@@ -64,6 +68,14 @@ export default function ReferPage() {
             </ol>
             <form className="refer-form" onSubmit={submit} noValidate>
               <h2>Get my code &amp; rewards</h2>
+              <div className="refer-how">
+                <strong>How this works: no password, no OTP</strong>
+                <ul>
+                  <li>Type the <b>mobile number</b> and the <b>email</b> you gave when you ordered. We match them to your order and show your code.</li>
+                  <li>Both must be the same as on your order. Not sure which email? Look for your <b>Order Confirmed</b> email from Chennai Rice; your code is in it too.</li>
+                  <li>Your code appears once your order is paid. Use this page any time to see your rewards.</li>
+                </ul>
+              </div>
               <label>
                 Mobile number
                 <input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} inputMode="tel" autoComplete="tel" placeholder="98765 43210" maxLength={16} required />
