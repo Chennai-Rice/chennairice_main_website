@@ -18,6 +18,7 @@ import { deliveryTaxRateBp } from './tax.js'
 import { deliveryOptions, chooseDelivery } from './delivery.js'
 import { quoteDiscount, applyDiscount, cleanCode } from './discounts.js'
 import { ensureReferrer } from './referrals.js'
+import { pushCrmLead } from '../crm.js'
 import { cleanAttribution, classify } from './attribution.js'
 import { moveStock, releaseForOrder } from './stock.js'
 import { queueEmail, templates, trackUrl } from './email.js'
@@ -260,6 +261,18 @@ export async function createCheckoutSession(body, client = {}) {
   }
 }
 
+/** A referred friend's paid order, as a Sales Daddy lead naming the customer who referred them. */
+async function referralLead(order) {
+  const { rows: [r] } = await query(
+    'select r.name, r.phone, c.code from referrers r join discount_codes c on c.id = r.code_id where r.id = $1', [order.referrer_id])
+  if (!r) return
+  await pushCrmLead('referral', {
+    name: order.contact_name, phone: order.contact_phone, email: order.contact_email, source: 'website',
+    note: `Referral: first order ${order.order_number} with ${r.name}'s code ${r.code} (referred by ${r.name}, ${r.phone}).`,
+    custom: { came_from: 'Referral', referred_by: r.name, referrer_mobile: r.phone, code: r.code },
+  })
+}
+
 /**
  * Record a successful payment against its order. Used by browser verification
  * and by the webhook; safe to call twice for the same payment.
@@ -273,6 +286,8 @@ export async function markOrderPaid(args) {
   if (!result.already) sendWhatsAppMessages({ limit: 5 }).catch(() => {})
   // The Purchase to Meta from the server (best effort; the 10-minute job retries it).
   if (!result.already) sendPurchaseToMeta(result.order.id).catch(() => {})
+  // Bought with a friend's referral: a lead for the team, with who referred them (best effort).
+  if (!result.already && result.order.referrer_id) referralLead(result.order).catch(() => {})
   return result
 }
 

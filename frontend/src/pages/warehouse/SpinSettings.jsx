@@ -70,6 +70,31 @@ export default function SpinSettings({ say, onAuthError }) {
         </p>
       )}
 
+      {data.recent?.length > 0 && (
+        <details style={{ margin: '0 0 14px' }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Who spun ({data.recent.length})</summary>
+          <div style={{ overflowX: 'auto', marginTop: 8 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+              <thead><tr className="wh-small" style={{ textAlign: 'left' }}>
+                <th style={cell}>When</th><th style={cell}>Mobile</th><th style={cell}>Email</th><th style={cell}>Prize</th><th style={cell}>Code</th><th style={cell}>Used</th>
+              </tr></thead>
+              <tbody>
+                {data.recent.map((s) => (
+                  <tr key={s.phone}>
+                    <td style={cell} className="wh-small">{new Date(s.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })}</td>
+                    <td style={cell}>{s.phone}</td>
+                    <td style={cell} className="wh-small">{s.email || '—'}</td>
+                    <td style={cell}>{s.prize}</td>
+                    <td style={cell} className="wh-mono wh-small">{s.code}</td>
+                    <td style={cell} className="wh-small">{s.usedOn ? `Yes · ${s.usedOn}` : s.expiresAt && new Date(s.expiresAt) < new Date() ? 'Expired' : 'Not yet'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
+
       <form onSubmit={save} style={{ display: 'grid', gap: 14 }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <input type="checkbox" checked={form.enabled} onChange={(e) => setForm((f) => ({ ...f, enabled: e.target.checked }))} />
