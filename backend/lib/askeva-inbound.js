@@ -88,7 +88,7 @@ export function parseMessages(payload) {
 
 const fmt = (d) => new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })
 
-// Replies to these WhatsApp campaigns stay out of Sales Daddy: the numbers the campaign was sent to
+// Replies to these WhatsApp campaigns are not saved here and do not go to Sales Daddy: the numbers the campaign was sent to
 // (campaign_contacts, for CAMPAIGN_DAYS after the upload), and anyone who taps the campaign's button.
 const CAMPAIGN_DAYS = 30
 const CAMPAIGN_BUTTONS = ['ஆர்டர் வேண்டும்']
@@ -116,6 +116,9 @@ async function fromCampaign(db, phone, text) {
 async function saveMessage(db, { phone, name, text, at }, source) {
   // The company's own numbers are not customers: not saved, not sent to Sales Daddy.
   if (isBlockedMobile(phone)) return null
+  // A reply to a trade campaign (the Diwali retailer campaign): the owner keeps these in a separate database,
+  // so nothing about it is saved here or sent to Sales Daddy.
+  if (await fromCampaign(db, phone, text)) return null
   const { rows: [c] } = await db.query(
     `insert into whatsapp_contacts (phone, name, first_message, first_message_at, last_message, last_message_at, messages, source)
      values ($1, $2, $3, $4, $3, $4, case when $5 = 'import' then 0 else 1 end, $5)
@@ -130,8 +133,6 @@ async function saveMessage(db, { phone, name, text, at }, source) {
   )
   const due = c.is_new || !c.crm_noted_at || Date.now() - new Date(c.crm_noted_at).getTime() > 24 * 3600000
   if (!due) return null
-  // A reply to a trade campaign (the Diwali retailer campaign): kept here, not a customer lead in Sales Daddy.
-  if (await fromCampaign(db, phone, text)) return null
   const id = await queueCrmLead('whatsapp_chat', {
     name: c.name || `WhatsApp ${phone}`,
     phone,
@@ -154,7 +155,11 @@ function fromBlockedNumber(payload) {
 /** Handles one webhook call. Never throws on content — a bad payload is kept for checking. */
 export async function recordAskevaWebhook(payload) {
   if (!hasDatabase()) return { ok: true, stored: false }
-  const messages = parseMessages(payload)
+  const parsed = parseMessages(payload)
+  // Replies to a trade campaign are dropped before anything is stored (see saveMessage).
+  const messages = []
+  for (const m of parsed) if (!(await fromCampaign({ query: defaultQuery }, m.phone, m.text))) messages.push(m)
+  if (parsed.length && !messages.length) return { ok: true, messages: 0, campaign: true }
   // Only the company's own number in it (crm.js isBlockedMobile): not even the raw call is kept.
   if (!messages.length && fromBlockedNumber(payload)) return { ok: true, messages: 0, blocked: true }
   const { rows: [ev] } = await defaultQuery('insert into askeva_events (payload) values ($1) returning id', [payload ?? {}])

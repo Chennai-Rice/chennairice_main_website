@@ -3319,7 +3319,7 @@ test('AskEva: a WhatsApp message or contact import from the company number is no
   assert.deepEqual(await count(), before)
 })
 
-test('AskEva: replies from a campaign list number, or the campaign button, are kept but not sent to Sales Daddy', async () => {
+test('AskEva: replies from a campaign list number, or the campaign button, are not saved and not sent to Sales Daddy', async () => {
   const { recordAskevaWebhook } = await import('../lib/askeva-inbound.js')
   const db = await import('../lib/db.js')
   await db.query(`insert into campaign_contacts (mobile, campaign) values ('9733300001', 'diwali_retailers') on conflict do nothing`)
@@ -3329,5 +3329,7 @@ test('AskEva: replies from a campaign list number, or the campaign button, are k
   await recordAskevaWebhook({ from: '919733300003', name: 'Customer', text: { body: 'hi' } })
   assert.deepEqual([await crm('9733300001'), await crm('9733300002'), await crm('9733300003')], [0, 0, 1])
   const { rows } = await db.query(`select count(*)::int n from whatsapp_contacts where phone in ('9733300001', '9733300002')`)
-  assert.equal(rows[0].n, 2) // still saved in our database
+  assert.equal(rows[0].n, 0) // not saved here either (kept in the owner's separate database)
+  const { rows: ev } = await db.query(`select count(*)::int n from askeva_events where payload::text like '%97333000_1%' or payload::text like '%9733300002%'`)
+  assert.equal(ev[0].n, 0)
 })
