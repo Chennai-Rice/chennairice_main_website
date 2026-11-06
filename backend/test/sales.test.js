@@ -1136,6 +1136,102 @@ test('in-house delivery: a flat ₹100 choice in Tamil Nadu, checked again at or
   }
 })
 
+test('discount codes: made by the owner, checked at quote and order, locked to a mobile, on the order and invoice', async () => {
+  const { rows: [v] } = await db.query(
+    `select v.id, v.price_paise from product_variants v join products p on p.id = v.product_id
+      where p.slug = 'alibaba' and v.pack_kg = 10`)
+  await db.query('update stock_levels set on_hand = on_hand + 20 where variant_id = $1', [v.id])
+  await db.query(`insert into shipping_zones (code, name) values ('TN', 'Tamil Nadu'), ('SOUTH', 'South India')`)
+  await db.query(`update shipping_zones set is_active = false, is_default = false where code not in ('TN', 'SOUTH')`)
+  await db.query(`insert into variant_region_prices (variant_id, region, price_paise, delivery_paise) values
+    ($1, 'TN', $2, 21000), ($1, 'SOUTH', $2, 40900)`, [v.id, v.price_paise])
+  const price = Number(v.price_paise) / 100
+  const quote = (body) => api('POST', '/api/checkout/quote', { body: { pincode: '641001', items: [{ id: 'alibaba-10kg', qty: 1 }], deliveryMethod: 'courier', ...body } })
+  const make = (body) => api('POST', '/api/admin/discounts', { token: OWNER, body })
+  let ip = 0
+  const session = (over) => api('POST', '/api/checkout/session', {
+    body: { ...buyer(), deliveryMethod: 'courier', items: [{ id: 'alibaba-10kg', qty: 1 }], ...over },
+    headers: { 'X-Forwarded-For': `10.8.${Math.floor(++ip / 250)}.${ip % 250}` },
+  })
+  try {
+    // Only owners and IT make codes; the panel's checks.
+    assert.equal((await api('POST', '/api/admin/discounts', { token: tokens.sales, body: { code: 'NOPE10', kind: 'amount', amount: 10 } })).status, 403)
+    assert.equal((await make({ code: 'x', kind: 'amount', amount: 10 })).status, 400)
+    assert.equal((await make({ code: 'TRY50', kind: 'percent', percent: 80 })).status, 400)
+    const made = await make({ code: 'try50', kind: 'amount', amount: 50, minOrder: price + 1 })
+    assert.equal(made.status, 200, JSON.stringify(made.body))
+    assert.equal(made.body.code.code, 'TRY50')
+    assert.equal((await make({ code: 'TRY50', kind: 'amount', amount: 5 })).status, 409)
+
+    // Minimum order not met: explained, cart still priced.
+    const short = await quote({ discountCode: 'try50', phone: '98765 43210' })
+    assert.equal(short.status, 200)
+    assert.equal(short.body.discount, null)
+    assert.match(short.body.discountError, /Add ₹1 more/)
+    assert.equal(short.body.total, short.body.subtotal + short.body.shipping)
+    assert.match((await quote({ discountCode: 'NOSUCH', phone: '9876543210' })).body.discountError, /could not find/)
+
+    // ₹50 off with two packs; the order and the invoice carry it.
+    const two = await quote({ discountCode: 'TRY50', phone: '9876543210', items: [{ id: 'alibaba-10kg', qty: 2 }] })
+    assert.deepEqual(two.body.discount, { code: 'TRY50', amount: 50, label: '₹50 off' })
+    assert.equal(two.body.total, two.body.subtotal + two.body.shipping - 50)
+    const { session: s1, verify } = await buy([{ id: 'alibaba-10kg', qty: 2 }], { ...buyer({ phone: '+91 90000 11111', email: 'code1@example.com' }), discountCode: 'TRY50' })
+    assert.equal(verify.status, 200, JSON.stringify(verify.body))
+    assert.deepEqual(s1.discount, { code: 'TRY50', amount: 50 })
+    const { rows: [o] } = await db.query('select * from orders where id = $1', [s1.orderId])
+    assert.equal(Number(o.discount_paise), 5000)
+    assert.equal(o.discount_code, 'TRY50')
+    assert.equal(Number(o.total_paise), Number(o.subtotal_paise) + Number(o.shipping_paise) - 5000)
+    const { issueInvoice } = await import('../lib/sales/operations.js')
+    const inv = await issueInvoice(db, o)
+    assert.equal(Number(inv.total_paise), Number(o.total_paise))
+    assert.equal(Number(inv.discount_paise ?? 5000), 5000)
+    const { templates } = await import('../lib/sales/email.js')
+    assert.match(templates.orderPlaced(o, []).text, /Discount \(TRY50\) {2}−₹50/)
+    // Once per mobile number.
+    assert.match((await quote({ discountCode: 'TRY50', phone: '9000011111', items: [{ id: 'alibaba-10kg', qty: 2 }] })).body.discountError, /already used/)
+    const again = await session({ ...buyer({ phone: '9000011111', email: 'code1@example.com' }), discountCode: 'TRY50', items: [{ id: 'alibaba-10kg', qty: 2 }] })
+    assert.equal(again.status, 422)
+    assert.match(again.body.error, /already used/)
+
+    // Locked to one mobile, Tamil Nadu only, free delivery, uses in all.
+    await db.query(`insert into discount_codes (code, kind, locked_phone, region, max_uses) values ('SPIN-FREE', 'free_delivery', '9111122222', 'TN', 1)`)
+    assert.match((await quote({ discountCode: 'SPIN-FREE', phone: '9333344444' })).body.discountError, /another mobile/)
+    assert.match((await quote({ discountCode: 'SPIN-FREE', phone: '9111122222', pincode: '682001' })).body.discountError, /Tamil Nadu only/)
+    const free = await quote({ discountCode: 'SPIN-FREE', phone: '9111122222' })
+    assert.equal(free.body.discount.amount, free.body.shipping)
+    assert.equal(free.body.total, free.body.subtotal)
+    assert.equal((await session({ ...buyer({ phone: '9333344444', email: 'x@example.com' }), discountCode: 'SPIN-FREE' })).status, 422)
+    const okFree = await session({ ...buyer({ phone: '9111122222', email: 'spin@example.com' }), discountCode: 'SPIN-FREE' })
+    assert.equal(okFree.status, 200, JSON.stringify(okFree.body))
+    // Its one use is held while the payment is open.
+    assert.match((await quote({ discountCode: 'SPIN-FREE', phone: '9111122222' })).body.discountError, /used up|already used/)
+
+    // Percent with a cap; expired; switched off.
+    await make({ code: 'TEN', kind: 'percent', percent: 10, maxOff: 30 })
+    assert.equal((await quote({ discountCode: 'TEN', phone: '9444455555' })).body.discount.amount, 30)
+    await db.query(`insert into discount_codes (code, kind, amount_paise, expires_at) values ('OLD25', 'amount', 2500, now() - interval '1 day')`)
+    assert.match((await quote({ discountCode: 'OLD25', phone: '9444455555' })).body.discountError, /expired on/)
+    const list = await api('GET', '/api/admin/discounts', { token: OWNER })
+    const ten = list.body.codes.find((c) => c.code === 'TEN')
+    assert.equal(list.body.codes.find((c) => c.code === 'TRY50').uses, 1)
+    assert.equal(list.body.codes.find((c) => c.code === 'TRY50').given, 50)
+    assert.equal((await api('PATCH', '/api/admin/discounts/' + ten.id, { token: OWNER, body: { active: false } })).status, 200)
+    assert.match((await quote({ discountCode: 'TEN', phone: '9444455555' })).body.discountError, /could not find/)
+
+    // No code: nothing changes.
+    const plain = await quote({})
+    assert.equal(plain.body.discount, null)
+    assert.equal(plain.body.discountError, null)
+  } finally {
+    await db.query(`update orders set discount_code_id = null where discount_code_id is not null`)
+    await db.query(`delete from discount_codes`)
+    await db.query('delete from variant_region_prices where variant_id = $1', [v.id])
+    await db.query(`delete from shipping_zones where code in ('TN', 'SOUTH')`)
+    await db.query(`update shipping_zones set is_active = true, is_default = true where code = 'ALL_INDIA'`)
+  }
+})
+
 test('PIN code regions and the delivered-price sheets', async () => {
   const { regionForPincode } = await import('../lib/sales/regions.js')
   const cases = { '600001': 'TN', '641001': 'TN', '605001': 'TN', '682001': 'SOUTH', '560001': 'SOUTH', '500001': 'SOUTH',

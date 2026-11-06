@@ -10,6 +10,19 @@ import { formatRupees } from "../utils/format.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
 import DeliveryChoice from "../components/DeliveryChoice.jsx";
+import DiscountCode from "../components/DiscountCode.jsx";
+
+// The discount code for this visit (sessionStorage): typed here, or filled in by Spin & Win or a referral.
+export const DISCOUNT_CODE_KEY = "cr.checkout.code";
+function readDiscountCode() {
+  try { return window.sessionStorage.getItem(DISCOUNT_CODE_KEY) || ""; } catch { return ""; }
+}
+function saveDiscountCode(code) {
+  try {
+    if (code) window.sessionStorage.setItem(DISCOUNT_CODE_KEY, code);
+    else window.sessionStorage.removeItem(DISCOUNT_CODE_KEY);
+  } catch { /* private mode: kept for this page only */ }
+}
 
 // The delivery method the customer picked on this visit (sessionStorage); our own team until they choose.
 const DELIVERY_CHOICE_KEY = "cr.checkout.delivery";
@@ -86,7 +99,11 @@ export default function CheckoutPage() {
     setDeliveryChoiceState(method);
     try { window.sessionStorage.setItem(DELIVERY_CHOICE_KEY, method); } catch { /* private mode: kept for this page only */ }
   }, []);
-  const { subtotal, shipping, region, total, hasPin, deliveryOptions, deliveryMethod, error: quoteError } = useCartQuote(form.pincode, deliveryChoice);
+  const [discountCode, setDiscountCodeState] = useState(readDiscountCode);
+  const setDiscountCode = useCallback((code) => { setDiscountCodeState(code); saveDiscountCode(code); }, []);
+  const {
+    subtotal, shipping, region, total, hasPin, deliveryOptions, deliveryMethod, discount, discountError, error: quoteError,
+  } = useCartQuote(form.pincode, deliveryChoice, { discountCode, phone: form.phone });
   const ownDelivery = deliveryMethod === "in_house";
   const [errors, setErrors] = useState({});
   // After payment the receipt moves to /order-confirmed (a page of its own
@@ -108,6 +125,7 @@ export default function CheckoutPage() {
       transactionId: confirmed.orderNumber,
       value: Number(confirmed.amount),
       shipping: confirmed.shipping,
+      coupon: confirmed.coupon,
       items: confirmed.items || [],
     });
   }, [onConfirmedPage, status, confirmed]);
@@ -179,6 +197,13 @@ export default function CheckoutPage() {
       return;
     }
 
+    // A code that does not apply (wrong mobile number, minimum not met…) is explained in the summary;
+    // the order is not started until it is fixed or removed, so nobody pays without the discount they expected.
+    if (discountCode && discountError) {
+      setFailure(`Your code ${discountCode} cannot be used: ${discountError} Remove it to continue without it.`);
+      return;
+    }
+
     setStatus("paying");
     // Checkout journey, step 3: details filled (the form passed its checks).
     recordJourney("details", {
@@ -203,6 +228,7 @@ export default function CheckoutPage() {
         session = await initiatePayment({
           ...form,
           deliveryMethod: deliveryMethod || "courier",
+          ...(discountCode ? { discountCode } : {}),
           items: items.map((item) => ({ id: item.id, qty: item.qty })),
           attribution: currentAttribution(),
           meta: metaCheckoutSignal(),
@@ -272,10 +298,14 @@ export default function CheckoutPage() {
         // What was bought, kept on the receipt (the cart is emptied below) for the Google purchase event
         // sent when the order-confirmed page opens.
         shipping: shipping || 0,
+        discount: session.discount?.amount || 0,
+        coupon: session.discount?.code || "",
         deliveryMethod: session.deliveryMethod || deliveryMethod || "courier",
         items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, packKg: i.packKg, qty: i.qty })),
       };
       setConfirmed(receipt);
+      // The code is used: the next order starts without it.
+      saveDiscountCode("");
       // The Meta Purchase event is sent when /order-confirmed opens (below the receipt state).
       // Checkout journey: purchased (the server checks the order really is paid).
       recordJourney("purchased", { orderId: session.orderId });
@@ -543,6 +573,15 @@ export default function CheckoutPage() {
                   </dt>
                   <dd>{shipping == null ? (hasPin ? "—" : "Enter PIN code") : formatRupees(shipping)}</dd>
                 </div>
+                <DiscountCode
+                  applied={discountCode}
+                  discount={discount}
+                  error={discountError}
+                  checking={Boolean(discountCode && !discount && !discountError)}
+                  onApply={setDiscountCode}
+                  onRemove={() => setDiscountCode("")}
+                  disabled={busy}
+                />
                 <div className="summary-row summary-row--total">
                   <dt>Total</dt>
                   <dd>{formatRupees(total)}</dd>

@@ -1,0 +1,64 @@
+/* Checkout → order summary: the discount code (DiscountCode.jsx). */
+.discount-open { margin: 2px 0 6px; }
+.discount-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--maroon-600, #6e1b22);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.discount-box { margin: 4px 0 10px; display: grid; gap: 6px; }
+.discount-label { font-size: 13px; font-weight: 600; color: var(--ink-700, #4e3a32); }
+.discount-entry { display: flex; gap: 8px; }
+.discount-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1.5px solid var(--cream-300, #e6dac2);
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.discount-input:focus { outline: none; border-color: var(--gold-500, #c08a2d); }
+.discount-input[aria-invalid="true"] { border-color: #b3261e; }
+.discount-apply {
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--maroon-600, #6e1b22);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.discount-apply:disabled { opacity: 0.5; cursor: default; }
+.discount-error { margin: 0; font-size: 13px; color: #b3261e; }
+.discount-row dt { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.discount-row dd { color: #2f7a46; font-weight: 600; }
+.discount-code-chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #e8f3ea;
+  color: #2f7a46;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.discount-remove {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-500, #7a6459);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}

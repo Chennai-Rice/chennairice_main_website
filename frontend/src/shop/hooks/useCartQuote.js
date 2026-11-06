@@ -11,14 +11,22 @@ const PIN = /^[1-9]\d{5}$/;
  * the server cannot be reached) the cart's own subtotal is shown.
  * With a delivery method ("courier" / "in_house"), the charge is that method's
  * when the PIN code gets it; deliveryOptions lists what the PIN code gets.
+ * With a discount code (and the mobile number, which some codes are locked to), the server checks it:
+ * `discount` is what it takes off, `discountError` why it does not apply.
  */
-export default function useCartQuote(pincode = "", deliveryMethod = "courier") {
+export default function useCartQuote(pincode = "", deliveryMethod = "courier", { discountCode = "", phone = "" } = {}) {
   const { items, subtotal, syncPrices } = useCart();
   const [quote, setQuote] = useState(null);
   const [error, setError] = useState("");
 
   const pin = PIN.test(String(pincode).trim()) ? String(pincode).trim() : "";
-  const key = useMemo(() => items.map((i) => `${i.id}:${i.qty}`).join(",") + "@" + pin + "/" + deliveryMethod, [items, pin, deliveryMethod]);
+  const code = String(discountCode || "").trim().toUpperCase();
+  // The mobile number matters only with a code, so typing it does not re-price an ordinary cart.
+  const mobile = code ? String(phone || "").replace(/\D/g, "").slice(-10) : "";
+  const key = useMemo(
+    () => items.map((i) => `${i.id}:${i.qty}`).join(",") + "@" + pin + "/" + deliveryMethod + "#" + code + "~" + (mobile.length === 10 ? mobile : ""),
+    [items, pin, deliveryMethod, code, mobile],
+  );
 
   useEffect(() => {
     if (!items.length) {
@@ -32,7 +40,10 @@ export default function useCartQuote(pincode = "", deliveryMethod = "courier") {
         const res = await fetch("/api/checkout/quote", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: items.map((i) => ({ id: i.id, qty: i.qty })), pincode: pin, deliveryMethod }),
+          body: JSON.stringify({
+            items: items.map((i) => ({ id: i.id, qty: i.qty })), pincode: pin, deliveryMethod,
+            ...(code ? { discountCode: code, phone: mobile } : {}),
+          }),
           signal: ctrl.signal,
         });
         const data = await res.json().catch(() => null);
@@ -65,7 +76,9 @@ export default function useCartQuote(pincode = "", deliveryMethod = "courier") {
     // [{ method: "courier" | "in_house", charge, promise }] once the PIN code is known
     deliveryOptions: quote?.deliveryOptions || [],
     deliveryMethod: quote?.deliveryMethod || null,
-    total: sub + (shipping || 0),
+    discount: code && quote?.discount ? quote.discount : null, // { code, amount, label }
+    discountError: code ? quote?.discountError || "" : "",
+    total: quote ? quote.total : sub,
     hasPin: Boolean(pin),
     error,
   };

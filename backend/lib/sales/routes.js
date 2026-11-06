@@ -51,6 +51,7 @@ import { checkAutomationKey, automationContacts } from './automation.js'
 import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
+import { listDiscountCodes, createDiscountCode, setDiscountCodeActive } from './discounts.js'
 import { listReports, reportCsv } from './reports.js'
 import { contestReport } from './contest.js'
 import { loginWriter } from './writer-login.js'
@@ -636,6 +637,10 @@ export function createSalesRouter({ verifyIdToken } = {}) {
 
   admin.get('/settings', perm('settings.manage'), wrap(async (_req, res) => res.json({ settings: await getSettingsAdmin() })))
   admin.patch('/settings', wrap(async (req, res) => res.json({ settings: await updateSettings(req.staff, req.body) })))
+  // Warehouse → Settings → Discount codes (owners and IT): list with uses and money given, add, switch on/off.
+  admin.get('/discounts', wrap(async (req, res) => res.json(await listDiscountCodes({ query }, req.staff, req.query))))
+  admin.post('/discounts', wrap(async (req, res) => res.json({ code: await createDiscountCode({ query }, req.staff, req.body) })))
+  admin.patch('/discounts/:id', wrap(async (req, res) => res.json({ code: await setDiscountCodeActive({ query }, req.staff, req.params.id, req.body?.active) })))
   admin.get('/shipping-zones', perm('shipping.manage'), wrap(async (_req, res) => res.json({ zones: await listZones() })))
   admin.put('/shipping-zones', wrap(async (req, res) => res.json({ zone: await upsertZone(req.staff, req.body) })))
   admin.get('/emails', perm('emails.view'), wrap(async (req, res) => res.json({ emails: await listEmails(req.query) })))

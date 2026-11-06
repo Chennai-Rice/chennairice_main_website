@@ -98,7 +98,7 @@ export function merchantItemId(item) {
  * transaction id, so a repeat (a reload, a second call) is dropped here and de-duplicated by Google too.
  * Sent only when analytics cookies were accepted (gtag.js is not loaded otherwise).
  */
-export function trackGooglePurchase({ transactionId, value, shipping, items = [] }) {
+export function trackGooglePurchase({ transactionId, value, shipping, coupon, items = [] }) {
   if (!loaded || !window.gtag || !transactionId) return false
   const key = `cr.gpurchase.${transactionId}`
   try {
@@ -112,6 +112,8 @@ export function trackGooglePurchase({ transactionId, value, shipping, items = []
     currency: 'INR',
     // The delivery charge, when the order had one (the amount paid already includes it).
     ...(Number(shipping) > 0 ? { shipping: Number(shipping) } : {}),
+    // The discount code used, if any (the amount paid is already after the discount).
+    ...(coupon ? { coupon } : {}),
     items: items.map((i, index) => ({
       item_id: merchantItemId(i),
       item_name: i.name,

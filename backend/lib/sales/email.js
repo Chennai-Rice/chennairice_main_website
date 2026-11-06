@@ -131,6 +131,8 @@ function orderConfirmationVars(order, payment) {
     'Order Date': placedDate(order),
     'Delivery Charge': Number(order.shipping_paise) ? formatInr(order.shipping_paise) : '',
     'Delivery Label': ownDelivery(order) ? 'Chennai Rice delivery (our own team)' : 'Delivery charge',
+    'Discount': Number(order.discount_paise) ? '−' + formatInr(order.discount_paise) : '',
+    'Discount Label': order.discount_code ? `Discount (${order.discount_code})` : 'Discount',
     'Total Amount': formatInr(order.total_paise),
     'Payment Method': paymentMethod(payment),
     'Payment Status': PAYMENT_STATUS[order.payment_status] || order.payment_status,
@@ -196,6 +198,7 @@ export const templates = {
         `Order ID: ${order.order_number}\nPlaced:   ${placedDate(order)}\n\n` +
         `${itemsText(items)}\n` +
         (Number(order.shipping_paise) ? `  ${ownDelivery(order) ? 'Chennai Rice delivery' : 'Delivery charge'}  ${formatInr(order.shipping_paise)}\n` : '') +
+        (Number(order.discount_paise) ? `  Discount${order.discount_code ? ' (' + order.discount_code + ')' : ''}  −${formatInr(order.discount_paise)}\n` : '') +
         `\nTotal paid: ${formatInr(order.total_paise)} (incl. GST)\n\n` +
         (ownDelivery(order) ? 'Our own team will bring your order and will call you before they come.\n\n' : '') +
         `Delivering to:\n${[order.contact_name, ...addressLines(order.shipping_address), order.contact_phone].join('\n')}\n\n` +

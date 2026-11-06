@@ -16,6 +16,7 @@ import { createSessionWithFailover, getGateway } from '../gateways.js'
 import { priceCart, quoteShipping } from './catalog.js'
 import { deliveryTaxRateBp } from './tax.js'
 import { deliveryOptions, chooseDelivery } from './delivery.js'
+import { evaluateDiscount, applyDiscount, cleanCode } from './discounts.js'
 import { cleanAttribution, classify } from './attribution.js'
 import { moveStock, releaseForOrder } from './stock.js'
 import { queueEmail, templates, trackUrl } from './email.js'
@@ -36,6 +37,7 @@ export function buildGuestCustomer(body) {
     addressLine1: f('addressLine1'), addressLine2: f('addressLine2'), city: f('city'),
     state: f('state'), pincode: f('pincode'), landmark: f('landmark'),
     deliveryMethod: f('deliveryMethod') || 'courier',
+    discountCode: cleanCode(body?.discountCode),
   }
   if (!c.name || c.name.length > 120) return { error: 'Please tell us your name.' }
   if (!c.email || !EMAIL_PATTERN.test(c.email) || c.email.length > 200) return { error: 'A valid email address is required.' }
@@ -62,6 +64,12 @@ export async function quoteCart(body) {
   const options = priced.regional || str(body?.pincode) ? deliveryOptions(courier, str(body?.pincode), settings) : []
   const chosen = options.find((o) => o.method === str(body?.deliveryMethod)) || options[0] || null
   const shipping = chosen ? chosen.paise : courier
+  // A discount code, checked the same way as when the order is placed; one that does not apply is
+  // explained (discountError) and the cart is still priced without it.
+  const d = await evaluateDiscount({ query }, body?.discountCode, {
+    phone: body?.phone, pincode: str(body?.pincode), subtotalPaise: priced.subtotalPaise, shippingPaise: shipping,
+  })
+  const discountPaise = d && !d.error ? d.discountPaise : 0
   return {
     lines: priced.lines.map((l) => ({
       id: l.slug + '-' + l.packKg + 'kg', name: l.name, packKg: l.packKg, qty: l.quantity,
@@ -73,7 +81,9 @@ export async function quoteCart(body) {
     deliveryMethod: chosen?.method || (shipping == null ? null : 'courier'),
     deliveryOptions: options.map((o) => ({ method: o.method, charge: toRupees(o.paise), promise: o.promise })),
     region: priced.region,
-    total: toRupees(priced.subtotalPaise + (shipping || 0)),
+    discount: d && !d.error ? { code: d.code.code, amount: toRupees(d.discountPaise), label: d.label } : null,
+    discountError: d?.error || null,
+    total: toRupees(priced.subtotalPaise + (shipping || 0) - discountPaise),
     taxIncluded: toRupees(priced.taxPaise),
     currency: 'INR',
   }
@@ -96,6 +106,11 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
     // The chosen delivery, checked again here: never a method the PIN code does not get, never another amount.
     const delivery = chooseDelivery(courier, customer.pincode, customer.deliveryMethod, settings)
     const shipping = delivery.paise
+    // The discount code, checked again inside this transaction (its row locked, so two orders cannot
+    // both take the last use). A code that no longer applies stops the order with the reason.
+    const discount = await applyDiscount(db, customer.discountCode, {
+      phone: customer.phone, pincode: customer.pincode, subtotalPaise: priced.subtotalPaise, shippingPaise: shipping,
+    })
     // GST inside the delivery charge, kept with the order for its invoice.
     const shippingTaxRateBp = deliveryTaxRateBp(settings)
 
@@ -119,14 +134,16 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
       `insert into orders (order_number, customer_id, contact_name, contact_email, contact_phone,
                            shipping_address, ship_state, fulfilment_location_id,
                            subtotal_paise, shipping_paise, total_paise, tax_paise, reservation_expires_at,
-                           shipping_tax_rate_bp, attribution, traffic_source, traffic_campaign, traffic_ad, delivery_method)
+                           shipping_tax_rate_bp, attribution, traffic_source, traffic_campaign, traffic_ad, delivery_method,
+                           discount_paise, discount_code_id, discount_code)
        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now() + make_interval(mins => $13), $14,
-               $15, $16, $17, $18, $19)
+               $15, $16, $17, $18, $19, $20, $21, $22)
        returning *`,
       [await reserveId(db, 'order', newOrderNumber), cust.id, customer.name, customer.email, customer.phone,
         address, customer.state, loc.id, priced.subtotalPaise, shipping,
-        priced.subtotalPaise + shipping, priced.taxPaise, holdMinutes, shipping ? shippingTaxRateBp : 0,
-        attribution, traffic.source, traffic.campaign || null, traffic.ad || null, delivery.method]
+        priced.subtotalPaise + shipping - discount.discountPaise, priced.taxPaise, holdMinutes, shipping ? shippingTaxRateBp : 0,
+        attribution, traffic.source, traffic.campaign || null, traffic.ad || null, delivery.method,
+        discount.discountPaise, discount.code?.id || null, discount.code?.code || null]
     )
     await linkId(db, order.order_number, order.id)
 
@@ -217,6 +234,7 @@ export async function createCheckoutSession(body, client = {}) {
     orderNumber: order.order_number,
     amount: toRupees(order.total_paise),
     deliveryMethod: order.delivery_method,
+    discount: Number(order.discount_paise) ? { code: order.discount_code, amount: toRupees(order.discount_paise) } : null,
     currency: 'INR',
     gateway: session.gateway,
     gatewayLabel: session.label,
