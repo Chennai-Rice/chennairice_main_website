@@ -2,7 +2,7 @@
 //
 // A visitor types their name and mobile number and spins once. The server picks the prize (the chances
 // set in Warehouse → Settings → Spin & Win; the browser only shows where the wheel stops), makes a
-// discount code locked to that mobile number (discount_codes.source = 'spin', valid for 7 days, one
+// discount code locked to that mobile number (discount_codes.source = 'spin', valid for 30 days, one
 // use) and returns it. At checkout the code works only with the same mobile number (discounts.js),
 // so a made-up number wins nothing. One spin per mobile number and per browser; a second try shows
 // the prize already won. The lead goes to Sales Daddy and the NeoDove telecallers.
@@ -11,7 +11,7 @@
 //   spin_enabled            'true' / 'false'                 (off until switched on)
 //   spin_prizes             JSON list, see DEFAULT_PRIZES     (chances add up to 100)
 //   spin_budget_inr         ₹ given in spin codes per month   (0 = no limit); past it the wheel closes
-//   spin_valid_days         days a prize code works           (default 7)
+//   spin_valid_days         days a prize code works           (default 30)
 import crypto from 'node:crypto'
 import { tx } from '../db.js'
 import { httpError, str, toRupees, getSettings } from './util.js'
@@ -59,7 +59,7 @@ function validPrizes(list) {
 }
 
 const enabled = (settings) => str(settings.spin_enabled).toLowerCase() === 'true'
-const validDays = (settings) => Math.min(60, Math.max(1, Number(settings.spin_valid_days) || 7))
+const validDays = (settings) => Math.min(60, Math.max(1, Number(settings.spin_valid_days) || 30))
 
 /** One prize by its chances, with a cryptographic random number (never Math.random). */
 export function pickPrize(prizes, roll = crypto.randomInt(0, 1000000) / 10000) {

@@ -1252,7 +1252,7 @@ test('Spin & Win: off until switched on, one spin per mobile and browser, prize 
     const bad = await api('PUT', '/api/admin/spin', { token: OWNER, body: { prizes: [
       { label: 'A', kind: 'amount', amount: 10, chance: 50 }, { label: 'B', kind: 'amount', amount: 20, chance: 20 }] } })
     assert.equal(bad.status, 400)
-    const on = await api('PUT', '/api/admin/spin', { token: OWNER, body: { enabled: true, validDays: 7 } })
+    const on = await api('PUT', '/api/admin/spin', { token: OWNER, body: { enabled: true } })
     assert.equal(on.status, 200, JSON.stringify(on.body))
     assert.equal(on.body.enabled, true)
     const cfg = (await api('GET', '/api/spin')).body
@@ -1281,7 +1281,7 @@ test('Spin & Win: off until switched on, one spin per mobile and browser, prize 
     assert.equal(c.source, 'spin')
     assert.equal(c.max_uses, 1)
     assert.equal((await db.query(`select email from spins where phone = '9876500001'`)).rows[0].email, 'kavya@example.com')
-    assert.ok(new Date(c.expires_at) - Date.now() > 6.9 * 86400000)
+    assert.ok(new Date(c.expires_at) - Date.now() > 29.9 * 86400000) // valid 30 days
 
     // Same mobile again: the same prize, no second spin. Same browser, another mobile: refused.
     const again = await spinApi({ name: 'Kavya', phone: '9876500001', deviceId: 'dev-9' }, 2)
