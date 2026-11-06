@@ -43,3 +43,13 @@
 .of-pill--open { background: #fdf3dc; color: #8a5a12; }
 .of-pill--expired { background: #f3ebe4; color: #8a7766; }
 .of-who-order { display: block; margin-top: 3px; font-size: 12px; color: #7a6459; }
+
+/* Warehouse-style shell (Nov 2026): extras on top of warehouse-shell.css */
+.of-subtitle { margin: 0 0 4px; color: var(--wh-muted, #7a6459); font-size: 14px; }
+.wh-content { display: grid; gap: 18px; align-content: start; }
+.of-alert { padding: 12px 14px; border-radius: 10px; background: #fdecec; color: #b3261e; }
+.of-user { display: inline-flex; align-items: center; gap: 10px; max-width: 260px; }
+.of-user-text { display: grid; line-height: 1.2; min-width: 0; }
+.of-user-text strong { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.of-user-text span { font-size: 12px; color: var(--wh-muted, #7a6459); }
+@media (max-width: 900px) { .of-user-text { display: none; } }

@@ -6,34 +6,23 @@ import ReferralSettings from '../warehouse/ReferralSettings.jsx'
 import WhoSpun from './WhoSpun.jsx'
 import { staffJson, signOutStaff } from '../../services/staffAuth.js'
 import usePageMeta from '../../shop/hooks/usePageMeta.js'
-import '../admin/admin.css'
+import { Icon } from '../warehouse/shared.jsx'
 import '../warehouse/warehouse.css'
+import '../warehouse/warehouse-pages.css'
+import '../warehouse/warehouse-shell.css'
 import './offers.css'
 
 /**
- * /offers: the offers dashboard, on its own and in the same look as the /admin dashboard (sidebar, page
- * title, cards). Spin & Win, Refer a friend and discount codes: switch them on, set amounts and prizes, see
+ * /offers: the offers dashboard, on its own and in the same look as the /warehouse panel (sidebar, top bar
+ * with the sections as pills, panels). Spin & Win, Refer a friend and discount codes: switch them on, set amounts and prizes, see
  * who used what and the sales they brought. Owners and IT only (settings.manage, as the backend checks).
  */
-const PATHS = {
-  grid: <><rect x="3" y="3" width="5.6" height="5.6" rx="1.2" /><rect x="11.4" y="3" width="5.6" height="5.6" rx="1.2" /><rect x="3" y="11.4" width="5.6" height="5.6" rx="1.2" /><rect x="11.4" y="11.4" width="5.6" height="5.6" rx="1.2" /></>,
-  wheel: <><circle cx="10" cy="10" r="7.2" /><circle cx="10" cy="10" r="1.6" /><path d="M10 2.8v5.6M10 11.6v5.6M2.8 10h5.6M11.6 10h5.6M4.9 4.9l3.9 3.9M11.2 11.2l3.9 3.9M15.1 4.9l-3.9 3.9M8.8 11.2l-3.9 3.9" /></>,
-  people: <><circle cx="7.2" cy="7" r="2.6" /><path d="M2.6 16.2c.6-2.8 2.4-4.2 4.6-4.2s4 1.4 4.6 4.2" /><circle cx="13.8" cy="7.6" r="2.1" /><path d="M13 11.9c2 .1 3.6 1.4 4.2 3.8" /></>,
-  list: <><path d="M7 5h10M7 10h10M7 15h10" /><circle cx="3.6" cy="5" r="0.9" /><circle cx="3.6" cy="10" r="0.9" /><circle cx="3.6" cy="15" r="0.9" /></>,
-  ticket: <><path d="M3 6.2h14v2.3a1.6 1.6 0 0 0 0 3v2.3H3v-2.3a1.6 1.6 0 0 0 0-3z" /><path d="M12.2 6.2v7.6" strokeDasharray="1.4 1.6" /></>,
-}
-const NavIcon = ({ name }) => (
-  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="ad-nav-icon">
-    {PATHS[name]}
-  </svg>
-)
-
 const VIEWS = [
-  { id: 'overview', label: 'Overview', icon: 'grid', subtitle: 'Spin & Win, Refer a friend and discount codes at a glance' },
-  { id: 'spin', label: 'Spin & Win', icon: 'wheel', subtitle: 'Prizes, chances and budget' },
-  { id: 'spins', label: 'Who spun', icon: 'list', subtitle: 'Every spin: mobile, email, prize, code and whether it was used' },
-  { id: 'referral', label: 'Refer a friend', icon: 'people', subtitle: 'Amounts, top referrers and rewards' },
-  { id: 'codes', label: 'Discount codes', icon: 'ticket', subtitle: 'Every code, its uses, money given and sales' },
+  { id: 'overview', label: 'Overview', icon: 'reports', subtitle: 'Spin & Win, Refer a friend and discount codes at a glance' },
+  { id: 'spin', label: 'Spin & Win', icon: 'refresh', subtitle: 'Prizes, chances and budget' },
+  { id: 'spins', label: 'Who spun', icon: 'users', subtitle: 'Every spin: mobile, email, prize, code and whether it was used' },
+  { id: 'referral', label: 'Refer a friend', icon: 'user', subtitle: 'Amounts, top referrers and rewards' },
+  { id: 'codes', label: 'Discount codes', icon: 'copy', subtitle: 'Every code, its uses, money given and sales' },
 ]
 const ROLE = { owner: 'Owner', it: 'IT team' }
 const rupees = (n) => '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })
@@ -46,8 +35,8 @@ function Overview({ onAuthError, go }) {
       .then(([spin, ref, codes]) => setD({ spin, ref, codes }))
       .catch((err) => { if (!onAuthError(err)) setError(err.message) })
   }, [onAuthError])
-  if (error) return <p className="ad-alert" role="alert">{error}</p>
-  if (!d) return <p className="ad-muted">Loading…</p>
+  if (error) return <p className="of-alert" role="alert">{error}</p>
+  if (!d) return <p className="wh-muted">Loading…</p>
   const s = d.spin.report
   const r = d.ref.totals
   const t = d.codes.totals
@@ -104,58 +93,68 @@ function Dashboard({ onAuthError }) {
   const role = me?.staff?.role || me?.role || ''
 
   return (
-    <div className={`ad-shell ad-app${navOpen ? ' is-nav-open' : ''}`}>
-      <a className="ad-skip" href="#ad-main">Skip to content</a>
-      <button type="button" className="ad-backdrop" aria-label="Close navigation" tabIndex={navOpen ? 0 : -1} onClick={() => setNavOpen(false)} />
-
-      <aside className="ad-side" aria-label="Offers sections">
-        <div className="ad-side-brand">
-          <span className="ad-logo" aria-hidden="true">CR</span>
-          <span className="ad-side-name">Offers</span>
+    <div className={`wh-app wh-shell${navOpen ? ' has-drawer' : ''}`}>
+      <aside className="wh-side" aria-label="Offers menu">
+        <div className="wh-side-brand">
+          <img src="/assets/warehouse-logo.png" alt="" width="44" height="44" />
+          <div>
+            <strong>Offers</strong>
+            <span>Spin &amp; Win · Referrals · Codes</span>
+          </div>
         </div>
-        <nav className="ad-nav">
+        <nav className="wh-side-nav">
           {VIEWS.map((item) => (
-            <button key={item.id} type="button" className={`ad-nav-item${item.id === view ? ' is-active' : ''}`}
+            <button key={item.id} type="button" className={`wh-side-link${item.id === view ? ' is-active' : ''}`}
               aria-current={item.id === view ? 'page' : undefined} onClick={() => go(item.id)}>
-              <NavIcon name={item.icon} />
+              <Icon name={item.icon} size={21} />
               {item.label}
             </button>
           ))}
+          <span className="wh-side-divider" aria-hidden="true" />
+          <a className="wh-side-link" href="/warehouse"><Icon name="building" size={21} />Warehouse</a>
         </nav>
-        <div className="ad-side-user">
-          <span className="ad-avatar" aria-hidden="true">{email.charAt(0).toUpperCase() || 'C'}</span>
-          <span className="ad-side-user-text">
-            <span className="ad-side-email" title={email}>{email}</span>
-            <span className="ad-muted ad-small">{ROLE[role] || 'Staff'}</span>
-          </span>
-        </div>
       </aside>
+      <button type="button" className="wh-scrim" aria-label="Close menu" onClick={() => setNavOpen(false)} tabIndex={navOpen ? 0 : -1} />
 
-      <div className="ad-main-col">
-        <header className="ad-topbar">
-          <button type="button" className="ad-btn ad-btn-quiet ad-nav-toggle" onClick={() => setNavOpen((o) => !o)} aria-expanded={navOpen} aria-label="Toggle navigation">
-            <span aria-hidden="true">☰</span>
+      <div className="wh-body">
+        <header className="wh-topbar">
+          <button type="button" className="wh-top-icon wh-hamburger" aria-label="Open menu" onClick={() => setNavOpen(true)}>
+            <Icon name="menu" size={22} />
           </button>
-          <div className="ad-topbar-title">
-            <h1 className="ad-page-title">{active.label}</h1>
-            <p className="ad-muted ad-small">{active.subtitle}</p>
+          <div className="wh-brand">
+            <img src="/assets/warehouse-logo.png" alt="" width="40" height="40" />
+            <span className="wh-brand-pill"><Icon name="building" size={15} />Offers</span>
           </div>
-          <div className="ad-topbar-actions">
-            <button type="button" className="ad-btn ad-btn-quiet" onClick={() => signOutStaff().then(() => window.location.reload())}>Sign out</button>
+          <h1 className="wh-view-title">{active.label}</h1>
+          <nav className="wh-pills" aria-label="Sections">
+            {VIEWS.map((item) => (
+              <button key={item.id} type="button" className={`wh-pill${item.id === view ? ' is-active' : ''}`}
+                aria-current={item.id === view ? 'page' : undefined} onClick={() => go(item.id)}>
+                {item.label}
+              </button>
+            ))}
+          </nav>
+          <div className="wh-top-right">
+            <span className="of-user" title={email}>
+              <span className="wh-user-avatar" aria-hidden="true">{email.charAt(0).toUpperCase() || 'C'}</span>
+              <span className="of-user-text"><strong>{email}</strong><span>{ROLE[role] || 'Staff'}</span></span>
+            </span>
+            <button type="button" className="wh-top-icon" aria-label="Sign out" title="Sign out" onClick={() => signOutStaff().then(() => window.location.reload())}>
+              <Icon name="logout" size={20} />
+            </button>
           </div>
         </header>
 
-        <main className="ad-main" id="ad-main">
-          <div className="wh-embed of-content">
-            {view === 'overview' && <Overview onAuthError={onAuthError} go={go} />}
-            {view === 'spin' && <SpinSettings say={say} onAuthError={onAuthError} />}
-            {view === 'spins' && <WhoSpun onAuthError={onAuthError} />}
-            {view === 'referral' && <ReferralSettings say={say} onAuthError={onAuthError} />}
-            {view === 'codes' && <DiscountCodes say={say} onAuthError={onAuthError} />}
-          </div>
+        <main className="wh-content">
+          <p className="of-subtitle">{active.subtitle}</p>
+          {view === 'overview' && <Overview onAuthError={onAuthError} go={go} />}
+          {view === 'spin' && <SpinSettings say={say} onAuthError={onAuthError} />}
+          {view === 'spins' && <WhoSpun onAuthError={onAuthError} />}
+          {view === 'referral' && <ReferralSettings say={say} onAuthError={onAuthError} />}
+          {view === 'codes' && <DiscountCodes say={say} onAuthError={onAuthError} />}
         </main>
       </div>
-      {toast && <div className={'of-toast' + (toast.tone === 'error' ? ' is-error' : '')} role="status">{toast.message}</div>}
+      {toast && <div className={`wh-toast wh-toast--${toast.tone === 'error' ? 'error' : 'ok'}`} role={toast.tone === 'error' ? 'alert' : 'status'}>{toast.message}</div>}
     </div>
   )
 }

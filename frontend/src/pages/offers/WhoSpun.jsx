@@ -24,8 +24,8 @@ export default function WhoSpun({ onAuthError }) {
       (!t || [s.phone, s.email, s.code, s.prize, s.name, s.usedOn].some((v) => String(v || '').toLowerCase().includes(t))))
   }, [rows, q, show])
 
-  if (error) return <p className="ad-alert" role="alert">{error}</p>
-  if (!rows) return <p className="ad-muted">Loading…</p>
+  if (error) return <p className="of-alert" role="alert">{error}</p>
+  if (!rows) return <p className="wh-muted">Loading…</p>
   const count = (k) => rows.filter((s) => stateOf(s) === k).length
 
   function csv() {
@@ -81,7 +81,7 @@ export default function WhoSpun({ onAuthError }) {
                 </tr>
               )
             })}
-            {!list.length && <tr><td colSpan={7} className="ad-muted">{rows.length ? 'No spins match.' : 'No spins yet.'}</td></tr>}
+            {!list.length && <tr><td colSpan={7} className="wh-muted">{rows.length ? 'No spins match.' : 'No spins yet.'}</td></tr>}
           </tbody>
         </table>
       </div>
