@@ -53,32 +53,41 @@ export const DELIVERY = {
   26: { absorbed: 250, cost: { TN: 687.23, SOUTH: 1374.46, NORTH: 2061.7, NE: 3092.54 } },
 }
 
+// 26 kg packs from the "26 kg Pricing" sheet (Nov 2026): the MRP as the sheet gives it, a hidden part per
+// product (₹99 to ₹179), and one courier charge for every product: Tamil Nadu ₹589 = the ₹687 courier cost
+// less the ₹98 the price always carries, so the cost is recovered on every product. Other regions follow
+// the same rule: their courier cost less ₹98.
+export const SHEET_26 = { oldMrp: true, deliveryInPrice: 98 }
+
 // slug → { packKg: [list price, MRP before the delivery share, absorbed (only where the sheet differs
-// from the size's usual amount), { oldMrp: true } to show the bag's MRP without the delivery share] }. Item and variety as on the sheets.
+// from the size's usual amount), options] }. Options: oldMrp: true shows the MRP as given (no delivery
+// share added); deliveryInPrice: the delivery charge is the region's cost less this (instead of less the
+// absorbed part). Item and variety as on the sheets.
 export const PRICE_LIST = {
-  'kitchidi-ponni-rice': { 5: [515, 599, 40, { oldMrp: true }], 26: [2470, 2699] }, // Chennai Rice Premium Kitchidi Ponni Rice (pink bag); 5 kg: retail ₹515, website price kept at ₹555 (₹40 absorbed) and the old MRP, so Tamil Nadu pays ₹125 delivery, ₹680 in all (4 Nov 2026)
-  'special-rajabhogam': { 5: [515, 599], 10: [1020, 1129], 26: [2470, 2699] }, // Chennai Rice-Red-Raj.Ponni · Vada Kolam Kitchidi Ponni (red bag)
-  'vintage': { 5: [515, 619], 10: [1020, 1209], 26: [2470, 2899] },            // Vintage Spl Ponni · JSR Kolam
-  'united-5kg': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },          // United · Shikaripura Amaan Ponni
-  'vijaya-nagaram': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },      // Vijayanagaram · Shikaripura Amaan Ponni
-  'viruchagam': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },          // Viruchagam · Shikaripura Amaan Ponni
-  'nayara-super-aged': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },   // Nayara · Akshaya Amman Ponni
-  'a1-special-ponni': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },    // A1 Ponni Rice · Akshaya Amman Ponni
-  'chennai-bullets': { 5: [501, 599], 10: [990, 1129], 26: [2400, 2699] },     // Chennai Bullets · TN RNR / Kodad Bapatla / KA KNM
-  'alibaba': { 5: [501, 599], 10: [990, 1129], 26: [2400, 2699] },             // Alibaba · TN RNR / Kodad Bapatla / KA KNM
-  'special-idly-rice': { 5: [295, 349, 45], 10: [566, 739], 26: [1350, 1749] }, // Special Idly Rice (Pink) · Kalli Muthan kar (5 kg: retail ₹295, website price kept at ₹340 (₹45 absorbed), so Tamil Nadu pays ₹120 delivery, ₹460 in all; 4 Nov 2026)
+  'kitchidi-ponni-rice': { 5: [515, 599, 40, { oldMrp: true }], 26: [2470, 2999, 179, SHEET_26] }, // Chennai Rice Premium Kitchidi Ponni Rice (pink bag); 5 kg: retail ₹515, website price kept at ₹555 (₹40 absorbed) and the old MRP, so Tamil Nadu pays ₹125 delivery, ₹680 in all (4 Nov 2026)
+  'special-rajabhogam': { 5: [515, 599], 10: [1020, 1129], 26: [2470, 2999, 129, SHEET_26] }, // Chennai Rice-Red-Raj.Ponni · Vada Kolam Kitchidi Ponni (red bag)
+  'vintage': { 5: [515, 619], 10: [1020, 1209], 26: [2470, 2999, 129, SHEET_26] },            // Vintage Spl Ponni · JSR Kolam
+  'united-5kg': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899, 99, SHEET_26] },          // United · Shikaripura Amaan Ponni
+  'vijaya-nagaram': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899, 99, SHEET_26] },      // Vijayanagaram · Shikaripura Amaan Ponni
+  'viruchagam': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899, 99, SHEET_26] },          // Viruchagam · Shikaripura Amaan Ponni
+  'nayara-super-aged': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899, 149, SHEET_26] },   // Nayara · Akshaya Amman Ponni
+  'a1-special-ponni': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899, 99, SHEET_26] },    // A1 Ponni Rice · Akshaya Amman Ponni
+  'chennai-bullets': { 5: [501, 599], 10: [990, 1129], 26: [2400, 2899, 99, SHEET_26] },     // Chennai Bullets · TN RNR / Kodad Bapatla / KA KNM
+  'alibaba': { 5: [501, 599], 10: [990, 1129], 26: [2400, 2899, 99, SHEET_26] },           // Alibaba · TN RNR / Kodad Bapatla / KA KNM (26 kg: not on the 26 kg sheet, priced as Chennai Bullets)
+  'special-idly-rice': { 5: [295, 349, 45], 10: [566, 739], 26: [1350, 1699, 99, SHEET_26] }, // Special Idly Rice (Pink) · Kalli Muthan kar (5 kg: retail ₹295, website price kept at ₹340 (₹45 absorbed), so Tamil Nadu pays ₹120 delivery, ₹460 in all; 4 Nov 2026)
   // Chennai Rice Jeera Rice (Jeera Old, 26 kg ₹1,200) is on the sheet but not sold online.
 }
 
 /** Website price, absorbed part and delivery charge per region (₹) for one pack. */
-export function packPricing(packKg, listPrice, mrp, absorbed, { oldMrp = false } = {}) {
+export function packPricing(packKg, listPrice, mrp, absorbed, { oldMrp = false, deliveryInPrice = null } = {}) {
   const size = DELIVERY[packKg]
   if (!size) throw new Error(`No delivery costs for ${packKg} kg packs.`)
   if (!oldMrp) mrp += Math.round(size.cost.TN * MRP_DELIVERY_SHARE)
   const take = Math.max(0, Math.min(absorbed ?? size.absorbed, mrp - listPrice, MAX_PACK_PRICE - listPrice))
   const website = listPrice + take
+  const offset = deliveryInPrice ?? take
   const delivery = Object.fromEntries(Object.entries(size.cost)
-    .map(([code, cost]) => [code, Math.max(0, Math.round(cost - take))]))
+    .map(([code, cost]) => [code, Math.max(0, Math.round(cost - offset))]))
   return { website, mrp, absorbed: take, delivery }
 }
 

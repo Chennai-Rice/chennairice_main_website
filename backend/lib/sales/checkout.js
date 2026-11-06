@@ -62,7 +62,8 @@ export async function quoteCart(body) {
     : await quoteShipping({ query }, { state: body?.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg })
   // Courier, and Chennai Rice's own delivery where it covers the PIN code; the charge shown is the chosen one.
   const settings = await getSettings({ query })
-  const options = priced.regional || str(body?.pincode) ? deliveryOptions(courier, str(body?.pincode), settings) : []
+  const largestPackKg = Math.max(0, ...priced.lines.map((l) => Number(l.packKg)))
+  const options = priced.regional || str(body?.pincode) ? deliveryOptions(courier, str(body?.pincode), settings, { largestPackKg }) : []
   const chosen = options.find((o) => o.method === str(body?.deliveryMethod)) || options[0] || null
   const shipping = chosen ? chosen.paise : courier
   // A discount code, checked the same way as when the order is placed; one that does not apply is
@@ -106,7 +107,8 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
       : await quoteShipping(db, { state: customer.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg })
     if (courier == null) throw httpError('Please add a valid 6-digit PIN code.')
     // The chosen delivery, checked again here: never a method the PIN code does not get, never another amount.
-    const delivery = chooseDelivery(courier, customer.pincode, customer.deliveryMethod, settings)
+    const delivery = chooseDelivery(courier, customer.pincode, customer.deliveryMethod, settings,
+      { largestPackKg: Math.max(0, ...priced.lines.map((l) => Number(l.packKg))) })
     const shipping = delivery.paise
     // The discount code, checked again inside this transaction (its row locked, so two orders cannot
     // both take the last use). A code that no longer applies stops the order with the reason.

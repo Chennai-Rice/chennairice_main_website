@@ -4,10 +4,10 @@ import { staffJson } from '../../services/staffAuth.js'
 // Chennai Rice's own delivery (backend/lib/sales/delivery.js): offered at checkout as a choice next to
 // the courier, for a flat charge per order, where the team delivers. Owners and IT only (settings.manage);
 // the backend checks every value again.
-const KEYS = ['in_house_delivery_enabled', 'in_house_delivery_paise', 'in_house_delivery_pins', 'in_house_delivery_promise']
+const KEYS = ['in_house_delivery_enabled', 'in_house_delivery_paise', 'in_house_delivery_26kg_paise', 'in_house_delivery_pins', 'in_house_delivery_promise']
 
 export default function InHouseDelivery({ say, onAuthError }) {
-  const [form, setForm] = useState({ enabled: true, rupees: '100', pins: '', promise: 'Within 48 hours' })
+  const [form, setForm] = useState({ enabled: true, rupees: '100', rupees26: '200', pins: '', promise: 'Within 48 hours' })
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(() => {
@@ -17,6 +17,7 @@ export default function InHouseDelivery({ say, onAuthError }) {
         setForm({
           enabled: v.in_house_delivery_enabled !== 'false',
           rupees: v.in_house_delivery_paise != null && v.in_house_delivery_paise !== '' ? String(Number(v.in_house_delivery_paise) / 100) : '100',
+          rupees26: v.in_house_delivery_26kg_paise != null && v.in_house_delivery_26kg_paise !== '' ? String(Number(v.in_house_delivery_26kg_paise) / 100) : '200',
           pins: v.in_house_delivery_pins || '',
           promise: v.in_house_delivery_promise || 'Within 48 hours',
         })
@@ -28,7 +29,8 @@ export default function InHouseDelivery({ say, onAuthError }) {
   async function save(e) {
     e.preventDefault()
     const rupees = Number(form.rupees)
-    if (!(rupees >= 0 && rupees <= 1000)) return say('The charge must be between ₹0 and ₹1,000.', 'error')
+    const rupees26 = Number(form.rupees26)
+    if (!(rupees >= 0 && rupees <= 1000 && rupees26 >= 0 && rupees26 <= 1000)) return say('The charges must be between ₹0 and ₹1,000.', 'error')
     setBusy(true)
     try {
       await staffJson('/api/admin/settings', {
@@ -36,6 +38,7 @@ export default function InHouseDelivery({ say, onAuthError }) {
         body: JSON.stringify({
           in_house_delivery_enabled: form.enabled ? 'true' : 'false',
           in_house_delivery_paise: String(Math.round(rupees * 100)),
+          in_house_delivery_26kg_paise: String(Math.round(rupees26 * 100)),
           in_house_delivery_pins: form.pins,
           in_house_delivery_promise: form.promise,
         }),
@@ -64,6 +67,10 @@ export default function InHouseDelivery({ say, onAuthError }) {
         <label className="wh-field">
           <span>Charge per order (₹, GST included)</span>
           <input className="wh-input" type="number" min="0" max="1000" step="1" value={form.rupees} onChange={set('rupees')} required />
+        </label>
+        <label className="wh-field">
+          <span>Charge per order with a 26 kg bag (₹)</span>
+          <input className="wh-input" type="number" min="0" max="1000" step="1" value={form.rupees26} onChange={set('rupees26')} required />
         </label>
         <label className="wh-field">
           <span>PIN codes the team delivers to</span>

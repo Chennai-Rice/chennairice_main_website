@@ -1422,6 +1422,48 @@ test('Refer a friend: code after paying, friend saves on a first order, never th
   }
 })
 
+test('26 kg pricing sheet (Nov 2026): website price, MRP, hidden part, ₹589 Tamil Nadu courier, ₹200 in-house; settings saved', async () => {
+  const { PRICE_LIST, packPricing } = await import('../db/apply-price-list.js')
+  // base, MRP, website, hidden, pays (in-house ₹200), courier, pays (courier), as on the sheet
+  const sheet = {
+    'kitchidi-ponni-rice': [2470, 2999, 2649, 179, 2849, 589, 3238],
+    'special-rajabhogam': [2470, 2999, 2599, 129, 2799, 589, 3188],
+    vintage: [2470, 2999, 2599, 129, 2799, 589, 3188],
+    'nayara-super-aged': [2400, 2899, 2549, 149, 2749, 589, 3138],
+    'a1-special-ponni': [2400, 2899, 2499, 99, 2699, 589, 3088],
+    'vijaya-nagaram': [2400, 2899, 2499, 99, 2699, 589, 3088],
+    viruchagam: [2400, 2899, 2499, 99, 2699, 589, 3088],
+    'united-5kg': [2400, 2899, 2499, 99, 2699, 589, 3088],
+    'chennai-bullets': [2400, 2899, 2499, 99, 2699, 589, 3088],
+    'special-idly-rice': [1350, 1699, 1449, 99, 1649, 589, 2038],
+  }
+  for (const [slug, want] of Object.entries(sheet)) {
+    const [list, mrp, absorbed, opts] = PRICE_LIST[slug][26]
+    const p = packPricing(26, list, mrp, absorbed, opts)
+    assert.deepEqual([list, p.mrp, p.website, p.absorbed, p.website + 200, p.delivery.TN, p.website + p.delivery.TN], want, slug)
+    assert.ok(p.absorbed + p.delivery.TN >= 687, slug + ': the courier cost is recovered')
+    assert.ok(p.website <= 2800, slug)
+  }
+  // The rest of the list did not move.
+  const k5 = PRICE_LIST['kitchidi-ponni-rice'][5]
+  assert.deepEqual(packPricing(5, k5[0], k5[1], k5[2], k5[3]).delivery.TN, 125)
+
+  // In-house: ₹200 with a 26 kg bag, ₹100 otherwise; the owner can change both.
+  const { deliveryOptions } = await import('../lib/sales/delivery.js')
+  assert.equal(deliveryOptions(58900, '641001', {}, { largestPackKg: 26 }).find((o) => o.method === 'in_house').paise, 20000)
+  assert.equal(deliveryOptions(25000, '641001', {}, { largestPackKg: 5 }).find((o) => o.method === 'in_house').paise, 10000)
+  const saved = await api('PATCH', '/api/admin/settings', { token: OWNER, body: {
+    in_house_delivery_paise: '15000', in_house_delivery_26kg_paise: '25000', in_house_delivery_pins: '638, 641001 638',
+  } })
+  assert.equal(saved.status, 200, JSON.stringify(saved.body))
+  const v = Object.fromEntries(saved.body.settings.map((x) => [x.key, x.value]))
+  assert.equal(v.in_house_delivery_26kg_paise, '25000')
+  assert.equal(v.in_house_delivery_pins, '638, 641001')
+  assert.equal((await api('PATCH', '/api/admin/settings', { token: OWNER, body: { in_house_delivery_paise: 'abc' } })).status, 400)
+  assert.equal((await api('PATCH', '/api/admin/settings', { token: OWNER, body: { in_house_delivery_pins: '63a' } })).status, 400)
+  await db.query(`delete from company_settings where key like 'in_house_delivery_%'`)
+})
+
 test('PIN code regions and the delivered-price sheets', async () => {
   const { regionForPincode } = await import('../lib/sales/regions.js')
   const cases = { '600001': 'TN', '641001': 'TN', '605001': 'TN', '682001': 'SOUTH', '560001': 'SOUTH', '500001': 'SOUTH',
