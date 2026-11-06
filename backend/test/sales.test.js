@@ -1450,10 +1450,8 @@ test('Final price list (Nov 2026): website prices top bag to bottom, in-house a 
       const p = packPricing(kg, list, mrp, absorbed, opts)
       assert.equal(p.website, WEB[kg][i], slug + ' ' + kg)
       assert.ok(p.website <= p.mrp && p.website <= 2800, slug + ' ' + kg)
-      // 5 kg ₹50 and 10 kg ₹90 for every bag; 26 kg rises over its range, top bag lowest.
-      if (kg === 10) assert.equal(p.inHouse, 90, slug + ' 10 kg in-house')
-      else if (kg === 5) assert.equal(p.inHouse, 50, slug + ' 5 kg in-house')
-      else assert.ok(p.inHouse >= RANGE[kg][0] && p.inHouse <= RANGE[kg][1] && p.inHouse > last, slug + ' ' + kg + ' in-house ' + p.inHouse)
+      // In-house a bag in Tamil Nadu, the same for every bag: 5 kg ₹50, 10 kg ₹90, 26 kg ₹110.
+      assert.equal(p.inHouse, { 5: 50, 10: 90, 26: 110 }[kg], slug + ' ' + kg + ' kg in-house')
       last = p.inHouse
     })
   }
@@ -1461,7 +1459,7 @@ test('Final price list (Nov 2026): website prices top bag to bottom, in-house a 
   assert.equal(packPricing(5, ...PRICE_LIST['kitchidi-ponni-rice'][5]).inHouse, 50)
   assert.equal(packPricing(5, ...PRICE_LIST['special-idly-rice'][5]).inHouse, 50)
   assert.equal(packPricing(10, ...PRICE_LIST['special-rajabhogam'][10]).inHouse, 90)
-  assert.equal(packPricing(26, ...PRICE_LIST['special-idly-rice'][26]).inHouse, 150)
+  assert.equal(packPricing(26, ...PRICE_LIST['special-idly-rice'][26]).inHouse, 110)
   // In-house a bag, summed for the order.
   const { deliveryOptions: opts } = await import('../lib/sales/delivery.js')
   const own = (lines) => opts(99999, '641001', {}, { lines }).find((o) => o.method === 'in_house').paise
