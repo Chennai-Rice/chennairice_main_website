@@ -6,7 +6,7 @@ import './spinwheel.css'
 
 /**
  * Spin & Win (backend/lib/sales/spin.js). Opens by itself 5 seconds after the visitor accepts cookies
- * (once per visit; never on the cart or checkout), and from the small "Spin & Win" button. Email + mobile
+ * (once per visit; never on the cart or checkout), and from the small "Spin & Win" button. Name + mobile
  * number, one spin. The server picks the prize; the wheel only lands on it. The prize code is kept in this
  * browser and filled in at checkout, where it works only with the same mobile number. Nothing shows while
  * Spin & Win is switched off in Warehouse → Settings.
@@ -18,7 +18,6 @@ const DEVICE_KEY = 'cr.spin.device'
 const SEEN_KEY = 'cr.spin.autoshown'
 const CODE_KEY = 'cr.checkout.code' // CheckoutPage DISCOUNT_CODE_KEY
 const AFTER_CONSENT_MS = 5000
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 const store = {
   get(area, k) { try { return window[area].getItem(k) } catch { return null } },
@@ -138,7 +137,7 @@ export default function SpinWheel() {
   const accepted = Boolean(consent) && (allowAnalytics || allowMarketing)
   const [config, setConfig] = useState(null)
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ email: '', phone: '' })
+  const [form, setForm] = useState({ name: '', phone: '' })
   const [state, setState] = useState('form') // form | spinning | won
   const [error, setError] = useState('')
   const [angle, setAngle] = useState(0)
@@ -190,9 +189,9 @@ export default function SpinWheel() {
   async function submit(e) {
     e.preventDefault()
     setError('')
-    const email = form.email.trim()
+    const name = form.name.trim().replace(/\s+/g, ' ')
     const digits = form.phone.replace(/\D/g, '').slice(-10)
-    if (!EMAIL.test(email)) return setError('Please enter a valid email address.')
+    if (name.length < 2) return setError('Please enter your name.')
     if (!/^[6-9]\d{9}$/.test(digits)) return setError('Please enter a valid 10-digit mobile number.')
     setState('spinning')
     setAngle((a) => a + 720) // spins while the server answers, then lands on the prize
@@ -200,7 +199,7 @@ export default function SpinWheel() {
       const res = await fetch('/api/spin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, phone: digits, deviceId: deviceId(), attribution: currentAttribution() }),
+        body: JSON.stringify({ name, phone: digits, deviceId: deviceId(), attribution: currentAttribution() }),
       })
       const data = await res.json().catch(() => null)
       if (!res.ok || !data?.code) throw new Error(data?.error || 'Spin & Win is not available right now. Please try again later.')
@@ -258,8 +257,8 @@ export default function SpinWheel() {
               {state !== 'won' && (
                 <form className="spin-form" onSubmit={submit} noValidate>
                   <p className="spin-tagline">Love a sneaky surprise? Spin the wheel to reveal your exclusive discount!</p>
-                  <input className="spin-input" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                    placeholder="YOUR EMAIL" autoComplete="email" maxLength={200} disabled={state === 'spinning'} aria-label="Your email" />
+                  <input className="spin-input" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="YOUR NAME" autoComplete="name" maxLength={80} disabled={state === 'spinning'} aria-label="Your name" />
                   <input className="spin-input" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                     placeholder="YOUR PHONE NUMBER" inputMode="tel" autoComplete="tel" maxLength={16} disabled={state === 'spinning'} aria-label="Your phone number" />
                   {error && <p className="spin-error" role="alert">{error}</p>}

@@ -20,7 +20,7 @@ import './offers.css'
 const VIEWS = [
   { id: 'overview', label: 'Overview', icon: 'reports', subtitle: 'Spin & Win, Refer a friend and discount codes at a glance' },
   { id: 'spin', label: 'Spin & Win', icon: 'refresh', subtitle: 'Prizes, chances and budget' },
-  { id: 'spins', label: 'Who spun', icon: 'users', subtitle: 'Every spin: mobile, email, prize, code and whether it was used' },
+  { id: 'spins', label: 'Who spun', icon: 'users', subtitle: 'Every spin: name, mobile, prize, code and whether it was used' },
   { id: 'referral', label: 'Refer a friend', icon: 'user', subtitle: 'Amounts, top referrers and rewards' },
   { id: 'codes', label: 'Discount codes', icon: 'copy', subtitle: 'Every code, its uses, money given and sales' },
 ]

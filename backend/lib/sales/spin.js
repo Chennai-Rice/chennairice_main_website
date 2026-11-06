@@ -111,21 +111,20 @@ async function codeFor(db, codeId) {
 }
 
 /**
- * The spin. body: { email, phone, name?, deviceId, attribution }. A mobile number that has spun gets its
+ * The spin. body: { name, phone, email?, deviceId, attribution }. A mobile number that has spun gets its
  * first prize back (already: true); a browser that spun with another number is refused.
  */
 export async function spin(db, body = {}, { ip = '' } = {}) {
   const settings = await getSettings(db)
   if (!enabled(settings)) throw httpError('Spin is off', { status: 404, publicMessage: 'Spin & Win is not running right now.' })
-  const typedName = str(body.name).replace(/\s+/g, ' ')
-  const email = str(body.email).toLowerCase()
+  const name = str(body.name).replace(/\s+/g, ' ')
+  // The form asks for the name and mobile number only; an email is kept if one is sent.
+  const typedEmail = str(body.email).toLowerCase()
+  const email = EMAIL.test(typedEmail) && typedEmail.length <= 200 ? typedEmail : null
   const phone = cleanMobile(body.phone)
   const deviceId = str(body.deviceId).replace(/[^a-zA-Z0-9-]/g, '').slice(0, 64) || null
-  if (typedName && !NAME.test(typedName)) throw httpError('Bad name', { publicMessage: 'Please check your name.' })
-  if (!EMAIL.test(email) || email.length > 200) throw httpError('Bad email', { publicMessage: 'Please enter a valid email address.' })
+  if (!NAME.test(name)) throw httpError('Bad name', { publicMessage: 'Please enter your name.' })
   if (!phone) throw httpError('Bad phone', { publicMessage: 'Please enter a valid 10-digit mobile number.' })
-  // The lead needs a name: the one typed, else the email's name part ("priya.s" → "Priya S").
-  const name = typedName || email.split('@')[0].replace(/[._\d-]+/g, ' ').trim().replace(/\b\p{L}/gu, (c) => c.toUpperCase()) || 'Spin & Win'
 
   const { rows: [had] } = await db.query('select * from spins where phone = $1', [phone])
   if (had) return { already: true, ...prizeView(had, await codeFor(db, had.code_id)) }
@@ -171,11 +170,11 @@ export async function spin(db, body = {}, { ip = '' } = {}) {
   const gives = describe(result.code)
   const fields = { Prize: gives, Code: result.code.code, 'Valid till': new Date(result.code.expires_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) }
   pushCrmLead('spin_wheel', {
-    name, phone, email, source: 'website',
+    name, phone, ...(email ? { email } : {}), source: 'website',
     note: `Spin & Win: won ${gives} (code ${result.code.code}, valid ${days} days).`,
     custom: { came_from: 'Spin & Win', prize: gives, code: result.code.code },
   }).catch(() => {})
-  recordWebsiteLead(db, 'spin_wheel', { name, phone, fields: { ...fields, Email: email } })
+  recordWebsiteLead(db, 'spin_wheel', { name, phone, fields: { ...fields, ...(email ? { Email: email } : {}) } })
     .then((id) => (id ? sendNeodoveLeads({ id }) : null)).catch(() => {})
 
   return { already: false, ...prizeView(result.row, result.code) }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { staffJson } from '../../services/staffAuth.js'
 
-// /offers → Who spun: every Spin & Win entry on its own page (newest first): when, mobile, email, prize,
+// /offers → Who spun: every Spin & Win entry on its own page (newest first): when, name, mobile, prize,
 // code, valid till, and whether the code was used on a paid order. Search, filter, and a CSV for Excel.
 const when = (d) => new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })
 const day = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }) : '')
@@ -21,7 +21,7 @@ export default function WhoSpun({ onAuthError }) {
   const list = useMemo(() => {
     const t = q.trim().toLowerCase()
     return (rows || []).filter((s) => (!show || stateOf(s) === show) &&
-      (!t || [s.phone, s.email, s.code, s.prize, s.name, s.usedOn].some((v) => String(v || '').toLowerCase().includes(t))))
+      (!t || [s.phone, s.name, s.code, s.prize, s.email, s.usedOn].some((v) => String(v || '').toLowerCase().includes(t))))
   }, [rows, q, show])
 
   if (error) return <p className="of-alert" role="alert">{error}</p>
@@ -34,8 +34,8 @@ export default function WhoSpun({ onAuthError }) {
       if (/^[=+\-@]/.test(t)) t = "'" + t // never a spreadsheet formula
       return '"' + t.replace(/"/g, '""') + '"'
     }
-    const lines = [['When', 'Mobile', 'Email', 'Prize', 'Code', 'Valid till', 'Used', 'Order']]
-      .concat(list.map((s) => [when(s.at), s.phone, s.email, s.prize, s.code, day(s.expiresAt), LABEL[stateOf(s)], s.usedOn || '']))
+    const lines = [['When', 'Name', 'Mobile', 'Prize', 'Code', 'Valid till', 'Used', 'Order']]
+      .concat(list.map((s) => [when(s.at), s.name, s.phone, s.prize, s.code, day(s.expiresAt), LABEL[stateOf(s)], s.usedOn || '']))
     const blob = new Blob(['﻿' + lines.map((r) => r.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
@@ -54,7 +54,7 @@ export default function WhoSpun({ onAuthError }) {
           <span><strong>{count('expired')}</strong> expired</span>
         </div>
         <div className="of-who-tools">
-          <input className="wh-input of-who-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search mobile, email or code…" aria-label="Search" />
+          <input className="wh-input of-who-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, mobile or code…" aria-label="Search" />
           <span className="wh-select"><select value={show} onChange={(e) => setShow(e.target.value)} aria-label="Show">
             <option value="">All</option><option value="used">Used</option><option value="open">Not yet used</option><option value="expired">Expired</option>
           </select></span>
@@ -64,7 +64,7 @@ export default function WhoSpun({ onAuthError }) {
       <div className="of-who-table">
         <table>
           <thead>
-            <tr><th>When</th><th>Mobile</th><th>Email</th><th>Prize</th><th>Code</th><th>Valid till</th><th>Used</th></tr>
+            <tr><th>When</th><th>Name</th><th>Mobile</th><th>Prize</th><th>Code</th><th>Valid till</th><th>Used</th></tr>
           </thead>
           <tbody>
             {list.map((s) => {
@@ -72,8 +72,8 @@ export default function WhoSpun({ onAuthError }) {
               return (
                 <tr key={s.phone}>
                   <td>{when(s.at)}</td>
+                  <td>{s.name || '—'}</td>
                   <td><a className="of-who-phone" href={'tel:+91' + s.phone}>{s.phone}</a></td>
-                  <td>{s.email ? <a href={'mailto:' + s.email}>{s.email}</a> : '—'}</td>
                   <td>{s.prize}</td>
                   <td className="wh-mono">{s.code}</td>
                   <td>{day(s.expiresAt)}</td>

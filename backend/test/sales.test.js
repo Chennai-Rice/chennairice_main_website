@@ -1241,7 +1241,7 @@ test('discount codes: made by the owner, checked at quote and order, locked to a
 })
 
 test('Spin & Win: off until switched on, one spin per mobile and browser, prize code locked to the mobile, settings checked', async () => {
-  const spinApi = (body, n = 1) => api('POST', '/api/spin', { body: { email: 'kavya@example.com', ...body }, headers: { 'X-Forwarded-For': '10.7.7.' + n } })
+  const spinApi = (body, n = 1) => api('POST', '/api/spin', { body: { name: 'Kavya', ...body }, headers: { 'X-Forwarded-For': '10.7.7.' + n } })
   try {
     // Off by default: nothing on the website.
     assert.equal((await api('GET', '/api/spin')).body.enabled, false)
@@ -1269,7 +1269,7 @@ test('Spin & Win: off until switched on, one spin per mobile and browser, prize 
     assert.equal(pickPrize(DEFAULT_PRIZES, 99.5).key, 'p250')
 
     assert.equal((await spinApi({ name: 'Kavya', phone: '12345' })).status, 400)
-    assert.equal((await spinApi({ email: 'not-an-email', phone: '9876500001' })).status, 400)
+    assert.equal((await spinApi({ name: '', phone: '9876500001' })).status, 400) // the name is needed
 
     const won = await spinApi({ name: 'Kavya', phone: '+91 98765 00001', deviceId: 'dev-1' })
     assert.equal(won.status, 200, JSON.stringify(won.body))
@@ -1280,7 +1280,7 @@ test('Spin & Win: off until switched on, one spin per mobile and browser, prize 
     assert.equal(c.locked_phone, '9876500001')
     assert.equal(c.source, 'spin')
     assert.equal(c.max_uses, 1)
-    assert.equal((await db.query(`select email from spins where phone = '9876500001'`)).rows[0].email, 'kavya@example.com')
+    assert.equal((await db.query(`select name from spins where phone = '9876500001'`)).rows[0].name, 'Kavya')
     assert.ok(new Date(c.expires_at) - Date.now() > 29.9 * 86400000) // valid 30 days
 
     // Same mobile again: the same prize, no second spin. Same browser, another mobile: refused.
