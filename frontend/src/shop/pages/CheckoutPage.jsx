@@ -556,10 +556,6 @@ export default function CheckoutPage() {
               {/* Which gateway handles the payment is the server's call, and
                   can change mid-attempt if one is unavailable — so the copy
                   here names neither. */}
-              {ownDelivery && (
-                <p className="checkout-own-note">Our team will call you before delivery.</p>
-              )}
-
               <p className="checkout-note">
                 Prices include GST. You will be asked to pay securely on the next step.
               </p>
