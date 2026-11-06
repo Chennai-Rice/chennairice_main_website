@@ -64,7 +64,9 @@ export async function quoteCart(body) {
   const settings = await getSettings({ query })
   const largestPackKg = Math.max(0, ...priced.lines.map((l) => Number(l.packKg)))
   const options = priced.regional || str(body?.pincode) ? deliveryOptions(courier, str(body?.pincode), settings, { largestPackKg }) : []
-  const chosen = options.find((o) => o.method === str(body?.deliveryMethod)) || options[0] || null
+  // The customer's choice; until they choose ('auto' or nothing), the cheaper of the two.
+  const cheapest = options.length ? options.reduce((a, b) => (b.paise < a.paise ? b : a)) : null
+  const chosen = options.find((o) => o.method === str(body?.deliveryMethod)) || cheapest
   const shipping = chosen ? chosen.paise : courier
   // A discount code, checked the same way as when the order is placed; one that does not apply is
   // explained (discountError) and the cart is still priced without it.

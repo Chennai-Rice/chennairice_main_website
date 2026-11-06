@@ -8,16 +8,18 @@
 // checks the choice again when the order is placed, so a PIN outside the area or a changed amount is
 // never accepted. Settings (company_settings, edited in Warehouse → Settings):
 //   in_house_delivery_enabled   'true' / 'false'           (on unless set to 'false')
-//   in_house_delivery_paise     flat charge per order       (default 10000 = ₹100)
-//   in_house_delivery_26kg_paise  the flat charge when the order has a 26 kg bag (default 20000 = ₹200,
-//                               the 26 kg pricing sheet, Nov 2026)
+//   in_house_delivery_paise     flat charge per order       (default 20000 = ₹200, every pack size: the
+//                               pricing sheet, Nov 2026: website price + ₹200 = what the customer pays)
+//   in_house_delivery_26kg_paise  the charge when the order has a 26 kg bag (default: the same as above)
+//   in_house_delivery_only_cheaper  'true' = offered only when it costs less than the courier (default:
+//                               offered on every order the team covers; the cheaper choice is preselected)
 //   in_house_delivery_pins      PIN codes or prefixes, e.g. "638, 600001" (empty = all of Tamil Nadu)
 //   in_house_delivery_promise   what the customer is told   (default "Within 48 hours")
 import { httpError, str } from './util.js'
 import { regionForPincode } from './regions.js'
 
 export const DELIVERY_METHODS = ['courier', 'in_house']
-export const IN_HOUSE_DEFAULTS = { paise: 10000, paise26: 20000, promise: 'Within 48 hours' }
+export const IN_HOUSE_DEFAULTS = { paise: 20000, promise: 'Within 48 hours' }
 
 /** The in-house delivery settings, cleaned. */
 export function inHouseSettings(settings = {}) {
@@ -28,7 +30,8 @@ export function inHouseSettings(settings = {}) {
   return {
     enabled: str(settings.in_house_delivery_enabled).toLowerCase() !== 'false',
     paise: Number.isInteger(paise) && paise >= 0 ? paise : IN_HOUSE_DEFAULTS.paise,
-    paise26: Number.isInteger(paise26) && paise26 >= 0 ? paise26 : IN_HOUSE_DEFAULTS.paise26,
+    paise26: Number.isInteger(paise26) && paise26 >= 0 ? paise26 : (Number.isInteger(paise) && paise >= 0 ? paise : IN_HOUSE_DEFAULTS.paise),
+    onlyCheaper: str(settings.in_house_delivery_only_cheaper).toLowerCase() === 'true',
     pins,
     promise: str(settings.in_house_delivery_promise) || IN_HOUSE_DEFAULTS.promise,
   }
@@ -54,7 +57,7 @@ export function deliveryOptions(courierPaise, pincode, settings = {}, { largestP
   const options = [{ method: 'courier', paise: courierPaise, promise: '3–5 days' }]
   const s = inHouseSettings(settings)
   const own = Number(largestPackKg) >= 26 ? s.paise26 : s.paise
-  if (inHouseCovers(pincode, settings) && own < courierPaise) {
+  if (inHouseCovers(pincode, settings) && (!s.onlyCheaper || own < courierPaise)) {
     options.push({ method: 'in_house', paise: own, promise: s.promise })
   }
   return options

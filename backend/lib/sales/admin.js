@@ -49,7 +49,7 @@ const EDITABLE_SETTINGS = [
   'seller_phone', 'seller_email', 'invoice_prefix', 'reservation_minutes', 'low_stock_alerts',
   'seller_former_name', 'seller_fssai', 'delivery_tax_rate_bp', 'staff_notify_emails',
   // Chennai Rice's own delivery (delivery.js).
-  'in_house_delivery_enabled', 'in_house_delivery_paise', 'in_house_delivery_26kg_paise', 'in_house_delivery_pins', 'in_house_delivery_promise',
+  'in_house_delivery_enabled', 'in_house_delivery_paise', 'in_house_delivery_26kg_paise', 'in_house_delivery_only_cheaper', 'in_house_delivery_pins', 'in_house_delivery_promise',
 ]
 
 export async function getSettingsAdmin() {
@@ -75,6 +75,7 @@ export async function updateSettings(staff, body) {
     if (key === 'reservation_minutes' && !(Number(value) >= 10 && Number(value) <= 240)) {
       throw httpError('Stock hold must be 10–240 minutes.')
     }
+    if (key === 'in_house_delivery_only_cheaper' && !['true', 'false'].includes(value)) throw httpError('Only when cheaper is true or false.')
     if (key === 'in_house_delivery_enabled' && !['true', 'false'].includes(value)) throw httpError('In-house delivery is on (true) or off (false).')
     if (['in_house_delivery_paise', 'in_house_delivery_26kg_paise'].includes(key) && !(/^\d+$/.test(value) && Number(value) <= 100000)) {
       throw httpError('The in-house delivery charge is in paise, from 0 to 100000 (₹1,000).')

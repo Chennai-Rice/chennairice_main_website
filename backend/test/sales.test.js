@@ -1003,7 +1003,7 @@ test('delivery charge: by PIN code region, per pack, with its GST on the invoice
   await db.query(`insert into variant_region_prices (variant_id, region, price_paise, delivery_paise) values
     ($1, 'TN', $2, 21000), ($1, 'SOUTH', $2, 40900)`, [v.id, v.price_paise])
   const quote = (pincode, qty = 2) =>
-    api('POST', '/api/checkout/quote', { body: { pincode, items: [{ id: 'alibaba-10kg', qty }] } })
+    api('POST', '/api/checkout/quote', { body: { pincode, deliveryMethod: 'courier', items: [{ id: 'alibaba-10kg', qty }] } })
   try {
     const tn = await quote('641001')
     assert.equal(tn.status, 200, JSON.stringify(tn.body))
@@ -1056,7 +1056,7 @@ test('delivery charge: by PIN code region, per pack, with its GST on the invoice
   }
 })
 
-test('in-house delivery: a flat ₹100 choice in Tamil Nadu, checked again at order time, shown to the warehouse', async () => {
+test('in-house delivery: a flat ₹200 choice in Tamil Nadu, checked again at order time, shown to the warehouse', async () => {
   const { rows: [v] } = await db.query(
     `select v.id, v.price_paise from product_variants v join products p on p.id = v.product_id
       where p.slug = 'alibaba' and v.pack_kg = 10`)
@@ -1070,22 +1070,30 @@ test('in-house delivery: a flat ₹100 choice in Tamil Nadu, checked again at or
   const setting = (key, value) => db.query(
     `insert into company_settings (key, value) values ($1, $2) on conflict (key) do update set value = excluded.value`, [key, value])
   try {
-    // Tamil Nadu: both choices; courier stays the default, in-house is ₹100 for the whole order.
+    // Tamil Nadu: both choices; in-house is ₹200 for the whole order (the pricing sheet); until the
+    // customer chooses, the cheaper one is preselected.
     const tn = await quote('641001')
     assert.equal(tn.status, 200, JSON.stringify(tn.body))
-    assert.equal(tn.body.deliveryMethod, 'courier')
-    assert.equal(tn.body.shipping, 420)
-    assert.deepEqual(tn.body.deliveryOptions.map((o) => [o.method, o.charge]), [['courier', 420], ['in_house', 100]])
+    assert.deepEqual(tn.body.deliveryOptions.map((o) => [o.method, o.charge]), [['courier', 420], ['in_house', 200]])
+    assert.equal(tn.body.deliveryMethod, 'in_house')
+    assert.equal(tn.body.shipping, 200)
+    assert.equal((await quote('641001', 'courier')).body.shipping, 420)
     const own = await quote('641001', 'in_house')
     assert.equal(own.body.deliveryMethod, 'in_house')
-    assert.equal(own.body.shipping, 100)
-    assert.equal(own.body.total, own.body.subtotal + 100)
+    assert.equal(own.body.shipping, 200)
+    assert.equal(own.body.total, own.body.subtotal + 200)
 
-    // Only when ours is cheaper: one bag with courier ₹210 and our charge set to ₹250 → courier only.
+    // One bag, courier ₹210, our charge set to ₹250: still offered, the courier is preselected as cheaper.
     await setting('in_house_delivery_paise', '25000')
+    const one = await quote('641001', 'auto', 1)
+    assert.deepEqual(one.body.deliveryOptions.map((o) => [o.method, o.charge]), [['courier', 210], ['in_house', 250]])
+    assert.equal(one.body.deliveryMethod, 'courier')
+    assert.equal((await quote('641001', 'in_house', 1)).body.shipping, 250)
+    // "Only when cheaper" switched on: then courier only.
+    await setting('in_house_delivery_only_cheaper', 'true')
     assert.deepEqual((await quote('641001', 'in_house', 1)).body.deliveryOptions.map((o) => o.method), ['courier'])
     assert.deepEqual((await quote('641001', 'in_house', 2)).body.deliveryOptions.map((o) => [o.method, o.charge]), [['courier', 420], ['in_house', 250]])
-    await db.query(`delete from company_settings where key = 'in_house_delivery_paise'`)
+    await db.query(`delete from company_settings where key in ('in_house_delivery_paise', 'in_house_delivery_only_cheaper')`)
 
     // Kerala: courier only.
     const kerala = await quote('682001', 'in_house', 1)
@@ -1105,20 +1113,20 @@ test('in-house delivery: a flat ₹100 choice in Tamil Nadu, checked again at or
     })
     assert.equal(unknown.status, 400, JSON.stringify(unknown.body))
 
-    // A real in-house order: ₹100 charged, saved as in_house, shown as such in the warehouse list.
+    // A real in-house order: ₹200 charged, saved as in_house, shown as such in the warehouse list.
     const { session, verify } = await buy([{ id: 'alibaba-10kg', qty: 2 }], { ...buyer(), deliveryMethod: 'in_house' })
     assert.equal(verify.status, 200, JSON.stringify(verify.body))
     assert.equal(session.amount, own.body.total)
     assert.equal(session.deliveryMethod, 'in_house')
     const { rows: [o] } = await db.query('select * from orders where id = $1', [session.orderId])
     assert.equal(o.delivery_method, 'in_house')
-    assert.equal(Number(o.shipping_paise), 10000)
+    assert.equal(Number(o.shipping_paise), 20000)
     const { listWarehouseOrders } = await import('../lib/sales/warehouse.js')
     const list = await listWarehouseOrders({ tab: 'all', delivery: 'in_house' })
     assert.ok(list.orders.some((r) => r.id === o.id && r.deliveryMethod === 'in_house'))
     assert.ok(!(await listWarehouseOrders({ tab: 'all', delivery: 'courier' })).orders.some((r) => r.id === o.id))
     const { templates } = await import('../lib/sales/email.js')
-    assert.match(templates.orderPlaced(o, []).text, /Chennai Rice delivery {2}₹100/)
+    assert.match(templates.orderPlaced(o, []).text, /Chennai Rice delivery {2}₹200/)
 
     // The settings: a different charge and area, then switched off.
     await setting('in_house_delivery_paise', '5000')
@@ -1422,7 +1430,7 @@ test('Refer a friend: code after paying, friend saves on a first order, never th
   }
 })
 
-test('26 kg pricing sheet (Nov 2026): website price, MRP, hidden part, ₹589 Tamil Nadu courier, ₹200 in-house; settings saved', async () => {
+test('26 kg pricing sheet (Nov 2026): website price, MRP, hidden part, ₹589 Tamil Nadu courier, ₹200 in-house for every size; settings saved', async () => {
   const { PRICE_LIST, packPricing } = await import('../db/apply-price-list.js')
   // base, MRP, website, hidden, pays (in-house ₹200), courier, pays (courier), as on the sheet
   const sheet = {
@@ -1451,7 +1459,9 @@ test('26 kg pricing sheet (Nov 2026): website price, MRP, hidden part, ₹589 Ta
   // In-house: ₹200 with a 26 kg bag, ₹100 otherwise; the owner can change both.
   const { deliveryOptions } = await import('../lib/sales/delivery.js')
   assert.equal(deliveryOptions(58900, '641001', {}, { largestPackKg: 26 }).find((o) => o.method === 'in_house').paise, 20000)
-  assert.equal(deliveryOptions(25000, '641001', {}, { largestPackKg: 5 }).find((o) => o.method === 'in_house').paise, 10000)
+  // ₹200 with every pack size, offered even when the courier is cheaper (5 kg: courier ₹54).
+  assert.equal(deliveryOptions(25000, '641001', {}, { largestPackKg: 5 }).find((o) => o.method === 'in_house').paise, 20000)
+  assert.equal(deliveryOptions(5400, '641001', {}, { largestPackKg: 5 }).find((o) => o.method === 'in_house').paise, 20000)
   const saved = await api('PATCH', '/api/admin/settings', { token: OWNER, body: {
     in_house_delivery_paise: '15000', in_house_delivery_26kg_paise: '25000', in_house_delivery_pins: '638, 641001 638',
   } })

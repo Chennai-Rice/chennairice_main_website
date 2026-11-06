@@ -25,14 +25,15 @@ function saveDiscountCode(code) {
   } catch { /* private mode: kept for this page only */ }
 }
 
-// The delivery method the customer picked on this visit (sessionStorage); our own team until they choose.
+// The delivery method the customer picked on this visit (sessionStorage); until they choose, 'auto':
+// the server preselects the cheaper of courier and our own team.
 const DELIVERY_CHOICE_KEY = "cr.checkout.delivery";
 function readDeliveryChoice() {
   try {
     const v = window.sessionStorage.getItem(DELIVERY_CHOICE_KEY);
-    return v === "courier" || v === "in_house" ? v : "in_house";
+    return v === "courier" || v === "in_house" ? v : "auto";
   } catch {
-    return "in_house";
+    return "auto";
   }
 }
 import { metaCheckoutSignal, trackMetaEvent, trackMetaPurchase } from "../../services/metaPixel.js";
