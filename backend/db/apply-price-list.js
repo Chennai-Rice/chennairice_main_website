@@ -72,19 +72,19 @@ export const SHEET_5 = { oldMrp: true, inHouse: 49 }
 // share added); deliveryInPrice: the delivery charge is the region's cost less this (instead of less the
 // absorbed part); inHouse: the in-house delivery charge for one bag (₹). Item and variety as on the sheets.
 export const PRICE_LIST = {
-  // 5 kg: base, MRP, hidden · 10 kg: base, MRP, hidden · 26 kg: base, MRP, hidden (pricing sheets, Nov 2026)
-  'kitchidi-ponni-rice': { 5: [515, 699, 40, { ...SHEET_5, inHouse: 60 }], 26: [2470, 2999, 179, SHEET_26] }, // Chennai Rice Premium Kitchidi Ponni Rice (pink bag)
-  'special-rajabhogam': { 5: [515, 699, 75, SHEET_5], 10: [1020, 1299, 120, SHEET_10], 26: [2470, 2999, 129, SHEET_26] }, // Chennai Rice-Red-Raj.Ponni · Vada Kolam Kitchidi Ponni (red bag)
-  'vintage': { 5: [515, 699, 75, SHEET_5], 10: [1020, 1299, 120, SHEET_10], 26: [2470, 2999, 129, SHEET_26] },               // Vintage Spl Ponni · JSR Kolam
-  'united-5kg': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 120, SHEET_10], 26: [2400, 2899, 99, SHEET_26] },             // United · Shikaripura Amaan Ponni
-  'vijaya-nagaram': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 120, SHEET_10], 26: [2400, 2899, 99, SHEET_26] },         // Vijayanagaram · Shikaripura Amaan Ponni
-  'viruchagam': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 120, SHEET_10], 26: [2400, 2899, 99, SHEET_26] },             // Viruchagam · Shikaripura Amaan Ponni
-  'nayara-super-aged': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 120, SHEET_10], 26: [2400, 2899, 99, SHEET_26] },     // Nayara · Akshaya Amman Ponni
-  'a1-special-ponni': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 120, SHEET_10], 26: [2400, 2899, 99, SHEET_26] },       // A1 Ponni Rice · Akshaya Amman Ponni
-  'chennai-bullets': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 120, SHEET_10], 26: [2400, 2899, 99, SHEET_26] },        // Chennai Bullets · TN RNR / Kodad Bapatla / KA KNM
-  // Not on the sheets: priced as its twin, Chennai Bullets (the same on every earlier list).
-  'alibaba': { 5: [501, 679, 75, SHEET_5], 10: [990, 1279, 120, SHEET_10], 26: [2400, 2899, 99, SHEET_26] },                // Alibaba · TN RNR / Kodad Bapatla / KA KNM
-  'special-idly-rice': { 5: [295, 449, 75, SHEET_5], 10: [566, 799, 120, SHEET_10], 26: [1350, 1699, 99, SHEET_26] },       // Special Idly Rice (Pink) · Kalli Muthan kar
+  // Final website prices (Nov 2026), top bag to bottom: base, MRP, hidden (website price − base), and the
+  // in-house delivery a bag in Tamil Nadu (5 kg ₹50–90, 10 kg ₹90–110, 26 kg ₹110–150, top bag lowest).
+  'kitchidi-ponni-rice': { 5: [515, 699, 40, { ...SHEET_5, inHouse: 50 }], 26: [2470, 2999, 29, { ...SHEET_26, inHouse: 110 }] }, // Chennai Rice Premium Kitchidi Ponni Rice (pink bag)
+  'special-rajabhogam': { 5: [515, 699, 34, { ...SHEET_5, inHouse: 54 }], 10: [1020, 1299, 79, { ...SHEET_10, inHouse: 90 }], 26: [2470, 2999, 18, { ...SHEET_26, inHouse: 114 }] }, // Chennai Rice-Red-Raj.Ponni · Vada Kolam Kitchidi Ponni (red bag)
+  'vintage': { 5: [515, 699, 24, { ...SHEET_5, inHouse: 58 }], 10: [1020, 1299, 68, { ...SHEET_10, inHouse: 92 }], 26: [2470, 2999, 7, { ...SHEET_26, inHouse: 118 }] }, // Vintage Spl Ponni · JSR Kolam
+  'united-5kg': { 5: [501, 679, 28, { ...SHEET_5, inHouse: 62 }], 10: [990, 1279, 59, { ...SHEET_10, inHouse: 94 }], 26: [2400, 2899, 69, { ...SHEET_26, inHouse: 122 }] }, // United · Shikaripura Amaan Ponni
+  'vijaya-nagaram': { 5: [501, 679, 26, { ...SHEET_5, inHouse: 66 }], 10: [990, 1279, 55, { ...SHEET_10, inHouse: 97 }], 26: [2400, 2899, 65, { ...SHEET_26, inHouse: 126 }] }, // Vijayanagaram · Shikaripura Amaan Ponni
+  'viruchagam': { 5: [501, 679, 24, { ...SHEET_5, inHouse: 70 }], 10: [990, 1279, 45, { ...SHEET_10, inHouse: 99 }], 26: [2400, 2899, 55, { ...SHEET_26, inHouse: 130 }] }, // Viruchagam · Shikaripura Amaan Ponni
+  'nayara-super-aged': { 5: [501, 679, 20, { ...SHEET_5, inHouse: 74 }], 10: [990, 1279, 40, { ...SHEET_10, inHouse: 101 }], 26: [2400, 2899, 44, { ...SHEET_26, inHouse: 134 }] }, // Nayara · Akshaya Amman Ponni
+  'a1-special-ponni': { 5: [501, 679, 14, { ...SHEET_5, inHouse: 78 }], 10: [990, 1279, 39, { ...SHEET_10, inHouse: 103 }], 26: [2400, 2899, 39, { ...SHEET_26, inHouse: 138 }] }, // A1 Ponni Rice · Akshaya Amman Ponni
+  'chennai-bullets': { 5: [501, 679, 11, { ...SHEET_5, inHouse: 82 }], 10: [990, 1279, 35, { ...SHEET_10, inHouse: 106 }], 26: [2400, 2899, 29, { ...SHEET_26, inHouse: 142 }] }, // Chennai Bullets · TN RNR / Kodad Bapatla / KA KNM
+  'alibaba': { 5: [501, 679, 8, { ...SHEET_5, inHouse: 86 }], 10: [990, 1279, 29, { ...SHEET_10, inHouse: 108 }], 26: [2400, 2899, 19, { ...SHEET_26, inHouse: 146 }] }, // Alibaba · TN RNR / Kodad Bapatla / KA KNM
+  'special-idly-rice': { 5: [295, 449, 4, { ...SHEET_5, inHouse: 90 }], 10: [566, 799, 33, { ...SHEET_10, inHouse: 110 }], 26: [1350, 1699, 49, { ...SHEET_26, inHouse: 150 }] }, // Special Idly Rice (Pink) · Kalli Muthan kar
   // Chennai Rice Jeera Rice (Jeera Old, 26 kg ₹1,200) is on the sheet but not sold online.
 }
 

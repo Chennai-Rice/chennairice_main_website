@@ -1431,42 +1431,35 @@ test('Refer a friend: code after paying, friend saves on a first order, never th
   }
 })
 
-test('26 kg pricing sheet (Nov 2026): website price, MRP, hidden part, ₹589 Tamil Nadu courier, ₹200 in-house for every size; settings saved', async () => {
+test('Final price list (Nov 2026): website prices top bag to bottom, in-house a bag in Tamil Nadu within each range; settings saved', async () => {
   const { PRICE_LIST, packPricing } = await import('../db/apply-price-list.js')
-  // base, MRP, website, hidden, pays (in-house ₹200), courier, pays (courier), as on the sheet
-  const sheet = {
-    'kitchidi-ponni-rice': [2470, 2999, 2649, 179, 2849, 589, 3238],
-    'special-rajabhogam': [2470, 2999, 2599, 129, 2799, 589, 3188],
-    vintage: [2470, 2999, 2599, 129, 2799, 589, 3188],
-    'nayara-super-aged': [2400, 2899, 2499, 99, 2699, 589, 3088],
-    'a1-special-ponni': [2400, 2899, 2499, 99, 2699, 589, 3088],
-    'vijaya-nagaram': [2400, 2899, 2499, 99, 2699, 589, 3088],
-    viruchagam: [2400, 2899, 2499, 99, 2699, 589, 3088],
-    'united-5kg': [2400, 2899, 2499, 99, 2699, 589, 3088],
-    'chennai-bullets': [2400, 2899, 2499, 99, 2699, 589, 3088],
-    'special-idly-rice': [1350, 1699, 1449, 99, 1649, 589, 2038],
+  const ORDER = ['kitchidi-ponni-rice', 'special-rajabhogam', 'vintage', 'united-5kg', 'vijaya-nagaram', 'viruchagam',
+    'nayara-super-aged', 'a1-special-ponni', 'chennai-bullets', 'alibaba', 'special-idly-rice']
+  // The website prices as given, in that order (no Kitchidi 10 kg).
+  const WEB = {
+    5: [555, 549, 539, 529, 527, 525, 521, 515, 512, 509, 299],
+    10: [null, 1099, 1088, 1049, 1045, 1035, 1030, 1029, 1025, 1019, 599],
+    26: [2499, 2488, 2477, 2469, 2465, 2455, 2444, 2439, 2429, 2419, 1399],
   }
-  for (const [slug, want] of Object.entries(sheet)) {
-    const [list, mrp, absorbed, opts] = PRICE_LIST[slug][26]
-    const p = packPricing(26, list, mrp, absorbed, opts)
-    assert.deepEqual([list, p.mrp, p.website, p.absorbed, p.website + p.inHouse, p.delivery.TN, p.website + p.delivery.TN], want, slug)
-    assert.ok(p.absorbed + p.delivery.TN >= 687, slug + ': the courier cost is recovered')
-    assert.ok(p.website <= 2800, slug)
+  const RANGE = { 5: [50, 90], 10: [90, 110], 26: [110, 150] }
+  for (const kg of [5, 10, 26]) {
+    let last = 0
+    ORDER.forEach((slug, i) => {
+      if (WEB[kg][i] == null) return assert.equal(PRICE_LIST[slug][kg], undefined, slug + ' ' + kg)
+      const [list, mrp, absorbed, opts] = PRICE_LIST[slug][kg]
+      const p = packPricing(kg, list, mrp, absorbed, opts)
+      assert.equal(p.website, WEB[kg][i], slug + ' ' + kg)
+      assert.ok(p.website <= p.mrp && p.website <= 2800, slug + ' ' + kg)
+      assert.ok(p.inHouse >= RANGE[kg][0] && p.inHouse <= RANGE[kg][1] && p.inHouse > last, slug + ' ' + kg + ' in-house ' + p.inHouse)
+      last = p.inHouse
+    })
   }
-  // 5 and 10 kg sheets (Nov 2026): base, MRP, website, hidden, in-house a bag, Tamil Nadu courier.
-  const small = [
-    ['kitchidi-ponni-rice', 5, [515, 699, 555, 40, 60, 125]], ['special-rajabhogam', 5, [515, 699, 590, 75, 49, 90]],
-    ['vintage', 5, [515, 699, 590, 75, 49, 90]], ['united-5kg', 5, [501, 679, 576, 75, 49, 90]], ['special-idly-rice', 5, [295, 449, 370, 75, 49, 90]],
-    ['special-rajabhogam', 10, [1020, 1299, 1140, 120, 100, 120]], ['vintage', 10, [1020, 1299, 1140, 120, 100, 120]],
-    ['a1-special-ponni', 10, [990, 1279, 1110, 120, 100, 120]], ['nayara-super-aged', 10, [990, 1279, 1110, 120, 100, 120]],
-    ['special-idly-rice', 10, [566, 799, 686, 120, 100, 120]],
-  ]
-  for (const [slug, kg, want] of small) {
-    const [list, mrp, absorbed, opts] = PRICE_LIST[slug][kg]
-    const p = packPricing(kg, list, mrp, absorbed, opts)
-    assert.deepEqual([list, p.mrp, p.website, p.absorbed, p.inHouse, p.delivery.TN], want, slug + ' ' + kg)
-  }
-  // In-house a bag, summed for the order: 2 × 5 kg = ₹98; 5 kg Kitchidi + 26 kg = ₹260.
+  // The ends of each range: top bag lowest, bottom bag highest.
+  assert.equal(packPricing(5, ...PRICE_LIST['kitchidi-ponni-rice'][5]).inHouse, 50)
+  assert.equal(packPricing(5, ...PRICE_LIST['special-idly-rice'][5]).inHouse, 90)
+  assert.equal(packPricing(10, ...PRICE_LIST['special-rajabhogam'][10]).inHouse, 90)
+  assert.equal(packPricing(26, ...PRICE_LIST['special-idly-rice'][26]).inHouse, 150)
+  // In-house a bag, summed for the order.
   const { deliveryOptions: opts } = await import('../lib/sales/delivery.js')
   const own = (lines) => opts(99999, '641001', {}, { lines }).find((o) => o.method === 'in_house').paise
   assert.equal(own([{ inHousePaise: 4900, quantity: 2 }]), 9800)
