@@ -1332,9 +1332,9 @@ test('Refer a friend: code after paying, friend saves on a first order, never th
     assert.equal(on.status, 200, JSON.stringify(on.body))
     assert.equal((await api('GET', '/api/referral')).body.enabled, true)
 
-    // Lakshmi's code: at /refer with her mobile + order email (not with another email).
-    assert.equal((await api('POST', '/api/referral/me', { body: { phone: lakshmi.phone, email: 'other@example.com' } })).status, 404)
-    const me = await api('POST', '/api/referral/me', { body: { phone: '+91 98450 00001', email: 'LAKSHMI.REF@example.com' } })
+    // Lakshmi's code: at /refer with her mobile number (a number with no paid order: not found).
+    assert.equal((await api('POST', '/api/referral/me', { body: { phone: '9845099998' } })).status, 404)
+    const me = await api('POST', '/api/referral/me', { body: { phone: '+91 98450 00001' } })
     assert.equal(me.status, 200, JSON.stringify(me.body))
     assert.match(me.body.code, /^LAKSHMI\d{2,3}$/)
     assert.equal(me.body.friendGets, 50)

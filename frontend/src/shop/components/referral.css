@@ -94,7 +94,6 @@
 .refer-state--used, .refer-state--expired, .refer-state--cancelled { color: var(--ink-500, #7a6459); }
 @media (max-width: 400px) { .refer-stat strong { font-size: 18px; } }
 
-/* /refer: how "signing in" works */
-.refer-how { padding: 12px 14px; border-radius: 12px; background: #fdf3dc; color: var(--ink-700, #4e3a32); font-size: 14px; }
-.refer-how strong { display: block; margin-bottom: 4px; color: var(--maroon-600, #6e1b22); }
-.refer-how ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+
+/* /refer: one line of help above the mobile number */
+.refer-help { margin: -4px 0 4px; font-size: 14px; color: var(--ink-500, #7a6459); }

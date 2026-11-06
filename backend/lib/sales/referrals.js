@@ -21,7 +21,6 @@ import { referralsOn } from './discounts.js'
 import { queueEmail } from './email.js'
 
 const SITE = (process.env.PUBLIC_SITE_URL || 'https://chennairiceindustries.com').replace(/\/$/, '')
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const num = (v, d, min, max) => { const n = Number(v); return Number.isFinite(n) && n >= min && n <= max ? n : d }
 
 export function referralSettings(settings = {}) {
@@ -77,26 +76,29 @@ export async function ensureReferrer(db, order, settings = null) {
   return null
 }
 
-/** /refer: the customer's code and rewards, for their mobile number and the email on one of their orders. */
+/**
+ * /refer: the customer's code and rewards, by the mobile number on a paid order. The mobile number is
+ * enough: the code is meant to be shared (friends may even type the mobile number at checkout), rewards
+ * are used only at the customer's own checkout (their mobile number and email), and reward codes are
+ * never shown here. The route is rate limited.
+ */
 export async function myReferral(db, body = {}) {
   const settings = await getSettings(db)
   const s = referralSettings(settings)
   if (!s.enabled) throw httpError('Referrals off', { status: 404, publicMessage: 'Refer a friend is not running right now.' })
   const phone = phoneKey(body.phone)
-  const email = str(body.email).toLowerCase()
   if (!/^[6-9]\d{9}$/.test(phone)) throw httpError('Bad phone', { publicMessage: 'Please enter your 10-digit mobile number.' })
-  if (!EMAIL.test(email)) throw httpError('Bad email', { publicMessage: 'Please enter the email you used on your order.' })
 
   const { rows: [order] } = await db.query(
-    `select * from orders where right(regexp_replace(contact_phone, '\\D', '', 'g'), 10) = $1 and lower(contact_email) = $2
-        and payment_status in ('paid', 'partially_refunded') order by placed_at desc limit 1`, [phone, email])
-  const { rows: [known] } = await db.query('select * from referrers where phone = $1 and email = $2', [phone, email])
+    `select * from orders where right(regexp_replace(contact_phone, '\\D', '', 'g'), 10) = $1
+        and payment_status in ('paid', 'partially_refunded') order by placed_at desc limit 1`, [phone])
+  const { rows: [known] } = await db.query('select * from referrers where phone = $1', [phone])
   if (!order && !known) {
     throw httpError('No order', {
-      status: 404, publicMessage: 'We could not find an order with that mobile number and email. Referral codes are for customers who have ordered.',
+      status: 404, publicMessage: 'We could not find a paid order with that mobile number. Your code comes with your first order.',
     })
   }
-  const ref = await ensureReferrer(db, order || { contact_phone: phone, contact_email: email, contact_name: known.name }, settings)
+  const ref = await ensureReferrer(db, order || { contact_phone: phone, contact_email: known.email, contact_name: known.name }, settings)
   const { rows: [{ friends }] } = await db.query(
     `select count(*)::int as friends from orders where referrer_id = $1 and payment_status in ('paid', 'partially_refunded')`, [ref.id])
   const { rows: rewards } = await db.query(
@@ -105,7 +107,7 @@ export async function myReferral(db, body = {}) {
        from referral_rewards rr left join discount_codes c on c.id = rr.code_id
       where rr.referrer_id = $1 and rr.status = 'issued' order by rr.created_at desc limit 50`, [ref.id])
   const list = rewards.map((r) => ({
-    code: r.code, amount: toRupees(r.amount_paise), earnedAt: r.created_at, expiresAt: r.expires_at,
+    amount: toRupees(r.amount_paise), earnedAt: r.created_at, expiresAt: r.expires_at,
     state: r.used ? 'used' : !r.is_active ? 'cancelled' : r.expires_at && new Date(r.expires_at) < new Date() ? 'expired' : 'available',
   }))
   const sum = (state) => list.filter((r) => !state || r.state === state).reduce((t, r) => t + r.amount, 0)

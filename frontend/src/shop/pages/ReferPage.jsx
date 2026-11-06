@@ -6,8 +6,8 @@ import ReferralShare from "../components/ReferralShare.jsx";
 import "../components/referral.css";
 
 /**
- * /refer: how Refer a friend works, and a customer's own code and rewards (mobile number + the email on
- * one of their orders; backend/lib/sales/referrals.js). Rewards are used by themselves at checkout.
+ * /refer: how Refer a friend works, and a customer's own code and rewards, by the mobile number on their
+ * order (backend/lib/sales/referrals.js). Rewards are used by themselves at checkout.
  */
 const day = (d) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 const STATE = { available: "Ready to use", used: "Used", expired: "Expired", cancelled: "Cancelled" };
@@ -15,7 +15,7 @@ const STATE = { available: "Ready to use", used: "Used", expired: "Expired", can
 export default function ReferPage() {
   usePageMeta("Refer a friend — Chennai Rice", "Share your Chennai Rice code: your friend saves on their first order, and you get a reward when it arrives.");
   const [running, setRunning] = useState(null);
-  const [form, setForm] = useState({ phone: "", email: "" });
+  const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [me, setMe] = useState(null);
@@ -32,12 +32,12 @@ export default function ReferPage() {
       const res = await fetch("/api/referral/me", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: form.phone, email: form.email }),
+        body: JSON.stringify({ phone }),
       });
       const data = await res.json().catch(() => null);
       if (res.status === 429) throw new Error("Too many tries in a short time. To keep codes safe, please wait 10 minutes and try again.");
       if (res.status === 404 && /could not find/i.test(data?.error || "")) {
-        throw new Error("We could not find a paid order with this mobile number and email. Check that both are exactly as on your order (see your Order Confirmed email). If you have not ordered yet, your code comes with your first order.");
+        throw new Error("We could not find a paid order with this mobile number. Use the number you gave when you ordered. Not ordered yet? Your code comes with your first order.");
       }
       if (!res.ok) throw new Error(data?.error || "Please try again in a minute.");
       setMe(data);
@@ -67,26 +67,15 @@ export default function ReferPage() {
               <li>When their order is delivered, you get money off your next order. It is applied for you at checkout.</li>
             </ol>
             <form className="refer-form" onSubmit={submit} noValidate>
-              <h2>Get my code &amp; rewards</h2>
-              <div className="refer-how">
-                <strong>How this works: no password, no OTP</strong>
-                <ul>
-                  <li>Type the <b>mobile number</b> and the <b>email</b> you gave when you ordered. We match them to your order and show your code.</li>
-                  <li>Both must be the same as on your order. Not sure which email? Look for your <b>Order Confirmed</b> email from Chennai Rice; your code is in it too.</li>
-                  <li>Your code appears once your order is paid. Use this page any time to see your rewards.</li>
-                </ul>
-              </div>
+              <h2>Get my code</h2>
+              <p className="refer-help">Enter the mobile number you used when you ordered. That's all: no password, no OTP.</p>
               <label>
                 Mobile number
-                <input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} inputMode="tel" autoComplete="tel" placeholder="98765 43210" maxLength={16} required />
-              </label>
-              <label>
-                Email used on your order
-                <input value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} type="email" autoComplete="email" placeholder="you@example.com" maxLength={200} required />
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="98765 43210" maxLength={16} required />
               </label>
               {error && <p className="refer-error" role="alert">{error}</p>}
               <button type="submit" disabled={busy}>{busy ? "Finding…" : "Show my code"}</button>
-              <p className="referral-fine">Not ordered yet? <Link to="/rice-products">Shop now</Link> and your code comes with your order.</p>
+              <p className="referral-fine">Your code is also in your <b>Order Confirmed</b> email. Not ordered yet? <Link to="/rice-products">Shop now</Link> and your code comes with your order.</p>
             </form>
           </>
         )}
@@ -103,7 +92,7 @@ export default function ReferPage() {
             {me.rewards.length > 0 ? (
               <ul className="refer-rewards">
                 {me.rewards.map((r) => (
-                  <li key={r.code}>
+                  <li key={r.earnedAt}>
                     <span>₹{r.amount} off · earned {day(r.earnedAt)}{r.state === "available" && r.expiresAt ? ` · use by ${day(r.expiresAt)}` : ""}</span>
                     <span className={"refer-state--" + r.state}>{STATE[r.state]}</span>
                   </li>
@@ -113,7 +102,7 @@ export default function ReferPage() {
               <p className="referral-fine">No rewards yet. They appear here when a friend's order is delivered.</p>
             )}
             <p className="referral-fine" style={{ marginTop: 14 }}>
-              Rewards are used by themselves at checkout when you order with this mobile number and email.
+              Rewards come off by themselves at checkout when you order with this mobile number and the email from your order.
             </p>
           </>
         )}
