@@ -233,9 +233,13 @@ export default function SpinWheel() {
   return (
     <>
       {!quiet && !open && (
-        <button type="button" className="spin-fab" onClick={show} aria-label={win ? 'Your Spin & Win prize' : 'Spin & Win'}>
-          <span className="spin-fab-icon" aria-hidden="true">🎁</span>
-          {win ? 'Your prize' : 'Spin & Win'}
+        <button type="button" className={'spin-fab' + (win ? ' has-prize' : '')} onClick={show} aria-label={win ? 'Your Spin & Win prize' : 'Spin & Win'}>
+          {/* The Spin & Win wheel picture (bottom left, like Soru Kutty on the right). */}
+          <picture>
+            <source srcSet="/assets/spin-win.webp" type="image/webp" />
+            <img src="/assets/spin-win.png" alt="" width="110" height="110" className="spin-fab-img" />
+          </picture>
+          {win && <span className="spin-fab-badge">Your prize</span>}
         </button>
       )}
       {open && (
