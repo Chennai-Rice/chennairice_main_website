@@ -1,4 +1,4 @@
-/* Inside the mill — animated production line (InfraProcess.jsx). */
+/* Inside the mill — the production line (InfraLine.jsx). */
 .ip {
   --ip-red: #b3313f;
   --ip-ink: #2b211d;
@@ -79,3 +79,171 @@
 }
 .ip-stage { margin-bottom: 70px; }
 .ip-photo { filter: drop-shadow(0 6px 8px rgba(40, 30, 25, 0.12)); }
+
+/* InfraLine.jsx: the working Bühler machines on the line */
+.ip-photo--work { filter: drop-shadow(0 5px 6px rgba(40, 30, 25, 0.16)); }
+.ip-machine { font-style: normal; font-size: clamp(0.62rem, 0.5rem + 0.2vw, 0.72rem); font-weight: 600; letter-spacing: 0.04em; color: #8a6a25; margin-top: 2px; }
+.ip-credit { margin: 0; text-align: center; font-size: 0.74rem; letter-spacing: 0.06em; color: #9a8a7c; }
+.ip-list-machines { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-top: 10px; }
+.ip-list-machines img { display: block; height: 96px; width: auto; max-width: 100%; filter: drop-shadow(0 4px 5px rgba(40, 30, 25, 0.14)); }
+.ip-list .ip-list-machines img { height: 92px !important; width: auto !important; max-width: 70% !important; object-fit: contain; }
+/* working machines laid over the line drawing (InfraLine.jsx) */
+.ip-work { position: absolute; display: block; height: auto; max-width: none; pointer-events: none; filter: drop-shadow(0 5px 6px rgba(40, 30, 25, 0.16)); }
+.ip-stage img.ip-work { max-width: none !important; max-height: none !important; min-height: 0 !important; object-fit: contain !important; margin: 0 !important; transform: none !important; }
+
+/* InfraLine.jsx: the flow path in place of the conveyor */
+.ipl-track { fill: none; stroke: #efe4cf; stroke-width: 14; stroke-linecap: round; stroke-linejoin: round; }
+.ipl-line { fill: none; stroke: url(#ipl-gold); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.ipl-flow { fill: none; stroke: #c49a3a; stroke-width: 5; stroke-linecap: round; stroke-dasharray: 0.1 26; animation: ipl-flow 1.8s linear infinite; opacity: 0.75; }
+@keyframes ipl-flow { to { stroke-dashoffset: -26.1; } }
+.ipl-arrow path { fill: none; stroke: #9e1f2c; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.ipl-end { fill: none; stroke: #9e1f2c; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.ipl-start { fill: #fff; stroke: #c49a3a; stroke-width: 3; }
+@media (prefers-reduced-motion: reduce) {
+  .ipl-flow { animation: none; }
+  .ipl-arrow { display: none; }
+}
+@media (max-width: 900px) {
+  .ipl-list::before { width: 4px; left: 35px; background: repeating-linear-gradient(180deg, #c49a3a 0 6px, transparent 6px 16px), #efe4cf; background-size: 100% 16px, 100% 100%; animation: ipl-flow-v 1.2s linear infinite; }
+  @keyframes ipl-flow-v { to { background-position: 0 16px, 0 0; } }
+}
+@media (prefers-reduced-motion: reduce) { .ipl-list::before { animation: none; } }
+
+/* HopperMotion.jsx: motion over the raw-paddy hopper (only while the line is on screen) */
+.hm { pointer-events: none; overflow: visible; }
+.hm-grain { fill: #f1b94a; stroke: #b37a1c; stroke-width: 0.25; }
+.hm-stream { fill: url(#hm-pour); opacity: 0; }
+.hm-fall, .hm-splash { opacity: 0; }
+
+.hm.is-live .hm-stream { opacity: 0.6; animation: hm-stream 0.9s ease-in-out infinite alternate; }
+.hm.is-live .hm-fall { animation: hm-fall 1.6s linear infinite; }
+.hm.is-live .hm-splash ellipse { fill: #f4c463; }
+.hm.is-live .hm-splash { animation: hm-splash 0.8s ease-in-out infinite; }
+
+@keyframes hm-stream { from { opacity: 0.4; } to { opacity: 0.7; } }
+@keyframes hm-fall {
+  0% { transform: translateY(0); opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { transform: translateY(23px); opacity: 0; }
+}
+@keyframes hm-splash {
+  0%, 100% { transform: scaleX(0.7); opacity: 0.35; transform-origin: 44px 23.5px; }
+  50% { transform: scaleX(1.1); opacity: 0.75; transform-origin: 44px 23.5px; }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .hm { display: none; }
+}
+
+/* grains travelling the route, and the key (InfraLine.jsx) */
+.ipl-grain { filter: drop-shadow(0 0.6px 0.6px rgba(60, 35, 15, 0.35)); }
+.shop-scope .ipl-key, .ipl-key { list-style: none; margin: -8px 0 26px; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px; }
+.ipl-key li { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; letter-spacing: 0.02em; color: #5c4b3f; }
+.ipl-key li svg { display: block; overflow: visible; }
+.ipl-key-arrow { margin: 0 8px 0 6px; font-size: 1.3rem; line-height: 1; color: #c49a3a; }
+@media (prefers-reduced-motion: reduce) {
+  .ipl-grain { display: none; }
+}
+
+/* miniature bags riding to dispatch (InfraLine.jsx) */
+.ipl-bag { filter: drop-shadow(0 1.5px 1.2px rgba(60, 35, 15, 0.35)); }
+@media (prefers-reduced-motion: reduce) { .ipl-bag { display: none; } }
+
+
+
+/* names only; details on hover / focus (desktop) and on tap (phones) — InfraLine.jsx */
+.ipl-hit { position: absolute; z-index: 3; cursor: pointer; border-radius: 14px; outline: none; }
+.ipl-hit:focus-visible { box-shadow: 0 0 0 2px rgba(196, 154, 58, 0.7); }
+.ip-label { z-index: 4; }
+.ip-label strong { display: block; }
+.ipl-more {
+  position: absolute; left: -10px; top: calc(100% + 6px); width: 118%; min-width: 190px;
+  padding: 10px 12px; border-radius: 10px; background: #fffaf1;
+  border: 1px solid rgba(196, 154, 58, 0.45); box-shadow: 0 10px 22px rgba(60, 35, 20, 0.14);
+  display: flex; flex-direction: column; gap: 4px;
+  opacity: 0; transform: translateY(-4px); pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.ipl-more::before {
+  content: ''; position: absolute; top: -6px; left: 20px; width: 10px; height: 10px;
+  background: #fffaf1; border-left: 1px solid rgba(196, 154, 58, 0.45); border-top: 1px solid rgba(196, 154, 58, 0.45); transform: rotate(45deg);
+}
+.ip-label.is-open .ipl-more { opacity: 1; transform: none; pointer-events: auto; }
+.ip-label.is-open strong { color: #9e1f2c; }
+.ip-station.is-hover { animation: none; filter: drop-shadow(0 0 10px rgba(196, 154, 58, 0.65)); }
+
+/* phones: tap a stage name to open its details */
+.ipl-toggle { all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.ipl-toggle:focus-visible { outline: 2px solid #c49a3a; outline-offset: 3px; border-radius: 4px; }
+.ipl-chev { width: 7px; height: 7px; border-right: 2px solid #c49a3a; border-bottom: 2px solid #c49a3a; transform: rotate(45deg) translateY(-2px); transition: transform 0.2s ease; }
+.ip-list li.is-open .ipl-chev { transform: rotate(-135deg) translateY(-1px); }
+.ipl-list-more { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.ipl-list-more[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .ipl-more, .ipl-chev { transition: none; } }
+
+/* InfraLine.jsx: heading, intro and grain key centred */
+.ipl .ip-eyebrow, .ipl .ip-title { text-align: center; }
+.ipl .ip-sub { text-align: center; margin-left: auto; margin-right: auto; }
+.ipl .ipl-key { justify-content: center; }
+
+/* phones: every stage shows its machine (InfraLine.jsx) */
+@media (max-width: 900px) {
+  .ipl-list .ip-list-machines { margin-top: 8px; gap: 12px; }
+  .ip-list .ipl-list .ip-list-machines img, .ipl-list .ip-list-machines img {
+    height: 118px !important; max-width: 82% !important; width: auto !important; object-fit: contain;
+    filter: drop-shadow(0 6px 8px rgba(40, 30, 25, 0.16));
+  }
+  .ipl-list li { align-items: start; }
+  .ipl-list .ip-list-mag { margin-top: 2px; }
+}
+
+/* phones: the belt down the list, with grain flowing on it (InfraLine.jsx) */
+@media (max-width: 900px) {
+  .ipl-list::before { display: none; }
+  .ipl-list li { position: relative; }
+  .ipl-vbelt { position: absolute; left: 26px; top: 28px; width: 20px; height: calc(100% + 16px); overflow: visible; }
+  .ipl-vbelt-track { stroke: #efe4cf; stroke-width: 12; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .ipl-vbelt-line { stroke: #c49a3a; stroke-width: 2; vector-effect: non-scaling-stroke; }
+  .ipl-list li:last-child .ipl-vbelt { height: 40px; }
+  .ipl-vflow { position: absolute; left: 25px; top: 56px; width: 22px; height: calc(100% - 12px); overflow: hidden; pointer-events: none; }
+  .ipl-list li:last-child .ipl-vflow { height: 48px; }
+  .ipl-vg { position: absolute; left: 0; top: 0; display: block; width: 22px; animation: ipl-vflow 2.4s linear infinite; }
+  .ipl-vg svg { display: block; overflow: visible; filter: drop-shadow(0 0.6px 0.6px rgba(60, 35, 15, 0.35)); }
+  .ipl-vg.is-bag img { display: block; width: 18px; height: auto; margin-left: 2px; filter: drop-shadow(0 1px 1px rgba(60, 35, 15, 0.35)); }
+  @keyframes ipl-vflow {
+    0% { transform: translateY(-14px); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(var(--ipl-run, 150px)); opacity: 0; }
+  }
+  /* the mag and number sit above the belt */
+  .ipl-list .ip-list-mag { position: relative; z-index: 1; background: #fbf8f3; border-radius: 50%; }
+}
+@media (prefers-reduced-motion: reduce) { .ipl-vflow { display: none; } }
+
+/* phones only: direction arrows on the belt between stages (InfraLine.jsx) */
+.ipl-varrow { display: none; }
+@media (max-width: 900px) {
+  .ipl-varrow {
+    display: block; position: absolute; z-index: 2; left: 28px; bottom: -4px;
+    overflow: visible; animation: ipl-varrow 1.6s ease-in-out infinite;
+  }
+  .ipl-varrow path { fill: none; stroke: #9e1f2c; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  @keyframes ipl-varrow { 0%, 100% { transform: translateY(-3px); opacity: 0.75; } 50% { transform: translateY(3px); opacity: 1; } }
+}
+@media (prefers-reduced-motion: reduce) { .ipl-varrow { animation: none; } }
+
+/* phones: the dispatch lorry with its bags inside (InfraLine.jsx) */
+.ipl-lorry { position: relative; display: block; height: 118px; max-width: 92%; filter: drop-shadow(0 6px 8px rgba(40, 30, 25, 0.16)); }
+.ip-list .ipl-list .ip-list-machines .ipl-lorry img, .ipl-list .ip-list-machines .ipl-lorry img {
+  position: absolute; left: 0; top: 0; width: 100% !important; height: 100% !important; max-width: none !important; filter: none; margin: 0;
+}
+.ipl-lorry-bag { position: absolute; background: center / 100% 100% no-repeat; }
+
+/* the road from the lorry to the home (InfraLine.jsx) */
+.ipl-road { fill: none; stroke: #ddd5c8; stroke-width: 15; stroke-linecap: round; stroke-linejoin: round; }
+.ipl-road-line { fill: none; stroke: #fff; stroke-width: 1.6; stroke-dasharray: 9 9; stroke-linecap: round; }
+.ipl-truck image { filter: drop-shadow(0 2px 2px rgba(40, 30, 25, 0.25)); }
+.ipl-homepic { max-width: 100%; height: 124px; }
