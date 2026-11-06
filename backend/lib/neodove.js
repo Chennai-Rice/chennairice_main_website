@@ -15,8 +15,8 @@
 //
 //   THE TEAM'S THREE CAMPAIGNS: when NEODOVE_ENDPOINT_GAYATHRI / _RAMYA / _LAVANYA are set (one NeoDove campaign
 //   each, with its own Custom Integration endpoint), every lead above - sign-up, checkout not paid, bulk enquiry -
-//   goes to a telecaller: Google Ads leads to Lavanya only, all others (Meta Ads, WhatsApp, website, bulk) shared between
-//   Gayathri and Ramya, whichever of the two has had the fewest leads in the last 14 days (AGENT_GROUPS).
+//   goes to the next telecaller in turn (round robin: Gayathri → Ramya → Lavanya → Gayathri…), whatever its source,
+//   so all three get an equal share (owner, 6 Nov 2026).
 //   `agent` on the outbox row says who got it. Until at least one of the three is set, the older one-endpoint-per-source
 //   settings below are used.
 //
@@ -59,14 +59,6 @@ const endpoint = (campaign = 'signup') => String(process.env[NEODOVE_CAMPAIGNS[c
 // The telecallers' campaigns, in the order a tie is settled.
 export const NEODOVE_AGENTS = { gayathri: 'NEODOVE_ENDPOINT_GAYATHRI', ramya: 'NEODOVE_ENDPOINT_RAMYA', lavanya: 'NEODOVE_ENDPOINT_LAVANYA' }
 const AGENT_NAMES = { gayathri: 'Gayathri', ramya: 'Ramya', lavanya: 'Lavanya' }
-// Who gets which leads (owner, 6 Nov 2026): Google Ads leads only Lavanya; Meta Ads and every other lead
-// (WhatsApp, website, checkout, bulk enquiry) are shared between Gayathri and Ramya.
-export const AGENT_GROUPS = { google_ads: ['lavanya'], other: ['gayathri', 'ramya'] }
-/** The telecallers a lead may go to, of those whose campaign is set up (all of them if none of its group is). */
-export function agentsFor(adSource, pool) {
-  const group = AGENT_GROUPS[adSource === 'google_ads' ? 'google_ads' : 'other'].filter((a) => pool.includes(a))
-  return group.length ? group : pool
-}
 const agentEndpoint = (agent) => String(process.env[NEODOVE_AGENTS[agent]] || '').trim()
 // https only (a plain http address is accepted for this machine, for the tests).
 const usable = (url) => (/^https:\/\/\S+$/.test(url) && (url.match(/https?:\/\//g) || []).length === 1) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url)
@@ -316,17 +308,16 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
   let failed = 0
   const pool = poolAgents()
   const byAgent = {}
-  // Of the telecallers the lead may go to (agentsFor), the one with the fewest leads in the last 14 days gets it (a tie goes in the order above).
-  let load = null
-  const pickAgent = async (among) => {
-    if (!load) {
-      const { rows: counts } = await query(
-        `select agent, count(*)::int n from neodove_outbox where agent = any($1::text[]) and created_at > now() - interval '14 days' group by agent`, [pool])
-      load = Object.fromEntries(pool.map((a) => [a, counts.find((c) => c.agent === a)?.n || 0]))
+  // Round robin: the telecaller after the one who got the last lead (in the order above), whatever the lead's source.
+  let last
+  const pickAgent = async () => {
+    if (last === undefined) {
+      const { rows: [r] } = await query(
+        `select agent from neodove_outbox where agent = any($1::text[]) order by coalesce(sent_at, next_try_at) desc limit 1`, [pool])
+      last = r?.agent ?? null
     }
-    const agent = [...among].sort((x, y) => load[x] - load[y])[0]
-    load[agent] += 1
-    return agent
+    last = pool[(pool.indexOf(last) + 1) % pool.length]
+    return last
   }
   try {
     const { rows } = await query(
@@ -335,10 +326,7 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
                       where status = 'queued' and next_try_at <= now() and ($1::uuid is null or id = $1)
                         and campaign = any($3::text[])
                       order by created_at limit $2 for update skip locked)
-        returning id, mobile, campaign, agent, payload, attempts, created_at,
-          -- Where the lead came from: the sign-up's source, or the checkout's traffic source.
-          coalesce((select j.traffic_source from checkout_journeys j where j.id = neodove_outbox.journey_id),
-                   (select l.source from lead_status l where l.mobile = neodove_outbox.mobile)) as ad_source`,
+        returning id, mobile, campaign, agent, payload, attempts, created_at`,
       [id, limit, campaigns]
     )
     rows.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
@@ -352,8 +340,7 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
       let agent = null
       try {
         if (pool.length) {
-          const among = agentsFor(r.ad_source, pool)
-          agent = among.includes(r.agent) ? r.agent : await pickAgent(among)
+          agent = pool.includes(r.agent) ? r.agent : await pickAgent()
           if (agent !== r.agent) await query('update neodove_outbox set agent = $2 where id = $1', [r.id, agent])
         }
         result = await post(pool.length ? { ...r.payload, Telecaller: AGENT_NAMES[agent] } : r.payload, pool.length ? agentEndpoint(agent) : endpoint(r.campaign))

@@ -3134,7 +3134,7 @@ test('the MIS dashboard does not count a brand typed in CALL HANDED BY as a tele
   }
 })
 
-test('NeoDove team campaigns: Google Ads leads go to Lavanya only; Meta Ads and all other leads are shared between Gayathri and Ramya', async () => {
+test('NeoDove team campaigns: every lead, whatever its source, goes round robin to Gayathri, Ramya and Lavanya', async () => {
   const http = await import('node:http')
   const got = []
   const fakeNeo = http.createServer((req, res) => {
@@ -3163,9 +3163,9 @@ test('NeoDove team campaigns: Google Ads leads go to Lavanya only; Meta Ads and 
     assert.ok(await recordBulkEnquiry(db, { name: 'B Six', phone: '9700000006', company: 'Six Stores', buyerType: 'retailer', gstin: '33AAAAA0000A1Z6' }))
     assert.equal(await recordBulkEnquiry(db, { name: 'B Six', phone: '9700000006' }), null) // once a week per mobile
     const r = await sendNeodoveLeads({ query: db.query, limit: 100 })
-    assert.deepEqual([r.sent, r.byAgent], [10, { gayathri: 4, ramya: 4, lavanya: 2 }], JSON.stringify(r))
-    assert.deepEqual(got.filter((g) => g.path === '/lavanya').map((g) => g.body.name).sort(), ['G One', 'G Two'])
-    for (const n of ['M One', 'M Two']) assert.ok(['/gayathri', '/ramya'].includes(got.find((g) => g.body.name === n).path))
+    assert.deepEqual([r.sent, r.byAgent], [10, { gayathri: 4, ramya: 3, lavanya: 3 }], JSON.stringify(r))
+    // In turn, oldest lead first: Gayathri, Ramya, Lavanya, Gayathri…
+    assert.deepEqual(got.slice(0, 4).map((g) => g.path), ['/gayathri', '/ramya', '/lavanya', '/gayathri'])
     assert.equal(got.find((g) => g.path === '/ramya').body.Telecaller, 'Ramya')
     const bulk = got.find((g) => g.body.Source === 'Bulk order form')
     assert.deepEqual([bulk.body.Company, bulk.body['Buyer type']], ['Five Traders', 'wholesaler'])
@@ -3173,15 +3173,15 @@ test('NeoDove team campaigns: Google Ads leads go to Lavanya only; Meta Ads and 
     await recordSignup(db, { name: 'S Seven', phone: '9700000007', source: 'whatsapp' })
     await recordSignup(db, { name: 'S Eight', phone: '9700000008', source: 'meta_ads' })
     const r2 = await sendNeodoveLeads({ query: db.query, limit: 100 })
-    assert.deepEqual(r2.byAgent, { gayathri: 1, ramya: 1 })
-    // An agent whose campaign is not set up yet is left out: Gayathri takes all the non-Google leads.
+    assert.deepEqual(r2.byAgent, { ramya: 1, lavanya: 1 }) // the turn carries on after the last one (Gayathri)
+    // An agent whose campaign is not set up yet is left out of the turn.
     delete process.env.NEODOVE_ENDPOINT_RAMYA
     assert.deepEqual(poolAgents(), ['gayathri', 'lavanya'])
     await recordSignup(db, { name: 'S Nine', phone: '9700000009', source: 'whatsapp' })
     await recordSignup(db, { name: 'S Ten', phone: '9700000010', source: 'meta_ads' })
     const r3 = await sendNeodoveLeads({ query: db.query, limit: 100 })
-    assert.deepEqual(r3.byAgent, { gayathri: 2 })
-    // Lavanya not set up: a Google Ads lead still goes to someone, not left waiting.
+    assert.deepEqual(r3.byAgent, { gayathri: 1, lavanya: 1 })
+    // Only one set up: every lead goes to her.
     delete process.env.NEODOVE_ENDPOINT_LAVANYA
     await recordSignup(db, { name: 'G Three', phone: '9700000023', source: 'google_ads' })
     assert.deepEqual((await sendNeodoveLeads({ query: db.query, limit: 100 })).byAgent, { gayathri: 1 })
@@ -3191,7 +3191,7 @@ test('NeoDove team campaigns: Google Ads leads go to Lavanya only; Meta Ads and 
   }
 })
 
-test('NeoDove team campaigns, end to end through the real routes: a Meta sign-up and a bulk enquiry go to Gayathri and Ramya, a checkout from a Google ad to Lavanya', async () => {
+test('NeoDove team campaigns, end to end through the real routes: a sign-up, a bulk enquiry and a checkout that stopped go to the three telecallers in turn', async () => {
   const http = await import('node:http')
   const got = []
   const fakeNeo = http.createServer((req, res) => {
@@ -3236,8 +3236,7 @@ test('NeoDove team campaigns, end to end through the real routes: a Meta sign-up
     const cart = Object.fromEntries(got.map((g) => [g.body.name, g.body['Cart value']]))
     assert.deepEqual(cart, { 'Test Signup': '', 'Test Bulk': '', 'Test Checkout': 1218 }) // the basket's amount for a checkout, blank for a sign-up and a bulk enquiry
     assert.ok(got.every((g) => g.body.tags === g.body['Lead type'])) // also sent as `tags`, in case NeoDove turns that key into tags
-    assert.equal(by['Test Checkout'], '/lavanya') // came from a Google ad
-    assert.deepEqual([by['Test Signup'], by['Test Bulk']].sort(), ['/gayathri', '/ramya']) // Meta sign-up and bulk enquiry
+    assert.deepEqual([by['Test Signup'], by['Test Bulk'], by['Test Checkout']], ['/gayathri', '/ramya', '/lavanya'])
   } finally {
     for (const k of ['NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA']) delete process.env[k]
     fakeNeo.close()
