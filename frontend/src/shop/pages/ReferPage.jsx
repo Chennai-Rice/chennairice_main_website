@@ -68,7 +68,7 @@ export default function ReferPage() {
             </ol>
             <form className="refer-form" onSubmit={submit} noValidate>
               <h2>Get my code</h2>
-              <p className="refer-help">Enter the mobile number you used when you ordered. That's all: no password, no OTP.</p>
+              <p className="refer-help">Enter the mobile number you used when you ordered.</p>
               <label>
                 Mobile number
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="98765 43210" maxLength={16} required />
