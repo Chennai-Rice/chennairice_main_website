@@ -1,6 +1,7 @@
 // LOCAL TESTING ONLY: finish a test order without a real payment, and clear test spins.
 //
 //   node db/local-test.js paid CR-20261106-ABCDE     mark that order paid (as if Razorpay said so)
+//   node db/local-test.js paid 9876543210            the same, for that mobile's latest unpaid order
 //   node db/local-test.js reset-spin 9876543210      forget that mobile's spin, so it can spin again
 //
 // Refuses to run unless DATABASE_URL points at this computer (never the live database).
@@ -15,7 +16,13 @@ if (process.env.CLOUD_SQL_INSTANCE || !/@(localhost|127\.0\.0\.1)(:\d+)?\//.test
 const [cmd, arg] = process.argv.slice(2)
 try {
   if (cmd === 'paid') {
-    const { rows: [o] } = await query('select * from orders where order_number = $1', [String(arg || '').trim()])
+    // An order number, or a mobile number: that mobile's latest unpaid order.
+    const mobile = String(arg || '').replace(/\D/g, '')
+    const { rows: [o] } = /^CR-/i.test(String(arg || '').trim())
+      ? await query('select * from orders where order_number = $1', [String(arg).trim().toUpperCase()])
+      : await query(
+        `select * from orders where right(regexp_replace(contact_phone, '\\D', '', 'g'), 10) = $1 and payment_status <> 'paid'
+          order by created_at desc limit 1`, [mobile.slice(-10)])
     if (!o) throw new Error('No order ' + arg)
     if (o.payment_status === 'paid') throw new Error(o.order_number + ' is already paid')
     let { rows: [p] } = await query(
