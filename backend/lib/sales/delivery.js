@@ -50,13 +50,17 @@ export function inHouseCovers(pincode, settings = {}) {
  * [{ method: 'courier', paise, days }, { method: 'in_house', paise, promise }] (in-house only where covered
  * and cheaper than the courier).
  * `courierPaise` is the courier charge the price list worked out (null while the PIN code is unknown);
- * `largestPackKg` the biggest bag in the cart (a 26 kg bag has its own in-house charge).
+ * `largestPackKg` the biggest bag in the cart (a 26 kg bag has its own in-house charge); `lines` the cart's
+ * packs: when every pack has an in-house charge from the price list (per bag), the charge is their sum.
  */
-export function deliveryOptions(courierPaise, pincode, settings = {}, { largestPackKg = 0 } = {}) {
+export function deliveryOptions(courierPaise, pincode, settings = {}, { largestPackKg = 0, lines = null } = {}) {
   if (courierPaise == null) return []
   const options = [{ method: 'courier', paise: courierPaise, promise: '3–5 days' }]
   const s = inHouseSettings(settings)
-  const own = Number(largestPackKg) >= 26 ? s.paise26 : s.paise
+  const perBag = Array.isArray(lines) && lines.length && lines.every((l) => l.inHousePaise != null)
+  const own = perBag
+    ? lines.reduce((t, l) => t + Number(l.inHousePaise) * Number(l.quantity), 0)
+    : Number(largestPackKg) >= 26 ? s.paise26 : s.paise
   if (inHouseCovers(pincode, settings) && (!s.onlyCheaper || own < courierPaise)) {
     options.push({ method: 'in_house', paise: own, promise: s.promise })
   }

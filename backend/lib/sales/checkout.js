@@ -63,7 +63,7 @@ export async function quoteCart(body) {
   // Courier, and Chennai Rice's own delivery where it covers the PIN code; the charge shown is the chosen one.
   const settings = await getSettings({ query })
   const largestPackKg = Math.max(0, ...priced.lines.map((l) => Number(l.packKg)))
-  const options = priced.regional || str(body?.pincode) ? deliveryOptions(courier, str(body?.pincode), settings, { largestPackKg }) : []
+  const options = priced.regional || str(body?.pincode) ? deliveryOptions(courier, str(body?.pincode), settings, { largestPackKg, lines: priced.lines }) : []
   // The customer's choice; until they choose ('auto' or nothing), the cheaper of the two.
   const cheapest = options.length ? options.reduce((a, b) => (b.paise < a.paise ? b : a)) : null
   const chosen = options.find((o) => o.method === str(body?.deliveryMethod)) || cheapest
@@ -110,7 +110,7 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
     if (courier == null) throw httpError('Please add a valid 6-digit PIN code.')
     // The chosen delivery, checked again here: never a method the PIN code does not get, never another amount.
     const delivery = chooseDelivery(courier, customer.pincode, customer.deliveryMethod, settings,
-      { largestPackKg: Math.max(0, ...priced.lines.map((l) => Number(l.packKg))) })
+      { largestPackKg: Math.max(0, ...priced.lines.map((l) => Number(l.packKg))), lines: priced.lines })
     const shipping = delivery.paise
     // The discount code, checked again inside this transaction (its row locked, so two orders cannot
     // both take the last use). A code that no longer applies stops the order with the reason.

@@ -86,7 +86,7 @@ export async function priceCart(db, items, { shipState, pincode } = {}) {
   const slugs = [...new Set(wanted.map((w) => w.slug))]
   const { rows } = await db.query(
     `select p.slug, p.name, p.is_active as product_active,
-            v.id, v.sku, v.pack_kg, v.price_paise, v.hsn_code, v.tax_rate_bp, v.is_active,
+            v.id, v.sku, v.pack_kg, v.price_paise, v.hsn_code, v.tax_rate_bp, v.is_active, v.in_house_paise,
             coalesce(s.on_hand - s.reserved, 0) as available
        from products p
        join product_variants v on v.product_id = p.id
@@ -158,6 +158,7 @@ export async function priceCart(db, items, { shipState, pincode } = {}) {
       taxRateBp: v.tax_rate_bp,
       unitPricePaise: unitPrice,
       deliveryPaise: rp ? Number(rp.delivery_paise) : null, // per pack
+      inHousePaise: v.in_house_paise == null ? null : Number(v.in_house_paise), // per pack, our own delivery
       quantity: qty,
       lineTotalPaise: lineTotal,
       ...split,

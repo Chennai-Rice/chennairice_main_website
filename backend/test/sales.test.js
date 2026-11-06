@@ -1448,13 +1448,28 @@ test('26 kg pricing sheet (Nov 2026): website price, MRP, hidden part, ₹589 Ta
   for (const [slug, want] of Object.entries(sheet)) {
     const [list, mrp, absorbed, opts] = PRICE_LIST[slug][26]
     const p = packPricing(26, list, mrp, absorbed, opts)
-    assert.deepEqual([list, p.mrp, p.website, p.absorbed, p.website + 200, p.delivery.TN, p.website + p.delivery.TN], want, slug)
+    assert.deepEqual([list, p.mrp, p.website, p.absorbed, p.website + p.inHouse, p.delivery.TN, p.website + p.delivery.TN], want, slug)
     assert.ok(p.absorbed + p.delivery.TN >= 687, slug + ': the courier cost is recovered')
     assert.ok(p.website <= 2800, slug)
   }
-  // The rest of the list did not move.
-  const k5 = PRICE_LIST['kitchidi-ponni-rice'][5]
-  assert.deepEqual(packPricing(5, k5[0], k5[1], k5[2], k5[3]).delivery.TN, 125)
+  // 5 and 10 kg sheets (Nov 2026): base, MRP, website, hidden, in-house a bag, Tamil Nadu courier.
+  const small = [
+    ['kitchidi-ponni-rice', 5, [515, 699, 555, 40, 60, 125]], ['special-rajabhogam', 5, [515, 699, 590, 75, 49, 90]],
+    ['vintage', 5, [515, 699, 590, 75, 49, 90]], ['united-5kg', 5, [501, 679, 576, 75, 49, 90]], ['special-idly-rice', 5, [295, 449, 370, 75, 49, 90]],
+    ['special-rajabhogam', 10, [1020, 1299, 1140, 120, 100, 120]], ['vintage', 10, [1020, 1299, 1110, 90, 100, 120]],
+    ['a1-special-ponni', 10, [990, 1279, 1140, 150, 100, 120]], ['nayara-super-aged', 10, [990, 1279, 1110, 120, 100, 120]],
+    ['special-idly-rice', 10, [566, 799, 686, 120, 100, 120]],
+  ]
+  for (const [slug, kg, want] of small) {
+    const [list, mrp, absorbed, opts] = PRICE_LIST[slug][kg]
+    const p = packPricing(kg, list, mrp, absorbed, opts)
+    assert.deepEqual([list, p.mrp, p.website, p.absorbed, p.inHouse, p.delivery.TN], want, slug + ' ' + kg)
+  }
+  // In-house a bag, summed for the order: 2 × 5 kg = ₹98; 5 kg Kitchidi + 26 kg = ₹260.
+  const { deliveryOptions: opts } = await import('../lib/sales/delivery.js')
+  const own = (lines) => opts(99999, '641001', {}, { lines }).find((o) => o.method === 'in_house').paise
+  assert.equal(own([{ inHousePaise: 4900, quantity: 2 }]), 9800)
+  assert.equal(own([{ inHousePaise: 6000, quantity: 1 }, { inHousePaise: 20000, quantity: 1 }]), 26000)
 
   // In-house: ₹200 with a 26 kg bag, ₹100 otherwise; the owner can change both.
   const { deliveryOptions } = await import('../lib/sales/delivery.js')

@@ -60,14 +60,14 @@ export default function InHouseDelivery({ say, onAuthError }) {
       <h2 className="wh-panel-title">In-house delivery</h2>
       <p className="wh-muted wh-small">
         Customers in the area below can choose delivery by the Chennai Rice team at checkout, next to the courier, for one flat
-        charge per order (website price + this charge = what the customer pays). The cheaper of the two is preselected; the customer can switch. Orders that choose it show "Our delivery" in Orders and Dispatch.
+        charge for each bag, set in the price list (5 kg ₹49, Kitchidi 5 kg ₹60, 10 kg ₹100, 26 kg ₹200); the order pays the sum. The charges below are used only for a pack the price list has no charge for. The cheaper of the two is preselected; the customer can switch. Orders that choose it show "Our delivery" in Orders and Dispatch.
       </p>
       <form onSubmit={save}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0' }}>
           <input type="checkbox" checked={form.enabled} onChange={set('enabled')} /> Offer in-house delivery at checkout
         </label>
         <label className="wh-field">
-          <span>Charge per order (₹, GST included)</span>
+          <span>Charge per order when a pack has no charge in the price list (₹)</span>
           <input className="wh-input" type="number" min="0" max="1000" step="1" value={form.rupees} onChange={set('rupees')} required />
         </label>
         <label className="wh-field">
