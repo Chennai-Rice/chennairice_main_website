@@ -14,7 +14,7 @@
 //
 //   ASKEVA_WEBHOOK_KEY   the secret in the webhook URL (?key=) or X-API-Key header
 import { hasDatabase, tx, query as defaultQuery } from './db.js'
-import { crmMobile, queueCrmLead, sendCrmLeads, crmEnabled } from './crm.js'
+import { crmMobile, queueCrmLead, sendCrmLeads, crmEnabled, isBlockedMobile } from './crm.js'
 import { httpError, safeEqual } from './sales/util.js'
 
 export function checkAskevaKey(req) {
@@ -56,7 +56,8 @@ export function parseMessages(payload) {
   const out = []
   const add = (phone, name, text, at) => {
     const p = waPhone(phone)
-    if (p) out.push({ phone: p, name: name ? String(name).trim().slice(0, 200) : null, text: String(text || '').trim().slice(0, 1000), at: when(at) })
+    // The company's own numbers are not customers (crm.js isBlockedMobile).
+    if (p && !isBlockedMobile(p)) out.push({ phone: p, name: name ? String(name).trim().slice(0, 200) : null, text: String(text || '').trim().slice(0, 1000), at: when(at) })
   }
   const list = Array.isArray(payload) ? payload : [payload]
   for (const body of list) {
@@ -93,6 +94,8 @@ const fmt = (d) => new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 
  * transaction. Returns the outbox id to send, or null.
  */
 async function saveMessage(db, { phone, name, text, at }, source) {
+  // The company's own numbers are not customers: not saved, not sent to Sales Daddy.
+  if (isBlockedMobile(phone)) return null
   const { rows: [c] } = await db.query(
     `insert into whatsapp_contacts (phone, name, first_message, first_message_at, last_message, last_message_at, messages, source)
      values ($1, $2, $3, $4, $3, $4, case when $5 = 'import' then 0 else 1 end, $5)
@@ -120,11 +123,19 @@ async function saveMessage(db, { phone, name, text, at }, source) {
   return id
 }
 
+/** Any phone-like value in the payload is one of the company's own numbers. */
+function fromBlockedNumber(payload) {
+  const found = JSON.stringify(payload ?? {}).match(/\+?\d[\d\s-]{9,15}\d/g) || []
+  return found.some((x) => isBlockedMobile(x))
+}
+
 /** Handles one webhook call. Never throws on content — a bad payload is kept for checking. */
 export async function recordAskevaWebhook(payload) {
   if (!hasDatabase()) return { ok: true, stored: false }
-  const { rows: [ev] } = await defaultQuery('insert into askeva_events (payload) values ($1) returning id', [payload ?? {}])
   const messages = parseMessages(payload)
+  // Only the company's own number in it (crm.js isBlockedMobile): not even the raw call is kept.
+  if (!messages.length && fromBlockedNumber(payload)) return { ok: true, messages: 0, blocked: true }
+  const { rows: [ev] } = await defaultQuery('insert into askeva_events (payload) values ($1) returning id', [payload ?? {}])
   const toSend = []
   try {
     await tx(async (db) => {
@@ -154,7 +165,7 @@ export async function importAskevaContacts(rows, { query = defaultQuery } = {}) 
   await tx(async (db) => {
     for (const r of rows) {
       const phone = waPhone(r.phone)
-      if (!phone) { skipped++; continue }
+      if (!phone || isBlockedMobile(phone)) { skipped++; continue }
       const id = await saveMessage(db, { phone, name: r.name || null, text: r.lastMessage || '', at: when(r.lastMessageAt) }, 'import')
       saved++
       if (id) queued++

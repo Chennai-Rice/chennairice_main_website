@@ -15,7 +15,8 @@
 //
 //   THE TEAM'S THREE CAMPAIGNS: when NEODOVE_ENDPOINT_GAYATHRI / _RAMYA / _LAVANYA are set (one NeoDove campaign
 //   each, with its own Custom Integration endpoint), every lead above - sign-up, checkout not paid, bulk enquiry -
-//   goes to the telecaller who has had the fewest leads in the last 14 days, so the work is shared equally.
+//   goes to a telecaller: Google Ads leads to Lavanya only, all others (Meta Ads, WhatsApp, website, bulk) shared between
+//   Gayathri and Ramya, whichever of the two has had the fewest leads in the last 14 days (AGENT_GROUPS).
 //   `agent` on the outbox row says who got it. Until at least one of the three is set, the older one-endpoint-per-source
 //   settings below are used.
 //
@@ -29,7 +30,7 @@
 // NeoDove's webhook format is not published: the parser accepts flat and nested shapes and every
 // call is stored as it came (neodove_events), so the mapping can be checked against real data.
 import { hasDatabase, query as defaultQuery } from './db.js'
-import { crmMobile, crmLead, sendCrmLeads, crmEnabled } from './crm.js'
+import { crmMobile, crmLead, sendCrmLeads, crmEnabled, isBlockedMobile } from './crm.js'
 import { httpError, safeEqual } from './sales/util.js'
 
 /** What kind of lead it is, for the telecaller's lead details and the tag on the call result in Sales Daddy. */
@@ -58,6 +59,14 @@ const endpoint = (campaign = 'signup') => String(process.env[NEODOVE_CAMPAIGNS[c
 // The telecallers' campaigns, in the order a tie is settled.
 export const NEODOVE_AGENTS = { gayathri: 'NEODOVE_ENDPOINT_GAYATHRI', ramya: 'NEODOVE_ENDPOINT_RAMYA', lavanya: 'NEODOVE_ENDPOINT_LAVANYA' }
 const AGENT_NAMES = { gayathri: 'Gayathri', ramya: 'Ramya', lavanya: 'Lavanya' }
+// Who gets which leads (owner, 6 Nov 2026): Google Ads leads only Lavanya; Meta Ads and every other lead
+// (WhatsApp, website, checkout, bulk enquiry) are shared between Gayathri and Ramya.
+export const AGENT_GROUPS = { google_ads: ['lavanya'], other: ['gayathri', 'ramya'] }
+/** The telecallers a lead may go to, of those whose campaign is set up (all of them if none of its group is). */
+export function agentsFor(adSource, pool) {
+  const group = AGENT_GROUPS[adSource === 'google_ads' ? 'google_ads' : 'other'].filter((a) => pool.includes(a))
+  return group.length ? group : pool
+}
 const agentEndpoint = (agent) => String(process.env[NEODOVE_AGENTS[agent]] || '').trim()
 // https only (a plain http address is accepted for this machine, for the tests).
 const usable = (url) => (/^https:\/\/\S+$/.test(url) && (url.match(/https?:\/\//g) || []).length === 1) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url)
@@ -119,7 +128,7 @@ export function parseCallResults(payload) {
     if (!it || typeof it !== 'object') continue
     const mobile = crmMobile(pick(it, ['mobile', 'phone', 'number', 'mobile_number', 'contact_number', 'phone_number', 'customer_number',
       'lead.mobile', 'lead.phone', 'lead.number', 'contact.mobile', 'contact.phone', 'customer.mobile', 'customer.phone']))
-    if (!/^[6-9]\d{9}$/.test(mobile)) continue
+    if (!/^[6-9]\d{9}$/.test(mobile) || isBlockedMobile(mobile)) continue
     // NeoDove's "Lead Create" trigger echoes back leads we sent: not a call, nothing to record.
     if (/create/i.test(pick(it, ['event_name', 'event', 'type']))) continue
     const connected = pick(it, ['call_connected', 'connected', 'call.connected']).toLowerCase()
@@ -210,7 +219,7 @@ export async function recordNeodoveWebhook(payload) {
 export async function recordSignup(db, { name, phone, email, source, sourceLabel, campaign, ad, page }) {
   if (!hasDatabase()) return null
   const mobile = crmMobile(phone)
-  if (!/^[6-9]\d{9}$/.test(mobile)) return null
+  if (!/^[6-9]\d{9}$/.test(mobile) || isBlockedMobile(mobile)) return null
   try {
     const { rows: [row] } = await db.query(
       `insert into lead_status (mobile, name, email, source, campaign, status, signed_up_at)
@@ -225,7 +234,7 @@ export async function recordSignup(db, { name, phone, email, source, sourceLabel
     const payload = {
       // NeoDove's own example sends the mobile as a number.
       name, mobile: Number(mobile), email: email || '',
-      'Lead type': leadType('signup', source), tags: leadType('signup', source), Source: sourceLabel || source || '', Campaign: campaign || '', Ad: ad || '', Page: page || '',
+      'Lead type': leadType('signup', source), tags: leadType('signup', source), 'Cart value': '', Source: sourceLabel || source || '', Campaign: campaign || '', Ad: ad || '', Page: page || '',
       'Signed up': fmt(new Date()),
     }
     const { rows: [o] } = await db.query(
@@ -244,14 +253,14 @@ export async function recordSignup(db, { name, phone, email, source, sourceLabel
 export async function recordBulkEnquiry(db, { name, phone, email, company, buyerType, gstin, message }) {
   if (!hasDatabase()) return null
   const mobile = crmMobile(phone)
-  if (!/^[6-9]\d{9}$/.test(mobile)) return null
+  if (!/^[6-9]\d{9}$/.test(mobile) || isBlockedMobile(mobile)) return null
   try {
     const { rows: [recent] } = await db.query(
       `select 1 from neodove_outbox where mobile = $1 and campaign = 'bulk_enquiry' and created_at > now() - interval '7 days' limit 1`, [mobile])
     if (recent) return null
     const payload = {
       name: name || company || 'Bulk enquiry', mobile: Number(mobile), email: email || '',
-      'Lead type': leadType('bulk_enquiry'), tags: leadType('bulk_enquiry'), Source: 'Bulk order form', Company: company || '', 'Buyer type': buyerType || '', GSTIN: gstin || '', Message: message || '',
+      'Lead type': leadType('bulk_enquiry'), tags: leadType('bulk_enquiry'), 'Cart value': '', Source: 'Bulk order form', Company: company || '', 'Buyer type': buyerType || '', GSTIN: gstin || '', Message: message || '',
       'Enquired': fmt(new Date()),
     }
     const { rows: [o] } = await db.query(`insert into neodove_outbox (mobile, campaign, payload) values ($1, 'bulk_enquiry', $2) returning id`, [mobile, payload])
@@ -307,15 +316,15 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
   let failed = 0
   const pool = poolAgents()
   const byAgent = {}
-  // The telecaller with the fewest leads in the last 14 days gets the next one (a tie goes in the order above).
+  // Of the telecallers the lead may go to (agentsFor), the one with the fewest leads in the last 14 days gets it (a tie goes in the order above).
   let load = null
-  const pickAgent = async () => {
+  const pickAgent = async (among) => {
     if (!load) {
       const { rows: counts } = await query(
         `select agent, count(*)::int n from neodove_outbox where agent = any($1::text[]) and created_at > now() - interval '14 days' group by agent`, [pool])
       load = Object.fromEntries(pool.map((a) => [a, counts.find((c) => c.agent === a)?.n || 0]))
     }
-    const agent = [...pool].sort((x, y) => load[x] - load[y])[0]
+    const agent = [...among].sort((x, y) => load[x] - load[y])[0]
     load[agent] += 1
     return agent
   }
@@ -326,16 +335,25 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
                       where status = 'queued' and next_try_at <= now() and ($1::uuid is null or id = $1)
                         and campaign = any($3::text[])
                       order by created_at limit $2 for update skip locked)
-        returning id, mobile, campaign, payload, attempts, created_at`,
+        returning id, mobile, campaign, agent, payload, attempts, created_at,
+          -- Where the lead came from: the sign-up's source, or the checkout's traffic source.
+          coalesce((select j.traffic_source from checkout_journeys j where j.id = neodove_outbox.journey_id),
+                   (select l.source from lead_status l where l.mobile = neodove_outbox.mobile)) as ad_source`,
       [id, limit, campaigns]
     )
     rows.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
     for (const r of rows) {
+      // Queued before the number was blocked: dropped, never sent.
+      if (isBlockedMobile(r.mobile)) {
+        await query(`update neodove_outbox set status = 'failed', last_error = 'blocked: company number' where id = $1`, [r.id])
+        continue
+      }
       let result
       let agent = null
       try {
         if (pool.length) {
-          agent = pool.includes(r.agent) ? r.agent : await pickAgent()
+          const among = agentsFor(r.ad_source, pool)
+          agent = among.includes(r.agent) ? r.agent : await pickAgent(among)
           if (agent !== r.agent) await query('update neodove_outbox set agent = $2 where id = $1', [r.id, agent])
         }
         result = await post(pool.length ? { ...r.payload, Telecaller: AGENT_NAMES[agent] } : r.payload, pool.length ? agentEndpoint(agent) : endpoint(r.campaign))
