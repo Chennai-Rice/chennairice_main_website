@@ -15,7 +15,8 @@
 //
 //   THE TEAM'S THREE CAMPAIGNS: when NEODOVE_ENDPOINT_GAYATHRI / _RAMYA / _LAVANYA are set (one NeoDove campaign
 //   each, with its own Custom Integration endpoint), every lead above - sign-up, checkout not paid, bulk enquiry -
-//   goes to the telecaller who has had the fewest leads in the last 14 days, so the work is shared equally.
+//   goes to the next telecaller in turn (round robin: Gayathri → Ramya → Lavanya → Gayathri…), whatever its source,
+//   so all three get an equal share (owner, 6 Nov 2026).
 //   `agent` on the outbox row says who got it. Until at least one of the three is set, the older one-endpoint-per-source
 //   settings below are used.
 //
@@ -29,7 +30,7 @@
 // NeoDove's webhook format is not published: the parser accepts flat and nested shapes and every
 // call is stored as it came (neodove_events), so the mapping can be checked against real data.
 import { hasDatabase, query as defaultQuery } from './db.js'
-import { crmMobile, crmLead, sendCrmLeads, crmEnabled } from './crm.js'
+import { crmMobile, crmLead, sendCrmLeads, crmEnabled, isBlockedMobile } from './crm.js'
 import { httpError, safeEqual } from './sales/util.js'
 
 /** What kind of lead it is, for the telecaller's lead details and the tag on the call result in Sales Daddy. */
@@ -124,7 +125,7 @@ export function parseCallResults(payload) {
     if (!it || typeof it !== 'object') continue
     const mobile = crmMobile(pick(it, ['mobile', 'phone', 'number', 'mobile_number', 'contact_number', 'phone_number', 'customer_number',
       'lead.mobile', 'lead.phone', 'lead.number', 'contact.mobile', 'contact.phone', 'customer.mobile', 'customer.phone']))
-    if (!/^[6-9]\d{9}$/.test(mobile)) continue
+    if (!/^[6-9]\d{9}$/.test(mobile) || isBlockedMobile(mobile)) continue
     // NeoDove's "Lead Create" trigger echoes back leads we sent: not a call, nothing to record.
     if (/create/i.test(pick(it, ['event_name', 'event', 'type']))) continue
     const connected = pick(it, ['call_connected', 'connected', 'call.connected']).toLowerCase()
@@ -215,7 +216,7 @@ export async function recordNeodoveWebhook(payload) {
 export async function recordSignup(db, { name, phone, email, source, sourceLabel, campaign, ad, page }) {
   if (!hasDatabase()) return null
   const mobile = crmMobile(phone)
-  if (!/^[6-9]\d{9}$/.test(mobile)) return null
+  if (!/^[6-9]\d{9}$/.test(mobile) || isBlockedMobile(mobile)) return null
   try {
     const { rows: [row] } = await db.query(
       `insert into lead_status (mobile, name, email, source, campaign, status, signed_up_at)
@@ -230,7 +231,7 @@ export async function recordSignup(db, { name, phone, email, source, sourceLabel
     const payload = {
       // NeoDove's own example sends the mobile as a number.
       name, mobile: Number(mobile), email: email || '',
-      'Lead type': leadType('signup', source), tags: leadType('signup', source), Source: sourceLabel || source || '', Campaign: campaign || '', Ad: ad || '', Page: page || '',
+      'Lead type': leadType('signup', source), tags: leadType('signup', source), 'Cart value': '', Source: sourceLabel || source || '', Campaign: campaign || '', Ad: ad || '', Page: page || '',
       'Signed up': fmt(new Date()),
     }
     const { rows: [o] } = await db.query(
@@ -249,14 +250,14 @@ export async function recordSignup(db, { name, phone, email, source, sourceLabel
 export async function recordBulkEnquiry(db, { name, phone, email, company, buyerType, gstin, message }) {
   if (!hasDatabase()) return null
   const mobile = crmMobile(phone)
-  if (!/^[6-9]\d{9}$/.test(mobile)) return null
+  if (!/^[6-9]\d{9}$/.test(mobile) || isBlockedMobile(mobile)) return null
   try {
     const { rows: [recent] } = await db.query(
       `select 1 from neodove_outbox where mobile = $1 and campaign = 'bulk_enquiry' and created_at > now() - interval '7 days' limit 1`, [mobile])
     if (recent) return null
     const payload = {
       name: name || company || 'Bulk enquiry', mobile: Number(mobile), email: email || '',
-      'Lead type': leadType('bulk_enquiry'), tags: leadType('bulk_enquiry'), Source: 'Bulk order form', Company: company || '', 'Buyer type': buyerType || '', GSTIN: gstin || '', Message: message || '',
+      'Lead type': leadType('bulk_enquiry'), tags: leadType('bulk_enquiry'), 'Cart value': '', Source: 'Bulk order form', Company: company || '', 'Buyer type': buyerType || '', GSTIN: gstin || '', Message: message || '',
       'Enquired': fmt(new Date()),
     }
     const { rows: [o] } = await db.query(`insert into neodove_outbox (mobile, campaign, payload) values ($1, 'bulk_enquiry', $2) returning id`, [mobile, payload])
@@ -336,17 +337,16 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
   let failed = 0
   const pool = poolAgents()
   const byAgent = {}
-  // The telecaller with the fewest leads in the last 14 days gets the next one (a tie goes in the order above).
-  let load = null
+  // Round robin: the telecaller after the one who got the last lead (in the order above), whatever the lead's source.
+  let last
   const pickAgent = async () => {
-    if (!load) {
-      const { rows: counts } = await query(
-        `select agent, count(*)::int n from neodove_outbox where agent = any($1::text[]) and created_at > now() - interval '14 days' group by agent`, [pool])
-      load = Object.fromEntries(pool.map((a) => [a, counts.find((c) => c.agent === a)?.n || 0]))
+    if (last === undefined) {
+      const { rows: [r] } = await query(
+        `select agent from neodove_outbox where agent = any($1::text[]) order by coalesce(sent_at, next_try_at) desc, created_at desc limit 1`, [pool])
+      last = r?.agent ?? null
     }
-    const agent = [...pool].sort((x, y) => load[x] - load[y])[0]
-    load[agent] += 1
-    return agent
+    last = pool[(pool.indexOf(last) + 1) % pool.length]
+    return last
   }
   try {
     const { rows } = await query(
@@ -355,11 +355,16 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
                       where status = 'queued' and next_try_at <= now() and ($1::uuid is null or id = $1)
                         and campaign = any($3::text[])
                       order by created_at limit $2 for update skip locked)
-        returning id, mobile, campaign, payload, attempts, created_at`,
+        returning id, mobile, campaign, agent, payload, attempts, created_at`,
       [id, limit, campaigns]
     )
     rows.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
     for (const r of rows) {
+      // Queued before the number was blocked: dropped, never sent.
+      if (isBlockedMobile(r.mobile)) {
+        await query(`update neodove_outbox set status = 'failed', last_error = 'blocked: company number' where id = $1`, [r.id])
+        continue
+      }
       let result
       let agent = null
       try {

@@ -7,6 +7,19 @@ import { dayLabel } from './shared.jsx'
 // down to each campaign and ad, with visits → checkouts → orders → revenue.
 
 const rupees = (n) => '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN')
+
+// The period: a quick choice, or any From–To dates (India time, both days included; one day = same date twice).
+const istToday = () => new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
+const daysBack = (n) => new Date(Date.parse(istToday() + 'T00:00:00Z') - (n - 1) * 86400000).toISOString().slice(0, 10)
+const PERIODS = [
+  { key: 'today', label: 'Today', range: () => ({ from: istToday(), to: istToday() }) },
+  { key: '7', label: 'Last 7 days', range: () => ({ from: daysBack(7), to: istToday() }) },
+  { key: '30', label: 'Last 30 days', range: () => ({ from: daysBack(30), to: istToday() }) },
+  { key: '90', label: 'Last 90 days', range: () => ({ from: daysBack(90), to: istToday() }) },
+  { key: 'all', label: 'All time', range: () => ({ from: '2024-01-01', to: istToday() }) },
+  { key: 'custom', label: 'Choose dates…' },
+]
+const rangeQuery = (r) => `from=${r.from}&to=${r.to}`
 const pct = (a, b) => (b ? `${Math.round((a / b) * 1000) / 10}%` : '—')
 
 const META_PARAMS = 'utm_source={{site_source_name}}&utm_medium=paid&utm_campaign={{campaign.name}}&utm_content={{ad.name}}'
@@ -116,19 +129,11 @@ function CopyLine({ label, text }) {
   )
 }
 
-// India-time date (YYYY-MM-DD) for the date boxes.
-const istDay = (offset = 0) => new Date(Date.now() + 5.5 * 3600000 + offset * 86400000).toISOString().slice(0, 10)
-
 export default function SourcesReport({ say, onAuthError }) {
-  // Period: last 7 / 30 / 90 days, or custom dates (both days included, India time).
-  const [choice, setChoice] = useState('30')
-  const [from, setFrom] = useState(istDay(-29))
-  const [to, setTo] = useState(istDay())
-  const customOk = /^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to) && from <= to
-  // The query the report's lists share ("days=30" or "from=…&to=…").
-  const period = choice === 'custom'
-    ? (customOk ? `from=${from}&to=${to}` : 'days=30')
-    : `days=${choice}`
+  const [period, setPeriod] = useState('30')
+  const [custom, setCustom] = useState(() => ({ from: daysBack(30), to: istToday() }))
+  const range = period === 'custom' ? custom : PERIODS.find((p) => p.key === period).range()
+  const rq = rangeQuery(range)
   const [product, setProduct] = useState('')
   const [products, setProducts] = useState([])
   const [data, setData] = useState(null)
@@ -146,17 +151,16 @@ export default function SourcesReport({ say, onAuthError }) {
     let live = true
     setData(null)
     setOpen(null)
-    staffJson(`/api/admin/warehouse/sources?${period}&product=${encodeURIComponent(product)}`)
+    staffJson(`/api/admin/warehouse/sources?${rq}&product=${encodeURIComponent(product)}`)
       .then((d) => live && setData(d))
       .catch((err) => { if (!onAuthError(err)) say(err.message, 'error') })
     return () => { live = false }
-  }, [period, product, say, onAuthError])
+  }, [rq, product, say, onAuthError])
 
   async function showOrders(row) {
     if (open && open.key === rowKey(row)) return setOpen(null)
     try {
-      const q = new URLSearchParams(period)
-      for (const [k, v] of Object.entries({ product, source: row.source, campaign: row.campaign || '', ad: row.ad || '' })) q.set(k, v)
+      const q = new URLSearchParams({ ...range, product, source: row.source, campaign: row.campaign || '', ad: row.ad || '' })
       const d = await staffJson(`/api/admin/warehouse/sources/orders?${q}`)
       setOpen({ key: rowKey(row), orders: d.orders })
     } catch (err) {
@@ -198,20 +202,20 @@ export default function SourcesReport({ say, onAuthError }) {
         </div>
         <div className="wh-src-filters">
           <label className="wh-filter"><span>Period</span>
-            <span className="wh-select"><select value={choice} onChange={(e) => setChoice(e.target.value)}>
-              <option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option>
-              <option value="custom">Custom dates</option>
+            <span className="wh-select"><select value={period} onChange={(e) => {
+              const key = e.target.value
+              if (key === 'custom' && period !== 'custom') setCustom(range)
+              setPeriod(key)
+            }}>
+              {PERIODS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
             </select></span>
           </label>
-          {choice === 'custom' && (
+          {period === 'custom' && (
             <>
               <label className="wh-filter"><span>From</span>
-                <input className="wh-input" type="date" value={from} max={to || istDay()} onChange={(e) => setFrom(e.target.value)} />
-              </label>
+                <input className="wh-input" type="date" value={custom.from} max={custom.to} onChange={(e) => e.target.value && setCustom((c) => ({ ...c, from: e.target.value }))} /></label>
               <label className="wh-filter"><span>To</span>
-                <input className="wh-input" type="date" value={to} min={from} max={istDay()} onChange={(e) => setTo(e.target.value)} />
-              </label>
-              {!customOk && <span className="wh-small" style={{ color: '#b3261e', alignSelf: 'end' }}>The From date must be on or before the To date.</span>}
+                <input className="wh-input" type="date" value={custom.to} min={custom.from} max={istToday()} onChange={(e) => e.target.value && setCustom((c) => ({ ...c, to: e.target.value }))} /></label>
             </>
           )}
           <label className="wh-filter"><span>Product</span>
@@ -333,25 +337,25 @@ export default function SourcesReport({ say, onAuthError }) {
         </>
       )}
     </section>
-    <SourcePeople period={period} product={product} channel={channel} say={say} onAuthError={onAuthError} />
-    <ContestLeads period={period} channel={channel} say={say} onAuthError={onAuthError} />
+    <SourcePeople rq={rq} product={product} channel={channel} say={say} onAuthError={onAuthError} />
+    <ContestLeads rq={rq} range={range} channel={channel} say={say} onAuthError={onAuthError} />
     </>
   )
 }
 
 /** Everyone who checked out from the chosen channel, one by one (paid or not). */
-function SourcePeople({ period, product, channel, say, onAuthError }) {
+function SourcePeople({ rq, product, channel, say, onAuthError }) {
   const [people, setPeople] = useState(null)
   const [paidOnly, setPaidOnly] = useState(false)
   useEffect(() => {
     let live = true
     setPeople(null)
     const sources = (CHANNELS.find((c) => c.key === channel)?.sources || []).join(',')
-    staffJson(`/api/admin/warehouse/sources/people?${period}&product=${encodeURIComponent(product)}&sources=${sources}`)
+    staffJson(`/api/admin/warehouse/sources/people?${rq}&product=${encodeURIComponent(product)}&sources=${sources}`)
       .then((d) => live && setPeople(d.people))
       .catch((err) => { if (!onAuthError(err)) say(err.message, 'error') })
     return () => { live = false }
-  }, [period, product, channel, say, onAuthError])
+  }, [rq, product, channel, say, onAuthError])
   const list = (people || []).filter((p) => !paidOnly || p.paid)
   const name = CHANNELS.find((c) => c.key === channel)?.label
   function downloadCsv() {
@@ -399,25 +403,63 @@ function SourcePeople({ period, product, channel, say, onAuthError }) {
 }
 
 /** Sign-ups from the contest popup form shown to Meta and Google ad visitors. */
-function ContestLeads({ period, channel = '', say, onAuthError }) {
+const LEAD_FILTERS = [
+  { key: '', label: 'All' },
+  { key: 'meta', label: 'Meta ads', sources: ['meta_ads_instagram', 'meta_ads_facebook', 'meta_ads'] },
+  { key: 'google', label: 'Google Ads', sources: ['google_ads'] },
+  { key: 'whatsapp', label: 'WhatsApp', sources: ['whatsapp'] },
+  { key: 'other', label: 'Other' },
+]
+const leadFilterOf = (source) => LEAD_FILTERS.find((f) => f.sources?.includes(source))?.key || 'other'
+const PAGE_SIZES = [10, 15, 25, 50]
+
+function ContestLeads({ rq, range, channel = '', say, onAuthError }) {
   const [leads, setLeads] = useState(null)
+  const [today, setToday] = useState(null)
+  const [kind, setKind] = useState('')
+  const [find, setFind] = useState('')
+  const [size, setSize] = useState(15)
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
     let live = true
     setLeads(null)
-    staffJson(`/api/admin/warehouse/contest-leads?${period}`)
+    staffJson(`/api/admin/warehouse/contest-leads?${rq}`)
       .then((d) => live && setLeads(d.leads))
       .catch((err) => { if (!onAuthError(err)) say(err.message, 'error') })
     return () => { live = false }
-  }, [period, say, onAuthError])
+  }, [rq, say, onAuthError])
+
+  // Today's sign-ups, whatever period is chosen above.
+  useEffect(() => {
+    let live = true
+    const day = istToday()
+    staffJson(`/api/admin/warehouse/contest-leads?from=${day}&to=${day}`)
+      .then((d) => live && setToday(d.leads || []))
+      .catch(() => {})
+    return () => { live = false }
+  }, [rq])
+
+  // Back to page 1 whenever what is listed changes.
+  useEffect(() => { setPage(1) }, [rq, kind, find, size, channel])
+
+  const needle = find.trim().toLowerCase()
+  const inPeriod = (leads || []).filter((l) => inChannel(channel, l.source))
+  const counts = Object.fromEntries(LEAD_FILTERS.map((f) => [f.key, f.key ? inPeriod.filter((l) => leadFilterOf(l.source) === f.key).length : inPeriod.length]))
+  const list = inPeriod.filter((l) => (!kind || leadFilterOf(l.source) === kind)
+    && (!needle || `${l.name} ${l.phone} ${l.email} ${l.campaign} ${l.ad}`.toLowerCase().includes(needle)))
+  const pages = Math.max(1, Math.ceil(list.length / size))
+  const at = Math.min(page, pages)
+  const shown = list.slice((at - 1) * size, at * size)
+  const todayBy = (key) => (today || []).filter((l) => leadFilterOf(l.source) === key).length
 
   async function downloadCsv() {
     try {
-      const res = await staffFetch(`/api/admin/warehouse/contest-leads.csv?${period}`)
+      const res = await staffFetch(`/api/admin/warehouse/contest-leads.csv?${rq}`)
       const url = URL.createObjectURL(await res.blob())
       const a = document.createElement('a')
       a.href = url
-      a.download = 'contest-signups.csv'
+      a.download = `contest-signups-${range.from}-to-${range.to}.csv`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -433,26 +475,66 @@ function ContestLeads({ period, channel = '', say, onAuthError }) {
         <div>
           <h2 className="wh-panel-title">Contest sign-ups from ads and WhatsApp</h2>
           <p className="wh-muted wh-small">
-            Name, mobile and email from the Super Slogan Contest form, shown to visitors who came from a Meta or Google ad or a WhatsApp link
-            {leads ? ` · ${leads.length} in this period` : ''}.
+            Name, mobile and email from the Super Slogan Contest form, by the day they signed up
+            {leads ? ` · ${inPeriod.length} from ${range.from === range.to ? range.from : `${range.from} to ${range.to}`}` : ''}.
           </p>
         </div>
         <button type="button" className="wh-btn wh-btn--outline" onClick={downloadCsv} disabled={!leads?.length}>Download CSV</button>
       </header>
-      {!leads ? <p className="wh-empty">Loading…</p> : !leads.filter((l) => inChannel(channel, l.source)).length ? (
-        <p className="wh-empty">No sign-ups in this period yet.</p>
-      ) : (
-        <ul className="wh-src-orders wh-src-leads">
-          {leads.filter((l) => inChannel(channel, l.source)).map((l) => (
-            <li key={l.phone}>
-              <strong>{l.name}</strong>
-              <a className="wh-mono" href={`tel:+91${l.phone}`}>{l.phone}</a>
-              <a href={`mailto:${l.email}`}>{l.email}</a>
-              <span><i className="wh-src-dot" style={{ background: TONE[l.source] || '#8a7766' }} />{l.sourceLabel}{l.campaign ? ` · ${l.campaign}` : ''}{l.ad ? ` · ${l.ad}` : ''}</span>
-              <span className="wh-muted wh-small">{dayLabel(l.updated_at).text}</span>
-            </li>
+
+      <div className="lead-today" aria-live="polite">
+        <div className="lead-today-main">
+          <span className="wh-muted wh-small">Today</span>
+          <strong>{today ? today.length : '…'}</strong>
+          <span className="wh-muted wh-small">sign-up{today?.length === 1 ? '' : 's'}</span>
+        </div>
+        {today && today.length > 0 && (
+          <div className="lead-today-split">
+            {LEAD_FILTERS.filter((f) => f.key && todayBy(f.key)).map((f) => <span key={f.key}>{f.label} <strong>{todayBy(f.key)}</strong></span>)}
+          </div>
+        )}
+      </div>
+
+      <div className="lead-tools">
+        <div className="lead-chips" role="group" aria-label="Filter sign-ups by source">
+          {LEAD_FILTERS.map((f) => (
+            <button key={f.key} type="button" className={`lead-chip${kind === f.key ? ' is-active' : ''}`} aria-pressed={kind === f.key} onClick={() => setKind(f.key)}>
+              {f.label} <span>{counts[f.key] ?? 0}</span>
+            </button>
           ))}
-        </ul>
+        </div>
+        <input className="wh-src-find" type="search" placeholder="Search name, mobile, campaign…" value={find} onChange={(e) => setFind(e.target.value)} aria-label="Search sign-ups" />
+      </div>
+
+      {!leads ? <p className="wh-empty">Loading…</p> : !list.length ? (
+        <p className="wh-empty">{inPeriod.length ? 'No sign-ups match this filter.' : 'No sign-ups in this period yet.'}</p>
+      ) : (
+        <>
+          <ul className="wh-src-orders wh-src-leads">
+            {shown.map((l) => (
+              <li key={l.phone}>
+                <strong>{l.name}</strong>
+                <a className="wh-mono" href={`tel:+91${l.phone}`}>{l.phone}</a>
+                <a href={`mailto:${l.email}`}>{l.email}</a>
+                <span><i className="wh-src-dot" style={{ background: TONE[l.source] || '#8a7766' }} />{l.sourceLabel}{l.campaign ? ` · ${l.campaign}` : ''}{l.ad ? ` · ${l.ad}` : ''}</span>
+                <span className="wh-muted wh-small">{dayLabel(l.created_at).text}</span>
+              </li>
+            ))}
+          </ul>
+          <nav className="lead-pager" aria-label="Sign-up pages">
+            <span className="wh-muted wh-small">{(at - 1) * size + 1}–{Math.min(at * size, list.length)} of {list.length}</span>
+            <span className="lead-pager-btns">
+              <button type="button" className="wh-btn wh-btn--outline" disabled={at <= 1} onClick={() => setPage(at - 1)}>‹ Previous</button>
+              <span className="wh-small">Page {at} of {pages}</span>
+              <button type="button" className="wh-btn wh-btn--outline" disabled={at >= pages} onClick={() => setPage(at + 1)}>Next ›</button>
+            </span>
+            <label className="wh-small lead-pager-size">Show
+              <span className="wh-select"><select value={size} onChange={(e) => setSize(Number(e.target.value))}>
+                {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+              </select></span>
+              per page</label>
+          </nav>
+        </>
       )}
     </section>
   )

@@ -146,6 +146,8 @@ export const PROCESSING_STAGES = [
   { id: 'colour-sorting', num: '08', title: 'Colour Sorting', text: 'Optical sorting removes discoloured and off-type grains.' },
   { id: 'quality-check', num: '09', title: 'Quality Check', text: 'A quality check is carried out before the batch proceeds to packaging.' },
   { id: 'packaging', num: '10', title: 'Packaging', text: 'Finished rice is packed and prepared for dispatch.' },
+  { id: 'dispatch', num: '11', title: 'Dispatch', text: 'Packed bags are loaded into our trucks and sent out to distributors and stores.' },
+  { id: 'home-delivery', num: '12', title: 'Home Delivery', text: 'Our delivery trucks bring the rice right to your doorstep.' },
 ]
 
 /* -------------------- section 06: silo storage -------------------- */

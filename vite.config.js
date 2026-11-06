@@ -17,6 +17,11 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    // Images dropped straight into frontend/public are often still being written
+    // when the watcher sees them; Windows then reports the file as busy (EBUSY) and
+    // the dev server crashes. The site never loads those loose files by path change,
+    // so they are not watched (they are still served).
+    watch: { ignored: ['**/frontend/public/*.png', '**/frontend/public/*.jpg', '**/frontend/public/*.jpeg', '**/frontend/public/*.webp'] },
     proxy: {
       // Soru Kutty chatbot, checkout and analytics: the local dev server in
       // backend/server/ holds the API keys server-side. On Vercel the same

@@ -11,7 +11,7 @@
 // A mobile is called at most once a week per campaign. Cart-only journeys have no mobile and are not sent.
 // Run by the 10-minute job (jobs.js). Never throws.
 import { query as defaultQuery } from '../db.js'
-import { crmMobile, crmLead, crmEnabled } from '../crm.js'
+import { crmMobile, crmLead, crmEnabled, isBlockedMobile } from '../crm.js'
 import { leadType } from '../neodove.js'
 
 const WAIT_MINUTES = 30
@@ -42,6 +42,8 @@ export function neodovePayload(j, mobile) {
     Stopped: STAGE_LABEL[j.stage] || j.stage,
     Basket: basket(j.items),
     Value: j.value_paise != null ? rupees(j.value_paise) : '',
+    // The same amount as a plain number of rupees (blank for a lead that has no basket, like a sign-up).
+    'Cart value': j.value_paise != null ? Math.round(Number(j.value_paise) / 100) : '',
     Place: [j.city, j.state, j.pincode].filter(Boolean).join(', '),
     Order: j.order_number || '',
     Error: j.last_error || '',
@@ -81,6 +83,7 @@ export async function followUpJourneys({ query = defaultQuery, waitMinutes = WAI
       const mobile = crmMobile(j.contact_phone)
       const kind = followupKind(j.stage)
       if (!/^[6-9]\d{9}$/.test(mobile) || !kind) { done.skipped++; await mark(!kind ? `skipped: stage ${j.stage}` : 'skipped: no valid mobile'); continue }
+      if (isBlockedMobile(mobile)) { done.skipped++; await mark('skipped: company number'); continue }
       // Bought after all (this journey's order, or another order on the same mobile since it started).
       const { rows: [paid] } = await query(
         `select 1 from orders where payment_status = any($3::text[]) and placed_at >= $2

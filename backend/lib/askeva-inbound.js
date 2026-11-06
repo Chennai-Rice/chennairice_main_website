@@ -14,8 +14,9 @@
 //
 //   ASKEVA_WEBHOOK_KEY   the secret in the webhook URL (?key=) or X-API-Key header
 import { hasDatabase, tx, query as defaultQuery } from './db.js'
-import { crmMobile, queueCrmLead, sendCrmLeads, crmEnabled } from './crm.js'
+import { crmMobile, queueCrmLead, sendCrmLeads, crmEnabled, isBlockedMobile } from './crm.js'
 import { httpError, safeEqual } from './sales/util.js'
+import { forwardContestTaps, isContestTap, withoutContestTaps } from './cff-contest.js'
 
 export function checkAskevaKey(req) {
   const key = process.env.ASKEVA_WEBHOOK_KEY
@@ -56,7 +57,8 @@ export function parseMessages(payload) {
   const out = []
   const add = (phone, name, text, at) => {
     const p = waPhone(phone)
-    if (p) out.push({ phone: p, name: name ? String(name).trim().slice(0, 200) : null, text: String(text || '').trim().slice(0, 1000), at: when(at) })
+    // The company's own numbers are not customers (crm.js isBlockedMobile).
+    if (p && !isBlockedMobile(p)) out.push({ phone: p, name: name ? String(name).trim().slice(0, 200) : null, text: String(text || '').trim().slice(0, 1000), at: when(at) })
   }
   const list = Array.isArray(payload) ? payload : [payload]
   for (const body of list) {
@@ -87,12 +89,37 @@ export function parseMessages(payload) {
 
 const fmt = (d) => new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })
 
+// Replies to these WhatsApp campaigns are not saved here and do not go to Sales Daddy: the numbers the campaign was sent to
+// (campaign_contacts, for CAMPAIGN_DAYS after the upload), and anyone who taps the campaign's button.
+const CAMPAIGN_DAYS = 30
+const CAMPAIGN_BUTTONS = ['ஆர்டர் வேண்டும்']
+async function fromCampaign(db, phone, text) {
+  if (CAMPAIGN_BUTTONS.includes(String(text || '').trim())) return true
+  // A savepoint, so a missing table (before migration 040) does not break the caller's transaction.
+  let savepoint = false
+  try { await db.query('savepoint campaign_check'); savepoint = true } catch { /* not in a transaction */ }
+  try {
+    const { rows: [hit] } = await db.query(
+      `select 1 from campaign_contacts where mobile = $1 and created_at > now() - make_interval(days => $2) limit 1`, [phone, CAMPAIGN_DAYS])
+    if (savepoint) await db.query('release savepoint campaign_check')
+    return Boolean(hit)
+  } catch {
+    if (savepoint) await db.query('rollback to savepoint campaign_check').catch(() => {})
+    return false // before migration 040: nothing is skipped
+  }
+}
+
 /**
  * Saves one contact's message and queues it for Sales Daddy when due (first
  * contact, or no note in the last day). `db` is a query runner inside a
  * transaction. Returns the outbox id to send, or null.
  */
 async function saveMessage(db, { phone, name, text, at }, source) {
+  // The company's own numbers are not customers: not saved, not sent to Sales Daddy.
+  if (isBlockedMobile(phone)) return null
+  // A reply to a trade campaign (the Diwali retailer campaign): the owner keeps these in a separate database,
+  // so nothing about it is saved here or sent to Sales Daddy.
+  if (await fromCampaign(db, phone, text)) return null
   const { rows: [c] } = await db.query(
     `insert into whatsapp_contacts (phone, name, first_message, first_message_at, last_message, last_message_at, messages, source)
      values ($1, $2, $3, $4, $3, $4, case when $5 = 'import' then 0 else 1 end, $5)
@@ -120,11 +147,39 @@ async function saveMessage(db, { phone, name, text, at }, source) {
   return id
 }
 
+/** Any phone-like value in the payload is one of the company's own numbers. */
+function fromBlockedNumber(payload) {
+  const found = JSON.stringify(payload ?? {}).match(/\+?\d[\d\s-]{9,15}\d/g) || []
+  return found.some((x) => isBlockedMobile(x))
+}
+
 /** Handles one webhook call. Never throws on content — a bad payload is kept for checking. */
 export async function recordAskevaWebhook(payload) {
+  // Chennai Fresh Foods' Diwali contest button (cff-contest.js): handed to the
+  // CFF backend before anything else, and before the retailer block, so a
+  // blocked retailer's tap still reaches Chennai Fresh Foods. It is taken out
+  // here, so it is never saved here or sent to this site's Sales Daddy.
+  const all = parseMessages(payload)
+  const contest = all.filter((m) => isContestTap(m.text))
+  if (contest.length) {
+    const forwarded = await forwardContestTaps(payload)
+    // Only contest taps in this call: a failure is answered 502, so AskEva sends it again.
+    if (contest.length === all.length) {
+      if (!forwarded) throw httpError('Could not hand the contest tap to Chennai Fresh Foods', { status: 502, publicMessage: 'Try again.' })
+      return { ok: true, messages: 0, contest: contest.length }
+    }
+  }
   if (!hasDatabase()) return { ok: true, stored: false }
-  const { rows: [ev] } = await defaultQuery('insert into askeva_events (payload) values ($1) returning id', [payload ?? {}])
-  const messages = parseMessages(payload)
+  const parsed = all.filter((m) => !isContestTap(m.text))
+  // Replies to a trade campaign are dropped before anything is stored (see saveMessage).
+  const messages = []
+  for (const m of parsed) if (!(await fromCampaign({ query: defaultQuery }, m.phone, m.text))) messages.push(m)
+  if (parsed.length && !messages.length) return { ok: true, messages: 0, campaign: true }
+  // Only the company's own number in it (crm.js isBlockedMobile): not even the raw call is kept.
+  if (!messages.length && fromBlockedNumber(payload)) return { ok: true, messages: 0, blocked: true }
+  // A contest tap that came with other messages is left out of the stored copy too.
+  const kept = contest.length ? withoutContestTaps(payload) : payload
+  const { rows: [ev] } = await defaultQuery('insert into askeva_events (payload) values ($1) returning id', [kept ?? {}])
   const toSend = []
   try {
     await tx(async (db) => {
@@ -154,7 +209,7 @@ export async function importAskevaContacts(rows, { query = defaultQuery } = {}) 
   await tx(async (db) => {
     for (const r of rows) {
       const phone = waPhone(r.phone)
-      if (!phone) { skipped++; continue }
+      if (!phone || isBlockedMobile(phone)) { skipped++; continue }
       const id = await saveMessage(db, { phone, name: r.name || null, text: r.lastMessage || '', at: when(r.lastMessageAt) }, 'import')
       saved++
       if (id) queued++
