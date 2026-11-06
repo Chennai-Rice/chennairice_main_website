@@ -1,0 +1,132 @@
+/* Spin & Win (SpinWheel.jsx). Maroon and gold, like the rest of the site. */
+.spin-fab {
+  position: fixed;
+  left: 18px;
+  bottom: 22px;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 10px 12px;
+  border: 2px solid #e8c766;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6e1b22, #8a2a32);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 10px 24px rgba(110, 27, 34, 0.28);
+  cursor: pointer;
+  animation: spin-fab-in 0.4s ease-out;
+}
+.spin-fab:hover { filter: brightness(1.08); }
+.spin-fab-icon { font-size: 18px; line-height: 1; }
+@keyframes spin-fab-in { from { transform: translateY(12px); opacity: 0; } }
+
+.spin-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(43, 27, 22, 0.55);
+  overflow-y: auto;
+}
+.spin-dialog {
+  position: relative;
+  width: min(420px, 100%);
+  padding: 26px 22px 22px;
+  border: 1px solid #e8c766;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #fffaf0, #fdf3dc);
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(43, 27, 22, 0.35);
+}
+.spin-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #6e1b22;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+.spin-close:disabled { opacity: 0.3; }
+.spin-eyebrow { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #a87a22; }
+.spin-title { margin: 4px 0 4px; font-family: var(--serif, Georgia, serif); font-size: 30px; font-weight: 400; color: #2b1b16; }
+.spin-sub { margin: 0 0 12px; font-size: 14px; color: #6b544a; }
+
+.spin-wheel-wrap { position: relative; width: min(280px, 78vw); margin: 6px auto 14px; }
+.spin-pointer { position: absolute; top: -6px; left: 50%; z-index: 2; width: 34px; height: 34px; transform: translateX(-50%); filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25)); }
+.spin-wheel { display: block; width: 100%; height: auto; border-radius: 50%; box-shadow: 0 10px 26px rgba(110, 27, 34, 0.25); }
+.spin-wheel.is-spinning { transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99); }
+
+.spin-form { display: grid; gap: 10px; }
+.spin-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid #e6dac2;
+  border-radius: 12px;
+  background: #fff;
+  font: inherit;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+.spin-input:focus { outline: none; border-color: #c08a2d; }
+.spin-go {
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  border-radius: 999px;
+  background: #6e1b22;
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.spin-go:disabled { opacity: 0.7; cursor: default; }
+.spin-error { margin: 0; font-size: 14px; color: #b3261e; }
+.spin-fine { margin: 0; font-size: 12px; color: #7a6459; }
+
+.spin-won { display: grid; gap: 12px; padding-top: 6px; }
+.spin-code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 2px dashed #c08a2d;
+  border-radius: 14px;
+  background: #fff;
+}
+.spin-code-text { font-size: 22px; font-weight: 800; letter-spacing: 0.08em; color: #6e1b22; }
+.spin-copy {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: #fbe9bd;
+  color: #6e1b22;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.spin-terms { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 14px; color: #4e3a32; }
+.spin-terms li::before { content: '✓ '; color: #2f7a46; font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) {
+  .spin-wheel.is-spinning { transition-duration: 0.6s; }
+  .spin-fab { animation: none; }
+}
+@media (max-width: 480px) {
+  .spin-fab { left: 12px; bottom: 16px; padding: 9px 14px 9px 10px; font-size: 13px; }
+  .spin-title { font-size: 26px; }
+}

@@ -15,6 +15,7 @@ import Navbar from './components/Navbar.jsx'
 import Footer from './components/Footer.jsx'
 import SoruKutty from './components/chatbot/SoruKutty.jsx'
 import CookieBanner from './components/CookieBanner.jsx'
+import SpinWheel from './components/SpinWheel.jsx'
 import ContestPopup from './components/ContestPopup.jsx'
 
 import HomePage from './pages/HomePage.jsx'
@@ -264,6 +265,8 @@ export default function App() {
       {!isTool && <Footer />}
       {isStorefront && <SoruKutty />}
       {isStorefront && <CookieBanner />}
+      {/* Spin & Win: shows only while switched on in Warehouse → Settings. */}
+      {isStorefront && <SpinWheel />}
       {/* Appears 8 seconds into the visit; once closed, not again for a day. */}
       {isStorefront && <ContestPopup />}
       {/* Only for visitors from the expo QR code: opens 2 seconds into the visit. */}

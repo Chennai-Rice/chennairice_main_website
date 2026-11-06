@@ -1232,6 +1232,77 @@ test('discount codes: made by the owner, checked at quote and order, locked to a
   }
 })
 
+test('Spin & Win: off until switched on, one spin per mobile and browser, prize code locked to the mobile, settings checked', async () => {
+  const spinApi = (body, n = 1) => api('POST', '/api/spin', { body, headers: { 'X-Forwarded-For': '10.7.7.' + n } })
+  try {
+    // Off by default: nothing on the website.
+    assert.equal((await api('GET', '/api/spin')).body.enabled, false)
+    assert.equal((await spinApi({ name: 'Kavya', phone: '9876500001' })).status, 404)
+
+    // Settings: owners and IT only; chances must add up to 100.
+    assert.equal((await api('PUT', '/api/admin/spin', { token: tokens.sales, body: { enabled: true } })).status, 403)
+    const bad = await api('PUT', '/api/admin/spin', { token: OWNER, body: { prizes: [
+      { label: 'A', kind: 'amount', amount: 10, chance: 50 }, { label: 'B', kind: 'amount', amount: 20, chance: 20 }] } })
+    assert.equal(bad.status, 400)
+    const on = await api('PUT', '/api/admin/spin', { token: OWNER, body: { enabled: true, validDays: 7 } })
+    assert.equal(on.status, 200, JSON.stringify(on.body))
+    assert.equal(on.body.enabled, true)
+    const cfg = (await api('GET', '/api/spin')).body
+    assert.equal(cfg.enabled, true)
+    assert.equal(cfg.prizes.length, 5)
+    assert.ok(cfg.prizes.every((p) => p.label && p.chance === undefined)) // chances are never sent to the browser
+
+    // The pick follows the chances.
+    const { pickPrize, DEFAULT_PRIZES } = await import('../lib/sales/spin.js')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 0).key, 'p25')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 39.99).key, 'p25')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 40).key, 'p50')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 89.99).key, 'free')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 99.5).key, 'p250')
+
+    assert.equal((await spinApi({ name: 'Kavya', phone: '12345' })).status, 400)
+    assert.equal((await spinApi({ name: '', phone: '9876500001' })).status, 400)
+
+    const won = await spinApi({ name: 'Kavya', phone: '+91 98765 00001', deviceId: 'dev-1' })
+    assert.equal(won.status, 200, JSON.stringify(won.body))
+    assert.equal(won.body.already, false)
+    assert.match(won.body.code, /^SPIN-[0-9A-F]{6}$/)
+    assert.ok(cfg.prizes.some((p) => p.key === won.body.prize.key))
+    const { rows: [c] } = await db.query('select * from discount_codes where code = $1', [won.body.code])
+    assert.equal(c.locked_phone, '9876500001')
+    assert.equal(c.source, 'spin')
+    assert.equal(c.max_uses, 1)
+    assert.ok(new Date(c.expires_at) - Date.now() > 6.9 * 86400000)
+
+    // Same mobile again: the same prize, no second spin. Same browser, another mobile: refused.
+    const again = await spinApi({ name: 'Kavya', phone: '9876500001', deviceId: 'dev-9' }, 2)
+    assert.equal(again.body.already, true)
+    assert.equal(again.body.code, won.body.code)
+    assert.equal((await spinApi({ name: 'Kavi', phone: '9876500002', deviceId: 'dev-1' }, 3)).status, 409)
+    assert.equal((await db.query("select count(*)::int as n from spins where phone = '9876500001'")).rows[0].n, 1)
+
+    // At checkout the prize works only with the same mobile number.
+    const { evaluateDiscount } = await import('../lib/sales/discounts.js')
+    const other = await evaluateDiscount(db, won.body.code, { phone: '9000000000', pincode: '641001', subtotalPaise: 500000, shippingPaise: 21000 })
+    assert.match(other.error, /another mobile/)
+    const mine = await evaluateDiscount(db, won.body.code, { phone: '9876500001', pincode: '641001', subtotalPaise: 500000, shippingPaise: 21000 })
+    assert.ok(!mine.error, mine.error)
+    assert.ok(mine.discountPaise > 0)
+
+    // The admin view counts it.
+    const admin = await api('GET', '/api/admin/spin', { token: OWNER })
+    assert.equal(admin.body.report.spins, 1)
+
+    // Switched off again: the wheel goes away.
+    await api('PUT', '/api/admin/spin', { token: OWNER, body: { enabled: false } })
+    assert.equal((await api('GET', '/api/spin')).body.enabled, false)
+  } finally {
+    await db.query('delete from spins')
+    await db.query(`delete from discount_codes where source = 'spin'`)
+    await db.query(`delete from company_settings where key like 'spin_%'`)
+  }
+})
+
 test('PIN code regions and the delivered-price sheets', async () => {
   const { regionForPincode } = await import('../lib/sales/regions.js')
   const cases = { '600001': 'TN', '641001': 'TN', '605001': 'TN', '682001': 'SOUTH', '560001': 'SOUTH', '500001': 'SOUTH',

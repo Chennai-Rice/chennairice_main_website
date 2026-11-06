@@ -3,6 +3,7 @@ import SourcesReport from './SourcesReport.jsx'
 import AlertEmails from './AlertEmails.jsx'
 import InHouseDelivery from './InHouseDelivery.jsx'
 import DiscountCodes from './DiscountCodes.jsx'
+import SpinSettings from './SpinSettings.jsx'
 import ExpoLeads from './ExpoLeads.jsx'
 import { useEffect, useMemo, useState } from 'react'
 import { staffFetch, staffJson } from '../../services/staffAuth.js'
@@ -386,6 +387,7 @@ export function SettingsView({ me, prefs, setPrefs, location, onSignOut, say, on
 
       {me.permissions?.includes('settings.manage') && <InHouseDelivery say={say} onAuthError={onAuthError} />}
       {me.permissions?.includes('settings.manage') && <DiscountCodes say={say} onAuthError={onAuthError} />}
+      {me.permissions?.includes('settings.manage') && <SpinSettings say={say} onAuthError={onAuthError} />}
 
       <section className="wh-panel">
         <h2 className="wh-panel-title">Preferences</h2>

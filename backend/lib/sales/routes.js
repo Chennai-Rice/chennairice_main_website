@@ -52,6 +52,7 @@ import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { listDiscountCodes, createDiscountCode, setDiscountCodeActive } from './discounts.js'
+import { spinConfig, spin, spinAdmin, saveSpinSettings } from './spin.js'
 import { listReports, reportCsv } from './reports.js'
 import { contestReport } from './contest.js'
 import { loginWriter } from './writer-login.js'
@@ -157,6 +158,12 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   }))
 
   // The lead form at /expo, opened from the QR code at an expo.
+  // Spin & Win: what the wheel shows, and the spin itself (one per mobile number; the prize is a code locked to it).
+  router.get('/api/spin', wrap(async (_req, res) => { res.set('Cache-Control', 'no-store'); res.json(await spinConfig({ query })) }))
+  router.post('/api/spin', rateLimit({ windowMs: 10 * 60000, max: 8 }), wrap(async (req, res) => {
+    res.json(await spin({ query }, req.body, { ip: clientKey(req) }))
+  }))
+
   router.post('/api/expo/lead', rateLimit({ windowMs: 10 * 60000, max: 20 }), wrap(async (req, res) => {
     res.json(await saveExpoLead({ query }, req.body))
   }))
@@ -641,6 +648,9 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/discounts', wrap(async (req, res) => res.json(await listDiscountCodes({ query }, req.staff, req.query))))
   admin.post('/discounts', wrap(async (req, res) => res.json({ code: await createDiscountCode({ query }, req.staff, req.body) })))
   admin.patch('/discounts/:id', wrap(async (req, res) => res.json({ code: await setDiscountCodeActive({ query }, req.staff, req.params.id, req.body?.active) })))
+  // Warehouse → Settings → Spin & Win (owners and IT): prizes, chances, budget, on/off, and how it is doing.
+  admin.get('/spin', wrap(async (req, res) => res.json(await spinAdmin({ query }, req.staff))))
+  admin.put('/spin', wrap(async (req, res) => res.json(await saveSpinSettings({ query }, req.staff, req.body))))
   admin.get('/shipping-zones', perm('shipping.manage'), wrap(async (_req, res) => res.json({ zones: await listZones() })))
   admin.put('/shipping-zones', wrap(async (req, res) => res.json({ zone: await upsertZone(req.staff, req.body) })))
   admin.get('/emails', perm('emails.view'), wrap(async (req, res) => res.json({ emails: await listEmails(req.query) })))
