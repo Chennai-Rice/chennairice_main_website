@@ -26,3 +26,20 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25); max-width: calc(100% - 32px);
 }
 .of-toast.is-error { background: #b3261e; }
+
+/* Who spun (WhoSpun.jsx) */
+.of-who-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.of-who-stats { display: flex; flex-wrap: wrap; gap: 16px; font-size: 15px; }
+.of-who-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.of-who-search { min-width: 240px; }
+.of-who-table { overflow-x: auto; }
+.of-who-table table { width: 100%; min-width: 820px; border-collapse: collapse; }
+.of-who-table th { padding: 10px 12px; text-align: left; font-size: 13px; font-weight: 600; color: #4e3a32; background: #f8f4ec; border-bottom: 1px solid #ece3d6; }
+.of-who-table td { padding: 12px; font-size: 14px; border-bottom: 1px solid #f1ebe2; vertical-align: middle; }
+.of-who-table tbody tr:hover td { background: #fcfaf6; }
+.of-who-table a { color: inherit; }
+.of-who-phone { font-weight: 600; text-decoration: none; }
+.of-pill--used { background: #e8f3ea; color: #2f7a46; }
+.of-pill--open { background: #fdf3dc; color: #8a5a12; }
+.of-pill--expired { background: #f3ebe4; color: #8a7766; }
+.of-who-order { display: block; margin-top: 3px; font-size: 12px; color: #7a6459; }

@@ -3,6 +3,7 @@ import StaffGate from '../admin/StaffGate.jsx'
 import DiscountCodes from '../warehouse/DiscountCodes.jsx'
 import SpinSettings from '../warehouse/SpinSettings.jsx'
 import ReferralSettings from '../warehouse/ReferralSettings.jsx'
+import WhoSpun from './WhoSpun.jsx'
 import { staffJson, signOutStaff } from '../../services/staffAuth.js'
 import usePageMeta from '../../shop/hooks/usePageMeta.js'
 import '../admin/admin.css'
@@ -18,6 +19,7 @@ const PATHS = {
   grid: <><rect x="3" y="3" width="5.6" height="5.6" rx="1.2" /><rect x="11.4" y="3" width="5.6" height="5.6" rx="1.2" /><rect x="3" y="11.4" width="5.6" height="5.6" rx="1.2" /><rect x="11.4" y="11.4" width="5.6" height="5.6" rx="1.2" /></>,
   wheel: <><circle cx="10" cy="10" r="7.2" /><circle cx="10" cy="10" r="1.6" /><path d="M10 2.8v5.6M10 11.6v5.6M2.8 10h5.6M11.6 10h5.6M4.9 4.9l3.9 3.9M11.2 11.2l3.9 3.9M15.1 4.9l-3.9 3.9M8.8 11.2l-3.9 3.9" /></>,
   people: <><circle cx="7.2" cy="7" r="2.6" /><path d="M2.6 16.2c.6-2.8 2.4-4.2 4.6-4.2s4 1.4 4.6 4.2" /><circle cx="13.8" cy="7.6" r="2.1" /><path d="M13 11.9c2 .1 3.6 1.4 4.2 3.8" /></>,
+  list: <><path d="M7 5h10M7 10h10M7 15h10" /><circle cx="3.6" cy="5" r="0.9" /><circle cx="3.6" cy="10" r="0.9" /><circle cx="3.6" cy="15" r="0.9" /></>,
   ticket: <><path d="M3 6.2h14v2.3a1.6 1.6 0 0 0 0 3v2.3H3v-2.3a1.6 1.6 0 0 0 0-3z" /><path d="M12.2 6.2v7.6" strokeDasharray="1.4 1.6" /></>,
 }
 const NavIcon = ({ name }) => (
@@ -28,7 +30,8 @@ const NavIcon = ({ name }) => (
 
 const VIEWS = [
   { id: 'overview', label: 'Overview', icon: 'grid', subtitle: 'Spin & Win, Refer a friend and discount codes at a glance' },
-  { id: 'spin', label: 'Spin & Win', icon: 'wheel', subtitle: 'Prizes, chances, budget, and who spun' },
+  { id: 'spin', label: 'Spin & Win', icon: 'wheel', subtitle: 'Prizes, chances and budget' },
+  { id: 'spins', label: 'Who spun', icon: 'list', subtitle: 'Every spin: mobile, email, prize, code and whether it was used' },
   { id: 'referral', label: 'Refer a friend', icon: 'people', subtitle: 'Amounts, top referrers and rewards' },
   { id: 'codes', label: 'Discount codes', icon: 'ticket', subtitle: 'Every code, its uses, money given and sales' },
 ]
@@ -84,6 +87,12 @@ function Dashboard({ onAuthError }) {
   const [me, setMe] = useState(null)
   const [toast, setToast] = useState(null)
   useEffect(() => { staffJson('/api/admin/me').then(setMe).catch(() => {}) }, [])
+  // A link to /offers#spins (and the browser's back button) opens that page.
+  useEffect(() => {
+    const on = () => { const h = window.location.hash.replace('#', ''); if (VIEWS.some((v) => v.id === h)) setView(h) }
+    window.addEventListener('hashchange', on)
+    return () => window.removeEventListener('hashchange', on)
+  }, [])
   const say = useCallback((message, tone = 'ok') => {
     setToast({ message, tone })
     window.clearTimeout(say.t)
@@ -140,6 +149,7 @@ function Dashboard({ onAuthError }) {
           <div className="wh-embed of-content">
             {view === 'overview' && <Overview onAuthError={onAuthError} go={go} />}
             {view === 'spin' && <SpinSettings say={say} onAuthError={onAuthError} />}
+            {view === 'spins' && <WhoSpun onAuthError={onAuthError} />}
             {view === 'referral' && <ReferralSettings say={say} onAuthError={onAuthError} />}
             {view === 'codes' && <DiscountCodes say={say} onAuthError={onAuthError} />}
           </div>
