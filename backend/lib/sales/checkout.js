@@ -87,7 +87,7 @@ export async function quoteCart(body) {
     deliveryMethod: chosen?.method || (shipping == null ? null : 'courier'),
     deliveryOptions: options.map((o) => ({ method: o.method, charge: toRupees(o.paise), promise: o.promise })),
     region: priced.region,
-    discount: d && !d.error ? { code: d.code.code, amount: toRupees(d.discountPaise), label: d.label, auto: Boolean(d.auto), source: d.code.source } : null,
+    discount: d && !d.error ? { code: d.code.code, amount: toRupees(d.discountPaise), label: d.label, auto: Boolean(d.auto), source: d.code.source, gift: d.gift || null } : null,
     discountError: d?.error || null,
     total: toRupees(priced.subtotalPaise + (shipping || 0) - discountPaise),
     taxIncluded: toRupees(priced.taxPaise),
@@ -154,6 +154,11 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
         discount.discountPaise, discount.code?.id || null, discount.code?.code || null]
     )
     await linkId(db, order.order_number, order.id)
+    // A gift prize (Spin & Win): kept with the order so the warehouse packs it.
+    if (discount.gift) {
+      await db.query('update orders set gift_note = $2 where id = $1', [order.id, discount.gift])
+      order.gift_note = discount.gift
+    }
     // Bought with a friend's referral code: remembered, so the friend is rewarded once it is delivered.
     if (discount.code?.source === 'referral') {
       const { rows: [ref] } = await db.query('select id from referrers where code_id = $1', [discount.code.id])
@@ -250,7 +255,7 @@ export async function createCheckoutSession(body, client = {}) {
     orderNumber: order.order_number,
     amount: toRupees(order.total_paise),
     deliveryMethod: order.delivery_method,
-    discount: Number(order.discount_paise) ? { code: order.discount_code, amount: toRupees(order.discount_paise) } : null,
+    discount: Number(order.discount_paise) || order.gift_note ? { code: order.discount_code, amount: toRupees(order.discount_paise), gift: order.gift_note || null } : null,
     currency: 'INR',
     gateway: session.gateway,
     gatewayLabel: session.label,

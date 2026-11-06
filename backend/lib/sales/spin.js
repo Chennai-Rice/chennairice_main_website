@@ -22,12 +22,17 @@ import { pushCrmLead } from '../crm.js'
 import { recordWebsiteLead, sendNeodoveLeads } from '../neodove.js'
 
 // kind / amount (₹) / minOrder (₹) / region as in discount_codes; chance in %.
+// The wheel (Nov 2026 design), clockwise from the top. kind: amount (₹ off) / percent (% off, up to maxOff ₹) /
+// free_delivery / gift (packed with the order, nothing off). Chances add up to 100.
 export const DEFAULT_PRIZES = [
-  { key: 'p25', label: '₹25 OFF', kind: 'amount', amount: 25, minOrder: 0, region: null, chance: 40 },
-  { key: 'p50', label: '₹50 OFF', kind: 'amount', amount: 50, minOrder: 1000, region: null, chance: 30 },
-  { key: 'free', label: 'FREE DELIVERY', kind: 'free_delivery', amount: 0, minOrder: 0, region: 'TN', chance: 20 },
-  { key: 'p100', label: '₹100 OFF', kind: 'amount', amount: 100, minOrder: 2000, region: null, chance: 9 },
-  { key: 'p250', label: '₹250 OFF', kind: 'amount', amount: 250, minOrder: 2500, region: null, chance: 1 },
+  { key: 'gift', label: 'Exclusive Surprise Gift', kind: 'gift', gift: 'Exclusive surprise gift', minOrder: 500, region: null, chance: 4 },
+  { key: 'p150', label: '₹150 OFF', kind: 'amount', amount: 150, minOrder: 2000, region: null, chance: 5 },
+  { key: 'p50', label: '₹50 OFF', kind: 'amount', amount: 50, minOrder: 500, region: null, chance: 30 },
+  { key: 'free', label: 'Free Delivery', kind: 'free_delivery', minOrder: 0, region: 'TN', chance: 15 },
+  { key: 'p75', label: '₹75 OFF', kind: 'amount', amount: 75, minOrder: 1000, region: null, chance: 20 },
+  { key: 'pct5', label: '5% OFF', kind: 'percent', percent: 5, maxOff: 150, minOrder: 0, region: null, chance: 15 },
+  { key: 'p100', label: '₹100 OFF', kind: 'amount', amount: 100, minOrder: 1500, region: null, chance: 10 },
+  { key: 'bag', label: 'Free 5kg Kitchadi Ponni Slogan Bag', kind: 'gift', gift: 'Free 5 kg Kitchidi Ponni Slogan Bag', minOrder: 1000, region: null, chance: 1 },
 ]
 const NAME = /^[\p{L}][\p{L} .'-]{0,79}$/u
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -48,9 +53,12 @@ function validPrizes(list) {
   for (const p of list) {
     if (!p || !/^[a-z0-9_]{1,20}$/.test(p.key) || keys.has(p.key)) return false
     keys.add(p.key)
-    if (!str(p.label) || p.label.length > 20) return false
-    if (!['amount', 'free_delivery'].includes(p.kind)) return false
+    if (!str(p.label) || p.label.length > 40) return false
+    if (!['amount', 'percent', 'free_delivery', 'gift'].includes(p.kind)) return false
     if (p.kind === 'amount' && !(Number(p.amount) > 0 && Number(p.amount) <= 2000)) return false
+    if (p.kind === 'percent' && !(Number(p.percent) > 0 && Number(p.percent) <= 50)) return false
+    if (p.kind === 'percent' && p.maxOff != null && p.maxOff !== '' && !(Number(p.maxOff) >= 0 && Number(p.maxOff) <= 5000)) return false
+    if (p.kind === 'gift' && !(str(p.gift) && p.gift.length <= 80)) return false
     if (!(Number(p.minOrder) >= 0 && Number(p.minOrder) <= 100000)) return false
     if (p.region && !['TN', 'SOUTH', 'NORTH', 'NE'].includes(p.region)) return false
     if (!(Number(p.chance) >= 0 && Number(p.chance) <= 100)) return false
@@ -75,7 +83,7 @@ export function pickPrize(prizes, roll = crypto.randomInt(0, 1000000) / 10000) {
 export async function spinConfig(db) {
   const settings = await getSettings(db)
   const open = enabled(settings) && !(await overBudget(db, settings))
-  return { enabled: open, prizes: spinPrizes(settings).map((p) => ({ key: p.key, label: p.label })), validDays: validDays(settings) }
+  return { enabled: open, prizes: spinPrizes(settings).map((p) => ({ key: p.key, label: p.label, kind: p.kind })), validDays: validDays(settings) }
 }
 
 /** ₹ given in spin codes on paid orders this month (India time) is at or past the budget. */
@@ -145,11 +153,14 @@ export async function spin(db, body = {}, { ip = '' } = {}) {
       const candidate = 'SPIN-' + crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 6)
       const { rows: [c] } = await t.query(
         `insert into discount_codes (code, kind, amount_paise, min_order_paise, region, locked_phone, max_uses, uses_per_phone,
-                                     expires_at, source, note)
-         values ($1, $2, $3, $4, $5, $6, 1, 1, now() + make_interval(days => $7), 'spin', $8)
+                                     expires_at, source, note, percent_bp, max_off_paise, gift_label)
+         values ($1, $2, $3, $4, $5, $6, 1, 1, now() + make_interval(days => $7), 'spin', $8, $9, $10, $11)
          on conflict (code) do nothing returning *`,
-        [candidate, prize.kind, Math.round(Number(prize.amount || 0) * 100), Math.round(Number(prize.minOrder || 0) * 100),
-          prize.region || null, phone, days, 'Spin & Win: ' + name])
+        [candidate, prize.kind, prize.kind === 'amount' ? Math.round(Number(prize.amount || 0) * 100) : 0,
+          Math.round(Number(prize.minOrder || 0) * 100), prize.region || null, phone, days, 'Spin & Win: ' + name,
+          prize.kind === 'percent' ? Math.round(Number(prize.percent) * 100) : 0,
+          prize.kind === 'percent' && prize.maxOff != null && prize.maxOff !== '' ? Math.round(Number(prize.maxOff) * 100) : null,
+          prize.kind === 'gift' ? str(prize.gift) : null])
       code = c
     }
     if (!code) throw new Error('Could not make a spin code')
@@ -228,12 +239,15 @@ export async function saveSpinSettings(db, staff, body = {}) {
   }
   if (body.prizes != null) {
     const prizes = (Array.isArray(body.prizes) ? body.prizes : []).map((p, i) => ({
-      key: str(p.key) || 'p' + (i + 1), label: str(p.label).toUpperCase(), kind: p.kind === 'free_delivery' ? 'free_delivery' : 'amount',
-      amount: p.kind === 'free_delivery' ? 0 : Number(p.amount), minOrder: Number(p.minOrder) || 0, region: str(p.region) || null,
-      chance: Number(p.chance),
+      key: str(p.key) || 'p' + (i + 1), label: str(p.label),
+      kind: ['amount', 'percent', 'free_delivery', 'gift'].includes(p.kind) ? p.kind : 'amount',
+      amount: p.kind === 'amount' ? Number(p.amount) : 0,
+      ...(p.kind === 'percent' ? { percent: Number(p.percent), maxOff: str(String(p.maxOff ?? '')) === '' ? null : Number(p.maxOff) } : {}),
+      ...(p.kind === 'gift' ? { gift: str(p.gift) } : {}),
+      minOrder: Number(p.minOrder) || 0, region: str(p.region) || null, chance: Number(p.chance),
     }))
     if (!validPrizes(prizes)) {
-      throw httpError('Prizes: 2 to 8, each with a short label, an amount (₹1–₹2,000) or free delivery, and chances that add up to 100%.')
+      throw httpError('Prizes: 2 to 8, each with a label, a ₹ amount (₹1–₹2,000), a % (1–50), free delivery or a gift name, and chances that add up to 100%.')
     }
     changes.spin_prizes = JSON.stringify(prizes)
   }

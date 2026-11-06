@@ -233,7 +233,8 @@ export default function DispatchView({ say, onAuthError }) {
                 <span role="cell" className="wh-td-address">
                   <Icon name="pin" size={15} className="wh-pin" />
                   <span>{o.address.city} - {o.address.pincode}<br /><span className="wh-muted wh-small">{o.address.state}</span>
-                    {o.deliveryMethod === 'in_house' && <><br /><span className="wh-badge wh-badge--own" title="The customer chose delivery by our own team">Our delivery</span></>}</span>
+                    {o.deliveryMethod === 'in_house' && <><br /><span className="wh-badge wh-badge--own" title="The customer chose delivery by our own team">Our delivery</span></>}
+                    {o.giftNote && <><br /><span className="wh-badge wh-badge--gift" title={'Pack this gift: ' + o.giftNote}>🎁 {o.giftNote}</span></>}</span>
                 </span>
                 <span role="cell">
                   {tab === 'dispatched' ? (

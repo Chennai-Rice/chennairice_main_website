@@ -16,7 +16,7 @@ import { httpError, str, phoneKey, toRupees, formatInr, getSettings } from './ut
 import { regionForPincode } from './regions.js'
 import { requirePermission } from './staff.js'
 
-export const KINDS = ['amount', 'percent', 'free_delivery']
+export const KINDS = ['amount', 'percent', 'free_delivery', 'gift']
 const REGION_NAMES = { TN: 'Tamil Nadu', SOUTH: 'South India', NORTH: 'North India', NE: 'North East India' }
 const USED = `(o.payment_status in ('paid', 'partially_refunded', 'refunded') or o.status = 'pending_payment')`
 
@@ -31,6 +31,7 @@ const istDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric',
 /** How the code reads in the order summary: "₹50 off", "10% off", "Free delivery". */
 export function describe(c) {
   if (c.kind === 'free_delivery') return 'Free delivery'
+  if (c.kind === 'gift') return c.gift_label || 'Free gift'
   if (c.kind === 'percent') return `${Number(c.percent_bp) / 100}% off`
   return `${formatInr(c.amount_paise).replace('.00', '')} off`
 }
@@ -131,7 +132,10 @@ export async function evaluateDiscount(db, typed, { phone, email, address, pinco
     if (n >= c.uses_per_phone) return fail('You have already used this code.')
   }
   let off
-  if (c.kind === 'free_delivery') {
+  if (c.kind === 'gift') {
+    // Something in the parcel, nothing off the price: the order keeps the gift for the warehouse.
+    return { code: c, discountPaise: 0, label: describe(c), gift: c.gift_label || 'Free gift' }
+  } else if (c.kind === 'free_delivery') {
     if (shippingPaise == null) return fail('Enter your PIN code to use this code.')
     off = Number(shippingPaise)
   } else if (c.kind === 'percent') {

@@ -44,7 +44,7 @@ export default function SpinSettings({ say, onAuthError }) {
     }
   }
 
-  const setPrize = (i, k) => (e) => setForm((f) => ({ ...f, prizes: f.prizes.map((p, j) => (j === i ? { ...p, [k]: k === 'label' ? e.target.value.toUpperCase() : e.target.value } : p)) }))
+  const setPrize = (i, k) => (e) => setForm((f) => ({ ...f, prizes: f.prizes.map((p, j) => (j === i ? { ...p, [k]: e.target.value } : p)) }))
   const addPrize = () => setForm((f) => ({ ...f, prizes: [...f.prizes, { key: 'p' + Date.now().toString(36).slice(-5), label: '₹10 OFF', kind: 'amount', amount: 10, minOrder: 0, region: '', chance: 0 }] }))
   const removePrize = (i) => setForm((f) => ({ ...f, prizes: f.prizes.filter((_, j) => j !== i) }))
   const cell = { padding: '6px 6px', verticalAlign: 'middle' }
@@ -92,23 +92,33 @@ export default function SpinSettings({ say, onAuthError }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
             <thead>
               <tr className="wh-small" style={{ textAlign: 'left' }}>
-                <th style={cell}>On the wheel</th><th style={cell}>Gives</th><th style={cell}>₹ off</th><th style={cell}>Min. order ₹</th>
+                <th style={cell}>On the wheel</th><th style={cell}>Gives</th><th style={cell}>Amount / gift</th><th style={cell}>Min. order ₹</th>
                 <th style={cell}>Area</th><th style={cell}>Chance %</th><th style={cell}></th>
               </tr>
             </thead>
             <tbody>
               {form.prizes.map((p, i) => (
                 <tr key={p.key}>
-                  <td style={cell}><input className="wh-input" value={p.label} onChange={setPrize(i, 'label')} maxLength={20} aria-label="Label on the wheel" /></td>
+                  <td style={cell}><input className="wh-input" value={p.label} onChange={setPrize(i, 'label')} maxLength={40} aria-label="Label on the wheel" /></td>
                   <td style={cell}>
                     <span className="wh-select"><select value={p.kind} onChange={setPrize(i, 'kind')} aria-label="Gives">
                       <option value="amount">₹ off</option>
+                      <option value="percent">% off</option>
                       <option value="free_delivery">Free delivery</option>
+                      <option value="gift">Gift in the parcel</option>
                     </select></span>
                   </td>
-                  <td style={cell}>{p.kind === 'amount'
-                    ? <input className="wh-input" type="number" min="1" max="2000" value={p.amount} onChange={setPrize(i, 'amount')} aria-label="Rupees off" style={{ width: 90 }} />
-                    : <span className="wh-muted">—</span>}</td>
+                  <td style={cell}>
+                    {p.kind === 'amount' && <input className="wh-input" type="number" min="1" max="2000" value={p.amount ?? ''} onChange={setPrize(i, 'amount')} aria-label="Rupees off" style={{ width: 90 }} />}
+                    {p.kind === 'percent' && (
+                      <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <input className="wh-input" type="number" min="1" max="50" value={p.percent ?? ''} onChange={setPrize(i, 'percent')} aria-label="Percent off" style={{ width: 70 }} />%
+                        <input className="wh-input" type="number" min="0" max="5000" value={p.maxOff ?? ''} onChange={setPrize(i, 'maxOff')} aria-label="Most off in rupees" placeholder="max ₹" style={{ width: 80 }} />
+                      </span>
+                    )}
+                    {p.kind === 'gift' && <input className="wh-input" value={p.gift ?? ''} onChange={setPrize(i, 'gift')} maxLength={80} aria-label="Gift to pack" placeholder="e.g. Free 5 kg bag" style={{ width: 200 }} />}
+                    {p.kind === 'free_delivery' && <span className="wh-muted">—</span>}
+                  </td>
                   <td style={cell}><input className="wh-input" type="number" min="0" value={p.minOrder} onChange={setPrize(i, 'minOrder')} aria-label="Minimum order" style={{ width: 100 }} /></td>
                   <td style={cell}>
                     <span className="wh-select"><select value={p.region} onChange={setPrize(i, 'region')} aria-label="Area">

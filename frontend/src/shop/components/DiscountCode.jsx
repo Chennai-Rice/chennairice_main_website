@@ -31,7 +31,8 @@ export default function DiscountCode({ applied, discount, error, checking, onApp
           Discount <span className="discount-code-chip">{discount.code}</span>
           <button type="button" className="discount-remove" onClick={() => { onRemove(); setText(""); }} disabled={disabled}>Remove</button>
         </dt>
-        <dd>−{formatRupees(discount.amount)}</dd>
+        <dd>{discount.gift ? "FREE" : "−" + formatRupees(discount.amount)}</dd>
+        {discount.gift && <p className="discount-gift">🎁 {discount.gift}, packed with your order</p>}
       </div>
     );
   }

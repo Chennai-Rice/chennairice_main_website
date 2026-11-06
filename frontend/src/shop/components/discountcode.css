@@ -62,3 +62,7 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* A gift prize (Spin & Win): nothing off, something in the parcel. */
+.discount-row { flex-wrap: wrap; }
+.discount-gift { flex-basis: 100%; margin: 2px 0 0; font-size: 13px; color: #2f7a46; font-weight: 600; }

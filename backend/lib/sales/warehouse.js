@@ -119,6 +119,8 @@ function shapeRow(r) {
     needsAttention: r.needs_attention,
     // 'in_house' = the customer chose delivery by our own team (delivery.js).
     deliveryMethod: r.delivery_method || 'courier',
+    // A Spin & Win gift to pack with the order (e.g. a free 5 kg bag).
+    giftNote: r.gift_note || null,
     // Shown as a red badge: waiting past the reminder times in jobs.js.
     overdue:
       r.status === 'placed' && hoursWaiting > 4 ? 'Waiting over 4 hours to confirm'
@@ -145,7 +147,7 @@ export async function listWarehouseOrders(f = {}, { maxLimit = MAX_PAGE, money =
   const listParams = [...params, TABS[tab]]
   const { rows } = await query(
     `select o.id, o.order_number, o.shipment_id, o.status, o.payment_status, ${WHEN} as placed_at, o.shipped_at,
-            o.contact_name, o.contact_phone, o.shipping_address, o.needs_attention, o.total_paise, o.delivery_method,
+            o.contact_name, o.contact_phone, o.shipping_address, o.needs_attention, o.total_paise, o.delivery_method, o.gift_note,
             (select json_build_object('id', sh.id, 'method', sh.method, 'carrier', sh.carrier_name,
                     'trackingNumber', sh.tracking_number, 'lrNumber', sh.lr_number, 'vehicle', sh.vehicle_number,
                     'trackingUrl', sh.tracking_url, 'driverName', sh.driver_name, 'driverPhone', sh.driver_phone,

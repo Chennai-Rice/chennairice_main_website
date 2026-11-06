@@ -156,6 +156,7 @@ function Details({ order, onClose }) {
               <span className={`wh-badge wh-badge--pay-${order.paymentStatus}`}>{PAYMENT[order.paymentStatus]}</span>{' '}
               <span className={`wh-status wh-status--${STATUS_KEY[order.status]}`}>{STATUS[order.status]}</span>
             </p>
+            {order.giftNote && <p className="wh-gift-note"><strong>🎁 Pack the gift:</strong> {order.giftNote} (Spin &amp; Win prize).</p>}
             {order.deliveryMethod === 'in_house' && <p className="wh-own-note"><strong>Our delivery:</strong> the customer chose delivery by our own team. Dispatch with Own vehicle and call before going.</p>}
             {order.needsAttention && <p className="wh-flag-note">Flagged: {order.needsAttention}</p>}
           </div>
@@ -609,6 +610,7 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
                   <strong>ORDER #{(page - 1) * pageSize + i + 1}</strong>
                   <span className="wh-mono wh-muted">{o.orderNumber}</span>
                   {o.deliveryMethod === 'in_house' && <span className="wh-badge wh-badge--own" title="The customer chose delivery by our own team. Dispatch with Own vehicle.">Our delivery</span>}
+                  {o.giftNote && <span className="wh-badge wh-badge--gift" title={'Pack this gift with the order: ' + o.giftNote}>🎁 Gift</span>}
                   {o.needsAttention && <span className="wh-badge wh-badge--flag" title={o.needsAttention}>Flagged</span>}
                 </span>
                 <span role="cell" className="wh-td-date">

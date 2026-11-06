@@ -1181,11 +1181,11 @@ test('discount codes: made by the owner, checked at quote and order, locked to a
 
     // ₹50 off with two packs; the order and the invoice carry it.
     const two = await quote({ discountCode: 'TRY50', phone: '9876543210', items: [{ id: 'alibaba-10kg', qty: 2 }] })
-    assert.deepEqual(two.body.discount, { code: 'TRY50', amount: 50, label: '₹50 off', auto: false, source: 'manual' })
+    assert.deepEqual(two.body.discount, { code: 'TRY50', amount: 50, label: '₹50 off', auto: false, source: 'manual', gift: null })
     assert.equal(two.body.total, two.body.subtotal + two.body.shipping - 50)
     const { session: s1, verify } = await buy([{ id: 'alibaba-10kg', qty: 2 }], { ...buyer({ phone: '+91 90000 11111', email: 'code1@example.com' }), discountCode: 'TRY50' })
     assert.equal(verify.status, 200, JSON.stringify(verify.body))
-    assert.deepEqual(s1.discount, { code: 'TRY50', amount: 50 })
+    assert.deepEqual(s1.discount, { code: 'TRY50', amount: 50, gift: null })
     const { rows: [o] } = await db.query('select * from orders where id = $1', [s1.orderId])
     assert.equal(Number(o.discount_paise), 5000)
     assert.equal(o.discount_code, 'TRY50')
@@ -1257,16 +1257,18 @@ test('Spin & Win: off until switched on, one spin per mobile and browser, prize 
     assert.equal(on.body.enabled, true)
     const cfg = (await api('GET', '/api/spin')).body
     assert.equal(cfg.enabled, true)
-    assert.equal(cfg.prizes.length, 5)
+    assert.equal(cfg.prizes.length, 8)
     assert.ok(cfg.prizes.every((p) => p.label && p.chance === undefined)) // chances are never sent to the browser
 
     // The pick follows the chances.
     const { pickPrize, DEFAULT_PRIZES } = await import('../lib/sales/spin.js')
-    assert.equal(pickPrize(DEFAULT_PRIZES, 0).key, 'p25')
-    assert.equal(pickPrize(DEFAULT_PRIZES, 39.99).key, 'p25')
-    assert.equal(pickPrize(DEFAULT_PRIZES, 40).key, 'p50')
-    assert.equal(pickPrize(DEFAULT_PRIZES, 89.99).key, 'free')
-    assert.equal(pickPrize(DEFAULT_PRIZES, 99.5).key, 'p250')
+    // The wheel's eight prizes, clockwise: surprise gift 4%, ₹150 5%, ₹50 30%, free delivery 15%, ₹75 20%, 5% off 15%, ₹100 10%, free bag 1%.
+    assert.equal(pickPrize(DEFAULT_PRIZES, 0).key, 'gift')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 3.99).key, 'gift')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 4).key, 'p150')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 50).key, 'free')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 80).key, 'pct5')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 99.5).key, 'bag')
 
     assert.equal((await spinApi({ name: 'Kavya', phone: '12345' })).status, 400)
     assert.equal((await spinApi({ name: '', phone: '9876500001' })).status, 400) // the name is needed
@@ -1296,7 +1298,15 @@ test('Spin & Win: off until switched on, one spin per mobile and browser, prize 
     assert.match(other.error, /another mobile/)
     const mine = await evaluateDiscount(db, won.body.code, { phone: '9876500001', pincode: '641001', subtotalPaise: 500000, shippingPaise: 21000 })
     assert.ok(!mine.error, mine.error)
-    assert.ok(mine.discountPaise > 0)
+    assert.ok(mine.discountPaise > 0 || mine.gift, 'money off, or a gift')
+
+    // A gift prize: nothing off, the gift kept for the warehouse; a 5% prize: 5% of the rice, up to ₹150.
+    await db.query("insert into discount_codes (code, kind, gift_label, locked_phone, source) values ('SPIN-GIFT01', 'gift', 'Free 5 kg Kitchidi Ponni Slogan Bag', '9876500001', 'spin')")
+    const gift = await evaluateDiscount(db, 'SPIN-GIFT01', { phone: '9876500001', pincode: '641001', subtotalPaise: 200000, shippingPaise: 9000 })
+    assert.deepEqual([gift.discountPaise, gift.gift], [0, 'Free 5 kg Kitchidi Ponni Slogan Bag'])
+    await db.query("insert into discount_codes (code, kind, percent_bp, max_off_paise, locked_phone, source) values ('SPIN-PCT05', 'percent', 500, 15000, '9876500001', 'spin')")
+    assert.equal((await evaluateDiscount(db, 'SPIN-PCT05', { phone: '9876500001', pincode: '641001', subtotalPaise: 200000, shippingPaise: 9000 })).discountPaise, 10000)
+    assert.equal((await evaluateDiscount(db, 'SPIN-PCT05', { phone: '9876500001', pincode: '641001', subtotalPaise: 500000, shippingPaise: 9000 })).discountPaise, 15000)
 
     // The admin view counts it.
     const admin = await api('GET', '/api/admin/spin', { token: OWNER })
