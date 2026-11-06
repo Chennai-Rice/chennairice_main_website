@@ -3134,7 +3134,7 @@ test('the MIS dashboard does not count a brand typed in CALL HANDED BY as a tele
   }
 })
 
-test('NeoDove team campaigns: sign-ups, checkout leads and bulk enquiries are shared equally between Gayathri, Ramya and Lavanya', async () => {
+test('NeoDove team campaigns: every lead, whatever its source, goes round robin to Gayathri, Ramya and Lavanya', async () => {
   const http = await import('node:http')
   const got = []
   const fakeNeo = http.createServer((req, res) => {
@@ -3149,9 +3149,13 @@ test('NeoDove team campaigns: sign-ups, checkout leads and bulk enquiries are sh
     assert.deepEqual(poolAgents(), ['gayathri', 'ramya', 'lavanya'])
     await db.query(`update neodove_outbox set status = 'failed' where status = 'queued'`)
     await db.query(`update neodove_outbox set agent = null`) // earlier tests' rows do not count
-    // 2 sign-ups, 2 checkout journeys, 2 bulk enquiries
+    // 2 WhatsApp sign-ups, 2 Meta Ads, 2 Google Ads, 2 checkout journeys, 2 bulk enquiries
     await recordSignup(db, { name: 'S One', phone: '9700000001', source: 'whatsapp' })
     await recordSignup(db, { name: 'S Two', phone: '9700000002', source: 'whatsapp' })
+    await recordSignup(db, { name: 'M One', phone: '9700000011', source: 'meta_ads_facebook' })
+    await recordSignup(db, { name: 'M Two', phone: '9700000012', source: 'meta_ads_instagram' })
+    await recordSignup(db, { name: 'G One', phone: '9700000021', source: 'google_ads' })
+    await recordSignup(db, { name: 'G Two', phone: '9700000022', source: 'google_ads' })
     for (const [i, kind] of [[3, 'checkout_payment'], [4, 'checkout_details']]) {
       await db.query(`insert into neodove_outbox (mobile, campaign, payload) values ($1, $2, $3)`, ['970000000' + i, kind, { name: 'C' + i, mobile: 9700000000 + i }])
     }
@@ -3159,29 +3163,35 @@ test('NeoDove team campaigns: sign-ups, checkout leads and bulk enquiries are sh
     assert.ok(await recordBulkEnquiry(db, { name: 'B Six', phone: '9700000006', company: 'Six Stores', buyerType: 'retailer', gstin: '33AAAAA0000A1Z6' }))
     assert.equal(await recordBulkEnquiry(db, { name: 'B Six', phone: '9700000006' }), null) // once a week per mobile
     const r = await sendNeodoveLeads({ query: db.query, limit: 100 })
-    assert.deepEqual([r.sent, r.byAgent], [6, { gayathri: 2, ramya: 2, lavanya: 2 }], JSON.stringify(r))
-    assert.deepEqual(['/gayathri', '/ramya', '/lavanya'].map((p) => got.filter((g) => g.path === p).length), [2, 2, 2])
+    assert.deepEqual([r.sent, r.byAgent], [10, { gayathri: 4, ramya: 3, lavanya: 3 }], JSON.stringify(r))
+    // In turn, oldest lead first: Gayathri, Ramya, Lavanya, Gayathri…
+    assert.deepEqual(got.slice(0, 4).map((g) => g.path), ['/gayathri', '/ramya', '/lavanya', '/gayathri'])
     assert.equal(got.find((g) => g.path === '/ramya').body.Telecaller, 'Ramya')
     const bulk = got.find((g) => g.body.Source === 'Bulk order form')
     assert.deepEqual([bulk.body.Company, bulk.body['Buyer type']], ['Five Traders', 'wholesaler'])
     // The next lead goes to the one with the fewest (all equal: the first in order), then keeps balancing.
     await recordSignup(db, { name: 'S Seven', phone: '9700000007', source: 'whatsapp' })
-    await recordSignup(db, { name: 'S Eight', phone: '9700000008', source: 'whatsapp' })
+    await recordSignup(db, { name: 'S Eight', phone: '9700000008', source: 'meta_ads' })
     const r2 = await sendNeodoveLeads({ query: db.query, limit: 100 })
-    assert.deepEqual(r2.byAgent, { gayathri: 1, ramya: 1 })
-    // An agent whose campaign is not set up yet is left out.
+    assert.deepEqual(r2.byAgent, { ramya: 1, lavanya: 1 }) // the turn carries on after the last one (Gayathri)
+    // An agent whose campaign is not set up yet is left out of the turn.
     delete process.env.NEODOVE_ENDPOINT_RAMYA
     assert.deepEqual(poolAgents(), ['gayathri', 'lavanya'])
     await recordSignup(db, { name: 'S Nine', phone: '9700000009', source: 'whatsapp' })
+    await recordSignup(db, { name: 'S Ten', phone: '9700000010', source: 'meta_ads' })
     const r3 = await sendNeodoveLeads({ query: db.query, limit: 100 })
-    assert.deepEqual(r3.byAgent, { lavanya: 1 })
+    assert.deepEqual(r3.byAgent, { gayathri: 1, lavanya: 1 })
+    // Only one set up: every lead goes to her.
+    delete process.env.NEODOVE_ENDPOINT_LAVANYA
+    await recordSignup(db, { name: 'G Three', phone: '9700000023', source: 'google_ads' })
+    assert.deepEqual((await sendNeodoveLeads({ query: db.query, limit: 100 })).byAgent, { gayathri: 1 })
   } finally {
     for (const k of ['NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA']) delete process.env[k]
     fakeNeo.close()
   }
 })
 
-test('NeoDove team campaigns, end to end through the real routes: a sign-up, a bulk enquiry and a checkout that stopped go to three different telecallers', async () => {
+test('NeoDove team campaigns, end to end through the real routes: a sign-up, a bulk enquiry and a checkout that stopped go to the three telecallers in turn', async () => {
   const http = await import('node:http')
   const got = []
   const fakeNeo = http.createServer((req, res) => {
@@ -3212,7 +3222,7 @@ test('NeoDove team campaigns, end to end through the real routes: a sign-up, a b
     const id = crypto.randomUUID()
     await db.query(
       `insert into checkout_journeys (id, stage, started_at, updated_at, steps, items, value_paise, contact_name, contact_phone, city, state, pincode, traffic_source)
-       values ($1, 'details', now() - interval '45 minutes', now() - interval '40 minutes', $2, $3, 121800, 'Test Checkout', '9811100003', 'Erode', 'Tamil Nadu', '638102', 'direct')`,
+       values ($1, 'details', now() - interval '45 minutes', now() - interval '40 minutes', $2, $3, 121800, 'Test Checkout', '9811100003', 'Erode', 'Tamil Nadu', '638102', 'google_ads')`,
       [id, { cart: new Date(), checkout: new Date(), details: new Date() }, JSON.stringify([{ id: 'kitchidi-ponni-rice-26', name: 'Kitchidi Ponni Rice 26 kg', qty: 1, price: 609 }])])
     await followUpJourneys({ query: db.query })
     await sendNeodoveLeads({ query: db.query, limit: 100 })
@@ -3223,8 +3233,10 @@ test('NeoDove team campaigns, end to end through the real routes: a sign-up, a b
     console.log('Lead types:', JSON.stringify(type))
     assert.deepEqual([type['Test Bulk'], type['Test Checkout']], ['Bulk enquiry', 'Checkout: left at details'])
     assert.ok(type['Test Signup'] && type['Test Signup'] !== 'undefined')
+    const cart = Object.fromEntries(got.map((g) => [g.body.name, g.body['Cart value']]))
+    assert.deepEqual(cart, { 'Test Signup': '', 'Test Bulk': '', 'Test Checkout': 1218 }) // the basket's amount for a checkout, blank for a sign-up and a bulk enquiry
     assert.ok(got.every((g) => g.body.tags === g.body['Lead type'])) // also sent as `tags`, in case NeoDove turns that key into tags
-    assert.deepEqual([...new Set(Object.values(by))].sort(), ['/gayathri', '/lavanya', '/ramya'])
+    assert.deepEqual([by['Test Signup'], by['Test Bulk'], by['Test Checkout']], ['/gayathri', '/ramya', '/lavanya'])
   } finally {
     for (const k of ['NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA']) delete process.env[k]
     fakeNeo.close()
@@ -3272,4 +3284,51 @@ test('NeoDove: leads sent before get their Lead type through the update-only lin
     for (const k of ['NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA']) delete process.env[k]
     fakeNeo.close()
   }
+})
+
+test('the company number 98940 06032 is never a lead: no sign-up, no NeoDove, no Sales Daddy, no call result', async () => {
+  const { isBlockedMobile, queueCrmLead } = await import('../lib/crm.js')
+  const { recordSignup, recordBulkEnquiry, parseCallResults } = await import('../lib/neodove.js')
+  const { parseMessages } = await import('../lib/askeva-inbound.js')
+  const db = await import('../lib/db.js')
+  for (const n of ['+91 98940 06032', '919894006032', '09894006032', '9894006032']) assert.equal(isBlockedMobile(n), true)
+  assert.equal(isBlockedMobile('9894006033'), false)
+  const q = { query: db.query }
+  assert.equal(await recordSignup(q, { name: 'Staff', phone: '+91 98940 06032', source: 'meta' }), null)
+  assert.equal(await recordBulkEnquiry(q, { name: 'Staff', phone: '9894006032' }), null)
+  assert.equal(await queueCrmLead('contact', { name: 'Staff', phone: '9894006032' }), null)
+  assert.deepEqual(parseCallResults({ mobile: '919894006032', disposition: 'Interested' }), [])
+  const { rows } = await db.query(`select count(*)::int n from lead_status where mobile = '9894006032'`)
+  assert.equal(rows[0].n, 0)
+  assert.equal(parseMessages({ from: '919894006032', text: { body: 'hi' } }).length, 0)
+})
+
+test('AskEva: a WhatsApp message or contact import from the company number is not saved and not sent to Sales Daddy', async () => {
+  const { recordAskevaWebhook, importAskevaContacts } = await import('../lib/askeva-inbound.js')
+  const db = await import('../lib/db.js')
+  const count = async () => (await db.query(
+    `select (select count(*) from askeva_events where payload::text like '%9894006032%')::int ev,
+            (select count(*) from whatsapp_contacts where phone = '9894006032')::int wc,
+            (select count(*) from crm_outbox where payload->>'mobile' = '9894006032')::int crm`)).rows[0]
+  const before = await count()
+  const r = await recordAskevaWebhook({ from: '919894006032', text: { body: 'test from office' } })
+  assert.equal(r.blocked, true)
+  const imp = await importAskevaContacts([{ name: 'Office', phone: '+91 98940 06032', lastMessage: 'hi' }])
+  assert.deepEqual([imp.saved, imp.skipped], [0, 1])
+  assert.deepEqual(await count(), before)
+})
+
+test('AskEva: replies from a campaign list number, or the campaign button, are not saved and not sent to Sales Daddy', async () => {
+  const { recordAskevaWebhook } = await import('../lib/askeva-inbound.js')
+  const db = await import('../lib/db.js')
+  await db.query(`insert into campaign_contacts (mobile, campaign) values ('9733300001', 'diwali_retailers') on conflict do nothing`)
+  const crm = async (m) => (await db.query(`select count(*)::int n from crm_outbox where payload->>'mobile' = $1`, [m])).rows[0].n
+  await recordAskevaWebhook({ from: '919733300001', name: 'Retailer One', text: { body: 'price?' } })
+  await recordAskevaWebhook({ from: '919733300002', name: 'Retailer Two', text: { body: 'ஆர்டர் வேண்டும்' } })
+  await recordAskevaWebhook({ from: '919733300003', name: 'Customer', text: { body: 'hi' } })
+  assert.deepEqual([await crm('9733300001'), await crm('9733300002'), await crm('9733300003')], [0, 0, 1])
+  const { rows } = await db.query(`select count(*)::int n from whatsapp_contacts where phone in ('9733300001', '9733300002')`)
+  assert.equal(rows[0].n, 0) // not saved here either (kept in the owner's separate database)
+  const { rows: ev } = await db.query(`select count(*)::int n from askeva_events where payload::text like '%97333000_1%' or payload::text like '%9733300002%'`)
+  assert.equal(ev[0].n, 0)
 })

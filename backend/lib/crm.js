@@ -34,6 +34,18 @@ export function crmMobile(raw) {
 }
 
 /**
+ * The company's own numbers (staff testing the site, owner, 5 Nov 2026): never a lead. Nothing about them goes to
+ * Sales Daddy or NeoDove, and they are not saved as leads. More can be added in BLOCKED_MOBILES (comma separated).
+ */
+const OWN_MOBILES = ['9894006032']
+export function isBlockedMobile(raw) {
+  const m = crmMobile(raw)
+  if (m.length < 10) return false
+  const extra = String(process.env.BLOCKED_MOBILES || '').split(',').map((x) => crmMobile(x)).filter(Boolean)
+  return OWN_MOBILES.includes(m) || extra.includes(m)
+}
+
+/**
  * Where the website puts a lead in Sales Daddy's pipeline (Settings →
  * Pipelines & stages, Oct 2026). Leads are told apart by STAGE, not tags:
  *   New                    enquiries, WhatsApp chats (Sales Daddy's default)
@@ -108,7 +120,7 @@ export function crmLead(kind, f) {
 export async function queueCrmLead(kind, fields, db = { query: defaultQuery }) {
   if (!hasDatabase()) return null
   const lead = crmLead(kind, fields)
-  if (!lead.name || lead.mobile.length < 10) return null
+  if (!lead.name || lead.mobile.length < 10 || isBlockedMobile(lead.mobile)) return null
   const payload = fields.stage ? { ...lead, stage: fields.stage } : lead
   const { rows: [row] } = await db.query(
     'insert into crm_outbox (kind, payload) values ($1, $2) returning id', [kind, payload])
@@ -305,6 +317,11 @@ export async function sendCrmLeads({ id = null, limit = 20, query = defaultQuery
     // order's notes land in the order things happened.
     rows.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
     for (const r of rows) {
+      // Queued before the number was blocked: dropped, never sent.
+      if (isBlockedMobile((r.payload?.lead || r.payload)?.mobile)) {
+        await query(`update crm_outbox set status = 'failed', last_error = 'blocked: company number' where id = $1`, [r.id])
+        continue
+      }
       let result
       try {
         // clientRef lets Sales Daddy recognise a retry of the same lead.
@@ -456,7 +473,7 @@ export async function orderEventPayload(db, { orderId, from, to, reason }) {
        from orders where id = $1`, [orderId])
   if (!o) return null
   const mobile = crmMobile(o.contact_phone)
-  if (!o.contact_name || mobile.length < 10) return null
+  if (!o.contact_name || mobile.length < 10 || isBlockedMobile(mobile)) return null
 
   const lines = [abandoned
     ? `Website checkout not completed: order ${o.order_number} for ${rupees(o.total_paise)} was not paid in time. Worth a call.`
