@@ -125,15 +125,33 @@ export async function recordVisit(db, raw) {
 
 const PAID_STATUSES = ['paid', 'partially_refunded']
 
+const DAY = /^\d{4}-\d{2}-\d{2}$/
+const istToday = () => new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10)
+const addDays = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10)
+
+/**
+ * The report's dates (India time, both days included): `from` and `to` (YYYY-MM-DD) when both are
+ * given and make sense (at most 366 days), else the last `days` days up to today.
+ */
+export function periodRange({ days = 30, from = '', to = '' } = {}) {
+  const f = str(from), t = str(to)
+  if (DAY.test(f) && DAY.test(t) && !Number.isNaN(Date.parse(f)) && !Number.isNaN(Date.parse(t)) && f <= t) {
+    const span = Math.round((Date.parse(t) - Date.parse(f)) / 86400000) + 1
+    if (span <= 366) return { from: f, to: t, days: span, custom: true }
+  }
+  const span = Math.min(366, Math.max(1, Number(days) || 30))
+  const end = istToday()
+  return { from: addDays(end, -(span - 1)), to: end, days: span, custom: false }
+}
+
 /**
  * Sales by source, campaign and ad for a period: visits (tagged landings),
  * checkouts started, paid orders, packs and revenue. Optionally for one
  * product (orders that include it; packs and revenue of that product only).
  */
-export async function sourcesReport(db, { days = 30, product = '' } = {}) {
-  const span = Math.min(366, Math.max(1, Number(days) || 30))
+export async function sourcesReport(db, { days = 30, from = '', to = '', product = '' } = {}) {
+  const range = periodRange({ days, from, to })
   const slug = str(product)
-  const since = `(now() at time zone 'Asia/Kolkata')::date - ($1::int - 1)`
 
   const { rows: orders } = await db.query(
     `select coalesce(o.traffic_source, 'direct') as source, coalesce(o.traffic_campaign, '') as campaign,
@@ -149,15 +167,15 @@ export async function sourcesReport(db, { days = 30, product = '' } = {}) {
           where i.order_id = o.id and ($2 = '' or p.slug = $2)
          having count(*) > 0
        ) x on true
-      where (o.created_at at time zone 'Asia/Kolkata')::date >= ${since}
+      where (o.created_at at time zone 'Asia/Kolkata')::date between $1::date and $4::date
       group by 1, 2, 3`,
-    [span, slug, PAID_STATUSES]
+    [range.from, slug, PAID_STATUSES, range.to]
   )
   const { rows: visits } = await db.query(
     `select source, campaign, ad, sum(visits)::int as visits
-       from traffic_visits where day >= ${since}
+       from traffic_visits where day between $1::date and $2::date
       group by 1, 2, 3`,
-    [span]
+    [range.from, range.to]
   )
 
   const key = (r) => `${r.source}|${r.campaign}|${r.ad}`
@@ -181,7 +199,9 @@ export async function sourcesReport(db, { days = 30, product = '' } = {}) {
     t.revenue += r.revenue
   }
   return {
-    days: span,
+    days: range.days,
+    from: range.from,
+    to: range.to,
     product: slug || null,
     sources: Object.values(bySource).sort((a, b) => b.revenue - a.revenue || b.orders - a.orders),
     campaigns: list,
@@ -189,8 +209,8 @@ export async function sourcesReport(db, { days = 30, product = '' } = {}) {
 }
 
 /** Paid orders for one source / campaign / ad, newest first (for the drill-down). */
-export async function sourceOrders(db, { days = 30, source, campaign = '', ad = '', product = '' } = {}) {
-  const span = Math.min(366, Math.max(1, Number(days) || 30))
+export async function sourceOrders(db, { days = 30, from = '', to = '', source, campaign = '', ad = '', product = '' } = {}) {
+  const range = periodRange({ days, from, to })
   const { rows } = await db.query(
     `select o.order_number, o.placed_at, o.contact_name, o.total_paise, o.status,
             (o.shipping_address->>'city') as city,
@@ -199,11 +219,11 @@ export async function sourceOrders(db, { days = 30, source, campaign = '', ad = 
        from orders o
       where o.payment_status = any($5)
         and coalesce(o.traffic_source, 'direct') = $2 and coalesce(o.traffic_campaign, '') = $3 and coalesce(o.traffic_ad, '') = $4
-        and (o.created_at at time zone 'Asia/Kolkata')::date >= (now() at time zone 'Asia/Kolkata')::date - ($1::int - 1)
+        and (o.created_at at time zone 'Asia/Kolkata')::date between $1::date and $7::date
         and ($6 = '' or exists (select 1 from order_items i join product_variants v on v.id = i.variant_id
                                  join products p on p.id = v.product_id where i.order_id = o.id and p.slug = $6))
       order by o.placed_at desc nulls last limit 200`,
-    [span, str(source), str(campaign), str(ad), PAID_STATUSES, str(product)]
+    [range.from, str(source), str(campaign), str(ad), PAID_STATUSES, str(product), range.to]
   )
   return rows.map((r) => ({ ...r, total: Number(r.total_paise) / 100 }))
 }
@@ -213,8 +233,8 @@ export async function sourceOrders(db, { days = 30, source, campaign = '', ad = 
  * one row per order, with who they are and which campaign / ad brought them.
  * `sources` is a comma list of source keys; empty means every source.
  */
-export async function sourcePeople(db, { days = 30, sources = '', product = '' } = {}) {
-  const span = Math.min(366, Math.max(1, Number(days) || 30))
+export async function sourcePeople(db, { days = 30, from = '', to = '', sources = '', product = '' } = {}) {
+  const range = periodRange({ days, from, to })
   const list = String(sources || '').split(',').map((s) => s.trim()).filter((s) => SOURCES[s])
   const { rows } = await db.query(
     `select o.order_number, o.created_at, o.placed_at, o.contact_name, o.contact_phone, o.contact_email, o.total_paise,
@@ -224,12 +244,12 @@ export async function sourcePeople(db, { days = 30, sources = '', product = '' }
             (select string_agg(i.product_name || ' ' || trim(to_char(i.pack_kg, 'FM999')) || ' kg × ' || i.quantity, ', ')
                from order_items i where i.order_id = o.id) as items
        from orders o
-      where (o.created_at at time zone 'Asia/Kolkata')::date >= (now() at time zone 'Asia/Kolkata')::date - ($1::int - 1)
+      where (o.created_at at time zone 'Asia/Kolkata')::date between $1::date and $4::date
         and (cardinality($2::text[]) = 0 or coalesce(o.traffic_source, 'direct') = any($2))
         and ($3 = '' or exists (select 1 from order_items i join product_variants v on v.id = i.variant_id
                                  join products p on p.id = v.product_id where i.order_id = o.id and p.slug = $3))
       order by o.created_at desc limit 500`,
-    [span, list, str(product)]
+    [range.from, list, str(product), range.to]
   )
   return rows.map((r) => ({
     ...r, total: Number(r.total_paise) / 100, total_paise: undefined,
@@ -331,14 +351,14 @@ export async function saveContestLead(db, body) {
 }
 
 /** Sign-ups in the last `days` days, newest first. */
-export async function contestLeads(db, { days = 30 } = {}) {
-  const span = Math.min(366, Math.max(1, Number(days) || 30))
+export async function contestLeads(db, { days = 30, from = '', to = '' } = {}) {
+  const range = periodRange({ days, from, to })
   const { rows } = await db.query(
     `select name, phone, email, source, campaign, ad, landing, submissions, phone_verified, created_at, updated_at
        from contest_leads
-      where (updated_at at time zone 'Asia/Kolkata')::date >= (now() at time zone 'Asia/Kolkata')::date - ($1::int - 1)
+      where (updated_at at time zone 'Asia/Kolkata')::date between $1::date and $2::date
       order by updated_at desc limit 2000`,
-    [span]
+    [range.from, range.to]
   )
   return rows.map((r) => ({ ...r, sourceLabel: SOURCES[r.source] || r.source }))
 }

@@ -116,8 +116,19 @@ function CopyLine({ label, text }) {
   )
 }
 
+// India-time date (YYYY-MM-DD) for the date boxes.
+const istDay = (offset = 0) => new Date(Date.now() + 5.5 * 3600000 + offset * 86400000).toISOString().slice(0, 10)
+
 export default function SourcesReport({ say, onAuthError }) {
-  const [days, setDays] = useState(30)
+  // Period: last 7 / 30 / 90 days, or custom dates (both days included, India time).
+  const [choice, setChoice] = useState('30')
+  const [from, setFrom] = useState(istDay(-29))
+  const [to, setTo] = useState(istDay())
+  const customOk = /^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to) && from <= to
+  // The query the report's lists share ("days=30" or "from=…&to=…").
+  const period = choice === 'custom'
+    ? (customOk ? `from=${from}&to=${to}` : 'days=30')
+    : `days=${choice}`
   const [product, setProduct] = useState('')
   const [products, setProducts] = useState([])
   const [data, setData] = useState(null)
@@ -135,16 +146,17 @@ export default function SourcesReport({ say, onAuthError }) {
     let live = true
     setData(null)
     setOpen(null)
-    staffJson(`/api/admin/warehouse/sources?days=${days}&product=${encodeURIComponent(product)}`)
+    staffJson(`/api/admin/warehouse/sources?${period}&product=${encodeURIComponent(product)}`)
       .then((d) => live && setData(d))
       .catch((err) => { if (!onAuthError(err)) say(err.message, 'error') })
     return () => { live = false }
-  }, [days, product, say, onAuthError])
+  }, [period, product, say, onAuthError])
 
   async function showOrders(row) {
     if (open && open.key === rowKey(row)) return setOpen(null)
     try {
-      const q = new URLSearchParams({ days, product, source: row.source, campaign: row.campaign || '', ad: row.ad || '' })
+      const q = new URLSearchParams(period)
+      for (const [k, v] of Object.entries({ product, source: row.source, campaign: row.campaign || '', ad: row.ad || '' })) q.set(k, v)
       const d = await staffJson(`/api/admin/warehouse/sources/orders?${q}`)
       setOpen({ key: rowKey(row), orders: d.orders })
     } catch (err) {
@@ -186,10 +198,22 @@ export default function SourcesReport({ say, onAuthError }) {
         </div>
         <div className="wh-src-filters">
           <label className="wh-filter"><span>Period</span>
-            <span className="wh-select"><select value={days} onChange={(e) => setDays(Number(e.target.value))}>
-              <option value={7}>Last 7 days</option><option value={30}>Last 30 days</option><option value={90}>Last 90 days</option>
+            <span className="wh-select"><select value={choice} onChange={(e) => setChoice(e.target.value)}>
+              <option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option>
+              <option value="custom">Custom dates</option>
             </select></span>
           </label>
+          {choice === 'custom' && (
+            <>
+              <label className="wh-filter"><span>From</span>
+                <input className="wh-input" type="date" value={from} max={to || istDay()} onChange={(e) => setFrom(e.target.value)} />
+              </label>
+              <label className="wh-filter"><span>To</span>
+                <input className="wh-input" type="date" value={to} min={from} max={istDay()} onChange={(e) => setTo(e.target.value)} />
+              </label>
+              {!customOk && <span className="wh-small" style={{ color: '#b3261e', alignSelf: 'end' }}>The From date must be on or before the To date.</span>}
+            </>
+          )}
           <label className="wh-filter"><span>Product</span>
             <span className="wh-select"><select value={product} onChange={(e) => setProduct(e.target.value)}>
               <option value="">All products</option>
@@ -309,25 +333,25 @@ export default function SourcesReport({ say, onAuthError }) {
         </>
       )}
     </section>
-    <SourcePeople days={days} product={product} channel={channel} say={say} onAuthError={onAuthError} />
-    <ContestLeads days={days} channel={channel} say={say} onAuthError={onAuthError} />
+    <SourcePeople period={period} product={product} channel={channel} say={say} onAuthError={onAuthError} />
+    <ContestLeads period={period} channel={channel} say={say} onAuthError={onAuthError} />
     </>
   )
 }
 
 /** Everyone who checked out from the chosen channel, one by one (paid or not). */
-function SourcePeople({ days, product, channel, say, onAuthError }) {
+function SourcePeople({ period, product, channel, say, onAuthError }) {
   const [people, setPeople] = useState(null)
   const [paidOnly, setPaidOnly] = useState(false)
   useEffect(() => {
     let live = true
     setPeople(null)
     const sources = (CHANNELS.find((c) => c.key === channel)?.sources || []).join(',')
-    staffJson(`/api/admin/warehouse/sources/people?days=${days}&product=${encodeURIComponent(product)}&sources=${sources}`)
+    staffJson(`/api/admin/warehouse/sources/people?${period}&product=${encodeURIComponent(product)}&sources=${sources}`)
       .then((d) => live && setPeople(d.people))
       .catch((err) => { if (!onAuthError(err)) say(err.message, 'error') })
     return () => { live = false }
-  }, [days, product, channel, say, onAuthError])
+  }, [period, product, channel, say, onAuthError])
   const list = (people || []).filter((p) => !paidOnly || p.paid)
   const name = CHANNELS.find((c) => c.key === channel)?.label
   function downloadCsv() {
@@ -375,21 +399,21 @@ function SourcePeople({ days, product, channel, say, onAuthError }) {
 }
 
 /** Sign-ups from the contest popup form shown to Meta and Google ad visitors. */
-function ContestLeads({ days, channel = '', say, onAuthError }) {
+function ContestLeads({ period, channel = '', say, onAuthError }) {
   const [leads, setLeads] = useState(null)
 
   useEffect(() => {
     let live = true
     setLeads(null)
-    staffJson(`/api/admin/warehouse/contest-leads?days=${days}`)
+    staffJson(`/api/admin/warehouse/contest-leads?${period}`)
       .then((d) => live && setLeads(d.leads))
       .catch((err) => { if (!onAuthError(err)) say(err.message, 'error') })
     return () => { live = false }
-  }, [days, say, onAuthError])
+  }, [period, say, onAuthError])
 
   async function downloadCsv() {
     try {
-      const res = await staffFetch(`/api/admin/warehouse/contest-leads.csv?days=${days}`)
+      const res = await staffFetch(`/api/admin/warehouse/contest-leads.csv?${period}`)
       const url = URL.createObjectURL(await res.blob())
       const a = document.createElement('a')
       a.href = url

@@ -1525,6 +1525,33 @@ test('PIN code regions and the delivered-price sheets', async () => {
   assert.deepEqual([kitchidi5.website, kitchidi5.mrp, kitchidi5.delivery.TN], [555, 599, 54])
 })
 
+test('Ad campaigns report: custom dates (from–to, India time), else the last N days', async () => {
+  const { periodRange } = await import('../lib/sales/attribution.js')
+  assert.deepEqual(periodRange({ from: '2026-11-01', to: '2026-11-05' }), { from: '2026-11-01', to: '2026-11-05', days: 5, custom: true })
+  assert.equal(periodRange({ from: '2026-11-05', to: '2026-11-01', days: 7 }).custom, false) // backwards: the last 7 days
+  assert.equal(periodRange({ from: '2025-01-01', to: '2026-11-05' }).custom, false) // more than a year
+  assert.equal(periodRange({ days: 7 }).days, 7)
+
+  // An order placed today is in a range ending today, not in one that ended yesterday.
+  const { rows: [v] } = await db.query(`select v.id from product_variants v join products p on p.id = v.product_id where p.slug = 'alibaba' and v.pack_kg = 10`)
+  await db.query('update stock_levels set on_hand = on_hand + 5 where variant_id = $1', [v.id])
+  const { session } = await buy([{ id: 'alibaba-10kg', qty: 1 }], buyer({ phone: '9733300077', email: 'range@example.com' }))
+  const today = new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10)
+  const yesterday = new Date(Date.now() + 5.5 * 3600000 - 86400000).toISOString().slice(0, 10)
+  const inRange = await api('GET', `/api/admin/warehouse/sources?from=${yesterday}&to=${today}`, { token: OWNER })
+  assert.equal(inRange.status, 200, JSON.stringify(inRange.body))
+  assert.equal(inRange.body.from, yesterday)
+  assert.equal(inRange.body.to, today)
+  const ordersIn = inRange.body.sources.reduce((t, x) => t + x.orders, 0)
+  const before = await api('GET', `/api/admin/warehouse/sources?from=2026-01-01&to=${yesterday}`, { token: OWNER })
+  const people = await api('GET', `/api/admin/warehouse/sources/people?from=${today}&to=${today}`, { token: OWNER })
+  assert.ok(people.body.people.some((x) => x.order_number === session.orderNumber))
+  const old = await api('GET', `/api/admin/warehouse/sources/people?from=2026-01-01&to=${yesterday}`, { token: OWNER })
+  assert.ok(!old.body.people.some((x) => x.order_number === session.orderNumber))
+  assert.ok(ordersIn >= 1)
+  assert.equal(before.status, 200)
+})
+
 test('sales by source: ad links and referrers become a source, orders and visits roll up by campaign and ad', async () => {
   const { classify } = await import('../lib/sales/attribution.js')
   const c = (a) => classify(a).source
