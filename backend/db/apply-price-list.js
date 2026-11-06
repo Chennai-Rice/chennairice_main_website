@@ -65,7 +65,7 @@ export const SHEET_26 = { oldMrp: true, deliveryInPrice: 98 }
 // absorbed part). Item and variety as on the sheets.
 export const PRICE_LIST = {
   'kitchidi-ponni-rice': { 5: [515, 599, 40, { oldMrp: true }], 26: [2470, 2999, 179, SHEET_26] }, // Chennai Rice Premium Kitchidi Ponni Rice (pink bag); 5 kg: retail ₹515, website price kept at ₹555 (₹40 absorbed) and the old MRP, so Tamil Nadu pays ₹125 delivery, ₹680 in all (4 Nov 2026)
-  'special-rajabhogam': { 5: [515, 599, 75], 10: [1020, 1129], 26: [2470, 2999, 129, SHEET_26] }, // Chennai Rice-Red-Raj.Ponni · Vada Kolam Kitchidi Ponni (red bag); 5 kg: website price ₹590 (₹75 hidden), 6 Nov 2026
+  'special-rajabhogam': { 5: [515, 599, 75], 10: [1020, 1129], 26: [2470, 2999, 179, SHEET_26] }, // Chennai Rice-Red-Raj.Ponni · Vada Kolam Kitchidi Ponni (red bag); 5 kg: website price ₹590 (₹75 hidden); 26 kg: ₹2,649 (₹179 hidden, as Kitchidi), 6 Nov 2026
   'vintage': { 5: [515, 619], 10: [1020, 1209], 26: [2470, 2999, 129, SHEET_26] },            // Vintage Spl Ponni · JSR Kolam
   'united-5kg': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899, 99, SHEET_26] },          // United · Shikaripura Amaan Ponni
   'vijaya-nagaram': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899, 99, SHEET_26] },      // Vijayanagaram · Shikaripura Amaan Ponni
