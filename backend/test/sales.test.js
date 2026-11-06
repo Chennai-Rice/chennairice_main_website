@@ -1435,7 +1435,7 @@ test('26 kg pricing sheet (Nov 2026): website price, MRP, hidden part, ₹589 Ta
   // base, MRP, website, hidden, pays (in-house ₹200), courier, pays (courier), as on the sheet
   const sheet = {
     'kitchidi-ponni-rice': [2470, 2999, 2649, 179, 2849, 589, 3238],
-    'special-rajabhogam': [2470, 2999, 2649, 179, 2849, 589, 3238], // 6 Nov 2026: ₹2,649 as Kitchidi
+    'special-rajabhogam': [2470, 2999, 2599, 129, 2799, 589, 3188],
     vintage: [2470, 2999, 2599, 129, 2799, 589, 3188],
     'nayara-super-aged': [2400, 2899, 2549, 149, 2749, 589, 3138],
     'a1-special-ponni': [2400, 2899, 2499, 99, 2699, 589, 3088],
