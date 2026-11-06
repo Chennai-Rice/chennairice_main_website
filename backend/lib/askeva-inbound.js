@@ -88,6 +88,26 @@ export function parseMessages(payload) {
 
 const fmt = (d) => new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })
 
+// Replies to these WhatsApp campaigns stay out of Sales Daddy: the numbers the campaign was sent to
+// (campaign_contacts, for CAMPAIGN_DAYS after the upload), and anyone who taps the campaign's button.
+const CAMPAIGN_DAYS = 30
+const CAMPAIGN_BUTTONS = ['ஆர்டர் வேண்டும்']
+async function fromCampaign(db, phone, text) {
+  if (CAMPAIGN_BUTTONS.includes(String(text || '').trim())) return true
+  // A savepoint, so a missing table (before migration 040) does not break the caller's transaction.
+  let savepoint = false
+  try { await db.query('savepoint campaign_check'); savepoint = true } catch { /* not in a transaction */ }
+  try {
+    const { rows: [hit] } = await db.query(
+      `select 1 from campaign_contacts where mobile = $1 and created_at > now() - make_interval(days => $2) limit 1`, [phone, CAMPAIGN_DAYS])
+    if (savepoint) await db.query('release savepoint campaign_check')
+    return Boolean(hit)
+  } catch {
+    if (savepoint) await db.query('rollback to savepoint campaign_check').catch(() => {})
+    return false // before migration 040: nothing is skipped
+  }
+}
+
 /**
  * Saves one contact's message and queues it for Sales Daddy when due (first
  * contact, or no note in the last day). `db` is a query runner inside a
@@ -110,6 +130,8 @@ async function saveMessage(db, { phone, name, text, at }, source) {
   )
   const due = c.is_new || !c.crm_noted_at || Date.now() - new Date(c.crm_noted_at).getTime() > 24 * 3600000
   if (!due) return null
+  // A reply to a trade campaign (the Diwali retailer campaign): kept here, not a customer lead in Sales Daddy.
+  if (await fromCampaign(db, phone, text)) return null
   const id = await queueCrmLead('whatsapp_chat', {
     name: c.name || `WhatsApp ${phone}`,
     phone,
