@@ -5,8 +5,8 @@ import "./deliverychoice.css";
 /**
  * Checkout: how the order should reach the customer, once the PIN code is known. Shown only where
  * Chennai Rice's own team delivers (the server lists the options); elsewhere the courier is the only
- * way, so nothing is shown. The courier stays the default; the team's option stands out, with what it
- * saves worked out from the two real charges.
+ * way, so nothing is shown. The team's option stands out, with what it
+ * saves worked out from the two real charges. Our team is the default choice (CheckoutPage).
  */
 const LABEL = { courier: "Courier", in_house: "Chennai Rice delivery" };
 

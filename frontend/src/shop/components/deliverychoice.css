@@ -9,7 +9,10 @@
 .delivery-choice-title {
   padding: 0;
   margin-bottom: 10px;
-  font-weight: 600;
+  /* The same serif as "Where should we deliver?", a step smaller. */
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 1.35rem;
+  font-weight: 400;
   color: var(--ink-900, #2b1b16);
 }
 .delivery-option {
@@ -73,6 +76,17 @@
 @media (max-width: 480px) {
   .delivery-option { grid-template-columns: auto 1fr auto; padding: 12px 14px; gap: 10px; }
   .delivery-option-icon { display: none; }
+}
+
+/* Order summary: under the Pay button when our team delivers. */
+.checkout-own-note {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #fdf3dc;
+  color: var(--ink-700, #4e3a32);
+  font-size: 14px;
+  text-align: center;
 }
 
 /* Order confirmed: the note for orders the team delivers. */

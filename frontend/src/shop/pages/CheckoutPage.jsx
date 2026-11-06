@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import SiteLayout from "../layouts/SiteLayout.jsx";
 import { useCart } from "../hooks/useCart.jsx";
@@ -10,6 +10,17 @@ import { formatRupees } from "../utils/format.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
 import DeliveryChoice from "../components/DeliveryChoice.jsx";
+
+// The delivery method the customer picked on this visit (sessionStorage); our own team until they choose.
+const DELIVERY_CHOICE_KEY = "cr.checkout.delivery";
+function readDeliveryChoice() {
+  try {
+    const v = window.sessionStorage.getItem(DELIVERY_CHOICE_KEY);
+    return v === "courier" || v === "in_house" ? v : "in_house";
+  } catch {
+    return "in_house";
+  }
+}
 import { metaCheckoutSignal, trackMetaEvent, trackMetaPurchase } from "../../services/metaPixel.js";
 import { trackGooglePurchase } from "../../services/googleAnalytics.js";
 import {
@@ -66,13 +77,16 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState(EMPTY_FORM);
-  // Courier, or Chennai Rice's own team where it delivers (offered once the PIN code is known).
-  const [deliveryChoice, setDeliveryChoice] = useState("courier");
+  // Courier, or Chennai Rice's own team where it delivers (offered once the PIN code is known, and only
+  // when it costs less than the courier). Our team is the default: where it is not offered, the server's
+  // quote answers with the courier, and that answer (deliveryMethod) is what is shown and paid. The
+  // choice is kept for the visit, so it is still there if the customer goes back to the cart and returns.
+  const [deliveryChoice, setDeliveryChoiceState] = useState(readDeliveryChoice);
+  const setDeliveryChoice = useCallback((method) => {
+    setDeliveryChoiceState(method);
+    try { window.sessionStorage.setItem(DELIVERY_CHOICE_KEY, method); } catch { /* private mode: kept for this page only */ }
+  }, []);
   const { subtotal, shipping, region, total, hasPin, deliveryOptions, deliveryMethod, error: quoteError } = useCartQuote(form.pincode, deliveryChoice);
-  // A PIN code the team does not cover goes back to the courier.
-  useEffect(() => {
-    if (deliveryChoice !== "courier" && deliveryOptions.length && !deliveryOptions.some((o) => o.method === deliveryChoice)) setDeliveryChoice("courier");
-  }, [deliveryOptions, deliveryChoice]);
   const ownDelivery = deliveryMethod === "in_house";
   const [errors, setErrors] = useState({});
   // After payment the receipt moves to /order-confirmed (a page of its own
@@ -542,6 +556,10 @@ export default function CheckoutPage() {
               {/* Which gateway handles the payment is the server's call, and
                   can change mid-attempt if one is unavailable — so the copy
                   here names neither. */}
+              {ownDelivery && (
+                <p className="checkout-own-note">Our team will call you before delivery.</p>
+              )}
+
               <p className="checkout-note">
                 Prices include GST. You will be asked to pay securely on the next step.
               </p>
