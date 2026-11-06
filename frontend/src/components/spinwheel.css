@@ -244,3 +244,9 @@
 @media (max-width: 480px) {
   .spin-fab { left: 8px; bottom: 10px; width: 64px; height: 64px; }
 }
+
+/* The wheel picture (Nov 2026): it turns; the pointer on the right stays put. */
+.spin-rotor-img { width: 100%; aspect-ratio: 1; border-radius: 50%; }
+.spin-rotor-img img { display: block; width: 100%; height: auto; }
+.spin-rotor-img.is-spinning { transition: transform 4.2s cubic-bezier(0.17, 0.67, 0.12, 0.99); }
+@media (prefers-reduced-motion: reduce) { .spin-rotor-img.is-spinning { transition-duration: 0.6s; } }

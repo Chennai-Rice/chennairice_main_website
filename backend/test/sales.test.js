@@ -1262,9 +1262,9 @@ test('Spin & Win: off until switched on, one spin per mobile and browser, prize 
 
     // The pick follows the chances.
     const { pickPrize, DEFAULT_PRIZES } = await import('../lib/sales/spin.js')
-    // The wheel's eight prizes, clockwise: surprise gift 4%, ₹150 5%, ₹50 30%, free delivery 15%, ₹75 20%, 5% off 15%, ₹100 10%, free bag 1%.
-    assert.equal(pickPrize(DEFAULT_PRIZES, 0).key, 'gift')
-    assert.equal(pickPrize(DEFAULT_PRIZES, 3.99).key, 'gift')
+    // The wheel's eight prizes, clockwise: ₹25 4%, ₹150 5%, ₹50 30%, free delivery 15%, ₹75 20%, 5% off 15%, ₹100 10%, free bag 1%.
+    assert.equal(pickPrize(DEFAULT_PRIZES, 0).key, 'p25')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 3.99).key, 'p25')
     assert.equal(pickPrize(DEFAULT_PRIZES, 4).key, 'p150')
     assert.equal(pickPrize(DEFAULT_PRIZES, 50).key, 'free')
     assert.equal(pickPrize(DEFAULT_PRIZES, 80).key, 'pct5')

@@ -41,98 +41,20 @@ const day = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', mon
 
 /** The prizes repeated round the wheel (8 to 12 slices), so it looks full like a real prize wheel. */
 function slicesFor(prizes) {
-  const out = []
-  while (out.length < 8) out.push(...prizes)
-  return out.slice(0, Math.min(12, Math.max(8, out.length)))
+  return prizes
 }
 
-// Split a prize label into lines for its slice: "₹150 OFF" → ["₹150", "OFF"]; long ones wrap by words.
-function labelLines(label) {
-  const t = String(label).trim()
-  const off = t.match(/^(.+?)\s+(OFF)$/i)
-  if (off) return [off[1], off[2].toUpperCase()]
-  const words = t.split(/\s+/)
-  const lines = []
-  for (const w of words) {
-    const last = lines[lines.length - 1]
-    if (last && (last + ' ' + w).length <= 11) lines[lines.length - 1] = last + ' ' + w
-    else lines.push(w)
-  }
-  return lines.slice(0, 4)
-}
-
-const GIFT = <path d="M-9 -2h18v11h-18z M-11 -7h22v5h-22z M0 -7v16 M0 -7c-3-6-9-5-7-1 2 2 7 1 7 1z M0 -7c3-6 9-5 7-1-2 2-7 1-7 1z" fill="#f2b632" stroke="#c0392b" strokeWidth="1.2" />
-const TRUCK = <path d="M-12 -6h13v10h-13z M1 -2h6l4 4v2h-10z M-6 6a2 2 0 1 0 0.1 0 M6 6a2 2 0 1 0 0.1 0" fill="#fff" stroke="#fff" strokeWidth="1" />
-
+// The wheel is the designed picture (/assets/spin-wheel.webp: eight slices, ₹25 OFF at the top, clockwise as
+// in backend/lib/sales/spin.js DEFAULT_PRIZES). It turns; the pointer on the right stays put.
 function Wheel({ slices, angle, spinning }) {
-  const n = slices.length
-  const seg = 360 / n
-  const R = 128
-  const pt = (deg, r) => {
-    const a = ((deg - 90) * Math.PI) / 180
-    return [150 + r * Math.cos(a), 150 + r * Math.sin(a)]
-  }
-  // Slices are centred on their angle, the first at the top (as on the design).
-  const slice = (i) => {
-    const [x0, y0] = pt(i * seg - seg / 2, R)
-    const [x1, y1] = pt(i * seg + seg / 2, R)
-    return `M150,150 L${x0},${y0} A${R},${R} 0 0 1 ${x1},${y1} Z`
-  }
-  const bulbs = Array.from({ length: 28 }, (_, i) => pt(i * (360 / 28), 139))
   return (
     <div className="spin-wheel-wrap">
-      <svg className="spin-wheel-svg" viewBox="0 0 300 300" role="img" aria-label={'Prize wheel: ' + [...new Set(slices.map((p) => p.label))].join(', ')}>
-        <defs>
-          <radialGradient id="spinRimRed" cx="50%" cy="50%" r="50%">
-            <stop offset="0.85" stopColor="#b3121f" />
-            <stop offset="0.93" stopColor="#e1262d" />
-            <stop offset="1" stopColor="#8e0d16" />
-          </radialGradient>
-          <linearGradient id="spinGold" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#ffe08a" /><stop offset="0.5" stopColor="#e0a730" /><stop offset="1" stopColor="#ffd25e" />
-          </linearGradient>
-          <clipPath id="spinLogoClip"><circle cx="150" cy="150" r="30" /></clipPath>
-        </defs>
-        <circle cx="150" cy="150" r="149" fill="url(#spinRimRed)" />
-        <circle cx="150" cy="150" r="131" fill="none" stroke="url(#spinGold)" strokeWidth="4" />
-        {bulbs.map(([x, y], i) => <circle key={i} cx={x} cy={y} r="4" className={'spin-bulb' + (i % 2 ? ' spin-bulb--alt' : '')} />)}
-        <g className={'spin-rotor' + (spinning ? ' is-spinning' : '')} style={{ transform: `rotate(${angle}deg)` }}>
-          {slices.map((p, i) => {
-            const dark = i % 2 === 1
-            const lines = labelLines(p.label)
-            const big = /^(₹\d|\d+%)/.test(lines[0]) && lines.length === 2
-            const icon = p.kind === 'gift' ? GIFT : p.kind === 'free_delivery' ? TRUCK : null
-            // Upright text in the middle of the slice, as on the design (picture above, lines below it).
-            const mid = i * seg
-            const [cx, cy] = pt(mid, lines.length > 2 ? 90 : 86)
-            const small = lines.some((l) => l.length > 8)
-            const fs = big ? 22 : small ? 9.5 : 11.5
-            const gap = big ? 15 : fs + 2
-            const top = (icon ? 9 : 0) - ((lines.length - 1) * gap) / 2 - (big ? 3 : 0)
-            return (
-              <g key={i}>
-                <path d={slice(i)} fill={dark ? '#7d1420' : '#fbf1dc'} stroke="url(#spinGold)" strokeWidth="2" />
-                <g transform={`translate(${cx} ${cy})`}>
-                  {icon && <g transform={`translate(0 ${top - gap / 2 - 12}) scale(1.05)`}>{icon}</g>}
-                  {lines.map((l, k) => {
-                    const isBig = big && k === 0
-                    return (
-                      <text key={k} x="0" y={top + k * gap} textAnchor="middle" dominantBaseline="middle"
-                        fontSize={isBig ? fs : big ? 12 : fs} fontWeight="900" fontFamily="inherit"
-                        fill={dark ? (k === 0 ? '#ffd34d' : '#fff') : '#7d1420'}>
-                        {l}
-                      </text>
-                    )
-                  })}
-                </g>
-              </g>
-            )
-          })}
-        </g>
-        <circle cx="150" cy="150" r="38" fill="#fff" stroke="url(#spinGold)" strokeWidth="5" />
-        <image href="/assets/shop/logo.png" x="120" y="120" width="60" height="60" clipPath="url(#spinLogoClip)" preserveAspectRatio="xMidYMid slice" />
-      </svg>
-      {/* The pointer, on the right as on the design. */}
+      <div className={'spin-rotor-img' + (spinning ? ' is-spinning' : '')} style={{ transform: `rotate(${angle}deg)` }}>
+        <picture>
+          <source srcSet="/assets/spin-wheel.webp" type="image/webp" />
+          <img src="/assets/spin-wheel.png" alt={'Prize wheel: ' + [...new Set(slices.map((p) => p.label))].join(', ')} width="640" height="640" />
+        </picture>
+      </div>
       <svg className="spin-pointer spin-pointer--right" viewBox="0 0 48 44" aria-hidden="true">
         <path d="M2 22 L44 3 L44 41 Z" fill="#e1262d" stroke="#ffd25e" strokeWidth="3" strokeLinejoin="round" />
         <path d="M10 22 L40 9 L40 22 Z" fill="#ff6b5f" opacity="0.6" />

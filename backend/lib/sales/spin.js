@@ -22,10 +22,10 @@ import { pushCrmLead } from '../crm.js'
 import { recordWebsiteLead, sendNeodoveLeads } from '../neodove.js'
 
 // kind / amount (₹) / minOrder (₹) / region as in discount_codes; chance in %.
-// The wheel (Nov 2026 design), clockwise from the top. kind: amount (₹ off) / percent (% off, up to maxOff ₹) /
+// The wheel (Nov 2026 design, /assets/spin-wheel.webp), clockwise from the top: the order must match the picture. kind: amount (₹ off) / percent (% off, up to maxOff ₹) /
 // free_delivery / gift (packed with the order, nothing off). Chances add up to 100.
 export const DEFAULT_PRIZES = [
-  { key: 'gift', label: 'Exclusive Surprise Gift', kind: 'gift', gift: 'Exclusive surprise gift', minOrder: 500, region: null, chance: 4 },
+  { key: 'p25', label: '₹25 OFF', kind: 'amount', amount: 25, minOrder: 0, region: null, chance: 4 },
   { key: 'p150', label: '₹150 OFF', kind: 'amount', amount: 150, minOrder: 2000, region: null, chance: 5 },
   { key: 'p50', label: '₹50 OFF', kind: 'amount', amount: 50, minOrder: 500, region: null, chance: 30 },
   { key: 'free', label: 'Free Delivery', kind: 'free_delivery', minOrder: 0, region: 'TN', chance: 15 },
