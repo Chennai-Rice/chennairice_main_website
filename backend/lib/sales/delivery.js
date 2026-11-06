@@ -1,6 +1,9 @@
 // How an order reaches the customer: by courier (the regional charge per pack from the price list), or
 // by Chennai Rice's own delivery team, a flat charge per order where the team delivers (Nov 2026).
 //
+// Our team is offered only when it costs the customer less than the courier for that cart (the courier
+// charge grows with the number of packs; ours is one flat charge), so a single small bag stays courier.
+//
 // The customer chooses at checkout once the PIN code is known; the server works out both charges and
 // checks the choice again when the order is placed, so a PIN outside the area or a changed amount is
 // never accepted. Settings (company_settings, edited in Warehouse → Settings):
@@ -36,14 +39,15 @@ export function inHouseCovers(pincode, settings = {}) {
 
 /**
  * The ways this cart can be delivered to this PIN code, cheapest method first among equals:
- * [{ method: 'courier', paise, days }, { method: 'in_house', paise, promise }] (in-house only where covered).
+ * [{ method: 'courier', paise, days }, { method: 'in_house', paise, promise }] (in-house only where covered
+ * and cheaper than the courier).
  * `courierPaise` is the courier charge the price list worked out (null while the PIN code is unknown).
  */
 export function deliveryOptions(courierPaise, pincode, settings = {}) {
   if (courierPaise == null) return []
   const options = [{ method: 'courier', paise: courierPaise, promise: '3–5 days' }]
-  if (inHouseCovers(pincode, settings)) {
-    const s = inHouseSettings(settings)
+  const s = inHouseSettings(settings)
+  if (inHouseCovers(pincode, settings) && s.paise < courierPaise) {
     options.push({ method: 'in_house', paise: s.paise, promise: s.promise })
   }
   return options

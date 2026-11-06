@@ -55,7 +55,7 @@ export default function InHouseDelivery({ say, onAuthError }) {
       <h2 className="wh-panel-title">In-house delivery</h2>
       <p className="wh-muted wh-small">
         Customers in the area below can choose delivery by the Chennai Rice team at checkout, next to the courier, for one flat
-        charge per order. The courier stays the default. Orders that choose it show "Our delivery" in Orders and Dispatch.
+        charge per order. It is offered only when it costs less than the courier for that cart. The courier stays the default. Orders that choose it show "Our delivery" in Orders and Dispatch.
       </p>
       <form onSubmit={save}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0' }}>

@@ -1081,6 +1081,12 @@ test('in-house delivery: a flat ₹100 choice in Tamil Nadu, checked again at or
     assert.equal(own.body.shipping, 100)
     assert.equal(own.body.total, own.body.subtotal + 100)
 
+    // Only when ours is cheaper: one bag with courier ₹210 and our charge set to ₹250 → courier only.
+    await setting('in_house_delivery_paise', '25000')
+    assert.deepEqual((await quote('641001', 'in_house', 1)).body.deliveryOptions.map((o) => o.method), ['courier'])
+    assert.deepEqual((await quote('641001', 'in_house', 2)).body.deliveryOptions.map((o) => [o.method, o.charge]), [['courier', 420], ['in_house', 250]])
+    await db.query(`delete from company_settings where key = 'in_house_delivery_paise'`)
+
     // Kerala: courier only.
     const kerala = await quote('682001', 'in_house', 1)
     assert.deepEqual(kerala.body.deliveryOptions.map((o) => o.method), ['courier'])
