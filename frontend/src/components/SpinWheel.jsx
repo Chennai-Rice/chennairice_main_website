@@ -44,6 +44,17 @@ function slicesFor(prizes) {
   return prizes
 }
 
+// The eight slices of the wheel picture, clockwise from the top (/assets/spin-wheel.webp).
+const PICTURE = [/₹\s*25\b/, /₹\s*150\b/, /₹\s*50\b/, /free\s*delivery/i, /₹\s*75\b/, /\b5\s*%/, /₹\s*100\b/, /bag/i]
+const PICTURE_KEYS = ['p25', 'p150', 'p50', 'free', 'p75', 'pct5', 'p100', 'bag']
+/** Which slice of the picture shows this prize: by its label (₹25 OFF, Free Delivery…), else its key. */
+function pictureSlice(prize) {
+  const byLabel = PICTURE.findIndex((re) => re.test(String(prize?.label || '')))
+  if (byLabel >= 0) return byLabel
+  const byKey = PICTURE_KEYS.indexOf(prize?.key)
+  return byKey >= 0 ? byKey : 0
+}
+
 // The wheel is the designed picture (/assets/spin-wheel.webp: eight slices, ₹25 OFF at the top, clockwise as
 // in backend/lib/sales/spin.js DEFAULT_PRIZES). It turns; the pointer on the right stays put.
 function Wheel({ slices, angle, spinning }) {
@@ -159,10 +170,9 @@ export default function SpinWheel() {
       })
       const data = await res.json().catch(() => null)
       if (!res.ok || !data?.code) throw new Error(data?.error || 'Spin & Win is not available right now. Please try again later.')
-      const matches = slices.map((p, i) => (p.key === data.prize.key ? i : -1)).filter((i) => i >= 0)
-      const i = matches.length ? matches[Math.floor(Math.random() * matches.length)] : 0
-      const seg = 360 / slices.length
-      const target = ((90 - i * seg) % 360 + 360) % 360
+      // The slice of the picture with this prize (by what it is, so the order of the saved list never matters).
+      const i = pictureSlice(data.prize)
+      const target = ((90 - i * 45) % 360 + 360) % 360
       setAngle((a) => a - (a % 360) + 360 * 5 + target)
       const result = {
         code: data.code, gives: data.gives, label: data.prize.label, key: data.prize.key,
