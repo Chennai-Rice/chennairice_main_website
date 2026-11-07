@@ -287,8 +287,19 @@ export async function listWarehouseCustomers(f = {}, { maxLimit = 100 } = {}) {
     params.push(source)
     sourceSql = `src_label = $${params.length}`
   }
+  // Date range (India dates, both days included): their latest activity, i.e. last order or sign-up.
+  const day = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(str(v)) && !Number.isNaN(Date.parse(str(v))) ? str(v) : '')
+  const dates = []
+  if (day(f.from)) {
+    params.push(day(f.from))
+    dates.push(`recent >= ($${params.length}::date)::timestamp at time zone 'Asia/Kolkata'`)
+  }
+  if (day(f.to)) {
+    params.push(day(f.to))
+    dates.push(`recent < ($${params.length}::date + 1)::timestamp at time zone 'Asia/Kolkata'`)
+  }
   // The counts on the toggle ignore the status, so each button shows how many people it would list.
-  const baseWhere = [search, sourceSql].filter(Boolean).join(' and ')
+  const baseWhere = [search, sourceSql, ...dates].filter(Boolean).join(' and ')
   const where = [baseWhere, status === 'converted' ? 'converted' : status === 'not_converted' ? 'not converted' : ''].filter(Boolean).join(' and ')
   const limit = Math.min(Math.max(Number(f.limit) || 20, 1), maxLimit)
   const offset = Math.max(Number(f.offset) || 0, 0)

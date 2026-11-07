@@ -122,6 +122,9 @@ export function ProductsView({ say, onAuthError }) {
 /* ----------------------------------------------------------- Customers */
 
 const CUST_PAGE = 20
+// India date, n days ago, as YYYY-MM-DD.
+const istDay = (n = 0) => new Date(Date.now() + 330 * 60000 - n * 86400000).toISOString().slice(0, 10)
+const DATE_PRESETS = [['', 'All time'], ['today', 'Today'], ['7', 'Last 7 days'], ['30', 'Last 30 days'], ['custom', 'Custom']]
 
 export function CustomersView({ say, onAuthError, onOpenOrders }) {
   const [draft, setDraft] = useState('')
@@ -129,12 +132,22 @@ export function CustomersView({ say, onAuthError, onOpenOrders }) {
   const [status, setStatus] = useState('') // '' | converted | not_converted
   const [page, setPage] = useState(1)
   const [source, setSource] = useState('') // '' | Meta | WhatsApp | Expo QR | Google Ads | ...
-  useEffect(() => { setPage(1) }, [status, source])
+  const [preset, setPreset] = useState('') // '' | today | 7 | 30 | custom
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  useEffect(() => { setPage(1) }, [status, source, from, to])
+  function pickPreset(key) {
+    setPreset(key)
+    if (key === '') { setFrom(''); setTo('') }
+    else if (key === 'today') { setFrom(istDay()); setTo(istDay()) }
+    else if (key === '7' || key === '30') { setFrom(istDay(Number(key) - 1)); setTo(istDay()) }
+    else if (!from) { setFrom(istDay(6)); setTo(istDay()) }
+  }
   useEffect(() => {
     const t = window.setTimeout(() => { setQ(draft.trim()); setPage(1) }, 400)
     return () => window.clearTimeout(t)
   }, [draft])
-  const path = `/api/admin/warehouse/customers?${new URLSearchParams({ q, status, source, limit: CUST_PAGE, offset: (page - 1) * CUST_PAGE })}`
+  const path = `/api/admin/warehouse/customers?${new URLSearchParams({ q, status, source, from, to, limit: CUST_PAGE, offset: (page - 1) * CUST_PAGE })}`
   const { data, loading } = useLoad(path, say, onAuthError)
   const total = data?.total || 0
   const counts = data?.counts || {}
@@ -143,7 +156,7 @@ export function CustomersView({ say, onAuthError, onOpenOrders }) {
   // The whole list (every customer matching the search), as a spreadsheet.
   async function downloadCsv() {
     try {
-      const res = await staffFetch(`/api/admin/warehouse/customers.csv?${new URLSearchParams({ q, status, source })}`)
+      const res = await staffFetch(`/api/admin/warehouse/customers.csv?${new URLSearchParams({ q, status, source, from, to })}`)
       const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || 'customers.csv'
       const url = URL.createObjectURL(await res.blob())
       const a = document.createElement('a')
@@ -187,6 +200,19 @@ export function CustomersView({ say, onAuthError, onOpenOrders }) {
             </button>
           ))}
         </div>
+        <div className="wh-seg" role="group" aria-label="Date">
+          {DATE_PRESETS.map(([key, label]) => (
+            <button key={key || 'alltime'} type="button" className={`wh-seg-btn${preset === key ? ' is-active' : ''}`} aria-pressed={preset === key} onClick={() => pickPreset(key)}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {preset === 'custom' && (
+          <div className="wh-daterange">
+            <label>From <input type="date" value={from} max={to || istDay()} onChange={(e) => setFrom(e.target.value)} /></label>
+            <label>To <input type="date" value={to} min={from || undefined} max={istDay()} onChange={(e) => setTo(e.target.value)} /></label>
+          </div>
+        )}
       </div>
 
       <div className="wh-table wh-table--customers" role="table" aria-label="Customers">
