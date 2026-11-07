@@ -176,7 +176,7 @@ export default function PaymentReceipt({ receipt, children }) {
           z-index of its own: that makes it a stacking context, and any child of
           it — however high its z-index — is trapped below the printer. */}
       <div className="receipt-badge" aria-hidden="true">
-        <img src="/assets/shop/logo.png" alt="" width="64" height="64" loading="eager" />
+        <img src="/assets/logo-full-v3.png" alt="" width="64" height="64" loading="eager" />
       </div>
 
       <article className="receipt" aria-label={"Receipt for order " + orderNumber}>
@@ -216,7 +216,7 @@ export default function PaymentReceipt({ receipt, children }) {
 
         <div className="receipt-payer">
           <span className="receipt-payer-mark" aria-hidden="true">
-            <img src="/assets/shop/logo.png" alt="" width="28" height="28" />
+            <img src="/assets/logo-full-v3.png" alt="" width="28" height="28" />
           </span>
           <span className="receipt-payer-text">
             <strong>{customerName}</strong>

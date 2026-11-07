@@ -53,7 +53,7 @@ const ADDRESS = {
   addressCountry: 'IN',
 }
 const PHONE = '+91-70666-46667'
-const LOGO = SITE + '/assets/logo-full-v2.png'
+const LOGO = SITE + '/assets/logo-full-v3.png'
 // Every public profile of the company (empty links — no channel yet — are left out) and its Google Business Profile.
 const SAME_AS = [...(FOOTER.social || []).map((s) => s.href.replace(/&sk=about$/, '')).filter(Boolean), FOOTER.maps?.profile].filter(Boolean)
 const ORG_ID = SITE + '/#organization'

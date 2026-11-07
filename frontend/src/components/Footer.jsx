@@ -100,7 +100,7 @@ export default function Footer() {
       <div className="container foot-main">
         <div className="foot-brand">
           <Link to="/" className="foot-logo" aria-label="Chennai Rice Industries — home">
-            <img src="/assets/logo-footer-v1.png" alt="Chennai Rice Industries" width="408" height="440" />
+            <img src="/assets/logo-footer-v2.png" alt="Chennai Rice Industries" width="428" height="460" />
           </Link>
 
           <h2 className="foot-label">Follow Us</h2>

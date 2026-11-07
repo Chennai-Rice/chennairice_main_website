@@ -142,7 +142,7 @@ export default function MisDashboard({ standalone = false }) {
     <div className={`mis mis-${look}${standalone ? ' is-standalone' : ''}`}>
       <aside className="mis-side">
         <div className="mis-brand">
-          <img src="/assets/logo-full-v2.png" alt="" width="40" height="40" />
+          <img src="/assets/logo-full-v3.png" alt="" width="40" height="40" />
           <div>
             <strong>Chennai Rice</strong>
             <span>{N.Many} Dashboard</span>
