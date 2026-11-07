@@ -202,8 +202,8 @@ export default function SpinWheel() {
         <button type="button" className={'spin-fab' + (win ? ' has-prize' : '')} onClick={show} aria-label={win ? 'Your Spin & Win prize' : 'Spin & Win'}>
           {/* The Spin & Win wheel picture (bottom left, like Soru Kutty on the right). */}
           <picture>
-            <source srcSet="/assets/spin-win.webp" type="image/webp" />
-            <img src="/assets/spin-win.png" alt="" width="80" height="80" className="spin-fab-img" />
+            <source srcSet="/assets/spin-contest.webp" type="image/webp" />
+            <img src="/assets/spin-contest.png" alt="" width="124" height="85" className="spin-fab-img" />
           </picture>
           {win && <span className="spin-fab-badge">Your prize</span>}
         </button>
