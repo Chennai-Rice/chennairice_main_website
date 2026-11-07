@@ -5,7 +5,7 @@
   left: 14px;
   bottom: 14px;
   z-index: 60;
-  width: 124px;
+  width: 104px;
   height: auto;
   padding: 0;
   border: 0;
@@ -242,7 +242,7 @@
   .spin-form, .spin-won { order: 1; }
 }
 @media (max-width: 480px) {
-  .spin-fab { left: 6px; bottom: 10px; width: 100px; height: auto; }
+  .spin-fab { left: 6px; bottom: 10px; width: 86px; height: auto; }
 }
 
 /* The wheel picture (Nov 2026): it turns; the pointer on the right stays put. */

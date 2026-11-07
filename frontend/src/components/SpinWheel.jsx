@@ -203,7 +203,7 @@ export default function SpinWheel() {
           {/* The Spin & Win wheel picture (bottom left, like Soru Kutty on the right). */}
           <picture>
             <source srcSet="/assets/spin-contest.webp" type="image/webp" />
-            <img src="/assets/spin-contest.png" alt="" width="124" height="85" className="spin-fab-img" />
+            <img src="/assets/spin-contest.png" alt="" width="104" height="71" className="spin-fab-img" />
           </picture>
           {win && <span className="spin-fab-badge">Your prize</span>}
         </button>
