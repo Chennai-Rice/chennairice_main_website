@@ -17,7 +17,8 @@ export const ASSETS = {
      `immutable` for a year, so a stable name like logo.png meant returning
      visitors kept the old mark indefinitely — the browser never even asked.
      Bump the suffix whenever the artwork changes. */
-  logo: '/assets/logo-white-v2.png',
+  // Menu bar (Nov 2026): the round Chennai Rice mark with a cream edge, so it reads on the maroon bar.
+  logo: '/assets/logo-nav-v3.png',
   logoOnLight: '/assets/logo-full-v2.png',
   /* Re-encoded from the original 94.8 MB master (kept in git history as
      assets/hero.mp4): letterbox bars cropped off (1920x918 picture from
