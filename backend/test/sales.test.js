@@ -2848,6 +2848,15 @@ test('checkout journeys: cart → checkout → details → payment → cancelled
   const found = await api('GET', '/api/admin/journeys?days=7&q=Meena', { token: OWNER })
   assert.deepEqual(found.body.journeys.map((x) => x.id), [j1])
   assert.equal((await api('GET', '/api/admin/journeys', { token: 'store@x.test|uid-store' })).status, 403)
+  // The performance role: Analyst, Advisor, journeys, reports and ad campaigns; no orders, warehouse or team.
+  const perf = 'perf@x.test|uid-perf'
+  assert.equal((await api('POST', '/api/admin/staff', { token: OWNER, body: { email: 'perf@x.test', fullName: 'Performance', role: 'performance' } })).status, 200)
+  for (const p of ['/api/admin/analyst', '/api/admin/journeys', '/api/admin/reports', '/api/admin/warehouse/sources']) {
+    assert.equal((await api('GET', p, { token: perf })).status, 200, p)
+  }
+  for (const p of ['/api/admin/warehouse/orders', '/api/admin/warehouse/customers', '/api/admin/staff', '/api/admin/dashboard']) {
+    assert.equal((await api('GET', p, { token: perf })).status, 403, p)
+  }
 })
 
 test('slogan contest: entries by day, pack, region, district and shop; demo left out; entrants who bought online; owner and IT only', async () => {

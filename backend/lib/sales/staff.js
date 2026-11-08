@@ -18,10 +18,11 @@ import { isWriterToken, verifyWriterToken, writerFromClaims } from './writer-log
 // accounts: the accounts team — invoices, payments, refunds and GST, read-only.
 // cloud: a login for /cloud (the Cloud Centre) and nothing else (Oct 2026).
 // blog: a writer for the journal (signs in at /admin) and nothing else (Oct 2026).
+// performance: /admin → Analyst, Business Advisor, Checkout journeys, Reports and Ad campaigns, nothing else (Nov 2026).
 // mis: the MIS dashboard (leads from the MIS Google Sheet; signs in at /admin) and nothing else (Nov 2026).
-export const ROLES = ['owner', 'admin', 'it', 'sales', 'inventory', 'plant', 'dispatch', 'warehouse', 'accounts', 'cloud', 'blog', 'mis']
+export const ROLES = ['owner', 'admin', 'it', 'sales', 'inventory', 'plant', 'dispatch', 'warehouse', 'accounts', 'cloud', 'blog', 'mis', 'performance']
 // The website's working roles: the Cloud Centre login sees none of the orders, stock or money.
-const STAFF = ROLES.filter((r) => r !== 'cloud' && r !== 'blog' && r !== 'mis')
+const STAFF = ROLES.filter((r) => r !== 'cloud' && r !== 'blog' && r !== 'mis' && r !== 'performance')
 const ALL = STAFF
 // Everyone except warehouse: these views carry prices and revenue, which the
 // warehouse team does not need to pack an order.
@@ -44,7 +45,7 @@ const PERMISSIONS = {
   // Deleting a cancelled, never-paid order for good: owner and IT team only.
   'order.delete': ['owner', 'it'],
   // The Analyst page (sales, leads, campaigns, delivery KPIs; ad spend, rice types, kg target): owner and IT team only.
-  'analyst.view': ['owner', 'it'],
+  'analyst.view': ['owner', 'it', 'performance'],
   // /admin → Cloud Centre: every Google Cloud and Firebase project, its usage and deploys (cloud.js): owner and IT team only.
   'cloud.view': ['owner', 'it', 'cloud'],
   // The journal: write, preview, publish and delete blog posts and their pictures (blog.js).
@@ -59,7 +60,7 @@ const PERMISSIONS = {
   // Returns & Issues: anyone on the panel may log and work an issue.
   'issues.manage': ['owner', 'admin', 'it', 'sales', 'dispatch', 'inventory', 'warehouse'],
   // Money in the panel (order amounts, sales figures): owner and admin only.
-  'money.view': ['owner', 'admin', 'it', 'accounts'],
+  'money.view': ['owner', 'admin', 'it', 'accounts', 'performance'],
   // The Accounts section: invoices (GST register), payments, refunds.
   'accounts.view': ['owner', 'admin', 'it', 'accounts'],
   'inventory.view': ALL,

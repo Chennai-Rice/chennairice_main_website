@@ -2,7 +2,7 @@
 //
 //   node db/add-staff.js arun@chennairiceindustries.com "Arun" owner
 //
-// Roles: owner, admin, it, sales, inventory, plant, dispatch, warehouse, accounts, cloud, blog, mis.
+// Roles: owner, admin, it, sales, inventory, plant, dispatch, warehouse, accounts, cloud, blog, mis, performance.
 // They sign in with Google using that email.
 import { query, closePool } from '../lib/db.js'
 import { ROLES } from '../lib/sales/staff.js'
