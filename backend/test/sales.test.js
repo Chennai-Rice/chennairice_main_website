@@ -3433,6 +3433,15 @@ test('the MIS dashboard: columns are found by name, statuses and dates are read,
     const me = await api('GET', '/api/admin/me', { token: M })
     assert.equal(me.body.role, 'mis')
     assert.deepEqual(me.body.permissions, ['mis.view'])
+    // The Performance login: email and password too (no Supabase), and it opens the Analyst pages.
+    await api('POST', '/api/admin/staff', { token: OWNER, body: { email: 'perf-two@example.com', fullName: 'Performance', role: 'performance' } })
+    await db.query('update staff_users set password_hash = $2 where email = $1', ['perf-two@example.com', await hashPassword('a long enough password')])
+    const P = (await login('perf-two@example.com', 'a long enough password')).body.token
+    assert.ok(P)
+    assert.equal((await api('GET', '/api/admin/analyst', { token: P })).status, 200)
+    assert.equal((await api('GET', '/api/admin/warehouse/sources', { token: P })).status, 200)
+    assert.equal((await api('GET', '/api/admin/warehouse/orders', { token: P })).status, 403)
+    assert.equal((await api('GET', '/api/admin/mis/data', { token: P })).status, 403)
 
     assert.equal((await api('GET', '/api/admin/mis/data')).status, 401)
     assert.equal((await api('GET', '/api/admin/mis/data', { token: B })).status, 403)

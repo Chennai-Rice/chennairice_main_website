@@ -4,7 +4,7 @@
 //
 // Run by someone who manages the database, in a PowerShell window that has the database settings (as for
 // npm run db:migrate) and these:
-//   $env:LOGIN_ROLE = "mis"                       (mis or blog)
+//   $env:LOGIN_ROLE = "mis"                       (mis, blog or performance)
 //   $env:LOGIN_EMAIL = "mis@gmail.com"
 //   $env:LOGIN_PASSWORD = "<the password, at least 10 characters>"
 //   $env:LOGIN_NAME = "MIS"                       (optional)
@@ -18,7 +18,7 @@ import { hashPassword, PASSWORD_ROLES } from '../lib/sales/writer-login.js'
 const role = String(process.env.LOGIN_ROLE || '').trim().toLowerCase()
 const email = String(process.env.LOGIN_EMAIL || '').trim().toLowerCase()
 const password = String(process.env.LOGIN_PASSWORD || '')
-const name = process.env.LOGIN_NAME || (role === 'mis' ? 'MIS' : 'Blog writer')
+const name = process.env.LOGIN_NAME || (role === 'mis' ? 'MIS' : role === 'performance' ? 'Performance' : 'Blog writer')
 
 if (!PASSWORD_ROLES.includes(role)) throw new Error(`Set LOGIN_ROLE to one of: ${PASSWORD_ROLES.join(', ')}.`)
 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Set LOGIN_EMAIL to the login email.')

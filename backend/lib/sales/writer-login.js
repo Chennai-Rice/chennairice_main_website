@@ -2,7 +2,7 @@
 //
 //   POST /api/blog/login { email, password }  →  { token, expiresAt, staff }
 //
-// The token is an HS256 JWT valid for 12 hours, accepted by the staff check (staff.js) for the 'blog' and 'mis' roles only.
+// The token is an HS256 JWT valid for 12 hours, accepted by the staff check (staff.js) for the 'blog', 'mis' and 'performance' roles only.
 // Passwords are stored as salted scrypt hashes in staff_users.password_hash and compared in constant time; five
 // wrong passwords in a row lock the account for 15 minutes. The signing key is BLOG_JWT_SECRET, or, when that is
 // not set, derived from the database password already held in Secret Manager.
@@ -12,8 +12,8 @@ import { httpError, str } from './util.js'
 
 const scrypt = promisify(scryptCb)
 const ISSUER = 'chennairice-writer'
-// Roles that sign in with their own email and password: the blog writer and the MIS dashboard.
-export const PASSWORD_ROLES = ['blog', 'mis']
+// Roles that sign in with their own email and password: the blog writer, the MIS dashboard and Performance (Analyst).
+export const PASSWORD_ROLES = ['blog', 'mis', 'performance']
 const LIFETIME_SECONDS = 12 * 3600
 const MAX_FAILURES = 5
 const LOCK_MINUTES = 15
