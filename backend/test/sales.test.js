@@ -2851,10 +2851,10 @@ test('checkout journeys: cart → checkout → details → payment → cancelled
   // The performance role: Analyst, Advisor, journeys, reports and ad campaigns; no orders, warehouse or team.
   const perf = 'perf@x.test|uid-perf'
   assert.equal((await api('POST', '/api/admin/staff', { token: OWNER, body: { email: 'perf@x.test', fullName: 'Performance', role: 'performance' } })).status, 200)
-  for (const p of ['/api/admin/analyst', '/api/admin/journeys', '/api/admin/reports', '/api/admin/warehouse/sources']) {
+  for (const p of ['/api/admin/analyst', '/api/admin/journeys', '/api/admin/reports', '/api/admin/warehouse/sources', '/api/admin/warehouse/customers', '/api/admin/warehouse/customers.csv']) {
     assert.equal((await api('GET', p, { token: perf })).status, 200, p)
   }
-  for (const p of ['/api/admin/warehouse/orders', '/api/admin/warehouse/customers', '/api/admin/staff', '/api/admin/dashboard']) {
+  for (const p of ['/api/admin/warehouse/orders', '/api/admin/warehouse/dashboard', '/api/admin/staff', '/api/admin/dashboard']) {
     assert.equal((await api('GET', p, { token: perf })).status, 403, p)
   }
 })

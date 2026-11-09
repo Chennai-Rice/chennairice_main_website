@@ -37,6 +37,8 @@ const PERMISSIONS = {
   'order.pack': ['owner', 'admin', 'it', 'dispatch', 'inventory', 'warehouse'],
   // The /warehouse page and its CSV export. Prices are never sent to it.
   'warehouse.view': ['owner', 'admin', 'it', 'sales', 'dispatch', 'inventory', 'warehouse'],
+  // The Customers list (converted or not, source, dates, CSV; no money): the warehouse page, and /admin for Performance.
+  'customers.view': ['owner', 'admin', 'it', 'sales', 'dispatch', 'inventory', 'warehouse', 'performance'],
   'order.ship': ['owner', 'admin', 'it', 'dispatch', 'warehouse'],
   'order.deliver': ['owner', 'admin', 'it', 'dispatch', 'warehouse'],
   'order.cancel': ['owner', 'admin', 'it', 'sales'],

@@ -240,7 +240,7 @@ export function CustomersView({ say, onAuthError, onOpenOrders }) {
               <span role="cell"><span className="wh-k">Packs</span>{c.packs}</span>
               <span role="cell"><span className="wh-k">Last order</span>{c.lastOrderAt ? <span className={last.recent ? 'is-recent' : ''}>{last.text}</span> : <span className="wh-muted">—</span>}</span>
               <span role="cell">
-                {c.orders > 0 ? (
+                {c.orders > 0 && onOpenOrders ? (
                   <button type="button" className="wh-btn wh-btn--outline wh-btn--small" onClick={() => onOpenOrders(c.phone)}>
                     View orders
                   </button>

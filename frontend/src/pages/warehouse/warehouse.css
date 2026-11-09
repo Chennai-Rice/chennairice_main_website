@@ -807,3 +807,6 @@ button.wh-kpi:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(8
   .wh-hbars li { grid-template-columns: 1fr 1.4fr 34px; }
   .wh-chart-plot { height: 200px; }
 }
+
+/* /admin does not load the shop styles: keep screen-reader-only labels hidden inside the embedded warehouse pages. */
+.wh-embed .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

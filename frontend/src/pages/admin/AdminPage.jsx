@@ -22,6 +22,7 @@ import MisGate from '../mis/MisGate.jsx'
 import MisDashboard from '../mis/MisDashboard.jsx'
 import { hasStaffSession, signInWriter, signOutStaff, staffJson } from '../../services/staffAuth.js'
 import CampaignsPanel from './CampaignsPanel.jsx'
+import CustomersPanel from './CustomersPanel.jsx'
 import EnquiriesPanel from './EnquiriesPanel.jsx'
 import AnalystPanel from './AnalystPanel.jsx'
 import AdvisorPanel from './AdvisorPanel.jsx'
@@ -69,6 +70,7 @@ const ANALYTICS_NAV = [
   { id: 'realtime', label: 'Realtime', subtitle: 'Who is on the site now', icon: 'pulse' },
   { id: 'analyst', label: 'Analyst', subtitle: 'Sales, leads, campaigns and delivery — the KPI dashboard', icon: 'grid' },
   { id: 'advisor', label: 'Business Advisor', subtitle: 'Ask about the business — analysis, suggestions and strategy checks', icon: 'spark' },
+  { id: 'customers', label: 'Customers', subtitle: 'Everyone who ordered or signed up: converted or not, source, dates, CSV', icon: 'user' },
   { id: 'campaigns', label: 'Ad campaigns', subtitle: 'Orders from Meta ads, Google Ads and direct visits', icon: 'target' },
   { id: 'enquiries', label: 'Enquiries', subtitle: 'Contact and bulk-order enquiries from the website', icon: 'mail' },
   { id: 'reports', label: 'Reports', subtitle: 'Download the website’s data — orders, customers, sign-ups, enquiries, checkout journeys', icon: 'doc' },
@@ -275,7 +277,7 @@ function LoginScreen({ onSignedIn, onWriter }) {
 
 // The Performance login (email and password, checked by our own server on Google Cloud; no Supabase): the sales,
 // advisor and ad sections only. Each panel loads its own data from the server.
-const PERFORMANCE_NAV = ['analyst', 'advisor', 'campaigns', 'checkout', 'reports'].map((id) => ANALYTICS_NAV.find((n) => n.id === id))
+const PERFORMANCE_NAV = ['analyst', 'customers', 'advisor', 'campaigns', 'checkout', 'reports'].map((id) => ANALYTICS_NAV.find((n) => n.id === id))
 
 function PerformanceDashboard() {
   const [view, setView] = useState('analyst')
@@ -326,6 +328,7 @@ function PerformanceDashboard() {
           {view === 'analyst' ? <AnalystPanel />
             : view === 'advisor' ? <AdvisorPanel />
             : view === 'campaigns' ? <CampaignsPanel />
+            : view === 'customers' ? <CustomersPanel />
             : view === 'checkout' ? <CheckoutJourneysPanel />
             : <ReportsPanel />}
         </main>
@@ -550,7 +553,7 @@ function Dashboard({ session, access, onSignOut }) {
           </div>
 
           <div className="ad-topbar-actions">
-            {view !== 'realtime' && view !== 'journal' && view !== 'mis' && view !== 'mis' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
+            {view !== 'realtime' && view !== 'journal' && view !== 'mis' && view !== 'mis' && view !== 'campaigns' && view !== 'customers' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
               <label className="ad-select-wrap">
                 <span className="ad-sr">Date range</span>
                 <select className="ad-select" value={rangeId} onChange={(e) => setRangeId(e.target.value)}>
@@ -560,7 +563,7 @@ function Dashboard({ session, access, onSignOut }) {
                 </select>
               </label>
             )}
-            {view !== 'journal' && view !== 'mis' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
+            {view !== 'journal' && view !== 'mis' && view !== 'campaigns' && view !== 'customers' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
               <button type="button" className="ad-btn ad-btn-quiet" onClick={refresh} disabled={loading}>
                 {loading ? 'Refreshing…' : 'Refresh'}
               </button>
@@ -580,6 +583,8 @@ function Dashboard({ session, access, onSignOut }) {
             <AnalystPanel />
           ) : view === 'campaigns' ? (
             <CampaignsPanel />
+          ) : view === 'customers' ? (
+            <CustomersPanel />
           ) : view === 'enquiries' ? (
             <EnquiriesPanel />
           ) : view === 'checkout' ? (

@@ -409,11 +409,11 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.set('Cache-Control', 'no-store')
     res.json(await listWarehouseOrders(req.query, { money: can(req.staff, 'money.view') }))
   }))
-  admin.get('/warehouse/customers', perm('warehouse.view'), wrap(async (req, res) => {
+  admin.get('/warehouse/customers', perm('customers.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await listWarehouseCustomers(req.query))
   }))
-  admin.get('/warehouse/customers.csv', perm('warehouse.view'), wrap(async (req, res) => {
+  admin.get('/warehouse/customers.csv', perm('customers.view'), wrap(async (req, res) => {
     const day = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
     res.set('Cache-Control', 'no-store')
     res.set('Content-Disposition', `attachment; filename="customers-${day}.csv"`)
