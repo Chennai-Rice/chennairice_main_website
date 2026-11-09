@@ -80,15 +80,15 @@ export function reminderEmail({ step, name, lines, token, code = null }) {
     'Preview': preview,
     'Badge': step === 1 ? 'Saved for you' : 'A final reminder',
     'Heading': step === 1 ? 'You were almost there.' : 'Your rice is still waiting.',
-    'Greeting': `${step === 1 ? 'Vanakkam' : 'Hello'} ${hi},`,
+    'Greeting': `Vanakkam ${hi},`,
     'Intro': step === 1
-      ? 'We’ve kept your cart exactly as you left it. Complete your order and we’ll mill, pack and send it fresh from Erode.'
-      : 'Your cart is saved, and we’d love to send it your way.' + (code ? ' As a small thank you, this one is on us.' : ''),
+      ? 'You left some deliciousness behind! Complete your order now and enjoy the goodness of Chennai Rice.'
+      : 'Your Chennai Rice is still waiting for you.' + (code ? ' As a small thank you, delivery on this order is on us.' : ' Complete your order whenever you’re ready.'),
     'Offer Label': code ? `${code.label} on this order` : '',
     'Offer Code': code ? code.code : '',
     'Offer Until': code ? code.until : '',
     'Subtotal': formatInr(subtotal),
-    'Button': 'Complete your order',
+    'Button': 'Complete my order',
     'Resume URL': resumeUrl,
     'Last Note': step === 2 ? 'This is the last reminder we’ll send about this cart.' : '',
     'Support Number': SUPPORT_PHONE,

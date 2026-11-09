@@ -11,201 +11,226 @@
 <title>{{Subject}}</title>
 <!--[if mso]>
 <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
-<style>table, td, h1, h2, p, a, span, div { font-family: Arial, Helvetica, sans-serif !important; }</style>
+<style>table, td, h1, h2, p, a, span, div { font-family: Georgia, 'Times New Roman', serif !important; }</style>
 <![endif]-->
 <style>
   :root { color-scheme: light; supported-color-schemes: light; }
   @media only screen and (max-width: 620px) {
     .w-full { width: 100% !important; }
-    .px { padding-left: 24px !important; padding-right: 24px !important; }
-    .h1 { font-size: 30px !important; line-height: 36px !important; }
+    .img-full { width: 100% !important; height: auto !important; }
+    .px { padding-left: 18px !important; padding-right: 18px !important; }
+    .stack { display: block !important; width: 100% !important; box-sizing: border-box; text-align: center !important; border-left: 0 !important; padding: 10px 0 !important; }
     .btn { display: block !important; width: 100% !important; }
-    .stack { display: block !important; width: 100% !important; padding: 0 0 14px !important; text-align: left !important; }
-    .img { width: 64px !important; height: 64px !important; }
+    .hide-sm { display: none !important; }
+    .greet { font-size: 24px !important; line-height: 30px !important; }
+    .cart-img { width: 64px !important; padding-right: 10px !important; }
+    .cart-name { font-size: 15px !important; line-height: 20px !important; }
+    .cart-qty, .cart-price { font-size: 15px !important; border-left: 0 !important; }
+    .cart-qty { width: 36px !important; padding: 12px 2px !important; }
+    .cart-price { width: 78px !important; }
+    .trust td.cell { display: block !important; width: 100% !important; border-left: 0 !important; padding: 8px 0 !important; }
   }
 </style>
 </head>
-<body style="margin:0; padding:0; background-color:#f5f3ef; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; -webkit-font-smoothing:antialiased;">
+<body style="margin:0; padding:0; background-color:#efe4d6; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;">
 
 <!-- Inbox preview line -->
-<div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#f5f3ef;">
-  {{Preview}}&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#efe4d6;">
+  {{Preview}}&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;
 </div>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f3ef" style="background-color:#f5f3ef;">
-<tr><td align="center" style="padding:40px 12px 48px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#efe4d6" style="background-color:#efe4d6;">
+<tr><td align="center" style="padding:24px 10px;">
 
 <!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
-<table role="presentation" class="w-full" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
+<table role="presentation" class="w-full" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; background-color:#f7eee5; border-radius:18px; overflow:hidden;">
 
-  <!-- Logo -->
+  <!-- ============ HERO: logo, Tradition · Quality · Trust, Your Cart is Waiting ============ -->
   <tr>
-    <td align="center" style="padding:0 0 28px;">
-      <a href="https://chennairiceindustries.com/" target="_blank" style="text-decoration:none;">
-        <img src="https://chennairiceindustries.com/assets/logo-full-v3.png" width="64" alt="Chennai Rice"
-          style="display:block; width:64px; height:auto; border:0; outline:none;">
+    <td bgcolor="#f7eee5" style="background-color:#f7eee5; font-size:0; line-height:0;">
+      <a href="{{Resume URL}}" target="_blank" style="text-decoration:none;">
+        <img class="img-full" src="https://chennairiceindustries.com/assets/email/cr-hero-top.jpg" width="600" alt="Chennai Rice · {{Heading}}"
+          style="display:block; width:600px; height:auto; border:0; outline:none;">
       </a>
     </td>
   </tr>
 
-  <!-- Card -->
+  <!-- ============ GREETING ============ -->
   <tr>
-    <td bgcolor="#ffffff" style="background-color:#ffffff; border-radius:20px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <td align="center" class="px" bgcolor="#f7eee5" style="background-color:#f7eee5; padding:2px 56px 6px;">
+      <p class="greet" style="margin:0; font-family:Georgia, 'Times New Roman', serif; font-size:28px; line-height:34px; font-weight:bold; color:#7a1420;">
+        {{Greeting}}
+      </p>
+      <p style="margin:10px 0 0; font-family:Georgia, 'Times New Roman', serif; font-size:17px; line-height:26px; color:#2b1d17;">
+        {{Intro}}
+      </p>
+    </td>
+  </tr>
 
-        <!-- Opening -->
+  <!-- ============ SCENE: the pack in the paddy field ============ -->
+  <tr>
+    <td bgcolor="#f6ecdf" style="background-color:#f6ecdf; font-size:0; line-height:0;">
+      <a href="{{Resume URL}}" target="_blank" style="text-decoration:none;">
+        <img class="img-full" src="https://chennairiceindustries.com/assets/email/cr-hero-scene.jpg" width="600" alt="Kitchidi Ponni Rice"
+          style="display:block; width:600px; height:auto; border:0; outline:none;">
+      </a>
+    </td>
+  </tr>
+
+  <!-- ============ OFFER (email 2) ============ -->
+  <!-- IF Offer Code -->
+  <tr>
+    <td class="px" bgcolor="#f6ecdf" style="background-color:#f6ecdf; padding:6px 32px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fdf8f1"
+        style="background-color:#fdf8f1; border:1px solid #ead7b9; border-radius:16px; box-shadow:0 6px 18px rgba(110,20,32,0.08);">
         <tr>
-          <td class="px" style="padding:56px 56px 0;">
-            <p style="margin:0; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:12px; line-height:16px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:#a1834f;">
-              {{Badge}}
-            </p>
-            <h1 class="h1" style="margin:14px 0 0; font-family:Georgia, 'Times New Roman', serif; font-size:38px; line-height:44px; font-weight:normal; letter-spacing:-0.5px; color:#1d1d1f;">
-              {{Heading}}
-            </h1>
-            <p style="margin:28px 0 0; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:17px; line-height:27px; color:#1d1d1f;">
-              {{Greeting}}
-            </p>
-            <p style="margin:8px 0 0; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:17px; line-height:27px; color:#515154;">
-              {{Intro}}
-            </p>
+          <td class="stack" width="110" align="center" valign="middle" style="padding:16px 8px 16px 16px;">
+            <img src="https://chennairiceindustries.com/assets/email/gift.png" width="74" alt="" style="display:inline-block; width:74px; height:auto; border:0;">
           </td>
-        </tr>
-
-        <!-- Offer (email 2) -->
-        <!-- IF Offer Code -->
-        <tr>
-          <td class="px" style="padding:36px 56px 0;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#faf7f2" style="background-color:#faf7f2; border-radius:14px;">
+          <td class="stack" align="center" valign="middle" style="padding:16px 14px; border-left:1px solid #e2c99a;">
+            <p style="margin:0; font-family:Georgia, 'Times New Roman', serif; font-size:20px; line-height:26px; font-weight:bold; color:#7a1420;">{{Offer Label}}</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:10px auto 0;">
               <tr>
-                <td align="center" style="padding:30px 24px;">
-                  <p style="margin:0; font-family:Georgia, 'Times New Roman', serif; font-size:22px; line-height:28px; color:#6e1420;">{{Offer Label}}</p>
-                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:18px auto 0;">
-                    <tr>
-                      <td style="border:1px solid #d9c9a8; border-radius:10px; padding:11px 22px; font-family:'SF Mono', Menlo, Consolas, 'Courier New', monospace; font-size:18px; line-height:22px; letter-spacing:4px; color:#1d1d1f;">
-                        {{Offer Code}}
-                      </td>
-                    </tr>
-                  </table>
-                  <p style="margin:14px 0 0; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:13px; line-height:19px; color:#86868b;">
-                    Already applied at checkout &middot; Valid until {{Offer Until}}
-                  </p>
+                <td bgcolor="#7a1420" style="background-color:#7a1420; border-radius:8px; padding:9px 18px; font-family:Georgia, 'Times New Roman', serif; font-size:17px; line-height:22px; font-weight:bold; letter-spacing:3px; color:#ffffff; white-space:nowrap;">
+                  {{Offer Code}}
                 </td>
               </tr>
             </table>
           </td>
-        </tr>
-        <!-- END IF Offer Code -->
-
-        <!-- Cart -->
-        <tr>
-          <td class="px" style="padding:44px 56px 0;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-              <tr><td colspan="3" style="border-top:1px solid #e8e8ed; font-size:0; line-height:0; height:1px;">&nbsp;</td></tr>
-              <!-- ITEM START: one row per pack in the cart -->
-              <tr>
-                <td width="88" valign="middle" style="padding:22px 20px 22px 0; border-bottom:1px solid #e8e8ed;">
-                  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-                    <td bgcolor="#f5f3ef" style="background-color:#f5f3ef; border-radius:14px; padding:6px;">
-                      <img class="img" src="{{Product Image}}" width="72" height="72" alt=""
-                        style="display:block; width:72px; height:72px; border:0; object-fit:contain;">
-                    </td>
-                  </tr></table>
-                </td>
-                <td valign="middle" style="padding:22px 12px 22px 0; border-bottom:1px solid #e8e8ed; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;">
-                  <p style="margin:0; font-size:16px; line-height:22px; font-weight:600; color:#1d1d1f;">{{Product Name}}</p>
-                  <p style="margin:4px 0 0; font-size:14px; line-height:20px; color:#86868b;">Quantity {{Quantity}}</p>
-                </td>
-                <td align="right" valign="middle" style="padding:22px 0; border-bottom:1px solid #e8e8ed; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:16px; line-height:22px; color:#1d1d1f; white-space:nowrap;">
-                  {{Price}}
-                </td>
-              </tr>
-              <!-- ITEM END -->
-              <tr>
-                <td colspan="2" style="padding:22px 0 0; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:16px; line-height:22px; font-weight:600; color:#1d1d1f;">Subtotal</td>
-                <td align="right" style="padding:22px 0 0; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:16px; line-height:22px; font-weight:600; color:#1d1d1f; white-space:nowrap;">{{Subtotal}}</td>
-              </tr>
-              <tr>
-                <td colspan="3" style="padding:6px 0 0; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:13px; line-height:19px; color:#86868b;">Inclusive of GST. Delivery is calculated at checkout.</td>
-              </tr>
-            </table>
+          <td class="stack" width="150" align="center" valign="middle" style="padding:16px 16px 16px 10px; border-left:1px solid #e2c99a;">
+            <p style="margin:0; font-family:Georgia, 'Times New Roman', serif; font-size:15px; line-height:20px; color:#2b1d17;">Valid until</p>
+            <p style="margin:4px 0 0; font-family:Georgia, 'Times New Roman', serif; font-size:16px; line-height:22px; font-weight:bold; color:#7a1420;">{{Offer Until}}</p>
           </td>
         </tr>
+      </table>
+    </td>
+  </tr>
+  <!-- END IF Offer Code -->
 
-        <!-- Button -->
-        <tr>
-          <td align="center" class="px" style="padding:44px 56px 0;">
-            <!--[if mso]>
-            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{Resume URL}}"
-              style="height:54px; v-text-anchor:middle; width:300px;" arcsize="50%" stroke="f" fillcolor="#6e1420">
-              <w:anchorlock/>
-              <center style="color:#ffffff; font-family:Arial, sans-serif; font-size:17px; font-weight:bold;">{{Button}}</center>
-            </v:roundrect>
-            <![endif]-->
-            <!--[if !mso]><!-- -->
-            <a href="{{Resume URL}}" target="_blank" class="btn"
-              style="display:inline-block; background-color:#6e1420; color:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:17px; line-height:54px; font-weight:500; letter-spacing:0.2px; text-decoration:none; text-align:center; width:300px; border-radius:27px; -webkit-text-size-adjust:none;">
-              {{Button}}
-            </a>
-            <!--<![endif]-->
-            <p style="margin:16px 0 0; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:14px; line-height:20px; color:#86868b;">
-              Your details are saved. Just review and pay.
-            </p>
-          </td>
-        </tr>
-
-        <!-- Promise -->
-        <tr>
-          <td class="px" style="padding:52px 56px 0;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #e8e8ed;">
-              <tr>
-                <td class="stack" width="33%" valign="top" style="padding:26px 12px 0 0; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;">
-                  <p style="margin:0; font-size:14px; line-height:20px; font-weight:600; color:#1d1d1f;">Milled in Erode</p>
-                  <p style="margin:4px 0 0; font-size:13px; line-height:19px; color:#86868b;">In our own facility.</p>
-                </td>
-                <td class="stack" width="34%" valign="top" style="padding:26px 12px 0; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;">
-                  <p style="margin:0; font-size:14px; line-height:20px; font-weight:600; color:#1d1d1f;">Packed fresh</p>
-                  <p style="margin:4px 0 0; font-size:13px; line-height:19px; color:#86868b;">Delivered to your door.</p>
-                </td>
-                <td class="stack" width="33%" valign="top" style="padding:26px 0 0 12px; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;">
-                  <p style="margin:0; font-size:14px; line-height:20px; font-weight:600; color:#1d1d1f;">Secure payment</p>
-                  <p style="margin:4px 0 0; font-size:13px; line-height:19px; color:#86868b;">Powered by Razorpay.</p>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- Help + sign-off -->
-        <tr>
-          <td class="px" style="padding:40px 56px 56px; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;">
-            <p style="margin:0; font-size:15px; line-height:24px; color:#515154;">
-              Need a hand? Reply to this email or message us on
-              <a href="{{WhatsApp URL}}" target="_blank" style="color:#6e1420; text-decoration:none; font-weight:500;">WhatsApp</a>.
-            </p>
-            <!-- IF Last Note -->
-            <p style="margin:12px 0 0; font-size:14px; line-height:22px; color:#86868b;">{{Last Note}}</p>
-            <!-- END IF Last Note -->
-            <p style="margin:28px 0 0; font-family:Georgia, 'Times New Roman', serif; font-size:17px; line-height:24px; color:#1d1d1f;">With warmth,<br>Chennai Rice</p>
-          </td>
-        </tr>
-
+  <!-- ============ CART ============ -->
+  <tr>
+    <td class="px" bgcolor="#f6ecdf" style="background-color:#f6ecdf; padding:14px 32px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fdf8f1"
+        style="background-color:#fdf8f1; border:1px solid #ead7b9; border-radius:16px; box-shadow:0 6px 18px rgba(110,20,32,0.08);">
+        <tr><td style="padding:8px 20px 4px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <!-- ITEM START: one row per pack in the cart -->
+            <tr>
+              <td class="cart-img" width="86" valign="middle" style="padding:12px 14px 12px 0; border-bottom:1px solid #eadbc4;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+                  <td bgcolor="#f3e6d4" style="background-color:#f3e6d4; border-radius:12px; padding:5px;">
+                    <img src="{{Product Image}}" width="62" height="62" alt="" style="display:block; width:62px; height:62px; border:0; object-fit:contain;">
+                  </td>
+                </tr></table>
+              </td>
+              <td class="cart-name" valign="middle" style="padding:12px 10px 12px 0; border-bottom:1px solid #eadbc4; font-family:Georgia, 'Times New Roman', serif; font-size:17px; line-height:23px; color:#2b1d17;">
+                {{Product Name}}
+              </td>
+              <td class="cart-qty" align="center" valign="middle" width="54" style="padding:12px 6px; border-bottom:1px solid #eadbc4; border-left:1px solid #eadbc4; font-family:Georgia, 'Times New Roman', serif; font-size:17px; line-height:23px; color:#2b1d17;">
+                &times;&nbsp;{{Quantity}}
+              </td>
+              <td class="cart-price" align="right" valign="middle" width="100" style="padding:12px 0 12px 8px; border-bottom:1px solid #eadbc4; border-left:1px solid #eadbc4; font-family:Georgia, 'Times New Roman', serif; font-size:17px; line-height:23px; color:#2b1d17; white-space:nowrap;">
+                {{Price}}
+              </td>
+            </tr>
+            <!-- ITEM END -->
+            <tr>
+              <td colspan="4" align="right" style="padding:14px 0 2px; font-family:Georgia, 'Times New Roman', serif; font-size:19px; line-height:24px; font-weight:bold; color:#2b1d17;">
+                Subtotal:&nbsp;&nbsp;&nbsp;<span style="color:#7a1420;">{{Subtotal}}</span>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="4" align="center" style="padding:6px 0 12px; font-family:Georgia, 'Times New Roman', serif; font-size:13px; line-height:19px; font-style:italic; color:#5a4a3f;">
+                Prices include GST. Delivery is added at checkout from your PIN code.
+              </td>
+            </tr>
+          </table>
+        </td></tr>
       </table>
     </td>
   </tr>
 
-  <!-- Footer -->
+  <!-- ============ BUTTON ============ -->
   <tr>
-    <td align="center" class="px" style="padding:32px 40px 0; font-family:-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif;">
-      <p style="margin:0; font-size:12px; line-height:18px; color:#86868b;">
-        Chennai Rice Industries Pvt Ltd &middot; Erode, Tamil Nadu
+    <td align="center" class="px" bgcolor="#f6ecdf" style="background-color:#f6ecdf; padding:22px 40px 0;">
+      <!--[if mso]>
+      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{Resume URL}}"
+        style="height:52px; v-text-anchor:middle; width:320px;" arcsize="50%" stroke="f" fillcolor="#7a1420">
+        <w:anchorlock/>
+        <center style="color:#ffffff; font-family:Georgia, serif; font-size:19px; font-weight:bold;">{{Button}} &rarr;</center>
+      </v:roundrect>
+      <![endif]-->
+      <!--[if !mso]><!-- -->
+      <a href="{{Resume URL}}" target="_blank" class="btn"
+        style="display:inline-block; background-color:#7a1420; color:#ffffff; font-family:Georgia, 'Times New Roman', serif; font-size:19px; line-height:52px; font-weight:bold; text-decoration:none; text-align:center; width:320px; border-radius:26px; box-shadow:0 6px 14px rgba(110,20,32,0.25); -webkit-text-size-adjust:none;">
+        {{Button}}&nbsp;&nbsp;&rarr;
+      </a>
+      <!--<![endif]-->
+      <p style="margin:10px 0 0; font-family:Georgia, 'Times New Roman', serif; font-size:16px; line-height:22px; font-style:italic; color:#2b1d17;">
+        Your details are already filled in, so you just press Pay.
       </p>
-      <p style="margin:6px 0 0; font-size:12px; line-height:18px; color:#86868b;">
-        <a href="https://chennairiceindustries.com/" target="_blank" style="color:#86868b; text-decoration:underline;">chennairiceindustries.com</a>
-        &middot; <a href="{{WhatsApp URL}}" target="_blank" style="color:#86868b; text-decoration:none;">{{Support Number}}</a>
+    </td>
+  </tr>
+
+  <!-- ============ TRUST ROW ============ -->
+  <tr>
+    <td class="px" bgcolor="#f6ecdf" style="background-color:#f6ecdf; padding:20px 28px 0;">
+      <table role="presentation" class="trust" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #e2c99a; border-bottom:1px solid #e2c99a;">
+        <tr>
+          <td class="cell" width="33%" valign="middle" style="padding:14px 8px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tr>
+              <td valign="middle" style="padding-right:10px;"><img src="https://chennairiceindustries.com/assets/email/ic-wheat.png" width="30" alt="" style="display:block; width:30px; height:auto; border:0;"></td>
+              <td valign="middle" style="font-family:Georgia, 'Times New Roman', serif; font-size:14px; line-height:19px; color:#2b1d17;">Milled in our own<br>facility in Erode</td>
+            </tr></table>
+          </td>
+          <td class="cell" width="34%" valign="middle" style="padding:14px 8px; border-left:1px solid #e2c99a;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tr>
+              <td valign="middle" style="padding-right:10px;"><img src="https://chennairiceindustries.com/assets/email/ic-shield.png" width="30" alt="" style="display:block; width:30px; height:auto; border:0;"></td>
+              <td valign="middle" style="font-family:Georgia, 'Times New Roman', serif; font-size:14px; line-height:19px; color:#2b1d17;">Packed fresh and<br>delivered to your door</td>
+            </tr></table>
+          </td>
+          <td class="cell" width="33%" valign="middle" style="padding:14px 8px; border-left:1px solid #e2c99a;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tr>
+              <td valign="middle" style="padding-right:10px;"><img src="https://chennairiceindustries.com/assets/email/ic-lock.png" width="28" alt="" style="display:block; width:28px; height:auto; border:0;"></td>
+              <td valign="middle" style="font-family:Georgia, 'Times New Roman', serif; font-size:14px; line-height:19px; color:#2b1d17;">Safe &amp; secure<br>payment</td>
+            </tr></table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- ============ HELP + SIGN-OFF ============ -->
+  <tr>
+    <td align="center" class="px" bgcolor="#f6ecdf" style="background-color:#f6ecdf; padding:16px 32px 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tr>
+        <td valign="middle" style="padding-right:10px;"><img src="https://chennairiceindustries.com/assets/email/ic-whatsapp.png" width="24" alt="" style="display:block; width:24px; height:auto; border:0;"></td>
+        <td valign="middle" style="font-family:Georgia, 'Times New Roman', serif; font-size:14px; line-height:20px; color:#2b1d17;">
+          Need help? Chat with us on <a href="{{WhatsApp URL}}" target="_blank" style="color:#7a1420; font-weight:bold;">WhatsApp</a>
+          or call <a href="tel:+917066646667" style="color:#7a1420; font-weight:bold; text-decoration:underline;">{{Support Number}}</a>
+        </td>
+      </tr></table>
+      <!-- IF Last Note -->
+      <p style="margin:10px 0 0; font-family:Georgia, 'Times New Roman', serif; font-size:13px; line-height:19px; font-style:italic; color:#7c6b5e;">{{Last Note}}</p>
+      <!-- END IF Last Note -->
+      <img src="https://chennairiceindustries.com/assets/email/ornament.png" width="26" alt="" style="display:block; width:26px; height:auto; border:0; margin:18px auto 4px;">
+      <p style="margin:0 0 24px; font-family:Georgia, 'Times New Roman', serif; font-size:24px; line-height:30px; font-style:italic; font-weight:bold; color:#7a1420;">Team Chennai Rice</p>
+    </td>
+  </tr>
+
+  <!-- ============ FOOTER ============ -->
+  <tr><td height="3" bgcolor="#c9a24b" style="background-color:#c9a24b; height:3px; font-size:0; line-height:0;">&nbsp;</td></tr>
+  <tr>
+    <td align="center" class="px" bgcolor="#6e1420" style="background-color:#6e1420; padding:20px 32px 22px;">
+      <p style="margin:0; font-family:Georgia, 'Times New Roman', serif; font-size:15px; line-height:22px; font-weight:bold; color:#ffffff;">
+        <a href="https://chennairiceindustries.com/" target="_blank" style="color:#ffffff; text-decoration:none;">chennairiceindustries.com</a>
+        &nbsp;&bull;&nbsp; {{Support Number}}
       </p>
-      <p style="margin:14px 0 0; font-size:11px; line-height:17px; color:#a1a1a6;">
-        You’re receiving this because you started an order on our website.
-        <a href="{{Unsubscribe URL}}" target="_blank" style="color:#a1a1a6; text-decoration:underline;">Unsubscribe</a>
+      <p style="margin:6px 0 0; font-family:Georgia, 'Times New Roman', serif; font-size:13px; line-height:19px; font-style:italic; color:#f1dcc0;">
+        You’re receiving this because you started an order at chennairiceindustries.com.
+      </p>
+      <p style="margin:8px 0 0; font-family:Georgia, 'Times New Roman', serif; font-size:14px; line-height:20px;">
+        <a href="{{Unsubscribe URL}}" target="_blank" style="color:#ffffff; text-decoration:underline;">Unsubscribe</a>
       </p>
     </td>
   </tr>
