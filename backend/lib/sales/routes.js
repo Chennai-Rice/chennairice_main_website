@@ -24,9 +24,10 @@ import { runJobs } from './jobs.js'
 import { sendQueued } from './email.js'
 import { pinInfo, searchAreas } from './places.js'
 import { resumeCart, unsubscribeCart, cartRemindersAdmin, saveCartReminderSettings } from './cart-recovery.js'
+import { reviewForm, submitReview, publicReviews, adminReviews, setReviewStatus } from './reviews.js'
 import { staffAuth, permissionsFor, requirePermission, listStaff, createStaff, updateStaff, can } from './staff.js'
 import {
-  listOrders, getOrderDetail, confirmOrder, packOrder, shipOrder, deliverShipment, cancelOrder,
+  listOrders, getOrderDetail, confirmOrder, packOrder, shipOrder, deliverShipment, outForDelivery, cancelOrder,
   returnOrder, addNote, resolveAttention, refundOrder, deleteOrder, trackOrder, customerInvoice, setDispatched, setDispatchedMany, setPacking, updateShipmentDetails,
 } from './operations.js'
 import {
@@ -131,6 +132,12 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     const ok = await unsubscribeCart({ query }, req.query.t)
     res.set('Cache-Control', 'no-store').type('html').send(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Chennai Rice</title><body style="margin:0;background:#f6f1e7;font-family:Arial,sans-serif;color:#2b1d17"><div style="max-width:480px;margin:60px auto;padding:32px;background:#fff;border-radius:16px;text-align:center"><h1 style="font-family:Georgia,serif;color:#6e1420;font-size:24px">${ok ? 'You’re unsubscribed' : 'Link not found'}</h1><p style="line-height:1.6">${ok ? 'We won’t send you any more cart reminders. Order emails (confirmation, shipping) still come as usual.' : 'This link is not valid.'}</p><p><a href="/" style="color:#6e1420">Back to chennairiceindustries.com</a></p></div></body>`)
   }))
+  // Customer reviews: the published ones (/review), the form behind the delivery email's link, and sending one.
+  router.get('/api/reviews', wrap(async (_req, res) => { res.set('Cache-Control', 'public, max-age=300'); res.json(await publicReviews({ query })) }))
+  router.get('/api/reviews/form', rateLimit({ windowMs: 60000, max: 30 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store'); res.json(await reviewForm({ query }, req.query))
+  }))
+  router.post('/api/reviews', rateLimit({ windowMs: 10 * 60000, max: 10 }), wrap(async (req, res) => res.json(await submitReview({ query }, req.body))))
   router.get('/api/catalog', wrap(async (_req, res) => {
     res.set('Cache-Control', 'public, max-age=60')
     res.json({ products: await listCatalog({ query }) })
@@ -649,6 +656,7 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.json(await setDispatchedMany(req.staff, req.body))
   }))
   admin.post('/shipments/:id/deliver', wrap(async (req, res) => res.json(await deliverShipment(req.staff, req.params.id, req.body))))
+  admin.post('/shipments/:id/out-for-delivery', wrap(async (req, res) => res.json(await outForDelivery(req.staff, req.params.id))))
 
   admin.get('/inventory', perm('inventory.view'), wrap(async (_req, res) => res.json({ stock: await listStock() })))
   admin.get('/inventory/movements', perm('inventory.view'), wrap(async (req, res) => res.json({ movements: await listMovements(req.query) })))
@@ -682,6 +690,8 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/referrals', wrap(async (req, res) => res.json(await referralAdmin({ query }, req.staff))))
   admin.put('/referrals', wrap(async (req, res) => res.json(await saveReferralSettings({ query }, req.staff, req.body))))
   admin.post('/referrals/rewards/:id/cancel', wrap(async (req, res) => res.json(await cancelReferralReward({ query }, req.staff, req.params.id))))
+  admin.get('/reviews', wrap(async (req, res) => res.json(await adminReviews({ query }, req.staff, req.query))))
+  admin.put('/reviews/:id', wrap(async (req, res) => res.json(await setReviewStatus({ query }, req.staff, req.params.id, req.body?.status))))
   admin.get('/cart-reminders', wrap(async (req, res) => res.json(await cartRemindersAdmin({ query }, req.staff, { days: req.query.days }))))
   admin.put('/cart-reminders', wrap(async (req, res) => res.json(await saveCartReminderSettings({ query }, req.staff, req.body))))
   admin.get('/spin', wrap(async (req, res) => res.json(await spinAdmin({ query }, req.staff))))

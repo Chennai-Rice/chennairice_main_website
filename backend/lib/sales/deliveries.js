@@ -50,7 +50,7 @@ export async function listShipments(f = {}) {
   const { rows } = await query(
     `select s.id, s.shipment_number, s.method, s.carrier_name, s.tracking_number, s.lr_number, s.tracking_url,
             s.vehicle_number, s.driver_name, s.driver_phone, s.status, s.expected_delivery, s.shipped_at,
-            s.delivered_at, s.notes, o.id as order_id, o.order_number, o.contact_name, o.contact_phone,
+            s.delivered_at, s.out_for_delivery_at, s.notes, o.id as order_id, o.order_number, o.contact_name, o.contact_phone,
             o.shipping_address, o.ship_state
        from shipments s join orders o on o.id = s.order_id
       where ${SHIP_TABS[tab]}${extra}
@@ -87,6 +87,7 @@ export async function listShipments(f = {}) {
       expectedDelivery: r.expected_delivery,
       shippedAt: r.shipped_at,
       deliveredAt: r.delivered_at,
+      outForDeliveryAt: r.out_for_delivery_at,
       notes: r.notes,
       customer: { name: r.contact_name, phone: r.contact_phone },
       destination: { city: r.shipping_address?.city, state: r.ship_state, pincode: r.shipping_address?.pincode },

@@ -873,9 +873,9 @@ test('order confirmation email: sent over SMTP once payment verifies, with the o
     assert.ok(m.text.includes(`/api/orders/${session.orderId}/invoice?n=${session.orderNumber}`), 'invoice link')
     // The HTML template: every placeholder filled, one product row per item, payment details.
     assert.ok(!/\{\{[A-Za-z ]+\}\}/.test(m.html), 'no placeholder left unfilled')
-    assert.ok(m.html.includes('Rudra (') && m.html.includes('/assets/shop/'), 'product row with its image')
-    assert.ok(m.html.includes('Card ending 1111') && m.html.includes('>Paid<'), 'payment method and status')
-    assert.ok(m.html.includes('Coimbatore, Tamil Nadu - 641001'), 'city, state, pincode')
+    assert.ok(m.html.includes('Rudra 25 kg &times;'), 'one line per product')
+    assert.ok(m.html.includes('Card ending 1111') && m.html.includes('&#10004; Paid'), 'payment method and status')
+    assert.ok(m.html.includes('Coimbatore, Tamil Nadu &ndash; 641001'), 'city, state, pincode')
     // The GST invoice is attached as a PDF, the same invoice the receipt's download shows.
     const { rows: [inv] } = await db.query('select invoice_number from invoices where order_id = $1', [session.orderId])
     assert.ok(inv, 'invoice issued when the email was sent')
@@ -887,7 +887,7 @@ test('order confirmation email: sent over SMTP once payment verifies, with the o
     assert.ok(pdf.content.includes(`Invoice ${inv.invoice_number}`), 'invoice number in the PDF')
     assert.ok(m.text.includes('invoice is attached'))
     // Names are escaped in the HTML.
-    assert.ok(m.html.includes('Mail &lt;Test&gt;') && !m.html.includes('Mail <Test>'))
+    assert.ok(m.html.includes('Chennai Rice, Mail.') && !m.html.includes('<Test>'))
     const { rows: [row] } = await db.query(`select status, attempts from email_outbox where order_id = $1 and template = 'order_placed'`, [session.orderId])
     assert.deepEqual([row.status, row.attempts], ['sent', 1])
 
@@ -3892,4 +3892,82 @@ test('cart reminder emails: email 1 after an hour, email 2 with a free-delivery 
   assert.equal(res.body.stats.unsubscribed, 1)
   assert.equal((await api('GET', '/api/admin/cart-reminders', { token: 'store@x.test|uid-store' })).status, 403)
   await api('PUT', '/api/admin/cart-reminders', { token: OWNER, body: { enabled: false } })
+})
+
+test('order emails: packed, out for delivery, delivered with the review link, review published on /review, payment failed with retry', async () => {
+  const { templates } = await import('../lib/sales/email.js')
+  // 02 Packed: the new design, with the items.
+  const sample = { id: 'x', order_number: 'CR-TEST-1', contact_name: 'Kavya R', contact_phone: '9733300011', total_paise: 68000, shipping_address: { line1: '1 Main Rd', city: 'Erode', state: 'Tamil Nadu', pincode: '638001' } }
+  const packed = templates.orderConfirmed(sample, [{ product_name: 'Alibaba', pack_kg: 10, quantity: 2 }])
+  assert.match(packed.html, /Your Order is Being Packed/)
+  assert.match(packed.html, /Alibaba 10 kg &times; 2/)
+  assert.ok(!packed.html.includes('INCLUDE'), 'shared parts are filled in')
+  assert.ok(packed.html.includes('From Our Fields to Every Family'))
+
+  // 04 Out for delivery on a shipment still on its way: the "Arriving today" email, once.
+  const { rows: [sh] } = await db.query(`select s.id, s.order_id from shipments s join orders o on o.id = s.order_id
+    where s.status = 'shipped' and o.status = 'shipped' and o.contact_email is not null order by s.shipped_at desc limit 1`)
+  assert.ok(sh, 'an earlier test left a shipment on its way')
+  const out = await api('POST', `/api/admin/shipments/${sh.id}/out-for-delivery`, { token: OWNER })
+  assert.equal(out.status, 200, JSON.stringify(out.body))
+  assert.equal((await api('POST', `/api/admin/shipments/${sh.id}/out-for-delivery`, { token: OWNER })).body.already, true)
+  const { rows: [m4] } = await db.query(`select subject, body_html from email_outbox where dedupe_key = $1`, ['out:' + sh.id])
+  assert.match(m4.subject, /Arriving today/)
+  assert.match(m4.body_html, /Out for Delivery/)
+
+  // 05 Delivered: the email's stars and button open /review with a signed link for that order.
+  const dv = await api('POST', `/api/admin/shipments/${sh.id}/deliver`, { token: OWNER, body: { note: 'Handed over' } })
+  assert.equal(dv.status, 200, JSON.stringify(dv.body))
+  const { rows: [m5] } = await db.query(`select body_html from email_outbox where dedupe_key = $1`, ['delivered:' + sh.order_id])
+  assert.match(m5.body_html, /How Was Your Experience/)
+  const link = /\/review\?o=([^&"]+)&amp;t=([A-Za-z0-9_-]{22})/.exec(m5.body_html)
+  assert.ok(link, 'review link in the email')
+  const [, o, t] = link
+  assert.match(m5.body_html, /&amp;rating=5/)
+
+  // The form: a wrong signature is refused; the right one shows the order; the review waits until published.
+  assert.equal((await api('GET', `/api/reviews/form?o=${o}&t=${'x'.repeat(22)}`)).status, 404)
+  const form = await api('GET', `/api/reviews/form?o=${o}&t=${t}`)
+  assert.equal(form.status, 200, JSON.stringify(form.body))
+  assert.equal(form.body.review, null)
+  assert.equal((await api('POST', '/api/reviews', { body: { o, t, rating: 9 } })).status, 400)
+  const sent = await api('POST', '/api/reviews', { body: { o, t, rating: 5, text: 'Soft, fragrant rice. Delivered on time!', name: 'Kavya Ramesh' } })
+  assert.equal(sent.status, 200, JSON.stringify(sent.body))
+  assert.equal((await api('GET', '/api/reviews')).body.count, 0)
+  const list = await api('GET', '/api/admin/reviews?status=pending', { token: OWNER })
+  const mine = list.body.reviews.find((r) => r.orderNumber === decodeURIComponent(o))
+  assert.ok(mine)
+  assert.equal((await api('PUT', `/api/admin/reviews/${mine.id}`, { token: 'store@x.test|uid-store', body: { status: 'published' } })).status, 403)
+  assert.equal((await api('PUT', `/api/admin/reviews/${mine.id}`, { token: OWNER, body: { status: 'published' } })).status, 200)
+  const pub = await api('GET', '/api/reviews')
+  assert.equal(pub.body.count, 1)
+  assert.equal(pub.body.average, 5)
+  assert.deepEqual([pub.body.reviews[0].name, pub.body.reviews[0].text], ['Kavya R.', 'Soft, fragrant rice. Delivered on time!'])
+  // Published: it can no longer be changed from the link.
+  assert.equal((await api('POST', '/api/reviews', { body: { o, t, rating: 1 } })).status, 409)
+
+  // 06 Payment failed: an order whose payment failed gets the email 15 minutes later, once, with a Retry Payment
+  // link that brings its packs and details back at checkout.
+  const { sendPaymentFailedEmails } = await import('../lib/sales/cart-recovery.js')
+  const s = await api('POST', '/api/checkout/session', {
+    body: { ...buyer({ phone: '9733300055', email: 'failed.pay@example.com' }), items: [{ id: 'alibaba', packKg: 10, qty: 2 }] },
+    headers: { 'X-Forwarded-For': '10.77.0.1' },
+  })
+  assert.equal(s.status, 200, JSON.stringify(s.body))
+  await db.query(`update orders set payment_status = 'failed' where id = $1`, [s.body.orderId])
+  const failMails = async () => (await db.query(`select count(*)::int as n from email_outbox where dedupe_key = $1`, ['payfail:' + s.body.orderId])).rows[0].n
+  await sendPaymentFailedEmails(db)
+  assert.equal(await failMails(), 0) // too soon
+  await sendPaymentFailedEmails(db, { now: Date.now() + 20 * 60000 })
+  await sendPaymentFailedEmails(db, { now: Date.now() + 30 * 60000 })
+  assert.equal(await failMails(), 1)
+  const { rows: [m6] } = await db.query(`select to_email, subject, body_html from email_outbox where dedupe_key = $1`, ['payfail:' + s.body.orderId])
+  assert.equal(m6.to_email, 'failed.pay@example.com')
+  assert.match(m6.body_html, /Retry Payment/)
+  const retry = decodeURIComponent(/checkout\?resume=([^"&]+)/.exec(m6.body_html)[1])
+  const back = await api('GET', `/api/cart/resume/${encodeURIComponent(retry)}`)
+  assert.equal(back.status, 200, JSON.stringify(back.body))
+  assert.deepEqual(back.body.items.map((i) => [i.id, i.qty]), [['alibaba-10kg', 2]])
+  assert.equal(back.body.contact.email, 'failed.pay@example.com')
+  assert.equal((await api('GET', `/api/cart/resume/${encodeURIComponent(retry.slice(0, -3) + 'abc')}`)).status, 404)
 })

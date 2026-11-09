@@ -24,7 +24,9 @@ export function loadTemplate(name) {
   if (!cache.has(name)) {
     const file = templateDirs().map((d) => path.join(d, name)).find((f) => fs.existsSync(f))
     if (!file) throw new Error(`Email template ${name} not found`)
-    cache.set(name, fs.readFileSync(file, 'utf8'))
+    // Shared parts (header, footer, trust row…): <!-- INCLUDE _part.html --> is replaced by that file.
+    const html = fs.readFileSync(file, 'utf8').replace(/<!-- INCLUDE ([\w.-]+) -->/g, (_m, part) => loadTemplate(part))
+    cache.set(name, html)
   }
   return cache.get(name)
 }

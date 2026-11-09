@@ -10,7 +10,7 @@
 import crypto from 'node:crypto'
 import { query as defaultQuery } from '../db.js'
 import { isBlockedMobile } from '../crm.js'
-import { queueEmail } from './email.js'
+import { queueEmail, templates, orderItemsForEmail } from './email.js'
 import { renderTemplate } from './email-template.js'
 import { formatInr, getSettings, httpError, str } from './util.js'
 import { requirePermission } from './staff.js'
@@ -19,7 +19,7 @@ const SITE = process.env.PUBLIC_SITE_URL || 'https://chennairiceindustries.com'
 const SUPPORT_PHONE = '+91 70666 46667'
 const WHATSAPP_URL = 'https://wa.me/917066646667'
 const PAID = ['paid', 'partially_refunded']
-const STAGES = ['details', 'payment', 'cancelled', 'failed']
+const STAGES = ['details', 'payment', 'cancelled']
 const FIRST_AFTER_MIN = 60
 const SECOND_AFTER_HOURS = 24
 const CODE_HOURS = 48
@@ -194,8 +194,73 @@ export async function sendCartReminders(db = { query: defaultQuery }, { now = Da
 }
 
 /** The "Complete my order" link: the cart, the form and email 2's code. Counts the click. */
+// ---------------------------------------------------------------- payment failed
+
+const retryKey = () => process.env.REVIEW_SECRET || process.env.DB_PASSWORD || process.env.BLOG_JWT_SECRET || 'chennairice-local-review-key'
+const retrySig = (orderNumber) => crypto.createHmac('sha256', retryKey()).update('retry:' + str(orderNumber)).digest('base64url').slice(0, 20)
+/** "Retry Payment": checkout opens with this order's packs and details filled in. */
+export const retryUrl = (order) => `${SITE}/checkout?resume=${encodeURIComponent('r.' + order.order_number + '.' + retrySig(order.order_number))}`
+
+/** The "Payment didn't go through" email: 15 minutes after a failed payment (so a quick retry that works is not
+ *  followed by it), once per order, never if they have paid since (by mobile or email). Never throws. */
+export async function sendPaymentFailedEmails(db = { query: defaultQuery }, { now = Date.now() } = {}) {
+  try {
+    const at = new Date(now)
+    const { rows } = await db.query(
+      `select o.* from orders o
+        where o.payment_status = 'failed' and o.contact_email ~* '${EMAIL_RE}'
+          and o.created_at >= $2::timestamptz - interval '48 hours' and o.updated_at <= $2::timestamptz - interval '15 minutes'
+          and not exists (select 1 from email_outbox e where e.dedupe_key = 'payfail:' || o.id)
+          and not exists (select 1 from email_optouts x where x.email = lower(o.contact_email))
+          and not exists (select 1 from orders p where p.payment_status = any($1) and p.created_at >= o.created_at
+                and (right(regexp_replace(p.contact_phone, '[^0-9]', '', 'g'), 10) = right(regexp_replace(o.contact_phone, '[^0-9]', '', 'g'), 10)
+                     or lower(p.contact_email) = lower(o.contact_email)))
+        order by o.created_at limit 25`, [PAID, at])
+    let sent = 0
+    for (const o of rows) {
+      if (isBlockedMobile(o.contact_phone)) continue
+      const items = await orderItemsForEmail(db, o.id)
+      if (!items.length) continue
+      await queueEmail(db, { to: o.contact_email, ...templates.paymentFailed(o, items, { retryUrl: retryUrl(o) }), orderId: o.id, dedupeKey: 'payfail:' + o.id })
+      sent += 1
+    }
+    return { sent }
+  } catch (err) {
+    console.error('[payment-failed]', err.message)
+    return { error: err.message }
+  }
+}
+
+/** The Retry Payment link (r.<order number>.<signature>): that order's packs and details. */
+async function resumeRetry(db, t) {
+  const [, number, sig] = /^r.([A-Z0-9-]{6,40}).([A-Za-z0-9_-]{20})$/.exec(t) || []
+  if (!number || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(retrySig(number)))) {
+    throw httpError('Bad link', { status: 404, publicMessage: 'This link is not valid.' })
+  }
+  const { rows: [o] } = await db.query('select * from orders where order_number = $1', [number])
+  if (!o || new Date(o.created_at).getTime() < Date.now() - LINK_DAYS * 86400000) {
+    throw httpError('Expired link', { status: 404, publicMessage: 'This link has expired. Your cart may still be on this device.' })
+  }
+  const { rows: lines } = await db.query(
+    `select p.slug, i.product_name, i.pack_kg, i.quantity, i.unit_price_paise, p.image_url from order_items i
+       left join product_variants v on v.id = i.variant_id left join products p on p.id = v.product_id where i.order_id = $1`, [o.id])
+  const a = o.shipping_address || {}
+  return {
+    items: lines.filter((l) => l.slug).map((l) => ({
+      id: `${l.slug}-${Number(l.pack_kg)}kg`, name: `${l.product_name} (${Number(l.pack_kg)} kg)`, qty: l.quantity,
+      price: Number(l.unit_price_paise) / 100, packKg: Number(l.pack_kg), image: l.image_url,
+    })),
+    contact: {
+      name: o.contact_name || '', phone: o.contact_phone || '', email: o.contact_email || '',
+      addressLine1: a.line1 || '', addressLine2: a.line2 || '', city: a.city || '', state: a.state || '', pincode: a.pincode || '',
+    },
+    code: null,
+  }
+}
+
 export async function resumeCart(db, token) {
   const t = str(token)
+  if (t.startsWith('r.')) return resumeRetry(db, t)
   if (!/^[A-Za-z0-9_-]{16,40}$/.test(t)) throw httpError('Bad link', { status: 404, publicMessage: 'This link is not valid.' })
   const { rows: [r] } = await db.query(
     `select r.id, r.sent_at, r.clicked_at, j.items, j.contact_name, j.contact_phone, j.contact_email, j.city, j.state, j.pincode,

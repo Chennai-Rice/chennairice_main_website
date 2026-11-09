@@ -10,7 +10,8 @@ import { releaseReferralReward } from './referrals.js'
 import { tx, query } from '../db.js'
 import { createRefund as razorpayRefund } from '../razorpay.js'
 import { moveStock, releaseForOrder } from './stock.js'
-import { queueEmail, templates, queueShippedEmail, cancelShippedEmails } from './email.js'
+import { queueEmail, templates, queueShippedEmail, cancelShippedEmails, orderItemsForEmail } from './email.js'
+import { reviewUrl } from './reviews.js'
 import { audit, requirePermission } from './staff.js'
 import { findCourier, buildTrackingUrl } from './couriers.js'
 import { shippingTax } from './tax.js'
@@ -131,7 +132,7 @@ export async function confirmOrder(staff, id) {
       throw httpError('Resolve the flagged problem on this order before confirming it.', { status: 409 })
     }
     const updated = await setStatus(db, staff, order, 'confirmed', { confirmed_at: new Date() })
-    await queueEmail(db, { to: updated.contact_email, ...templates.orderConfirmed(updated), orderId: id, dedupeKey: 'confirmed:' + id })
+    await queueEmail(db, { to: updated.contact_email, ...templates.orderConfirmed(updated, await orderItemsForEmail(db, id)), orderId: id, dedupeKey: 'confirmed:' + id })
     return updated
   })
 }
@@ -514,11 +515,27 @@ export async function deliverShipment(staff, shipmentId, body = {}) {
     let updated = order
     if (!open && order.status === 'shipped') {
       updated = await setStatus(db, staff, order, 'delivered', { delivered_at: new Date() }, note)
-      await queueEmail(db, { to: updated.contact_email, ...templates.orderDelivered(updated), orderId: order.id, dedupeKey: 'delivered:' + order.id })
+      await queueEmail(db, { to: updated.contact_email, ...templates.orderDelivered(updated, await orderItemsForEmail(db, order.id), { reviewUrl: reviewUrl(updated) }), orderId: order.id, dedupeKey: 'delivered:' + order.id })
       // Bought with a friend's referral code: the friend's reward, now that it has arrived.
       await releaseReferralReward(db, updated)
     }
     return { order: updated, shipment: done }
+  })
+}
+
+/** "Out for delivery" (courier or our own van): the customer gets the "Arriving today" email, once per shipment. */
+export async function outForDelivery(staff, shipmentId) {
+  requirePermission(staff, 'order.deliver')
+  assertId(shipmentId, 'shipment')
+  return tx(async (db) => {
+    const { rows: [shipment] } = await db.query('select * from shipments where id = $1 for update', [shipmentId])
+    if (!shipment) throw httpError('No such shipment.', { status: 404 })
+    if (shipment.status !== 'shipped') throw httpError('That shipment is already ' + shipment.status + '.', { status: 409 })
+    if (shipment.out_for_delivery_at) return { shipment, already: true }
+    const { rows: [done] } = await db.query('update shipments set out_for_delivery_at = now() where id = $1 returning *', [shipmentId])
+    const { rows: [order] } = await db.query('select * from orders where id = $1', [shipment.order_id])
+    await queueEmail(db, { to: order.contact_email, ...templates.outForDelivery(order, done, await orderItemsForEmail(db, order.id)), orderId: order.id, dedupeKey: 'out:' + shipmentId })
+    return { shipment: done }
   })
 }
 
