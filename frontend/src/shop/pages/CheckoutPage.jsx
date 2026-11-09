@@ -11,6 +11,8 @@ import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
 import DeliveryChoice from "../components/DeliveryChoice.jsx";
 import DiscountCode from "../components/DiscountCode.jsx";
+import SuggestInput from "../components/SuggestInput.jsx";
+import { matchTowns } from "../data/indianTowns.js";
 import ReferralShare from "../components/ReferralShare.jsx";
 
 // The discount code for this visit (sessionStorage): typed here, or filled in by Spin & Win or a referral.
@@ -145,6 +147,56 @@ export default function CheckoutPage() {
     // stale complaint under a field the customer is actively fixing.
     setErrors((current) => (current[key] ? { ...current, [key]: undefined } : current));
   };
+
+  // Fill several address fields at once (a picked suggestion), clearing their errors.
+  const fill = (values) => {
+    setForm((current) => ({ ...current, ...values }));
+    setErrors((current) => {
+      const next = { ...current };
+      Object.keys(values).forEach((k) => { next[k] = undefined; });
+      return next;
+    });
+  };
+
+  // Address suggestions (India Post directory through our server): a full PIN gives its city, state and areas;
+  // three letters of an area give matching areas with their PIN.
+  const [pinInfo, setPinInfo] = useState(null);
+  const [areaHits, setAreaHits] = useState([]);
+  useEffect(() => {
+    const pin = String(form.pincode || "").replace(/\D/g, "");
+    if (!PINCODE_PATTERN.test(pin)) { setPinInfo(null); return undefined; }
+    let gone = false;
+    fetch(`/api/places/pin/${pin}`).then((r) => (r.ok ? r.json() : null)).then((info) => {
+      if (gone || !info?.pin) return;
+      setPinInfo(info);
+      setForm((current) => ({ ...current, city: current.city || info.city, state: current.state || info.state }));
+    }).catch(() => {});
+    return () => { gone = true; };
+  }, [form.pincode]);
+  useEffect(() => {
+    const q = String(form.addressLine2 || "").trim();
+    if (q.length < 3) { setAreaHits([]); return undefined; }
+    let gone = false;
+    const t = window.setTimeout(() => {
+      fetch(`/api/places/areas?${new URLSearchParams({ q, state: form.state || "" })}`)
+        .then((r) => (r.ok ? r.json() : null)).then((d) => { if (!gone) setAreaHits(d?.areas || []); }).catch(() => {});
+    }, 350);
+    return () => { gone = true; window.clearTimeout(t); };
+  }, [form.addressLine2, form.state]);
+  const citySuggestions = useMemo(() => {
+    const typed = String(form.city || "").trim().toLowerCase();
+    const list = matchTowns(form.city, form.state);
+    return list.length === 1 && list[0].name.toLowerCase() === typed ? [] : list.map((t) => ({ key: t.name + t.state, label: t.name, sub: t.state, city: t.name, state: t.state }));
+  }, [form.city, form.state]);
+  const areaSuggestions = useMemo(() => {
+    const typed = String(form.addressLine2 || "").trim().toLowerCase();
+    const fromPin = (pinInfo?.areas || [])
+      .filter((a) => !typed || a.toLowerCase().includes(typed))
+      .map((a) => ({ key: "p" + a, label: a, sub: `${pinInfo.city} ${pinInfo.pin}`, area: a }));
+    const fromSearch = areaHits.map((h) => ({ key: h.area + h.pin, label: h.area, sub: `${h.city}, ${h.state} ${h.pin}`, area: h.area, city: h.city, state: h.state, pin: h.pin }));
+    const all = [...fromPin, ...fromSearch.filter((h) => !fromPin.some((p) => p.label === h.label))].slice(0, 8);
+    return all.length === 1 && all[0].label.toLowerCase() === typed ? [] : all;
+  }, [form.addressLine2, pinInfo, areaHits]);
 
   const isEmpty = items.length === 0;
 
@@ -482,27 +534,24 @@ export default function CheckoutPage() {
                 <span className="field-label">
                   Area, landmark <span className="field-optional">(optional)</span>
                 </span>
-                <input
-                  type="text"
+                <SuggestInput
                   value={form.addressLine2}
                   onChange={set("addressLine2")}
-                  placeholder="Area, nearby landmark"
-                  autoComplete="address-line2"
-                  disabled={busy}
+                  items={areaSuggestions}
+                  onPick={(it) => fill(it.pin ? { addressLine2: it.area, city: it.city, state: it.state, pincode: it.pin } : { addressLine2: it.area })}
+                  inputProps={{ placeholder: "Area, nearby landmark", autoComplete: "off", disabled: busy }}
                 />
               </label>
 
               <div className="checkout-field-row">
                 <label className="field">
                   <span className="field-label">City / town</span>
-                  <input
-                    type="text"
+                  <SuggestInput
                     value={form.city}
                     onChange={set("city")}
-                    placeholder="Chennai"
-                    autoComplete="address-level2"
-                    aria-invalid={!!errors.city}
-                    disabled={busy}
+                    items={citySuggestions}
+                    onPick={(it) => fill({ city: it.city, state: it.state })}
+                    inputProps={{ placeholder: "Chennai", autoComplete: "off", "aria-invalid": !!errors.city, disabled: busy }}
                   />
                   {errors.city && <span className="field-error">{errors.city}</span>}
                 </label>

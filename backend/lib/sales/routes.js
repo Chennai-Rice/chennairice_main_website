@@ -22,6 +22,7 @@ import { createCheckoutSession, confirmCheckout, quoteCart } from './checkout.js
 import { handleRazorpayWebhook } from './webhooks.js'
 import { runJobs } from './jobs.js'
 import { sendQueued } from './email.js'
+import { pinInfo, searchAreas } from './places.js'
 import { staffAuth, permissionsFor, requirePermission, listStaff, createStaff, updateStaff, can } from './staff.js'
 import {
   listOrders, getOrderDetail, confirmOrder, packOrder, shipOrder, deliverShipment, cancelOrder,
@@ -111,6 +112,15 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   const router = express.Router()
 
   // ---- public -------------------------------------------------------------
+  // Checkout address suggestions (India Post directory, cached): a PIN's city, state and areas; areas by name.
+  router.get('/api/places/pin/:pin', rateLimit({ windowMs: 60000, max: 40 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=86400')
+    res.json((await pinInfo(req.params.pin)) || { pin: null, city: '', state: '', areas: [] })
+  }))
+  router.get('/api/places/areas', rateLimit({ windowMs: 60000, max: 60 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=86400')
+    res.json({ areas: await searchAreas(req.query.q, { state: req.query.state }) })
+  }))
   router.get('/api/catalog', wrap(async (_req, res) => {
     res.set('Cache-Control', 'public, max-age=60')
     res.json({ products: await listCatalog({ query }) })
