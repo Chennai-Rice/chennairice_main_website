@@ -3843,7 +3843,7 @@ test('cart reminder emails: email 1 after an hour, email 2 with a free-delivery 
   const { rows: [m1] } = await db.query(`select * from email_outbox where dedupe_key = $1`, [`cart-reminder:${j}:1`])
   assert.equal(m1.to_email, 'kavya.cart@example.com')
   assert.match(m1.subject, /Kavya, your Chennai Rice order is waiting/)
-  assert.match(m1.body_html, /Complete my order/)
+  assert.match(m1.body_html, /Complete your order/)
   assert.match(m1.body_html, /Alibaba \(10 kg\)/)
   const token = /checkout\?resume=([A-Za-z0-9_-]+)/.exec(m1.body_html)[1]
   assert.match(m1.body_html, /Unsubscribe from reminders/)

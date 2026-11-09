@@ -71,24 +71,24 @@ export function reminderEmail({ step, name, lines, token, code = null }) {
       ? 'You were almost there! Your order is saved and ready. Just complete the payment and we will start packing.\n\n'
       : 'Your Chennai Rice cart is still saved for you.' + (code ? ` To make it easier: ${code.label.toUpperCase()} on this order with code ${code.code}, valid until ${code.until} (already added at checkout).` : '') + '\n\n') +
     `Your cart:\n${itemsText}\n  Subtotal  ${formatInr(subtotal)}\n\n` +
-    `Complete my order: ${resumeUrl}\n\n` +
+    `Complete your order: ${resumeUrl}\n\n` +
     (step === 2 ? 'This is the last reminder we will send about this cart.\n\n' : '') +
     `Had trouble paying? Reply to this email, or WhatsApp us at ${SUPPORT_PHONE} (${WHATSAPP_URL}).\n\nTeam Chennai Rice\n\n` +
     `You are receiving this because you started an order at chennairiceindustries.com. Unsubscribe from reminders: ${unsubscribeUrl}`
   const html = renderTemplate('cart-reminder.html', {
     'Subject': subject,
     'Preview': preview,
-    'Badge': step === 1 ? 'Your cart is saved' : 'Last reminder',
-    'Heading': step === 1 ? 'You were almost there!' : 'Your cart is still saved',
-    'Greeting': `${step === 1 ? 'Vanakkam' : 'Hi'} ${hi},`,
+    'Badge': step === 1 ? 'Saved for you' : 'A final reminder',
+    'Heading': step === 1 ? 'You were almost there.' : 'Your rice is still waiting.',
+    'Greeting': `${step === 1 ? 'Vanakkam' : 'Hello'} ${hi},`,
     'Intro': step === 1
-      ? 'Your order is saved and ready. Just complete the payment and we’ll start packing.'
-      : 'Your Chennai Rice cart is still saved for you.' + (code ? ' To make it easier, here’s a little something:' : ''),
-    'Offer Label': code ? `🎁 ${code.label.toUpperCase()} on this order` : '',
+      ? 'We’ve kept your cart exactly as you left it. Complete your order and we’ll mill, pack and send it fresh from Erode.'
+      : 'Your cart is saved, and we’d love to send it your way.' + (code ? ' As a small thank you, this one is on us.' : ''),
+    'Offer Label': code ? `${code.label} on this order` : '',
     'Offer Code': code ? code.code : '',
     'Offer Until': code ? code.until : '',
     'Subtotal': formatInr(subtotal),
-    'Button': step === 2 && code ? `Complete my order with ${code.label.toLowerCase()}` : 'Complete my order',
+    'Button': 'Complete your order',
     'Resume URL': resumeUrl,
     'Last Note': step === 2 ? 'This is the last reminder we’ll send about this cart.' : '',
     'Support Number': SUPPORT_PHONE,
