@@ -3846,7 +3846,7 @@ test('cart reminder emails: email 1 after an hour, email 2 with a free-delivery 
   assert.match(m1.body_html, /Complete your order/)
   assert.match(m1.body_html, /Alibaba \(10 kg\)/)
   const token = /checkout\?resume=([A-Za-z0-9_-]+)/.exec(m1.body_html)[1]
-  assert.match(m1.body_html, /Unsubscribe from reminders/)
+  assert.ok(m1.body_html.includes('/api/cart/unsubscribe?t='), 'has an unsubscribe link')
 
   // The link brings the cart and the details back, and counts the click.
   const back = await api('GET', `/api/cart/resume/${token}`)
