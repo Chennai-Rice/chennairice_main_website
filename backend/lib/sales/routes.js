@@ -23,6 +23,7 @@ import { handleRazorpayWebhook } from './webhooks.js'
 import { runJobs } from './jobs.js'
 import { sendQueued } from './email.js'
 import { pinInfo, searchAreas } from './places.js'
+import { resumeCart, unsubscribeCart, cartRemindersAdmin, saveCartReminderSettings } from './cart-recovery.js'
 import { staffAuth, permissionsFor, requirePermission, listStaff, createStaff, updateStaff, can } from './staff.js'
 import {
   listOrders, getOrderDetail, confirmOrder, packOrder, shipOrder, deliverShipment, cancelOrder,
@@ -120,6 +121,15 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   router.get('/api/places/areas', rateLimit({ windowMs: 60000, max: 60 }), wrap(async (req, res) => {
     res.set('Cache-Control', 'public, max-age=86400')
     res.json({ areas: await searchAreas(req.query.q, { state: req.query.state }) })
+  }))
+  // Cart reminder emails: "Complete my order" (cart, form and code back) and "Unsubscribe from reminders".
+  router.get('/api/cart/resume/:token', rateLimit({ windowMs: 60000, max: 20 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await resumeCart({ query }, req.params.token))
+  }))
+  router.get('/api/cart/unsubscribe', rateLimit({ windowMs: 60000, max: 20 }), wrap(async (req, res) => {
+    const ok = await unsubscribeCart({ query }, req.query.t)
+    res.set('Cache-Control', 'no-store').type('html').send(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Chennai Rice</title><body style="margin:0;background:#f6f1e7;font-family:Arial,sans-serif;color:#2b1d17"><div style="max-width:480px;margin:60px auto;padding:32px;background:#fff;border-radius:16px;text-align:center"><h1 style="font-family:Georgia,serif;color:#6e1420;font-size:24px">${ok ? 'You’re unsubscribed' : 'Link not found'}</h1><p style="line-height:1.6">${ok ? 'We won’t send you any more cart reminders. Order emails (confirmation, shipping) still come as usual.' : 'This link is not valid.'}</p><p><a href="/" style="color:#6e1420">Back to chennairiceindustries.com</a></p></div></body>`)
   }))
   router.get('/api/catalog', wrap(async (_req, res) => {
     res.set('Cache-Control', 'public, max-age=60')
@@ -672,6 +682,8 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/referrals', wrap(async (req, res) => res.json(await referralAdmin({ query }, req.staff))))
   admin.put('/referrals', wrap(async (req, res) => res.json(await saveReferralSettings({ query }, req.staff, req.body))))
   admin.post('/referrals/rewards/:id/cancel', wrap(async (req, res) => res.json(await cancelReferralReward({ query }, req.staff, req.params.id))))
+  admin.get('/cart-reminders', wrap(async (req, res) => res.json(await cartRemindersAdmin({ query }, req.staff, { days: req.query.days }))))
+  admin.put('/cart-reminders', wrap(async (req, res) => res.json(await saveCartReminderSettings({ query }, req.staff, req.body))))
   admin.get('/spin', wrap(async (req, res) => res.json(await spinAdmin({ query }, req.staff))))
   admin.put('/spin', wrap(async (req, res) => res.json(await saveSpinSettings({ query }, req.staff, req.body))))
   admin.get('/shipping-zones', perm('shipping.manage'), wrap(async (_req, res) => res.json({ zones: await listZones() })))

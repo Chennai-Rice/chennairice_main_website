@@ -4,6 +4,7 @@ import DiscountCodes from '../warehouse/DiscountCodes.jsx'
 import SpinSettings from '../warehouse/SpinSettings.jsx'
 import ReferralSettings from '../warehouse/ReferralSettings.jsx'
 import WhoSpun from './WhoSpun.jsx'
+import CartReminders from './CartReminders.jsx'
 import { staffJson, signOutStaff } from '../../services/staffAuth.js'
 import usePageMeta from '../../shop/hooks/usePageMeta.js'
 import { Icon } from '../warehouse/shared.jsx'
@@ -22,6 +23,7 @@ const VIEWS = [
   { id: 'spin', label: 'Spin & Win', icon: 'refresh', subtitle: 'Prizes, chances and budget' },
   { id: 'spins', label: 'Who spun', icon: 'users', subtitle: 'Every spin: name, mobile, prize, code and whether it was used' },
   { id: 'referral', label: 'Refer a friend', icon: 'user', subtitle: 'Amounts, top referrers and rewards' },
+  { id: 'cart', label: 'Cart reminders', icon: 'bell', subtitle: 'Emails to shoppers who stopped at checkout: switch, offer and recovered orders' },
   { id: 'codes', label: 'Discount codes', icon: 'copy', subtitle: 'Every code, its uses, money given and sales' },
 ]
 const ROLE = { owner: 'Owner', it: 'IT team' }
@@ -151,6 +153,7 @@ function Dashboard({ onAuthError }) {
           {view === 'spin' && <SpinSettings say={say} onAuthError={onAuthError} />}
           {view === 'spins' && <WhoSpun onAuthError={onAuthError} />}
           {view === 'referral' && <ReferralSettings say={say} onAuthError={onAuthError} />}
+          {view === 'cart' && <CartReminders say={say} onAuthError={onAuthError} />}
           {view === 'codes' && <DiscountCodes say={say} onAuthError={onAuthError} />}
         </main>
       </div>

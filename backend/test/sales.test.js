@@ -3812,3 +3812,84 @@ test('Ad campaigns: reports and sign-ups take a From-To date range (India dates,
   const r = await sourcesReport({ query: db.query }, { from: today, to: today })
   assert.deepEqual([r.from, r.to], [today, today])
 })
+
+test('cart reminder emails: email 1 after an hour, email 2 with a free-delivery code, resume link, unsubscribe, never after paying, results', async () => {
+  const { sendCartReminders } = await import('../lib/sales/cart-recovery.js')
+  const { randomUUID } = await import('node:crypto')
+  // Off until switched on.
+  const off = await api('GET', '/api/admin/cart-reminders', { token: OWNER })
+  assert.equal(off.status, 200, JSON.stringify(off.body))
+  assert.equal(off.body.enabled, false)
+  assert.deepEqual(await sendCartReminders(db), { off: true })
+  const on = await api('PUT', '/api/admin/cart-reminders', { token: OWNER, body: { enabled: true, offer: 'free_delivery' } })
+  assert.equal(on.body.enabled, true)
+
+  // Noon India time today; the shopper stopped two hours before.
+  const noon = new Date(new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10) + 'T06:30:00Z').getTime()
+  const shop = async (phone, email) => {
+    const id = randomUUID()
+    const r = await api('POST', '/api/journey', { body: { journeyId: id, stage: 'details', items: [{ id: 'alibaba-10kg', name: 'Alibaba (10 kg)', qty: 2, price: 990 }], value: 1980,
+      contact: { name: 'Kavya Ramesh', phone, email, city: 'Erode', state: 'Tamil Nadu', pincode: '638001' } } })
+    assert.equal(r.status, 200, JSON.stringify(r.body))
+    await db.query(`update checkout_journeys set started_at = $2, updated_at = $2 where id = $1`, [id, new Date(noon - 2 * 3600000)])
+    return id
+  }
+  const j = await shop('9733300088', 'kavya.cart@example.com')
+
+  // Late at night nothing goes; at noon email 1 does, once.
+  assert.deepEqual(await sendCartReminders(db, { now: noon + 11 * 3600000 }), { waiting: true })
+  assert.deepEqual(await sendCartReminders(db, { now: noon }), { sent1: 1, sent2: 0 })
+  assert.deepEqual(await sendCartReminders(db, { now: noon + 600000 }), { sent1: 0, sent2: 0 })
+  const { rows: [m1] } = await db.query(`select * from email_outbox where dedupe_key = $1`, [`cart-reminder:${j}:1`])
+  assert.equal(m1.to_email, 'kavya.cart@example.com')
+  assert.match(m1.subject, /Kavya, your Chennai Rice order is waiting/)
+  assert.match(m1.body_html, /Complete my order/)
+  assert.match(m1.body_html, /Alibaba \(10 kg\)/)
+  const token = /checkout\?resume=([A-Za-z0-9_-]+)/.exec(m1.body_html)[1]
+  assert.match(m1.body_html, /Unsubscribe from reminders/)
+
+  // The link brings the cart and the details back, and counts the click.
+  const back = await api('GET', `/api/cart/resume/${token}`)
+  assert.equal(back.status, 200, JSON.stringify(back.body))
+  assert.deepEqual(back.body.items.map((i) => [i.id, i.qty, i.packKg]), [['alibaba-10kg', 2, 10]])
+  assert.equal(back.body.contact.email, 'kavya.cart@example.com')
+  assert.equal(back.body.code, null)
+  assert.equal((await api('GET', '/api/cart/resume/not-a-real-token-123')).status, 404)
+
+  // A day later, still unpaid: email 2 with a free-delivery code for that mobile only.
+  assert.deepEqual(await sendCartReminders(db, { now: noon + 25 * 3600000 }), { sent1: 0, sent2: 1 })
+  const { rows: [m2] } = await db.query(`select * from email_outbox where dedupe_key = $1`, [`cart-reminder:${j}:2`])
+  const code = /CART-[A-Z0-9]{6}/.exec(m2.body_html)?.[0]
+  assert.ok(code, 'email 2 has a code')
+  assert.match(m2.subject, /free delivery/i)
+  const { rows: [dc] } = await db.query('select kind, locked_phone, max_uses, source from discount_codes where code = $1', [code])
+  assert.deepEqual(dc, { kind: 'free_delivery', locked_phone: '9733300088', max_uses: 1, source: 'cart' })
+  const token2 = /checkout\?resume=([A-Za-z0-9_-]+)/.exec(m2.body_html)[1]
+  assert.equal((await api('GET', `/api/cart/resume/${token2}`)).body.code, code)
+  assert.deepEqual(await sendCartReminders(db, { now: noon + 50 * 3600000 }), { sent1: 0, sent2: 0 })
+
+  // Paid in the meantime: no reminder.
+  const paidPhone = '9733300099'
+  await shop(paidPhone, 'paid.cart@example.com')
+  await buy([{ id: 'alibaba', packKg: 10, qty: 1 }], buyer({ phone: paidPhone, email: 'paid.cart@example.com' }))
+  const { rows: [{ n: before }] } = await db.query(`select count(*)::int as n from cart_reminders where email = 'paid.cart@example.com'`)
+  await sendCartReminders(db, { now: noon })
+  const { rows: [{ n: after }] } = await db.query(`select count(*)::int as n from cart_reminders where email = 'paid.cart@example.com'`)
+  assert.equal(after, before)
+
+  // Unsubscribe: a page, and no more reminders to that email.
+  const un = await api('GET', `/api/cart/unsubscribe?t=${token}`)
+  assert.equal(un.status, 200)
+  assert.match(un.body, /unsubscribed/)
+  await db.query(`delete from cart_reminders where email = 'kavya.cart@example.com'`)
+  await shop('9733300088', 'kavya.cart@example.com')
+  await sendCartReminders(db, { now: noon })
+  const { rows: [{ n: again }] } = await db.query(`select count(*)::int as n from cart_reminders where email = 'kavya.cart@example.com'`)
+  assert.equal(again, 0)
+
+  // Results for /offers; a warehouse login cannot see them.
+  const res = await api('GET', '/api/admin/cart-reminders', { token: OWNER })
+  assert.equal(res.body.stats.unsubscribed, 1)
+  assert.equal((await api('GET', '/api/admin/cart-reminders', { token: 'store@x.test|uid-store' })).status, 403)
+  await api('PUT', '/api/admin/cart-reminders', { token: OWNER, body: { enabled: false } })
+})

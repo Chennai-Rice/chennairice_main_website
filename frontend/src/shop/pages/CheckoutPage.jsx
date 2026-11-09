@@ -90,7 +90,7 @@ function validate(form) {
 }
 
 export default function CheckoutPage() {
-  const { items, count, clear } = useCart();
+  const { items, count, clear, replace: replaceCart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState(EMPTY_FORM);
@@ -147,6 +147,34 @@ export default function CheckoutPage() {
     // stale complaint under a field the customer is actively fixing.
     setErrors((current) => (current[key] ? { ...current, [key]: undefined } : current));
   };
+
+  // A cart reminder email's "Complete my order" link (/checkout?resume=…): the cart, the details and email 2's
+  // code come back, so the customer only presses Pay. The link is then dropped from the address bar.
+  const [resumeNote, setResumeNote] = useState("");
+  useEffect(() => {
+    const token = new URLSearchParams(location.search).get("resume");
+    if (!token) return undefined;
+    let gone = false;
+    fetch(`/api/cart/resume/${encodeURIComponent(token)}`)
+      .then(async (r) => ({ ok: r.ok, body: await r.json().catch(() => ({})) }))
+      .then(({ ok, body }) => {
+        if (gone) return;
+        if (!ok) { setResumeNote(body.error || "This link has expired."); return; }
+        if (body.items?.length) replaceCart(body.items);
+        const c = body.contact || {};
+        setForm((current) => {
+          const next = { ...current };
+          for (const k of ["name", "email", "phone", "addressLine1", "addressLine2", "city", "state", "pincode"]) if (c[k]) next[k] = c[k];
+          return next;
+        });
+        if (body.code) setDiscountCode(body.code);
+        setResumeNote(body.code ? `Welcome back! Your cart is ready, and code ${body.code} is applied.` : "Welcome back! Your cart and details are ready. Just check and press Pay.");
+      })
+      .catch(() => {})
+      .finally(() => { if (!gone) navigate(location.pathname, { replace: true }); });
+    return () => { gone = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fill several address fields at once (a picked suggestion), clearing their errors.
   const fill = (values) => {
@@ -467,6 +495,7 @@ export default function CheckoutPage() {
                 form, so it is associated by id instead of by nesting. */}
             <form id="checkout-form" className="checkout-form" onSubmit={handleSubmit} noValidate>
               <h2 className="checkout-form-title">Where should we deliver?</h2>
+              {resumeNote && <p className="checkout-resume-note" role="status">{resumeNote}</p>}
               <p className="checkout-form-note">
                 We save these details as you fill them in, so our team can help if you can't finish your order.{" "}
                 <Link to="/privacy">Privacy Policy</Link>

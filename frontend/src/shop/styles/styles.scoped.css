@@ -2758,3 +2758,9 @@
 .shop-scope .suggest-item:hover, .shop-scope .suggest-item.is-active { background: var(--cream-100, #f7efe2); }
 .shop-scope .suggest-label { color: var(--ink-900); font-weight: 500; }
 .shop-scope .suggest-sub { color: var(--ink-500); font-size: 0.85em; }
+
+/* Checkout opened from a cart reminder email (Nov 2026). */
+.shop-scope .checkout-resume-note {
+  margin: 0 0 var(--s-3); padding: 10px 14px; border-radius: var(--radius-sm);
+  background: #e8f3ec; color: #2f7a4b; font-weight: 500;
+}

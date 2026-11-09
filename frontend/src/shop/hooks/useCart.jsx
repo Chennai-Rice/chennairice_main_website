@@ -126,12 +126,19 @@ export function CartProvider({ children }) {
   // checkout invites the customer to buy them a second time.
   const clear = useCallback(() => setItems([]), []);
 
+  // A cart reminder email's "Complete my order" link: the saved cart comes back as it was.
+  const replace = useCallback((lines) => {
+    setItems((lines || []).filter((l) => l && l.id && Number(l.qty) > 0).map((l) => ({
+      id: l.id, name: l.name, tag: l.tag || "", price: Number(l.price) || 0, image: l.image || null, packKg: l.packKg ?? undefined, qty: Number(l.qty),
+    })));
+  }, []);
+
   const value = useMemo(() => {
     const count = items.reduce((total, item) => total + item.qty, 0);
     const subtotal = items.reduce((total, item) => total + item.price * item.qty, 0);
     const lastAdded = items.find((item) => item.id === lastAddedId) || items[items.length - 1] || null;
-    return { items, count, subtotal, lastAdded, add, setQty, remove, clear, syncPrices };
-  }, [items, lastAddedId, add, setQty, remove, clear, syncPrices]);
+    return { items, count, subtotal, lastAdded, add, setQty, remove, clear, replace, syncPrices };
+  }, [items, lastAddedId, add, setQty, remove, clear, replace, syncPrices]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
