@@ -3,7 +3,7 @@
 // and the screen agree. Personal details (names, phones, emails) are in them; the sign-in is the guard.
 import { query } from '../db.js'
 import { cell, listWarehouseOrders, listWarehouseCustomers } from './warehouse.js'
-import { contestLeads } from './attribution.js'
+import { contestLeads, channelReport } from './attribution.js'
 import { listExpoLeads } from './expo.js'
 import { listEnquiries } from './enquiries-admin.js'
 import { listJourneys } from './journeys.js'
@@ -62,6 +62,24 @@ export const REPORTS = {
           ]
         }),
       }
+    },
+  },
+  channels: {
+    label: 'Ad campaigns: all-in-one',
+    note: 'Every channel side by side (Meta ads, Google Ads, Google search, WhatsApp, Direct, Other, Total): revenue, orders, visits, leads, converted, converted revenue, not converted, lead conversion, average order value.',
+    period: true,
+    async build(q) {
+      const p = span(q)
+      const r = await channelReport({ query }, { from: p.from, to: p.to })
+      const cols = [...r.columns.filter((c) => c.revenue || c.orders || c.visits || c.leads), r.total]
+      const rs = (n) => (n == null ? '' : Number(n).toFixed(2))
+      const rows = [
+        ['Revenue', (c) => rs(c.revenue)], ['Orders', (c) => c.orders], ['Website visits', (c) => c.visits],
+        ['Leads', (c) => c.leads], ['Converted', (c) => c.converted], ['Converted revenue', (c) => rs(c.convertedRevenue)],
+        ['Not converted', (c) => c.notConverted], ['Lead conversion %', (c) => (c.conversion == null ? '' : c.conversion)],
+        ['Avg order value', (c) => (c.aov == null ? '' : c.aov)],
+      ]
+      return { header: ['Metric', ...cols.map((c) => c.label)], lines: rows.map(([label, f]) => [label, ...cols.map(f)]) }
     },
   },
   customers: {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import ChannelTable from '../warehouse/ChannelTable.jsx'
 import { staffFetch, staffJson } from '../../services/staffAuth.js'
 import { Card, LoadingRegion, Segmented } from './components/ui.jsx'
 import StaffGate from './StaffGate.jsx'
@@ -40,6 +41,8 @@ function Reports({ onAuthError }) {
   const [from, setFrom] = useState(new Date(Date.now() + 330 * 60000 - 6 * 864e5).toISOString().slice(0, 10))
   const [to, setTo] = useState(today)
   const periodQs = days === 'custom' ? `from=${from}&to=${to}` : `days=${days}`
+  // The All-in-one table at the top follows the same period.
+  const range = days === 'custom' ? { from, to } : { from: new Date(Date.now() + 330 * 60000 - (Number(days) - 1) * 864e5).toISOString().slice(0, 10), to: today }
   const periodLabel = days === 'custom' ? (from === to ? from : `${from} to ${to}`) : PERIODS.find((p) => p.id === days)?.label
   const [busy, setBusy] = useState('')
 
@@ -94,6 +97,7 @@ function Reports({ onAuthError }) {
               personal details: keep them inside the team.
             </p>
           </Card>
+          <div className="wh-embed"><ChannelTable rq={`from=${range.from}&to=${range.to}`} range={range} say={(m, tone) => { if (tone === 'error') setError(m) }} onAuthError={onAuthError} /></div>
           <div className="ad-grid ad-grid-2">
             {reports.map((r) => (
               <Card key={r.id} title={r.label} subtitle={r.note}
