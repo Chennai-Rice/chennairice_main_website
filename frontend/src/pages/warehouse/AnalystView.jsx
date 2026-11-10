@@ -270,14 +270,33 @@ function SalesTab({ data, rice }) {
 /** Every new lead of the period, one row each: sign-ups, expo QR leads and WhatsApp chats. */
 const KIND = { signup: 'Sign-up', expo: 'Expo QR', whatsapp: 'WhatsApp chat' }
 const LEAD_STATUS = { new: ['Not called yet', 'grey'], called: ['Called', 'blue'], qualified: ['Qualified', 'amber'], not_qualified: ['Not qualified', 'red'], bought: ['Bought', 'green'] }
+// Lead source as a channel (the same channels as the All-in-one report).
+const LEAD_SOURCES = [['meta', 'Meta ads'], ['google_ads', 'Google Ads'], ['google_search', 'Google search'], ['whatsapp', 'WhatsApp'], ['expo', 'Expo QR'], ['direct', 'Direct'], ['other', 'Other']]
+function leadChannel(l) {
+  const s = String(l.source || '')
+  if (l.kind === 'whatsapp' || s === 'whatsapp') return 'whatsapp'
+  if (l.kind === 'expo' || s === 'expo') return 'expo'
+  if (s.startsWith('meta_ads') || ((s === 'facebook' || s === 'instagram') && String(l.campaign || '').trim())) return 'meta'
+  if (s === 'google_ads') return 'google_ads'
+  if (s === 'google_search') return 'google_search'
+  if (!s || s === 'direct') return 'direct'
+  return 'other'
+}
+
 function LeadList({ list }) {
   const [kind, setKind] = useState('')
   const [q, setQ] = useState('')
+  const [src, setSrc] = useState('')
+  const [status, setStatus] = useState('')
   const [page, setPage] = useState(0)
   const LEAD_PAGE = 50
-  useEffect(() => { setPage(0) }, [kind, q, list])
+  useEffect(() => { setPage(0) }, [kind, q, src, status, list])
   const counts = list.reduce((a, l) => ({ ...a, [l.kind]: (a[l.kind] || 0) + 1 }), {})
-  const rows = list.filter((l) => (!kind || l.kind === kind)
+  // Counts for each dropdown follow the other filters, so each option shows how many it would list.
+  const byType = list.filter((l) => !kind || l.kind === kind)
+  const srcCount = (k) => byType.filter((l) => leadChannel(l) === k && (!status || l.status === status)).length
+  const statusCount = (k) => byType.filter((l) => l.status === k && (!src || leadChannel(l) === src)).length
+  const rows = list.filter((l) => (!kind || l.kind === kind) && (!src || leadChannel(l) === src) && (!status || l.status === status)
     && (!q || `${l.name} ${l.phone} ${l.email || ''} ${l.campaign || ''} ${l.detail || ''}`.toLowerCase().includes(q.trim().toLowerCase())))
   function download() {
     const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
@@ -286,13 +305,14 @@ function LeadList({ list }) {
       .map((r) => r.map(cell).join(',')).join('\r\n')
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }))
-    a.download = `leads-${kind || 'all'}.csv`
+    a.download = `leads-${[kind || 'all', src, status].filter(Boolean).join('-')}.csv`
     document.body.appendChild(a); a.click(); a.remove()
   }
   return (
     <Panel title="New leads — one by one" note="Everyone counted in New leads: website sign-ups, expo QR leads and new WhatsApp chats, with what happened next." wide>
       <p className="an-lead-sum">
         <strong>{count(list.length)} new leads</strong> = {count(counts.signup || 0)} sign-ups + {count(counts.whatsapp || 0)} WhatsApp chats + {count(counts.expo || 0)} expo QR
+        {(src || status) && <> · showing <strong>{count(rows.length)}</strong>{src ? ' from ' + LEAD_SOURCES.find(([k]) => k === src)[1] : ''}{status ? ' · ' + LEAD_STATUS[status][0] : ''} <button type="button" className="wh-link-btn" onClick={() => { setSrc(''); setStatus('') }}>clear</button></>}
       </p>
       <div className="an-leadbar">
         <div className="an-seg" role="group" aria-label="Lead type">
@@ -301,6 +321,14 @@ function LeadList({ list }) {
           ))}
         </div>
         <div className="an-leadtools">
+          <span className="wh-select an-lead-filter"><select value={src} onChange={(e) => setSrc(e.target.value)} aria-label="Source">
+            <option value="">All sources</option>
+            {LEAD_SOURCES.map(([k, label]) => <option key={k} value={k}>{label} ({srcCount(k)})</option>)}
+          </select></span>
+          <span className="wh-select an-lead-filter"><select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status">
+            <option value="">All statuses</option>
+            {Object.entries(LEAD_STATUS).map(([k, [label]]) => <option key={k} value={k}>{label} ({statusCount(k)})</option>)}
+          </select></span>
           <input className="an-search" type="search" placeholder="Search name, mobile, campaign…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search leads" />
           <button type="button" className="wh-btn wh-btn--outline wh-btn--small" onClick={download} disabled={!rows.length}>Download CSV</button>
         </div>
