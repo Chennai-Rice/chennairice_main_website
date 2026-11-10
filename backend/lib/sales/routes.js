@@ -41,7 +41,7 @@ import { listIssues, getIssue, createIssue, updateIssue } from './issues.js'
 import { processTrackerUpload, listTrackerUploads, trackerTemplate, courierRedirect, dispatchBatchSheet } from './tracker.js'
 import { listIssuedIds, issuedIdsCsv, checkRegister } from './idregister.js'
 import { invoiceHtml, packingSlipHtml } from './documents.js'
-import { recordVisit, sourcesReport, sourceOrders, sourcePeople, saveContestLead, startContestLead, contestLeads } from './attribution.js'
+import { recordVisit, sourcesReport, sourceOrders, sourcePeople, saveContestLead, startContestLead, contestLeads, channelReport } from './attribution.js'
 import { saveExpoLead, listExpoLeads, deleteExpoLead } from './expo.js'
 import { askAssistant } from './assistant.js'
 import { askAdvisor, advisorUsage, setAdvisorCap } from './advisor.js'
@@ -458,6 +458,11 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/warehouse/sources/orders', perm('money.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json({ orders: await sourceOrders({ query }, req.query) })
+  }))
+  // Ad campaigns → All-in-one report: revenue, orders, visits and the leads funnel per channel.
+  admin.get('/warehouse/channels', perm('money.view'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await channelReport({ query }, req.query))
   }))
   admin.get('/warehouse/contest-leads', perm('money.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')

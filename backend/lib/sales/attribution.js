@@ -371,3 +371,77 @@ export async function contestLeads(db, { days, from, to } = {}) {
   const label = { ...SOURCES, expo: 'Expo QR', whatsapp_chat: 'WhatsApp chat' }
   return rows.map((r) => ({ ...r, sourceLabel: label[r.source] || r.source }))
 }
+
+/**
+ * Ad campaigns → All-in-one report (Nov 2026): for each channel (Meta ads, Google Ads, Google search, WhatsApp,
+ * Direct, Other) in the period — revenue, paid orders, average order value, website visits, and the leads funnel:
+ * new leads (contest sign-ups, WhatsApp chats, expo QR; one per mobile per channel), how many converted (a paid
+ * order on that mobile after they became a lead), the revenue from them, and the conversion rate.
+ */
+export const CHANNEL_ORDER = ['meta', 'google_ads', 'google_search', 'whatsapp', 'direct', 'other']
+export const CHANNEL_LABEL = { meta: 'Meta ads', google_ads: 'Google Ads', google_search: 'Google search', whatsapp: 'WhatsApp', direct: 'Direct', other: 'Other' }
+export function channelKey(source, campaign = '') {
+  const s = String(source || 'direct')
+  if (s.startsWith('meta_ads') || ((s === 'facebook' || s === 'instagram') && /^\d{12,}$/.test(String(campaign || '')))) return 'meta'
+  if (s === 'google_ads') return 'google_ads'
+  if (s === 'google_search') return 'google_search'
+  if (s === 'whatsapp' || s === 'whatsapp_chat') return 'whatsapp'
+  if (s === 'direct') return 'direct'
+  return 'other'
+}
+
+export async function channelReport(db, { days, from, to } = {}) {
+  const range = reportRange({ days, from, to })
+  const sales = await sourcesReport(db, range)
+  const leads = await contestLeads(db, range)
+  const col = () => ({ revenue: 0, orders: 0, visits: 0, leads: 0, converted: 0, convertedRevenue: 0 })
+  const by = Object.fromEntries(CHANNEL_ORDER.map((k) => [k, col()]))
+  for (const r of sales.campaigns) {
+    const c = by[channelKey(r.source, r.campaign)]
+    c.revenue += r.revenue || 0
+    c.orders += r.orders || 0
+    c.visits += r.visits || 0
+  }
+  // One lead per mobile per channel, from when they first came in that channel.
+  const first = new Map()
+  for (const l of leads) {
+    const m = String(l.phone || '').replace(/\D/g, '').slice(-10)
+    if (m.length < 10) continue
+    const k = channelKey(l.source, l.campaign) + '|' + m
+    const at = new Date(l.created_at)
+    if (!first.has(k) || at < first.get(k).at) first.set(k, { channel: k.split('|')[0], mobile: m, at })
+  }
+  const mobiles = [...new Set([...first.values()].map((v) => v.mobile))]
+  const { rows: paid } = mobiles.length ? await db.query(
+    `select right(regexp_replace(contact_phone, '[^0-9]', '', 'g'), 10) as m, created_at, total_paise from orders
+      where payment_status = any($1) and right(regexp_replace(contact_phone, '[^0-9]', '', 'g'), 10) = any($2)`,
+    [PAID_STATUSES, mobiles]) : { rows: [] }
+  const ordersOf = new Map()
+  for (const o of paid) (ordersOf.get(o.m) || ordersOf.set(o.m, []).get(o.m)).push(o)
+  for (const v of first.values()) {
+    const c = by[v.channel]
+    c.leads += 1
+    // Converted: paid after becoming a lead (10 minutes' grace for the same visit).
+    const after = (ordersOf.get(v.mobile) || []).filter((o) => new Date(o.created_at) >= new Date(v.at.getTime() - 10 * 60000))
+    if (after.length) { c.converted += 1; c.convertedRevenue += after.reduce((t, o) => t + Number(o.total_paise) / 100, 0) }
+  }
+  const round = (n) => Math.round(n * 100) / 100
+  const columns = CHANNEL_ORDER.map((k) => {
+    const c = by[k]
+    return {
+      key: k, label: CHANNEL_LABEL[k],
+      revenue: round(c.revenue), orders: c.orders, visits: c.visits,
+      leads: c.leads, converted: c.converted, convertedRevenue: round(c.convertedRevenue), notConverted: c.leads - c.converted,
+      conversion: c.leads ? Math.round((c.converted / c.leads) * 1000) / 10 : null,
+      aov: c.orders ? Math.round(c.revenue / c.orders) : null,
+    }
+  })
+  const sum = (f) => columns.reduce((t, c) => t + (c[f] || 0), 0)
+  const total = {
+    key: 'total', label: 'Total', revenue: round(sum('revenue')), orders: sum('orders'), visits: sum('visits'),
+    leads: sum('leads'), converted: sum('converted'), convertedRevenue: round(sum('convertedRevenue')), notConverted: sum('notConverted'),
+  }
+  total.conversion = total.leads ? Math.round((total.converted / total.leads) * 1000) / 10 : null
+  total.aov = total.orders ? Math.round(total.revenue / total.orders) : null
+  return { ...range, columns, total }
+}

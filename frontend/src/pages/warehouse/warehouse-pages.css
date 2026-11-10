@@ -494,3 +494,13 @@
 .wh-badge--offer-cart { background: #e7f0fb; color: #1f5fa8; border-color: #b9d0ee; }
 .wh-acc-offer-head td { padding-top: 8px; }
 .wh-acc-offer-item td { color: #6b5b4e; font-size: 13px; }
+
+/* Ad campaigns → All-in-one report (Nov 2026). */
+.chn-wrap { overflow-x: auto; margin-top: 6px; }
+.chn-table { width: 100%; border-collapse: collapse; min-width: 640px; font-size: 15px; }
+.chn-table th, .chn-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--wh-line, #ece3d6); white-space: nowrap; }
+.chn-table thead th { font-size: 14px; color: var(--wh-ink, #2b1d17); font-weight: 700; border-bottom: 2px solid var(--wh-line, #ece3d6); }
+.chn-table tbody th { font-weight: 500; color: var(--wh-ink, #2b1d17); }
+.chn-table tr.is-bold th, .chn-table tr.is-bold td { font-weight: 700; }
+.chn-table .is-total { background: #faf6ef; font-weight: 700; }
+.chn-dot { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }

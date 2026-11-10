@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import ChannelTable from './ChannelTable.jsx'
 import { staffFetch, staffJson } from '../../services/staffAuth.js'
 import { dayLabel } from './shared.jsx'
 
@@ -237,6 +238,8 @@ export default function SourcesReport({ say, onAuthError }) {
           <p className="wh-muted wh-small">Visits are counted from tagged links and other sites. An order is credited to the last ad or site the buyer came from in the 30 days before ordering; with none, it is Direct.</p>
         </div>
       )}
+
+      <ChannelTable rq={rq} range={range} say={say} onAuthError={onAuthError} />
 
       <div className="wh-src-channels">
         <span className="src-hint">{channel ? <>Showing <strong>{CHANNELS.find((c) => c.key === channel)?.label}</strong> · <button type="button" className="src-link" onClick={() => { setChannel(''); setOpen(null) }}>show all channels</button></> : 'Tap a channel card to see only that channel.'}</span>
