@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { WHEEL_SLICES, sliceOf } from '../../components/wheelSlices.js'
 import { staffJson } from '../../services/staffAuth.js'
 
 // Spin & Win (backend/lib/sales/spin.js): switch it on, set the prizes and their chances, a monthly budget,
@@ -46,6 +47,11 @@ export default function SpinSettings({ say, onAuthError }) {
 
   const setPrize = (i, k) => (e) => setForm((f) => ({ ...f, prizes: f.prizes.map((p, j) => (j === i ? { ...p, [k]: e.target.value } : p)) }))
   const addPrize = () => setForm((f) => ({ ...f, prizes: [...f.prizes, { key: 'p' + Date.now().toString(36).slice(-5), label: '₹10 OFF', kind: 'amount', amount: 10, minOrder: 0, region: '', chance: 0 }] }))
+  // The wheel picture has eight slices: a slice with no prize is never won, a prize with no slice cannot be shown.
+  const used = form.prizes.map((p) => sliceOf(p))
+  const missing = WHEEL_SLICES.filter((_, i) => !used.includes(i))
+  const offWheel = form.prizes.filter((p, i) => used[i] < 0)
+  const addSlice = (s) => setForm((f) => ({ ...f, prizes: [...f.prizes, { key: s.key + '_' + Date.now().toString(36).slice(-4), minOrder: 0, region: '', chance: 0, ...s.add }] }))
   const removePrize = (i) => setForm((f) => ({ ...f, prizes: f.prizes.filter((_, j) => j !== i) }))
   const cell = { padding: '6px 6px', verticalAlign: 'middle' }
   const r = data.report
@@ -133,6 +139,13 @@ export default function SpinSettings({ say, onAuthError }) {
           </table>
         </div>
         <p className="wh-small" style={{ margin: 0, color: Math.abs(total - 100) > 0.001 ? '#b3261e' : undefined }}>
+          {(missing.length > 0 || offWheel.length > 0) && (
+            <span className="wh-spin-warn" role="alert" style={{ display: 'block', margin: '0 0 8px', padding: '10px 12px', borderRadius: 10, background: '#fdf3dc', border: '1px solid #e8c766', color: '#6b4a0c' }}>
+              {missing.length > 0 && <>The wheel picture shows <strong>{missing.map((x) => x.label).join(', ')}</strong> but it is not in your list, so nobody can win it.{' '}
+                {missing.map((x) => <button key={x.key} type="button" className="wh-link-btn" onClick={() => addSlice(x)} style={{ marginRight: 8 }}>Add {x.label}</button>)}<br /></>}
+              {offWheel.length > 0 && <><strong>{offWheel.map((p) => p.label).join(', ')}</strong> is not on the wheel picture: rename it to match a slice (₹25/50/75/100/150 OFF, 5% OFF, Free Delivery, or a gift/bag).</>}
+            </span>
+          )}
           Chances add up to <strong>{total}%</strong>{Math.abs(total - 100) > 0.001 ? ' (must be 100%)' : ''}.
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

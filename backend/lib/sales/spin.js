@@ -47,6 +47,10 @@ export function spinPrizes(settings = {}) {
   }
 }
 
+// The wheel picture's slices (frontend/src/components/wheelSlices.js): every prize must land on one of them.
+const ON_WHEEL = [/₹\s*25\b/, /₹\s*150\b/, /₹\s*50\b/, /free\s*delivery/i, /₹\s*75\b/, /\b5\s*%/, /₹\s*100\b/, /bag|gift|surprise/i]
+export const onWheel = (p) => p.kind === 'gift' || ON_WHEEL.some((re) => re.test(String(p.label || '')))
+
 function validPrizes(list) {
   if (!Array.isArray(list) || list.length < 2 || list.length > 8) return false
   const keys = new Set()
@@ -246,6 +250,10 @@ export async function saveSpinSettings(db, staff, body = {}) {
       ...(p.kind === 'gift' ? { gift: str(p.gift) } : {}),
       minOrder: Number(p.minOrder) || 0, region: str(p.region) || null, chance: Number(p.chance),
     }))
+    const notOnWheel = prizes.filter((p) => !onWheel(p)).map((p) => p.label)
+    if (notOnWheel.length) {
+      throw httpError(`${notOnWheel.join(', ')}: not on the wheel picture. Use ₹25/₹50/₹75/₹100/₹150 OFF, 5% OFF, Free Delivery or a gift/bag.`)
+    }
     if (!validPrizes(prizes)) {
       throw httpError('Prizes: 2 to 8, each with a label, a ₹ amount (₹1–₹2,000), a % (1–50), free delivery or a gift name, and chances that add up to 100%.')
     }

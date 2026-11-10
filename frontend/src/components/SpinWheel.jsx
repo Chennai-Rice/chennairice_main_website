@@ -45,14 +45,10 @@ function slicesFor(prizes) {
 }
 
 // The eight slices of the wheel picture, clockwise from the top (/assets/spin-wheel.webp).
-const PICTURE = [/₹\s*25\b/, /₹\s*150\b/, /₹\s*50\b/, /free\s*delivery/i, /₹\s*75\b/, /\b5\s*%/, /₹\s*100\b/, /bag/i]
-const PICTURE_KEYS = ['p25', 'p150', 'p50', 'free', 'p75', 'pct5', 'p100', 'bag']
-/** Which slice of the picture shows this prize: by its label (₹25 OFF, Free Delivery…), else its key. */
+/** Which slice of the picture shows this prize (wheelSlices.js; a gift lands on the bag slice). */
 function pictureSlice(prize) {
-  const byLabel = PICTURE.findIndex((re) => re.test(String(prize?.label || '')))
-  if (byLabel >= 0) return byLabel
-  const byKey = PICTURE_KEYS.indexOf(prize?.key)
-  return byKey >= 0 ? byKey : 0
+  const i = sliceOf(prize)
+  return i >= 0 ? i : 0
 }
 
 // The wheel is the designed picture (/assets/spin-wheel.webp: eight slices, ₹25 OFF at the top, clockwise as
