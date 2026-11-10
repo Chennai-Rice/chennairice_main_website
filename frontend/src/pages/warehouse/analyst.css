@@ -304,3 +304,6 @@
 /* The campaign column stays put while the numbers scroll. */
 .an-meta-table th:first-child, .an-meta-table td:first-child { position: sticky; left: 0; z-index: 1; background: var(--an-panel, #fffdf9); box-shadow: 1px 0 0 var(--an-line, #e6dccf); }
 .an-meta-table thead th:first-child { background: var(--an-soft, #f6f1ea); }
+.an-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 12px; }
+.an-pager > span:first-child { margin-right: auto; }
+.an-lead-sum { margin: 2px 0 10px; font-size: 14px; color: var(--an-ink, #2b1d17); }

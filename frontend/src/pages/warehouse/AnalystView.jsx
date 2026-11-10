@@ -273,6 +273,9 @@ const LEAD_STATUS = { new: ['Not called yet', 'grey'], called: ['Called', 'blue'
 function LeadList({ list }) {
   const [kind, setKind] = useState('')
   const [q, setQ] = useState('')
+  const [page, setPage] = useState(0)
+  const LEAD_PAGE = 50
+  useEffect(() => { setPage(0) }, [kind, q, list])
   const counts = list.reduce((a, l) => ({ ...a, [l.kind]: (a[l.kind] || 0) + 1 }), {})
   const rows = list.filter((l) => (!kind || l.kind === kind)
     && (!q || `${l.name} ${l.phone} ${l.email || ''} ${l.campaign || ''} ${l.detail || ''}`.toLowerCase().includes(q.trim().toLowerCase())))
@@ -288,6 +291,9 @@ function LeadList({ list }) {
   }
   return (
     <Panel title="New leads — one by one" note="Everyone counted in New leads: website sign-ups, expo QR leads and new WhatsApp chats, with what happened next." wide>
+      <p className="an-lead-sum">
+        <strong>{count(list.length)} new leads</strong> = {count(counts.signup || 0)} sign-ups + {count(counts.whatsapp || 0)} WhatsApp chats + {count(counts.expo || 0)} expo QR
+      </p>
       <div className="an-leadbar">
         <div className="an-seg" role="group" aria-label="Lead type">
           {[['', 'All', list.length], ['signup', 'Sign-ups', counts.signup || 0], ['expo', 'Expo QR', counts.expo || 0], ['whatsapp', 'WhatsApp chats', counts.whatsapp || 0]].map(([k, l, n]) => (
@@ -315,8 +321,15 @@ function LeadList({ list }) {
             {(l.result || l.calls > 0) && <span className="an-sub">{[l.result, l.calls ? `${l.calls} call${l.calls === 1 ? '' : 's'}` : null, l.caller].filter(Boolean).join(' · ')}</span>}
           </>
         ) },
-      ]} rows={rows.slice(0, 300)} empty={list.length ? 'No leads match.' : 'No new leads in this period.'} />
-      {rows.length > 300 && <p className="wh-muted wh-small">Showing the newest 300 of {rows.length}. Download the CSV for all of them.</p>}
+      ]} rows={rows.slice(page * LEAD_PAGE, (page + 1) * LEAD_PAGE)} empty={list.length ? 'No leads match.' : 'No new leads in this period.'} />
+      {rows.length > LEAD_PAGE && (
+        <div className="an-pager">
+          <span className="wh-muted wh-small">{page * LEAD_PAGE + 1}–{Math.min((page + 1) * LEAD_PAGE, rows.length)} of {count(rows.length)}</span>
+          <button type="button" className="wh-btn wh-btn--outline wh-btn--small" disabled={page === 0} onClick={() => setPage(page - 1)}>‹ Previous</button>
+          <span className="wh-small">Page {page + 1} of {Math.ceil(rows.length / LEAD_PAGE)}</span>
+          <button type="button" className="wh-btn wh-btn--outline wh-btn--small" disabled={(page + 1) * LEAD_PAGE >= rows.length} onClick={() => setPage(page + 1)}>Next ›</button>
+        </div>
+      )}
     </Panel>
   )
 }

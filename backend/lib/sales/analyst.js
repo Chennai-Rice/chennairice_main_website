@@ -220,7 +220,7 @@ async function leadList(p) {
             (select min(o.placed_at) from orders o where ${key10('o.contact_phone')} = ${key10('l.phone')} and ${WON}
                 and o.placed_at >= l.created_at - interval '1 day') as bought_at
        from l left join lead_status s on s.mobile = ${key10('l.phone')}
-      order by l.created_at desc limit 500`, [p.fromTs, p.toTs])
+      order by l.created_at desc limit 10000`, [p.fromTs, p.toTs])
   return rows.map((r) => ({
     kind: r.kind, name: r.name, phone: r.phone, email: r.email || null, source: r.source,
     campaign: r.campaign, ad: r.ad, detail: r.detail, at: r.created_at,
