@@ -19,6 +19,11 @@ const ROWS = [
   { key: 'conversion', label: 'Lead conversion', fmt: (c) => (c.conversion == null ? '–' : c.conversion + '%') },
   { key: 'aov', label: 'Avg order value', fmt: (c) => (c.aov == null ? '–' : inr(c.aov)) },
 ]
+// Meta's own numbers (Ads Manager), shown in the Meta ads column only.
+const META_ROWS = [
+  { key: 'metaPurchases', label: 'Meta reported purchases', dot: '#1877f2', bold: true, fmt: (m) => (m.purchases == null ? '–' : num(m.purchases) || '0') },
+  { key: 'metaSpend', label: 'Meta ad spend', fmt: (m) => (m.spend == null ? '–' : inr(m.spend)) },
+]
 
 export default function ChannelTable({ rq, range, say, onAuthError }) {
   const [data, setData] = useState(null)
@@ -34,6 +39,7 @@ export default function ChannelTable({ rq, range, say, onAuthError }) {
   function csv() {
     const cell = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"'
     const lines = [['Metric', ...cols.map((c) => c.label)], ...ROWS.map((r) => [r.label, ...cols.map((c) => r.fmt(c).replace('₹', 'Rs '))])]
+    if (data.meta?.connected && !data.meta.error) META_ROWS.forEach((r) => lines.push([r.label, ...cols.map((c) => (c.key === 'meta' ? String(r.fmt(data.meta)).replace('₹', 'Rs ') : '–'))]))
     const blob = new Blob(['\ufeff' + lines.map((l) => l.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
@@ -67,8 +73,21 @@ export default function ChannelTable({ rq, range, say, onAuthError }) {
                   {cols.map((c) => <td key={c.key} className={c.key === 'total' ? 'is-total' : ''}>{r.fmt(c)}</td>)}
                 </tr>
               ))}
+              {data.meta?.connected && !data.meta.error && META_ROWS.map((r) => (
+                <tr key={r.key} className={'chn-meta' + (r.bold ? ' is-bold' : '')}>
+                  <th scope="row">{r.dot && <i className="chn-dot" style={{ background: r.dot }} />}{r.label}</th>
+                  {cols.map((c) => <td key={c.key} className={c.key === 'total' ? 'is-total' : ''}>{c.key === 'meta' ? r.fmt(data.meta) : '–'}</td>)}
+                </tr>
+              ))}
             </tbody>
           </table>
+          <p className="wh-muted wh-small chn-note">
+            {!data.meta?.connected
+              ? 'Meta reported purchases: connect Meta (save the META_ADS_TOKEN key) to show Ads Manager’s own count here.'
+              : data.meta.error
+                ? 'Meta reported purchases: ' + data.meta.error
+                : 'Meta reported purchases = Ads Manager’s count for the same dates (clicks and ad views, any device). Our Orders row counts only orders whose buyer arrived through a Meta ad link in the same browser, so Meta’s number is usually higher; the difference mostly shows up under Direct.'}
+          </p>
         </div>
       )}
     </section>

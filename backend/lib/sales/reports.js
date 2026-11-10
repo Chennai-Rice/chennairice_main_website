@@ -79,7 +79,12 @@ export const REPORTS = {
         ['Not converted', (c) => c.notConverted], ['Lead conversion %', (c) => (c.conversion == null ? '' : c.conversion)],
         ['Avg order value', (c) => (c.aov == null ? '' : c.aov)],
       ]
-      return { header: ['Metric', ...cols.map((c) => c.label)], lines: rows.map(([label, f]) => [label, ...cols.map(f)]) }
+      const lines = rows.map(([label, f]) => [label, ...cols.map(f)])
+      if (r.meta?.connected && !r.meta.error) {
+        lines.push(['Meta reported purchases', ...cols.map((c) => (c.key === 'meta' ? r.meta.purchases : ''))])
+        lines.push(['Meta ad spend', ...cols.map((c) => (c.key === 'meta' ? rs(r.meta.spend) : ''))])
+      }
+      return { header: ['Metric', ...cols.map((c) => c.label)], lines }
     },
   },
   customers: {

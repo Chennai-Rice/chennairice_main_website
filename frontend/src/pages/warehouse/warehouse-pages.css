@@ -504,3 +504,5 @@
 .chn-table tr.is-bold th, .chn-table tr.is-bold td { font-weight: 700; }
 .chn-table .is-total { background: #faf6ef; font-weight: 700; }
 .chn-dot { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
+.chn-table tr.chn-meta th, .chn-table tr.chn-meta td { background: #f3f7fe; }
+.chn-note { margin: 8px 2px 0; }

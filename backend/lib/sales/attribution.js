@@ -443,5 +443,15 @@ export async function channelReport(db, { days, from, to } = {}) {
   }
   total.conversion = total.leads ? Math.round((total.converted / total.leads) * 1000) / 10 : null
   total.aov = total.orders ? Math.round(total.revenue / total.orders) : null
-  return { ...range, columns, total }
+  // Meta's own count for the same dates (Ads Manager's "Website purchases", its attribution: clicks and views,
+  // any device), next to ours. Needs META_ADS_TOKEN; a Meta error never breaks the report.
+  let meta = { connected: false }
+  try {
+    const { metaAdsReport } = await import('./meta-ads.js')
+    const r = await metaAdsReport(range, { query: db.query.bind(db) })
+    if (r.connected) meta = { connected: true, purchases: r.totals.purchases, purchaseValue: round((r.campaigns || []).reduce((t, c) => t + (c.purchaseValue || 0), 0)), spend: r.totals.spend }
+  } catch (err) {
+    meta = { connected: true, error: 'Could not read Meta just now.' }
+  }
+  return { ...range, columns, total, meta }
 }
