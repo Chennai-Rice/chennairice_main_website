@@ -147,7 +147,7 @@ export async function listWarehouseOrders(f = {}, { maxLimit = MAX_PAGE, money =
   const listParams = [...params, TABS[tab]]
   const { rows } = await query(
     `select o.id, o.order_number, o.shipment_id, o.status, o.payment_status, ${WHEN} as placed_at, o.shipped_at,
-            o.contact_name, o.contact_phone, o.shipping_address, o.needs_attention, o.total_paise, o.delivery_method, o.gift_note,
+            o.contact_name, o.contact_phone, o.shipping_address, o.needs_attention, o.total_paise, o.shipping_paise, o.delivery_method, o.gift_note,
             (select json_build_object('id', sh.id, 'method', sh.method, 'carrier', sh.carrier_name,
                     'trackingNumber', sh.tracking_number, 'lrNumber', sh.lr_number, 'vehicle', sh.vehicle_number,
                     'trackingUrl', sh.tracking_url, 'driverName', sh.driver_name, 'driverPhone', sh.driver_phone,
@@ -182,7 +182,7 @@ export async function listWarehouseOrders(f = {}, { maxLimit = MAX_PAGE, money =
   return {
     tab,
     // Amounts only for roles allowed to see money (owner, admin).
-    orders: rows.map((r) => ({ ...shapeRow(r), shipment: r.shipment, ...(money ? { total: Number(r.total_paise) / 100 } : {}) })),
+    orders: rows.map((r) => ({ ...shapeRow(r), shipment: r.shipment, ...(money ? { total: Number(r.total_paise) / 100, deliveryCharge: Number(r.shipping_paise || 0) / 100 } : {}) })),
     counts: tabCounts,
     offset,
     tabCount: tabCounts[tab],

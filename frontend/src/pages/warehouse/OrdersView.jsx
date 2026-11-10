@@ -488,7 +488,7 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
             <span className="wh-select">
               <select value={filters.delivery} onChange={set('delivery')}>
                 <option value="">All deliveries</option>
-                <option value="in_house">Our delivery</option>
+                <option value="in_house">Chennai Rice delivery</option>
                 <option value="courier">Courier</option>
               </select>
             </span>
@@ -609,7 +609,9 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
                 <span role="cell" className="wh-td-order">
                   <strong>ORDER #{(page - 1) * pageSize + i + 1}</strong>
                   <span className="wh-mono wh-muted">{o.orderNumber}</span>
-                  {o.deliveryMethod === 'in_house' && <span className="wh-badge wh-badge--own" title="The customer chose delivery by our own team. Dispatch with Own vehicle.">Our delivery</span>}
+                  {o.deliveryMethod === 'in_house'
+                    ? <span className="wh-badge wh-badge--own" title="The customer chose delivery by our own team. Dispatch with Own vehicle.">Chennai Rice delivery</span>
+                    : <span className="wh-badge wh-badge--courier" title="The customer chose courier delivery.">Courier</span>}
                   {o.giftNote && <span className="wh-badge wh-badge--gift" title={'Pack this gift with the order: ' + o.giftNote}>🎁 Gift</span>}
                   {o.needsAttention && <span className="wh-badge wh-badge--flag" title={o.needsAttention}>Flagged</span>}
                 </span>
@@ -632,6 +634,13 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
                 {money && (
                   <span role="cell" className="wh-td-amount">
                     <strong>₹{Number(o.total).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</strong>
+                    {o.deliveryCharge != null && (
+                      <span className="wh-muted wh-small wh-delivery-charge">
+                        {o.deliveryCharge > 0
+                          ? `incl. ${o.deliveryMethod === 'in_house' ? 'our delivery' : 'courier'} ₹${o.deliveryCharge.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
+                          : 'Free delivery'}
+                      </span>
+                    )}
                   </span>
                 )}
                 <span role="cell" className="wh-td-payment">
