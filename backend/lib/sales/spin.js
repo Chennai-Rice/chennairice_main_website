@@ -25,13 +25,13 @@ import { recordWebsiteLead, sendNeodoveLeads } from '../neodove.js'
 // The wheel (Nov 2026 design, /assets/spin-wheel.webp), clockwise from the top: the order must match the picture. kind: amount (₹ off) / percent (% off, up to maxOff ₹) /
 // free_delivery / gift (packed with the order, nothing off). Chances add up to 100.
 export const DEFAULT_PRIZES = [
-  { key: 'p25', label: '₹25 OFF', kind: 'amount', amount: 25, minOrder: 0, region: null, chance: 4 },
-  { key: 'p150', label: '₹150 OFF', kind: 'amount', amount: 150, minOrder: 2000, region: null, chance: 5 },
-  { key: 'p50', label: '₹50 OFF', kind: 'amount', amount: 50, minOrder: 500, region: null, chance: 30 },
+  // The seven slices of the wheel picture, clockwise from the top (Nov 2026: no 5% OFF).
+  { key: 'p25', label: '₹25 OFF', kind: 'amount', amount: 25, minOrder: 0, region: null, chance: 10 },
+  { key: 'p150', label: '₹150 OFF', kind: 'amount', amount: 150, minOrder: 2000, region: null, chance: 9 },
+  { key: 'p50', label: '₹50 OFF', kind: 'amount', amount: 50, minOrder: 500, region: null, chance: 25 },
   { key: 'free', label: 'Free Delivery', kind: 'free_delivery', minOrder: 0, region: 'TN', chance: 15 },
   { key: 'p75', label: '₹75 OFF', kind: 'amount', amount: 75, minOrder: 1000, region: null, chance: 20 },
-  { key: 'pct5', label: '5% OFF', kind: 'percent', percent: 5, maxOff: 150, minOrder: 0, region: null, chance: 15 },
-  { key: 'p100', label: '₹100 OFF', kind: 'amount', amount: 100, minOrder: 1500, region: null, chance: 10 },
+  { key: 'p100', label: '₹100 OFF', kind: 'amount', amount: 100, minOrder: 1500, region: null, chance: 20 },
   { key: 'bag', label: 'Free 5kg Kitchadi Ponni Slogan Bag', kind: 'gift', gift: 'Free 5 kg Kitchidi Ponni Slogan Bag', minOrder: 1000, region: null, chance: 1 },
 ]
 const NAME = /^[\p{L}][\p{L} .'-]{0,79}$/u
@@ -48,7 +48,8 @@ export function spinPrizes(settings = {}) {
 }
 
 // The wheel picture's slices (frontend/src/components/wheelSlices.js): every prize must land on one of them.
-const ON_WHEEL = [/₹\s*25\b/, /₹\s*150\b/, /₹\s*50\b/, /free\s*delivery/i, /₹\s*75\b/, /\b5\s*%/, /₹\s*100\b/, /bag|gift|surprise/i]
+// Seven slices since the Nov 2026 picture: no 5% OFF.
+const ON_WHEEL = [/₹\s*25\b/, /₹\s*150\b/, /₹\s*50\b/, /free\s*delivery/i, /₹\s*75\b/, /₹\s*100\b/, /bag|gift|surprise/i]
 export const onWheel = (p) => p.kind === 'gift' || ON_WHEEL.some((re) => re.test(String(p.label || '')))
 
 function validPrizes(list) {
@@ -252,7 +253,7 @@ export async function saveSpinSettings(db, staff, body = {}) {
     }))
     const notOnWheel = prizes.filter((p) => !onWheel(p)).map((p) => p.label)
     if (notOnWheel.length) {
-      throw httpError(`${notOnWheel.join(', ')}: not on the wheel picture. Use ₹25/₹50/₹75/₹100/₹150 OFF, 5% OFF, Free Delivery or a gift/bag.`)
+      throw httpError(`${notOnWheel.join(', ')}: not on the wheel picture. Use ₹25/₹50/₹75/₹100/₹150 OFF, Free Delivery or a gift/bag.`)
     }
     if (!validPrizes(prizes)) {
       throw httpError('Prizes: 2 to 8, each with a label, a ₹ amount (₹1–₹2,000), a % (1–50), free delivery or a gift name, and chances that add up to 100%.')

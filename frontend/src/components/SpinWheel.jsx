@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { currentAttribution } from '../services/attribution.js'
 import { useCookieConsent } from '../hooks/useCookieConsent.jsx'
 import './spinwheel.css'
+import { sliceOf, landingAngle } from './wheelSlices.js'
 
 /**
  * Spin & Win (backend/lib/sales/spin.js). Opens by itself 5 seconds after the visitor accepts cookies
@@ -51,21 +52,16 @@ function pictureSlice(prize) {
   return i >= 0 ? i : 0
 }
 
-// The wheel is the designed picture (/assets/spin-wheel.webp: eight slices, ₹25 OFF at the top, clockwise as
-// in backend/lib/sales/spin.js DEFAULT_PRIZES). It turns; the pointer on the right stays put.
+// The wheel is the designed picture (Nov 2026, "Seven-Segment Chennai Rice Prize Wheel"): the stage (red, the
+// light ring, the pointer on the right, the stand and gifts) stays put and only the seven slices turn, laid exactly
+// over the wheel in the stage picture (centre 379,359 and radius 279 in its 740 × 900 px).
 function Wheel({ slices, angle, spinning }) {
   return (
-    <div className="spin-wheel-wrap">
-      <div className={'spin-rotor-img' + (spinning ? ' is-spinning' : '')} style={{ transform: `rotate(${angle}deg)` }}>
-        <picture>
-          <source srcSet="/assets/spin-wheel.webp" type="image/webp" />
-          <img src="/assets/spin-wheel.png" alt={'Prize wheel: ' + [...new Set(slices.map((p) => p.label))].join(', ')} width="640" height="640" />
-        </picture>
+    <div className="spin-stage">
+      <img className="spin-stage-bg" src="/assets/spin7-stage.jpg" alt="" width="740" height="900" />
+      <div className={'spin-rotor7' + (spinning ? ' is-spinning' : '')} style={{ transform: `rotate(${angle}deg)` }}>
+        <img src="/assets/spin7-rotor.webp" alt={'Prize wheel: ' + [...new Set(slices.map((p) => p.label))].join(', ')} width="558" height="558" />
       </div>
-      <svg className="spin-pointer spin-pointer--right" viewBox="0 0 48 44" aria-hidden="true">
-        <path d="M2 22 L44 3 L44 41 Z" fill="#e1262d" stroke="#ffd25e" strokeWidth="3" strokeLinejoin="round" />
-        <path d="M10 22 L40 9 L40 22 Z" fill="#ff6b5f" opacity="0.6" />
-      </svg>
     </div>
   )
 }
@@ -168,7 +164,7 @@ export default function SpinWheel() {
       if (!res.ok || !data?.code) throw new Error(data?.error || 'Spin & Win is not available right now. Please try again later.')
       // The slice of the picture with this prize (by what it is, so the order of the saved list never matters).
       const i = pictureSlice(data.prize)
-      const target = ((90 - i * 45) % 360 + 360) % 360
+      const target = landingAngle(i)
       setAngle((a) => a - (a % 360) + 360 * 5 + target)
       const result = {
         code: data.code, gives: data.gives, label: data.prize.label, key: data.prize.key,
@@ -206,7 +202,7 @@ export default function SpinWheel() {
       )}
       {open && (
         <div className="spin-backdrop" onClick={(e) => { if (e.target === e.currentTarget) close() }}>
-          <div className="spin-dialog" role="dialog" aria-modal="true" aria-labelledby="spin-title" ref={dialogRef}>
+          <div className="spin-dialog spin-dialog--v7" role="dialog" aria-modal="true" aria-labelledby="spin-title" ref={dialogRef}>
             <button type="button" className="spin-close" onClick={close} disabled={state === 'spinning'} aria-label="Close">×</button>
             <Wheat />
             <div className="spin-wave" aria-hidden="true" />
@@ -214,10 +210,8 @@ export default function SpinWheel() {
               <Wheel slices={slices} angle={angle} spinning={state === 'spinning'} />
             </div>
             <div className="spin-right">
-              <h2 id="spin-title" className="spin-heading">
-                <span className="spin-heading-top">SPIN TO</span>
-                <span className="spin-heading-win">win</span>
-                <span className="spin-sticker">How much will you save?</span>
+              <h2 id="spin-title" className="spin-heading spin-heading--img">
+                <img src="/assets/spin7-title.webp" alt="Spin to win — how much will you save?" width="660" height="290" />
               </h2>
 
               {state !== 'won' && (

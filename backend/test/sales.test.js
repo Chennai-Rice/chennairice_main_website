@@ -1265,17 +1265,17 @@ test('Spin & Win: off until switched on, one spin per mobile and browser, prize 
     assert.equal(on.body.enabled, true)
     const cfg = (await api('GET', '/api/spin')).body
     assert.equal(cfg.enabled, true)
-    assert.equal(cfg.prizes.length, 8)
+    assert.equal(cfg.prizes.length, 7)
     assert.ok(cfg.prizes.every((p) => p.label && p.chance === undefined)) // chances are never sent to the browser
 
     // The pick follows the chances.
     const { pickPrize, DEFAULT_PRIZES } = await import('../lib/sales/spin.js')
-    // The wheel's eight prizes, clockwise: ₹25 4%, ₹150 5%, ₹50 30%, free delivery 15%, ₹75 20%, 5% off 15%, ₹100 10%, free bag 1%.
+    // The wheel's seven prizes, clockwise: ₹25 10%, ₹150 9%, ₹50 25%, free delivery 15%, ₹75 20%, ₹100 20%, free bag 1%.
     assert.equal(pickPrize(DEFAULT_PRIZES, 0).key, 'p25')
-    assert.equal(pickPrize(DEFAULT_PRIZES, 3.99).key, 'p25')
-    assert.equal(pickPrize(DEFAULT_PRIZES, 4).key, 'p150')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 9.99).key, 'p25')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 10).key, 'p150')
     assert.equal(pickPrize(DEFAULT_PRIZES, 50).key, 'free')
-    assert.equal(pickPrize(DEFAULT_PRIZES, 80).key, 'pct5')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 80).key, 'p100')
     assert.equal(pickPrize(DEFAULT_PRIZES, 99.5).key, 'bag')
 
     assert.equal((await spinApi({ name: 'Kavya', phone: '12345' })).status, 400)
