@@ -12,7 +12,6 @@
 // less the GST inside it), as on the company's invoices.
 import { isSameState } from './util.js'
 import { shippingTax } from './tax.js'
-import { orderOffer } from './offers.js'
 
 // Printed when an invoice was issued before these details were stored with it.
 export const COMPANY = {
@@ -175,8 +174,6 @@ export function invoiceModel({ order, items, invoice, shipments = [], payments =
     lines,
     taxRows,
     discount,
-    // The offer behind the discount (Spin & Win, Refer a friend…) and any free gift, shown on the invoice.
-    offer: orderOffer(order),
     roundOff,
     total,
     bags: lines.reduce((t, l) => t + (l.bags || 0), 0),

@@ -80,7 +80,7 @@ export function invoiceHtml(detail, { forCustomer = false } = {}) {
       <td class="n" style="border-top:1px solid #000">${money(m.taxable)}</td></tr>` : ''
   const taxRows = m.taxRows.map((t) => `<tr><td></td><td class="n it b">${esc(t.label)}</td><td></td><td></td>
       <td class="n it">${t.pct.toFixed(2)}</td><td class="it">%</td><td></td><td class="n b">${money(t.amount)}</td></tr>`).join('')
-  const discountRow = m.discount ? `<tr><td></td><td class="n it b">Less : Discount${m.offer ? ' (' + esc(m.offer.label) + (m.offer.code ? ', ' + esc(m.offer.code) : '') + ')' : ''}</td><td></td><td></td><td></td><td></td><td></td>
+  const discountRow = m.discount ? `<tr><td></td><td class="n it b">Less : Discount</td><td></td><td></td><td></td><td></td><td></td>
       <td class="n b">(-)${money(m.discount)}</td></tr>` : ''
   const roundRow = m.roundOff ? `<tr><td></td><td class="n it b">Rounded Off</td><td></td><td></td><td></td><td></td><td></td>
       <td class="n b">${money(m.roundOff)}</td></tr>` : ''
@@ -143,7 +143,7 @@ export function invoiceHtml(detail, { forCustomer = false } = {}) {
           <td class="n">₹ ${money(m.total)}</td></tr></tbody>
     </table>
     <div style="padding:4px 6px;border-top:1px solid #000"><span class="lbl">Amount Chargeable (in words)</span>
-      <span style="float:right" class="it">E. &amp; O.E</span><br><span class="b">${esc(m.totalWords)}</span>${m.offer ? `<br><span style="font-size:11px">Offer applied: ${esc([m.offer.label, m.offer.code && 'code ' + m.offer.code, m.discount && '₹' + money(m.discount) + ' off'].filter(Boolean).join(' · '))}${m.offer.gift ? '. Free gift: ' + esc(m.offer.gift) + ' (no charge).' : ''}</span>` : ''}</div>
+      <span style="float:right" class="it">E. &amp; O.E</span><br><span class="b">${esc(m.totalWords)}</span></div>
     <table class="inv">${hsnHead}${m.hsnRows.map(hsnRow).join('')}${hsnTotal}</table>
     <div style="padding:4px 6px">Tax Amount (in words) : <span class="b">${esc(m.taxWords)}</span></div>
     <div class="foot">

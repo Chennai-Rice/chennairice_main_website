@@ -195,12 +195,19 @@ export default function AccountsView({ say, onAuthError }) {
             {s.byOffer?.length ? (
               <table className="wh-acc-mini">
                 <thead><tr><th>Offer</th><th>Orders</th><th>Discount given</th></tr></thead>
-                <tbody>{s.byOffer.map((o) => (
-                  <tr key={o.kind}>
-                    <td><button type="button" className="wh-link-btn" onClick={() => { setTab('invoices'); setOffer(o.kind === 'reward' ? 'referral' : o.kind) }}>{o.label}</button>{o.gifts ? <span className="wh-muted wh-small"> · {o.gifts} free gift{o.gifts === 1 ? '' : 's'}</span> : null}</td>
-                    <td>{o.orders}</td><td>{rupees(o.discount)}</td>
-                  </tr>
-                ))}</tbody>
+                {s.byOffer.map((o) => (
+                  <tbody key={o.kind}>
+                    <tr className="wh-acc-offer-head">
+                      <td><button type="button" className="wh-link-btn" onClick={() => { setTab('invoices'); setOffer(o.kind === 'reward' ? 'referral' : o.kind) }}><strong>{o.label}</strong></button>{o.gifts ? <span className="wh-muted wh-small"> · {o.gifts} free gift{o.gifts === 1 ? '' : 's'}</span> : null}</td>
+                      <td><strong>{o.orders}</strong></td><td><strong>{rupees(o.discount)}</strong></td>
+                    </tr>
+                    {o.items.map((it) => (
+                      <tr key={it.detail} className="wh-acc-offer-item">
+                        <td>&nbsp;&nbsp;↳ {it.detail}</td><td>{it.orders}</td><td>{it.discount ? rupees(it.discount) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                ))}
               </table>
             ) : <p className="wh-empty">No offers used in this period.</p>}
           </section>
@@ -252,8 +259,9 @@ export default function AccountsView({ say, onAuthError }) {
                 <span role="cell"><strong className="wh-mono">{r.invoiceNumber}</strong><br /><span className="wh-muted wh-small">{when(r.issuedAt)}</span></span>
                 <span role="cell">{r.customer}<br /><span className="wh-muted wh-small wh-mono">{r.orderNumber}</span> <span className="wh-muted wh-small">· {r.placeOfSupply}</span><br /><span className="wh-muted wh-small">{r.items}</span></span>
                 <span role="cell"><span className="wh-k">Total</span><strong>{rupees(r.total)}</strong>{r.offer && (
-                  <><br /><span className={'wh-badge wh-badge--offer wh-badge--offer-' + r.offer.kind} title={[r.offer.label, r.offer.code, r.discount ? 'Discount ' + rupees(r.discount) : '', r.offer.gift ? 'Free gift: ' + r.offer.gift : ''].filter(Boolean).join(' · ')}>
-                    {r.offer.label}{r.discount ? ' −' + rupees(r.discount) : ''}</span>
+                  <><br /><span className={'wh-badge wh-badge--offer wh-badge--offer-' + r.offer.kind} title={[r.offer.label, r.offer.detail, r.offer.code, r.discount ? 'Discount ' + rupees(r.discount) : '', r.offer.gift ? 'Free gift: ' + r.offer.gift : ''].filter(Boolean).join(' · ')}>
+                    {r.offer.label}{r.offer.detail ? ' · ' + r.offer.detail : ''}</span>
+                    {r.discount > 0 && <><br /><span className="wh-small">Discount −{rupees(r.discount)}</span></>}
                     {r.offer.code && <><br /><span className="wh-mono wh-small wh-muted">{r.offer.code}</span></>}
                     {r.offer.gift && <><br /><span className="wh-small">🎁 {r.offer.gift}</span></>}</>
                 )}{r.refunded > 0 && <><br /><span className="wh-small wh-acc-bad">Refunded {rupees(r.refunded)}</span></>}</span>
