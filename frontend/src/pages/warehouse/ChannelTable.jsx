@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { staffJson } from '../../services/staffAuth.js'
+import './warehouse.css'
+import './warehouse-pages.css'
 
 // Ad campaigns → All-in-one report (Nov 2026): every channel side by side for the chosen period — sales from the
 // dashboard (revenue, orders, average order value), website visits, and the leads funnel (leads, converted,

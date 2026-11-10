@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import ChannelTable from './ChannelTable.jsx'
 import { staffJson } from '../../services/staffAuth.js'
 import { Confirm, Icon } from './shared.jsx'
 import AnalystOverview from './AnalystOverview.jsx'
@@ -527,7 +528,7 @@ function GoogleAdsPanel({ period }) {
   )
 }
 
-function CampaignsTab({ data, period, onAdd }) {
+function CampaignsTab({ data, period, onAdd, say, onAuthError }) {
   const c = data.campaigns
   // Cost per lead / order and ROAS over the campaigns that have spend entered.
   const totals = c.byCampaign.filter((r) => r.spend > 0).reduce((a, r) => ({ leads: a.leads + r.leads, orders: a.orders + r.orders, revenue: a.revenue + r.revenue }), { leads: 0, orders: 0, revenue: 0 })
@@ -540,6 +541,8 @@ function CampaignsTab({ data, period, onAdd }) {
   ]
   return (
     <>
+      {/* Overall: every channel side by side (the same report as Ad campaigns). */}
+      <ChannelTable rq={`from=${period.from}&to=${period.to}`} range={period} say={say} onAuthError={onAuthError} />
       <div className="an-grid"><MetaAdsPanel period={period} /><GoogleAdsPanel period={period} /></div>
       <h2 className="an-section-title">Spend entered by hand</h2>
       <section className="an-stats">
@@ -877,7 +880,7 @@ export default function AnalystView({ say, onAuthError, name = '' }) {
           : tab === 'ceo' ? <CeoReport ceo={data.ceo} />
             : tab === 'sales' ? <SalesTab data={data} rice={rice} />
               : tab === 'leads' ? <LeadsTab data={data} />
-                : tab === 'campaigns' ? <CampaignsTab data={data} period={period} onAdd={() => setTab('settings')} />
+                : tab === 'campaigns' ? <CampaignsTab data={data} period={period} onAdd={() => setTab('settings')} say={say} onAuthError={onAuthError} />
                   : <DeliveryTab data={data} />}
     </div>
   )
