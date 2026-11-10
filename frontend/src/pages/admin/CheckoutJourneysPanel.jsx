@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { describeSource } from '../warehouse/SourcesReport.jsx'
 import { staffJson } from '../../services/staffAuth.js'
 import StaffGate from './StaffGate.jsx'
 import { downloadCsv } from './AdvisorAnswer.jsx'
@@ -34,6 +35,7 @@ const OUTCOME = {
   checkout: { text: 'Left at checkout', tone: 'muted' },
   cart: { text: 'Left at cart', tone: 'muted' },
 }
+const SOURCE_CHIPS = [['', 'All sources'], ['meta', 'Meta ads'], ['google_ads', 'Google Ads'], ['google_search', 'Google search'], ['whatsapp', 'WhatsApp'], ['direct', 'Direct'], ['other', 'Other']]
 const FILTERS = ['', 'purchased', 'cancelled', 'failed', 'payment', 'details', 'checkout', 'cart']
 const PAGE = 50
 
@@ -110,7 +112,13 @@ function Journey({ j, picked, onPick, onDelete }) {
         <span className="cj-muted">{when(j.updatedAt)}</span>
         {j.paymentAttempts > 1 && <span className="cj-muted">{j.paymentAttempts} payment attempts</span>}
         {j.lastError && j.outcome !== 'purchased' && <span className="cj-note">{j.lastError}</span>}
-        {j.source && <span className="cj-muted">Source: {j.source}</span>}
+        {j.sourceLabel && (
+          <span className="cj-source" title={j.source ? 'Link tag: ' + j.source : ''}>
+            <strong>Source:</strong> {j.sourceLabel}
+            {(j.campaign || j.ad) && describeSource({ source: j.orderSource || '', campaign: j.campaign || '', ad: j.ad || '', label: j.sourceLabel })
+              .filter((x) => x !== j.sourceLabel).map((x) => <span key={x} className="cj-source-detail">{x}</span>)}
+          </span>
+        )}
         {FOLLOWUP[j.followup] && j.outcome !== 'purchased' && (
           <span className="cj-note" title={j.followedUpAt ? `Sent ${when(j.followedUpAt)}` : undefined}>{FOLLOWUP[j.followup]}</span>
         )}
@@ -128,6 +136,7 @@ function Journeys({ onAuthError }) {
   const [to, setTo] = useState(todayIst)
   const range = days === 'custom' ? { from, to } : { days }
   const [outcome, setOutcome] = useState('')
+  const [channel, setChannel] = useState('')
   const [draft, setDraft] = useState('')
   const [q, setQ] = useState('')
   const [data, setData] = useState(null)
@@ -145,7 +154,7 @@ function Journeys({ onAuthError }) {
     setLoading(true)
     setError('')
     try {
-      const r = await staffJson('/api/admin/journeys?' + new URLSearchParams({ ...range, outcome, q, limit: PAGE, offset }))
+      const r = await staffJson('/api/admin/journeys?' + new URLSearchParams({ ...range, outcome, channel, q, limit: PAGE, offset }))
       setData(r)
       setRows((prev) => (offset ? [...prev, ...r.journeys] : r.journeys))
     } catch (err) {
@@ -153,7 +162,7 @@ function Journeys({ onAuthError }) {
     } finally {
       setLoading(false)
     }
-  }, [days, from, to, outcome, q, onAuthError])
+  }, [days, from, to, outcome, channel, q, onAuthError])
   useEffect(() => { load(0) }, [load])
 
   const toggle = (id) => setPicked((prev) => {
@@ -187,11 +196,11 @@ function Journeys({ onAuthError }) {
 
   async function csv() {
     try {
-      const r = await staffJson('/api/admin/journeys?' + new URLSearchParams({ ...range, outcome, q, limit: 500 }))
+      const r = await staffJson('/api/admin/journeys?' + new URLSearchParams({ ...range, outcome, channel, q, limit: 500 }))
       downloadCsv(`checkout-journeys-${r.period.from}-to-${r.period.to}`,
-        ['Started', 'Last update', 'Outcome', 'Name', 'Phone', 'Email', 'Place', 'Cart', 'Value (₹)', 'Order', 'Payment attempts', 'Note', 'Source'],
+        ['Started', 'Last update', 'Outcome', 'Name', 'Phone', 'Email', 'Place', 'Cart', 'Value (₹)', 'Order', 'Payment attempts', 'Note', 'Channel', 'Source', 'Campaign', 'Ad', 'Link tag'],
         r.journeys.map((j) => [when(j.startedAt), when(j.updatedAt), (OUTCOME[j.outcome] || {}).text || j.outcome, j.customer?.name || '', j.customer?.phone || '', j.customer?.email || '',
-          j.place || '', (j.items || []).map((i) => `${i.qty} x ${i.name || i.id}`).join('; '), j.value ?? '', j.orderNumber || '', j.paymentAttempts, j.lastError || '', j.source || '']))
+          j.place || '', (j.items || []).map((i) => `${i.qty} x ${i.name || i.id}`).join('; '), j.value ?? '', j.orderNumber || '', j.paymentAttempts, j.lastError || '', (SOURCE_CHIPS.find(([k]) => k === j.channel) || [])[1] || '', j.sourceLabel || '', j.campaign || '', j.ad || '', j.source || '']))
     } catch (err) {
       if (!onAuthError(err)) setError(err.message)
     }
@@ -230,6 +239,13 @@ function Journeys({ onAuthError }) {
             ))}
           </div>
           <input type="search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Search name, phone, city or order…" aria-label="Search journeys" />
+        </div>
+        <div className="cj-chips cj-chips--source" role="group" aria-label="Source">
+          {SOURCE_CHIPS.map(([k, label]) => (
+            <button key={k || 'any'} type="button" className={channel === k ? 'is-on' : ''} aria-pressed={channel === k} onClick={() => setChannel(k)}>
+              {label}{k && data?.channels ? ` (${data.channels[k] || 0})` : ''}
+            </button>
+          ))}
         </div>
         {data && (
           <p className="cj-count">

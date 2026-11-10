@@ -130,6 +130,29 @@ function period(q) {
 const EFFECTIVE = `case when o.payment_status in ('paid', 'partially_refunded') then 'purchased' else j.stage end`
 
 /** Funnel and the journeys for a period (IST dates), with filters and search. */
+// Where a journey came from, as a channel (the same channels as Ad campaigns): the order's classified source
+// when there is an order, otherwise the journey's own link tag (utm_source: ig, fb, google, whatsapp…).
+const CHANNEL_SQL = `(case
+  when coalesce(o.traffic_source, '') <> '' then (case
+    when o.traffic_source like 'meta_ads%' or (o.traffic_source in ('facebook', 'instagram') and coalesce(o.traffic_campaign, '') ~ '^[0-9]{12,}$') then 'meta'
+    when o.traffic_source = 'google_ads' then 'google_ads'
+    when o.traffic_source = 'google_search' then 'google_search'
+    when o.traffic_source = 'whatsapp' then 'whatsapp'
+    when o.traffic_source = 'direct' then 'direct'
+    else 'other' end)
+  when lower(coalesce(j.traffic_source, '')) in ('', 'direct', '(direct)') then 'direct'
+  when lower(j.traffic_source) ~ '^(meta|fb|facebook|ig|instagram|an|msg)' then 'meta'
+  when lower(j.traffic_source) ~ '(google_ads|adwords|gads)' then 'google_ads'
+  when lower(j.traffic_source) ~ '^google' then 'google_search'
+  when lower(j.traffic_source) ~ '^(whatsapp|wa)' then 'whatsapp'
+  else 'other' end)`
+const CHANNELS = ['meta', 'google_ads', 'google_search', 'whatsapp', 'direct', 'other']
+const RAW_LABEL = { ig: 'Instagram', instagram: 'Instagram', fb: 'Facebook', facebook: 'Facebook', an: 'Audience Network', msg: 'Messenger', google: 'Google', whatsapp: 'WhatsApp', wa: 'WhatsApp' }
+const ORDER_LABEL = {
+  meta_ads_facebook: 'Meta ad · Facebook', meta_ads_instagram: 'Meta ad · Instagram', meta_ads: 'Meta ad', google_ads: 'Google Ads',
+  google_search: 'Google search', whatsapp: 'WhatsApp', facebook: 'Facebook', instagram: 'Instagram', other_website: 'Other website', direct: 'Direct',
+}
+
 export async function listJourneys(q = {}) {
   const { from, to } = period(q)
   const params = [from, to]
@@ -144,12 +167,21 @@ export async function listJourneys(q = {}) {
     params.push('%' + search + '%')
     where.push(`(j.contact_name ilike $${params.length} or j.contact_phone ilike $${params.length} or j.order_number ilike $${params.length} or j.city ilike $${params.length})`)
   }
+  // Source filter: one channel. The chip counts below ignore it, so each chip shows how many it would list.
+  const baseWhere = [...where]
+  const baseParams = [...params]
+  const channel = CHANNELS.includes(str(q.channel)) ? str(q.channel) : ''
+  if (channel) {
+    params.push(channel)
+    where.push(`${CHANNEL_SQL} = $${params.length}`)
+  }
   const limit = Math.min(Math.max(Number(q.limit) || 50, 1), 500)
   const offset = Math.max(Number(q.offset) || 0, 0)
 
-  const [{ rows }, { rows: [f] }, { rows: [{ n }] }] = await Promise.all([
+  const [{ rows }, { rows: [f] }, { rows: [{ n }] }, { rows: byChannel }] = await Promise.all([
     query(
-      `select j.*, ${EFFECTIVE} as outcome, o.status as order_status
+      `select j.*, ${EFFECTIVE} as outcome, o.status as order_status, ${CHANNEL_SQL} as channel,
+              o.traffic_source as order_source, o.traffic_campaign as order_campaign, o.traffic_ad as order_ad
          from checkout_journeys j left join orders o on o.id = j.order_id
         where ${where.join(' and ')}
         order by j.updated_at desc limit ${limit} offset ${offset}`, params),
@@ -167,11 +199,14 @@ export async function listJourneys(q = {}) {
          from checkout_journeys j left join orders o on o.id = j.order_id
         where (j.started_at ${IST})::date between $1::date and $2::date`, [from, to]),
     query(`select count(*)::int as n from checkout_journeys j left join orders o on o.id = j.order_id where ${where.join(' and ')}`, params),
+    query(`select ${CHANNEL_SQL} as channel, count(*)::int as n from checkout_journeys j left join orders o on o.id = j.order_id
+            where ${baseWhere.join(' and ')} group by 1`, baseParams),
   ])
   return {
     period: { from, to },
     funnel: { ...f, openValue: Number(f.open_value_paise) / 100 },
     total: n,
+    channels: Object.fromEntries(CHANNELS.map((k) => [k, byChannel.find((c) => c.channel === k)?.n || 0])),
     journeys: rows.map((r) => ({
       id: r.id,
       outcome: r.outcome,
@@ -188,6 +223,12 @@ export async function listJourneys(q = {}) {
       paymentAttempts: r.payment_attempts,
       lastError: r.last_error,
       source: r.traffic_source,
+      // Source in plain words: channel, where (Instagram / Facebook…), campaign and ad (from the order when paid).
+      channel: r.channel,
+      sourceLabel: r.order_source ? (ORDER_LABEL[r.order_source] || r.order_source) : (r.traffic_source ? (RAW_LABEL[String(r.traffic_source).toLowerCase()] || r.traffic_source) : 'Direct'),
+      orderSource: r.order_source || null,
+      campaign: r.order_campaign || null,
+      ad: r.order_ad || null,
       followup: r.followup,
       followedUpAt: r.followed_up_at,
     })),

@@ -79,3 +79,7 @@
 .cj-dates { display: inline-flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .cj-dates label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #4a3b32; }
 .cj-dates input { font: inherit; font-size: 14px; padding: 7px 10px; border: 1px solid #e6d9c8; border-radius: 10px; background: #fff; }
+.cj-chips--source { margin-top: 10px; }
+.cj-chips--source button { font-size: 13px; }
+.cj-source { display: block; font-size: 13px; color: #4a3b32; margin-top: 2px; max-width: 360px; }
+.cj-source-detail { display: block; color: #7c6b5e; font-size: 12px; }

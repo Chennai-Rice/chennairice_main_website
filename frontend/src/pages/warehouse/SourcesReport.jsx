@@ -116,6 +116,13 @@ function rowDetail(r) {
   return [r.label.replace(' (not an ad)', ''), known.adSet, viaAd, ad].filter(Boolean).join(' · ')
 }
 const GROUP_LABEL = { test: 'Test or broken links (not real ads)' }
+/** A paid order's source in words, for other pages (Checkout journeys): [campaign name, where · ad set · ad]. */
+export function describeSource({ source, campaign = '', ad = '', label = '' }) {
+  const r = { source, campaign, ad, label: label || source || '' }
+  const name = campaignName(r)
+  const detail = rowDetail(r)
+  return [name, detail].filter((x, i, a) => x && a.indexOf(x) === i)
+}
 
 function CopyLine({ label, text }) {
   const [done, setDone] = useState(false)
