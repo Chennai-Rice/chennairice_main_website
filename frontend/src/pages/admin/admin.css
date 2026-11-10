@@ -1054,3 +1054,8 @@
 /* The embedded staff sections (Analyst, Ad campaigns, Enquiries) sit flush. */
 .ad-main .wh-embed .an-page { gap: 16px; }
 .ad-shell .ad-page-title, .ad-shell .ad-card-title { color: var(--ad-ink); }
+
+/* Reports → Custom dates (Nov 2026). */
+.ad-report-dates { display: inline-flex; flex-wrap: wrap; gap: 12px; margin: 0 0 10px; }
+.ad-report-dates label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ad-ink, #2b1d17); }
+.ad-report-dates .ad-input { width: auto; padding: 6px 10px; }

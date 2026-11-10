@@ -82,7 +82,7 @@ export const REPORTS = {
     note: 'People who registered in the pop-up shown to ad visitors: where they came from, the campaign and ad, OTP verified.',
     period: true,
     async build(q) {
-      const leads = (await contestLeads({ query }, { days: span(q).days })).filter((l) => !['expo', 'whatsapp_chat'].includes(l.source))
+      const leads = (await contestLeads({ query }, { from: span(q).from, to: span(q).to })).filter((l) => !['expo', 'whatsapp_chat'].includes(l.source))
       return {
         header: ['Signed up', 'Name', 'Mobile', 'Mobile verified (OTP)', 'Email', 'Came from', 'Campaign', 'Ad', 'Page', 'Times signed up'],
         lines: leads.map((l) => [when(l.updated_at), l.name, l.phone, l.phone_verified ? 'Yes' : 'No', l.email, l.sourceLabel, l.campaign, l.ad, l.landing, l.submissions]),
@@ -94,7 +94,10 @@ export const REPORTS = {
     note: 'Leads from the expo QR form: customer type, requirement, location.',
     period: true,
     async build(q) {
-      const leads = await listExpoLeads({ query }, { days: span(q).days })
+      // The expo list counts back from today: ask for enough days, then keep the chosen dates.
+      const p = span(q)
+      const back = Math.min(3660, Math.max(1, Math.round((Date.now() + 330 * 60000 - Date.parse(p.from)) / 864e5) + 1))
+      const leads = (await listExpoLeads({ query }, { days: back })).filter((l) => inPeriod(l.at, p))
       return {
         header: ['Date', 'Name', 'Mobile', 'Email', 'Location', 'Customer type', 'Requirement', 'Expo', 'Times submitted'],
         lines: leads.map((l) => [when(l.at), l.name, l.phone, l.email, l.location, l.buyerType, l.requirement, l.campaign, l.submissions]),

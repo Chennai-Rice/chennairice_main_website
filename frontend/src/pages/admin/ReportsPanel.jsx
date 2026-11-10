@@ -14,6 +14,7 @@ const PERIODS = [
   { id: '7', label: 'Last 7 days' },
   { id: '30', label: 'Last 30 days' },
   { id: '90', label: 'Last 90 days' },
+  { id: 'custom', label: 'Custom' },
   { id: '365', label: 'Last year' },
 ]
 
@@ -34,6 +35,12 @@ function Reports({ onAuthError }) {
   const [reports, setReports] = useState(null)
   const [error, setError] = useState('')
   const [days, setDays] = useState('30')
+  // Custom: From and To (India dates, both included).
+  const today = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
+  const [from, setFrom] = useState(new Date(Date.now() + 330 * 60000 - 6 * 864e5).toISOString().slice(0, 10))
+  const [to, setTo] = useState(today)
+  const periodQs = days === 'custom' ? `from=${from}&to=${to}` : `days=${days}`
+  const periodLabel = days === 'custom' ? (from === to ? from : `${from} to ${to}`) : PERIODS.find((p) => p.id === days)?.label
   const [busy, setBusy] = useState('')
 
   const load = useCallback(() => {
@@ -47,7 +54,7 @@ function Reports({ onAuthError }) {
     setBusy(report.id)
     setError('')
     try {
-      const res = await staffFetch(`/api/admin/reports/${report.id}.csv?days=${days}`)
+      const res = await staffFetch(`/api/admin/reports/${report.id}.csv?${periodQs}`)
       const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || `${report.id}.csv`
       const url = URL.createObjectURL(await res.blob())
       const a = document.createElement('a')
@@ -76,6 +83,13 @@ function Reports({ onAuthError }) {
             actions={<Segmented options={PERIODS} value={days} onChange={setDays} ariaLabel="Period" />}
           >
             <p className="ad-muted ad-small">
+              {days === 'custom' && (
+                <span className="ad-report-dates">
+                  <label>From <input type="date" className="ad-input" value={from} max={to} onChange={(e) => setFrom(e.target.value || from)} /></label>
+                  <label>To <input type="date" className="ad-input" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value || to)} /></label>
+                  <br />
+                </span>
+              )}
               The period applies to every report except Customers, which is always the full list. The files include
               personal details: keep them inside the team.
             </p>
@@ -89,7 +103,7 @@ function Reports({ onAuthError }) {
                     {busy === r.id ? 'Preparing…' : 'Download CSV'}
                   </button>
                 }>
-                <p className="ad-muted ad-small">{r.period ? PERIODS.find((p) => p.id === days)?.label : 'Everyone, all time'}</p>
+                <p className="ad-muted ad-small">{r.period ? periodLabel : 'Everyone, all time'}</p>
               </Card>
             ))}
           </div>
