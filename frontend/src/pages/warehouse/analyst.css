@@ -292,3 +292,15 @@
 .an-meta-ad td:first-child { padding-left: 30px; }
 .an-meta-adname { font-weight: 500; }
 .an-meta-foot { margin-top: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+/* Wide tables scroll left and right (ScrollX.jsx, Nov 2026). */
+.sx-bar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin: 10px 0 6px; }
+.sx-hint { font-size: 12px; color: var(--an-muted, #7c6b5e); margin-right: auto; }
+.sx-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--an-line, #e6dccf); background: #fff; font-size: 20px; line-height: 1; cursor: pointer; color: var(--an-ink, #2b1d17); }
+.sx-btn:disabled { opacity: 0.35; cursor: default; }
+.sx-scroll { scrollbar-width: thin; }
+.sx-scroll::-webkit-scrollbar { height: 10px; }
+.sx-scroll::-webkit-scrollbar-thumb { background: #d6c8b6; border-radius: 10px; }
+/* The campaign column stays put while the numbers scroll. */
+.an-meta-table th:first-child, .an-meta-table td:first-child { position: sticky; left: 0; z-index: 1; background: var(--an-panel, #fffdf9); box-shadow: 1px 0 0 var(--an-line, #e6dccf); }
+.an-meta-table thead th:first-child { background: var(--an-soft, #f6f1ea); }

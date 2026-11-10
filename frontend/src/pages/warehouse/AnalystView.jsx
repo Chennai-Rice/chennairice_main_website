@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import ScrollX from './ScrollX.jsx'
 import ChannelTable from './ChannelTable.jsx'
 import { staffJson } from '../../services/staffAuth.js'
 import { Confirm, Icon } from './shared.jsx'
@@ -426,7 +427,7 @@ function MetaAdsPanel({ period }) {
             <Tile label="ROAS" value={d.totals.roas == null ? '—' : `${d.totals.roas}×`} note={`${inr(d.totals.revenue)} revenue ÷ spend`} icon="reports" />
           </section>
           {d.campaigns.length ? (
-            <div className="an-table-wrap">
+            <ScrollX className="an-table-wrap">
               <table className="an-table an-meta-table">
                 <thead><tr>{head.map((h, i) => <th key={h} className={i > 2 ? 'is-num' : ''}>{h}</th>)}</tr></thead>
                 <tbody>
@@ -450,7 +451,7 @@ function MetaAdsPanel({ period }) {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollX>
           ) : <p className="wh-empty">No Meta campaigns ran in this period.</p>}
           <p className="wh-muted wh-small an-meta-foot">
             Updated {new Date(d.fetchedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} · Meta's figures can change for up to 3 days.
