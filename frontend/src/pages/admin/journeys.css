@@ -74,3 +74,8 @@
 .cj-row.is-picked { background: var(--ad-accent-wash); }
 .cj-del { justify-self: start; margin-top: 4px; padding: 3px 12px; border: 1px solid #f0b4ae; border-radius: 999px; background: #fff; color: #b42318; font-size: 12px; cursor: pointer; }
 .cj-del:hover { background: #fdecea; }
+
+/* Checkout journeys → Custom dates (Nov 2026). */
+.cj-dates { display: inline-flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.cj-dates label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #4a3b32; }
+.cj-dates input { font: inherit; font-size: 14px; padding: 7px 10px; border: 1px solid #e6d9c8; border-radius: 10px; background: #fff; }

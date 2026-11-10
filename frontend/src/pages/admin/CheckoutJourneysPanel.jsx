@@ -121,7 +121,12 @@ function Journey({ j, picked, onPick, onDelete }) {
 }
 
 function Journeys({ onAuthError }) {
-  const [days, setDays] = useState(7)
+  const [days, setDays] = useState(7) // 7 | 30 | 90 | 'custom'
+  // Custom: From and To (India dates, both included).
+  const todayIst = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
+  const [from, setFrom] = useState(new Date(Date.now() + 330 * 60000 - 6 * 864e5).toISOString().slice(0, 10))
+  const [to, setTo] = useState(todayIst)
+  const range = days === 'custom' ? { from, to } : { days }
   const [outcome, setOutcome] = useState('')
   const [draft, setDraft] = useState('')
   const [q, setQ] = useState('')
@@ -140,7 +145,7 @@ function Journeys({ onAuthError }) {
     setLoading(true)
     setError('')
     try {
-      const r = await staffJson('/api/admin/journeys?' + new URLSearchParams({ days, outcome, q, limit: PAGE, offset }))
+      const r = await staffJson('/api/admin/journeys?' + new URLSearchParams({ ...range, outcome, q, limit: PAGE, offset }))
       setData(r)
       setRows((prev) => (offset ? [...prev, ...r.journeys] : r.journeys))
     } catch (err) {
@@ -148,7 +153,7 @@ function Journeys({ onAuthError }) {
     } finally {
       setLoading(false)
     }
-  }, [days, outcome, q, onAuthError])
+  }, [days, from, to, outcome, q, onAuthError])
   useEffect(() => { load(0) }, [load])
 
   const toggle = (id) => setPicked((prev) => {
@@ -182,7 +187,7 @@ function Journeys({ onAuthError }) {
 
   async function csv() {
     try {
-      const r = await staffJson('/api/admin/journeys?' + new URLSearchParams({ days, outcome, q, limit: 500 }))
+      const r = await staffJson('/api/admin/journeys?' + new URLSearchParams({ ...range, outcome, q, limit: 500 }))
       downloadCsv(`checkout-journeys-${r.period.from}-to-${r.period.to}`,
         ['Started', 'Last update', 'Outcome', 'Name', 'Phone', 'Email', 'Place', 'Cart', 'Value (₹)', 'Order', 'Payment attempts', 'Note', 'Source'],
         r.journeys.map((j) => [when(j.startedAt), when(j.updatedAt), (OUTCOME[j.outcome] || {}).text || j.outcome, j.customer?.name || '', j.customer?.phone || '', j.customer?.email || '',
@@ -197,7 +202,14 @@ function Journeys({ onAuthError }) {
       <div className="cj-toolbar">
         <div className="cj-seg" role="group" aria-label="Period">
           {[7, 30, 90].map((d) => <button key={d} type="button" className={days === d ? 'is-on' : ''} onClick={() => setDays(d)}>Last {d} days</button>)}
+          <button type="button" className={days === 'custom' ? 'is-on' : ''} onClick={() => setDays('custom')}>Custom</button>
         </div>
+        {days === 'custom' && (
+          <div className="cj-dates">
+            <label>From <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value || from)} /></label>
+            <label>To <input type="date" value={to} min={from} max={todayIst} onChange={(e) => setTo(e.target.value || to)} /></label>
+          </div>
+        )}
         <div className="cj-actions">
           {picked.size > 0 && (
             <button type="button" className="cj-btn cj-btn--danger" onClick={() => remove([...picked])}>Delete selected ({picked.size})</button>
