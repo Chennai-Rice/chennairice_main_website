@@ -347,16 +347,27 @@ export async function saveContestLead(db, body) {
   return { ok: true }
 }
 
-/** Sign-ups in the last `days` days, newest first. */
+/**
+ * New leads in the period, newest first: the same three kinds the Analyst dashboard's "New leads" counts, so both
+ * show the same total (Nov 2026): contest sign-ups (by the day they first signed up), expo QR leads, and people who
+ * messaged the business WhatsApp number for the first time.
+ */
 export async function contestLeads(db, { days, from, to } = {}) {
   const range = reportRange({ days, from, to })
-  // By the day they first signed up (a second sign-up later does not make them a new one).
   const { rows } = await db.query(
-    `select name, phone, email, source, campaign, ad, landing, submissions, phone_verified, created_at, updated_at
-       from contest_leads
-      where ${inRange('created_at', 1, 2)}
-      order by created_at desc limit 5000`,
+    `select * from (
+       select name, phone, email, source, campaign, ad, landing, submissions, phone_verified, created_at, updated_at, null::text as message
+         from contest_leads where ${inRange('created_at', 1, 2)}
+       union all
+       select name, phone, coalesce(email, ''), 'expo', campaign, null, null, submissions, false, created_at, updated_at, location || ' · ' || array_to_string(requirements, ', ')
+         from expo_leads where ${inRange('created_at', 1, 2)}
+       union all
+       select coalesce(nullif(name, ''), 'WhatsApp contact'), phone, '', 'whatsapp_chat', null, null, null, messages, false,
+              coalesce(first_message_at, created_at), coalesce(last_message_at, updated_at), first_message
+         from whatsapp_contacts where source = 'webhook' and ${inRange('coalesce(first_message_at, created_at)', 1, 2)}
+     ) l order by created_at desc limit 10000`,
     [range.from, range.to]
   )
-  return rows.map((r) => ({ ...r, sourceLabel: SOURCES[r.source] || r.source }))
+  const label = { ...SOURCES, expo: 'Expo QR', whatsapp_chat: 'WhatsApp chat' }
+  return rows.map((r) => ({ ...r, sourceLabel: label[r.source] || r.source }))
 }

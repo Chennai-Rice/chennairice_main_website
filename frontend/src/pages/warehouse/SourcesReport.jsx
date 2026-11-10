@@ -27,7 +27,7 @@ const GOOGLE_SUFFIX = 'utm_source=google&utm_medium=cpc&utm_campaign={campaignid
 
 const TONE = {
   meta_ads_facebook: '#1877f2', meta_ads_instagram: '#d6249f', meta_ads: '#5b6cf0', google_ads: '#34a853',
-  facebook: '#7aa7f5', instagram: '#f08ac8', google_search: '#8bc79a', whatsapp: '#25d366', other_website: '#b49a6a', direct: '#8a7766',
+  facebook: '#7aa7f5', instagram: '#f08ac8', google_search: '#8bc79a', whatsapp: '#25d366', whatsapp_chat: '#128c7e', expo: '#c08a2d', other_website: '#b49a6a', direct: '#8a7766',
 }
 
 // The channel filter: each button stands for these source keys.
@@ -35,7 +35,7 @@ const CHANNELS = [
   { key: '', label: 'All' },
   { key: 'meta', label: 'Meta ads', sources: ['meta_ads_instagram', 'meta_ads_facebook', 'meta_ads'] },
   { key: 'google', label: 'Google', sources: ['google_ads', 'google_search'] },
-  { key: 'whatsapp', label: 'WhatsApp', sources: ['whatsapp'] },
+  { key: 'whatsapp', label: 'WhatsApp', sources: ['whatsapp', 'whatsapp_chat'] },
   { key: 'social', label: 'Instagram / Facebook (not ads)', sources: ['instagram', 'facebook'] },
   { key: 'direct', label: 'Direct', sources: ['direct'] },
   { key: 'other', label: 'Other (websites, Expo QR)', sources: ['other_website', 'expo'] },
@@ -402,12 +402,14 @@ function SourcePeople({ rq, product, channel, say, onAuthError }) {
   )
 }
 
-/** Sign-ups from the contest popup form shown to Meta and Google ad visitors. */
+/** New leads, as the Analyst dashboard counts them: contest sign-ups, new WhatsApp chats and expo QR leads. */
 const LEAD_FILTERS = [
   { key: '', label: 'All' },
   { key: 'meta', label: 'Meta ads', sources: ['meta_ads_instagram', 'meta_ads_facebook', 'meta_ads'] },
   { key: 'google', label: 'Google Ads', sources: ['google_ads'] },
-  { key: 'whatsapp', label: 'WhatsApp', sources: ['whatsapp'] },
+  { key: 'whatsapp', label: 'WhatsApp form', sources: ['whatsapp'] },
+  { key: 'chat', label: 'WhatsApp chats', sources: ['whatsapp_chat'] },
+  { key: 'expo', label: 'Expo QR', sources: ['expo'] },
   { key: 'other', label: 'Other' },
 ]
 const leadFilterOf = (source) => LEAD_FILTERS.find((f) => f.sources?.includes(source))?.key || 'other'
@@ -459,7 +461,7 @@ function ContestLeads({ rq, range, channel = '', say, onAuthError }) {
       const url = URL.createObjectURL(await res.blob())
       const a = document.createElement('a')
       a.href = url
-      a.download = `contest-signups-${range.from}-to-${range.to}.csv`
+      a.download = `new-leads-${range.from}-to-${range.to}.csv`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -473,9 +475,10 @@ function ContestLeads({ rq, range, channel = '', say, onAuthError }) {
     <section className="wh-panel wh-src">
       <header className="wh-src-head">
         <div>
-          <h2 className="wh-panel-title">Contest sign-ups from ads and WhatsApp</h2>
+          <h2 className="wh-panel-title">New leads: contest sign-ups, WhatsApp chats and expo QR</h2>
           <p className="wh-muted wh-small">
-            Name, mobile and email from the Super Slogan Contest form, by the day they signed up
+            The same leads the Analyst dashboard counts as New leads: Super Slogan Contest sign-ups, people who messaged
+            our WhatsApp for the first time, and expo QR leads, by the day they first came
             {leads ? ` · ${inPeriod.length} from ${range.from === range.to ? range.from : `${range.from} to ${range.to}`}` : ''}.
           </p>
         </div>
@@ -486,7 +489,7 @@ function ContestLeads({ rq, range, channel = '', say, onAuthError }) {
         <div className="lead-today-main">
           <span className="wh-muted wh-small">Today</span>
           <strong>{today ? today.length : '…'}</strong>
-          <span className="wh-muted wh-small">sign-up{today?.length === 1 ? '' : 's'}</span>
+          <span className="wh-muted wh-small">new lead{today?.length === 1 ? '' : 's'}</span>
         </div>
         {today && today.length > 0 && (
           <div className="lead-today-split">
@@ -496,7 +499,7 @@ function ContestLeads({ rq, range, channel = '', say, onAuthError }) {
       </div>
 
       <div className="lead-tools">
-        <div className="lead-chips" role="group" aria-label="Filter sign-ups by source">
+        <div className="lead-chips" role="group" aria-label="Filter new leads by type">
           {LEAD_FILTERS.map((f) => (
             <button key={f.key} type="button" className={`lead-chip${kind === f.key ? ' is-active' : ''}`} aria-pressed={kind === f.key} onClick={() => setKind(f.key)}>
               {f.label} <span>{counts[f.key] ?? 0}</span>
@@ -507,16 +510,16 @@ function ContestLeads({ rq, range, channel = '', say, onAuthError }) {
       </div>
 
       {!leads ? <p className="wh-empty">Loading…</p> : !list.length ? (
-        <p className="wh-empty">{inPeriod.length ? 'No sign-ups match this filter.' : 'No sign-ups in this period yet.'}</p>
+        <p className="wh-empty">{inPeriod.length ? 'No leads match this filter.' : 'No new leads in this period yet.'}</p>
       ) : (
         <>
           <ul className="wh-src-orders wh-src-leads">
             {shown.map((l) => (
-              <li key={l.phone}>
+              <li key={l.source + l.phone}>
                 <strong>{l.name}</strong>
                 <a className="wh-mono" href={`tel:+91${l.phone}`}>{l.phone}</a>
-                <a href={`mailto:${l.email}`}>{l.email}</a>
-                <span><i className="wh-src-dot" style={{ background: TONE[l.source] || '#8a7766' }} />{l.sourceLabel}{l.campaign ? ` · ${l.campaign}` : ''}{l.ad ? ` · ${l.ad}` : ''}</span>
+                {l.email ? <a href={`mailto:${l.email}`}>{l.email}</a> : <span className="wh-muted">—</span>}
+                <span><i className="wh-src-dot" style={{ background: TONE[l.source] || '#8a7766' }} />{l.sourceLabel}{l.campaign && l.source !== 'expo' ? ` · ${l.campaign}` : ''}{l.ad ? ` · ${l.ad}` : ''}{l.message ? <span className="wh-muted"> · “{String(l.message).slice(0, 60)}”</span> : null}</span>
                 <span className="wh-muted wh-small">{dayLabel(l.created_at).text}</span>
               </li>
             ))}

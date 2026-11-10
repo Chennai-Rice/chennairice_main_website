@@ -487,8 +487,8 @@ export function createSalesRouter({ verifyIdToken } = {}) {
       if (/^[=+\-@]/.test(t)) t = "'" + t // never a spreadsheet formula
       return '"' + t.replace(/"/g, '""') + '"'
     }
-    const lines = [['Signed up', 'Name', 'Mobile', 'Mobile verified (OTP)', 'Email', 'Came from', 'Campaign', 'Ad', 'Page', 'Times signed up']]
-      .concat(leads.map((l) => [new Date(l.updated_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }), l.name, l.phone, l.phone_verified ? 'Yes' : 'No', l.email, l.sourceLabel, l.campaign, l.ad, l.landing, l.submissions]))
+    const lines = [['Date', 'Name', 'Mobile', 'Mobile verified (OTP)', 'Email', 'Type / came from', 'Campaign', 'Ad', 'Page', 'Message', 'Times']]
+      .concat(leads.map((l) => [new Date(l.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }), l.name, l.phone, l.phone_verified ? 'Yes' : 'No', l.email, l.sourceLabel, l.campaign, l.ad, l.landing, l.message, l.submissions]))
     res.set('Cache-Control', 'no-store')
     res.type('text/csv').attachment('contest-signups.csv').send('\ufeff' + lines.map((r) => r.map(cell).join(',')).join('\r\n'))
   }))

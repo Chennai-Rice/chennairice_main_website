@@ -82,7 +82,7 @@ export const REPORTS = {
     note: 'People who registered in the pop-up shown to ad visitors: where they came from, the campaign and ad, OTP verified.',
     period: true,
     async build(q) {
-      const leads = await contestLeads({ query }, { days: span(q).days })
+      const leads = (await contestLeads({ query }, { days: span(q).days })).filter((l) => !['expo', 'whatsapp_chat'].includes(l.source))
       return {
         header: ['Signed up', 'Name', 'Mobile', 'Mobile verified (OTP)', 'Email', 'Came from', 'Campaign', 'Ad', 'Page', 'Times signed up'],
         lines: leads.map((l) => [when(l.updated_at), l.name, l.phone, l.phone_verified ? 'Yes' : 'No', l.email, l.sourceLabel, l.campaign, l.ad, l.landing, l.submissions]),
