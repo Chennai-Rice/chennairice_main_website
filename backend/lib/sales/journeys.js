@@ -134,7 +134,7 @@ const EFFECTIVE = `case when o.payment_status in ('paid', 'partially_refunded') 
 // when there is an order, otherwise the journey's own link tag (utm_source: ig, fb, google, whatsapp…).
 const CHANNEL_SQL = `(case
   when coalesce(o.traffic_source, '') <> '' then (case
-    when o.traffic_source like 'meta_ads%' or (o.traffic_source in ('facebook', 'instagram') and coalesce(o.traffic_campaign, '') ~ '^[0-9]{12,}$') then 'meta'
+    when o.traffic_source like 'meta_ads%' or (o.traffic_source in ('facebook', 'instagram') and coalesce(o.traffic_campaign, '') <> '') then 'meta'
     when o.traffic_source = 'google_ads' then 'google_ads'
     when o.traffic_source = 'google_search' then 'google_search'
     when o.traffic_source = 'whatsapp' then 'whatsapp'

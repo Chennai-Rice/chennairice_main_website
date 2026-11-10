@@ -90,7 +90,8 @@ const AD_NAMES = {
   '120251725752490156': { campaign: "Post: Chennai Rice Amma taste (boosted)", ad: "Post: \"Chennai Rice Amma taste…\"" },
 }
 const isMetaId = (v) => META_ID.test(v || '') || Boolean(AD_NAMES[v])
-const isUntaggedMetaAd = (r) => ['facebook', 'instagram'].includes(r.source) && (isMetaId(r.campaign) || isMetaId(r.ad))
+// A facebook / instagram link with a campaign (ID or name) is a Meta ad: the same rule as the Meta ads – live panel.
+const isUntaggedMetaAd = (r) => ['facebook', 'instagram'].includes(r.source) && (String(r.campaign || '').trim() !== '' || isMetaId(r.ad))
 // Links whose placeholders were never filled in (<campaign-name>, {{campaign.id}}…).
 const isTestLink = (r) => /\{\{|<(campaign|ad)[-_ ]?(name|id)>/i.test(`${r.campaign}${r.ad}`)
 /** The channel a campaign row belongs to. */

@@ -382,7 +382,8 @@ export const CHANNEL_ORDER = ['meta', 'google_ads', 'google_search', 'whatsapp',
 export const CHANNEL_LABEL = { meta: 'Meta ads', google_ads: 'Google Ads', google_search: 'Google search', whatsapp: 'WhatsApp', direct: 'Direct', other: 'Other' }
 export function channelKey(source, campaign = '') {
   const s = String(source || 'direct')
-  if (s.startsWith('meta_ads') || ((s === 'facebook' || s === 'instagram') && /^\d{12,}$/.test(String(campaign || '')))) return 'meta'
+  // A facebook / instagram link that carries a campaign (its ID or its name) is a Meta ad, as in the Meta ads panel.
+  if (s.startsWith('meta_ads') || ((s === 'facebook' || s === 'instagram') && String(campaign || '').trim() !== '')) return 'meta'
   if (s === 'google_ads') return 'google_ads'
   if (s === 'google_search') return 'google_search'
   if (s === 'whatsapp' || s === 'whatsapp_chat') return 'whatsapp'
