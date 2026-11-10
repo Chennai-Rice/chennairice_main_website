@@ -54,7 +54,7 @@ export const api = onRequest(
     // (Marketing & ads), for Analyst → Campaigns → Google Ads (backend/lib/sales/google-ads.js).
     // CFF_TAP_WEBHOOK_KEY: the Chennai Fresh Foods backend's AskEva key; Diwali contest button taps
     // are handed to it (backend/lib/cff-contest.js).
-    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY', 'AUTOMATION_API_KEY', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'ASKEVA_WEBHOOK_KEY', 'NEODOVE_ENDPOINT', 'NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA', 'NEODOVE_WEBHOOK_KEY', 'META_CAPI_TOKEN', 'SALESDADDY_MCP_TOKEN', 'CFF_TAP_WEBHOOK_KEY'], // add 'META_ADS_TOKEN' once that secret is saved
+    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY', 'AUTOMATION_API_KEY', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'ASKEVA_WEBHOOK_KEY', 'NEODOVE_ENDPOINT', 'NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA', 'NEODOVE_WEBHOOK_KEY', 'META_CAPI_TOKEN', 'SALESDADDY_MCP_TOKEN', 'CFF_TAP_WEBHOOK_KEY', 'META_ADS_TOKEN'],
     // Runs as the backend account that phase1-setup.ps1 allowed into Cloud SQL
     // (Cloud SQL client) and nothing else.
     serviceAccount: 'api-backend@chennai-rice-website.iam.gserviceaccount.com',
