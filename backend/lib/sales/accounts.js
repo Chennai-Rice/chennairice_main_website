@@ -5,11 +5,22 @@
 // Periods are calendar days in India time, from and to inclusive
 // (YYYY-MM-DD); with none given, the current month so far.
 import { httpError, str } from './util.js'
+import { orderOffer, OFFER_KINDS } from './offers.js'
 
 const PAYMENT_METHOD = { upi: 'UPI', card: 'Card', netbanking: 'Net Banking', wallet: 'Wallet', emi: 'EMI', paylater: 'Pay Later' }
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 /** { from, to } as YYYY-MM-DD (India time). */
+// Accounts → Invoices "Offer" filter: spin, referral (a friend's code or the referrer's reward), cart, manual,
+// any (an offer of any kind) or none.
+const OFFER_FILTER = `($4 = ''
+  or ($4 = 'any' and (o.discount_code_id is not null or o.gift_note is not null or o.discount_paise > 0))
+  or ($4 = 'none' and o.discount_code_id is null and o.gift_note is null and coalesce(o.discount_paise, 0) = 0)
+  or ($4 = 'spin' and (dc.source = 'spin' or (dc.source is null and o.gift_note is not null)))
+  or ($4 = 'referral' and dc.source in ('referral', 'reward'))
+  or ($4 in ('cart', 'manual') and dc.source = $4))`
+const offerParam = (params) => (['spin', 'referral', 'cart', 'manual', 'any', 'none'].includes(str(params?.offer)) ? str(params.offer) : '')
+
 export function period(params) {
   const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10)
   const from = str(params?.from) || today.slice(0, 8) + '01'
@@ -25,7 +36,7 @@ const rupees = (paise) => Math.round(Number(paise || 0)) / 100
 
 export async function accountsSummary(db, params) {
   const { from, to } = period(params)
-  const [inv, pays, refunds, pending] = await Promise.all([
+  const [inv, pays, refunds, pending, offers] = await Promise.all([
     db.query(
       `select count(*)::int as invoices, coalesce(sum(total_paise), 0)::bigint as total
          from invoices where ${IN_PERIOD('issued_at')}`,
@@ -49,6 +60,16 @@ export async function accountsSummary(db, params) {
         where o.payment_status in ('paid', 'partially_refunded') and o.status <> 'cancelled'
           and not exists (select 1 from invoices v where v.order_id = o.id)`
     ),
+    // Offers used on the invoices of the period: Spin & Win, Refer a friend, codes.
+    db.query(
+      `select coalesce(dc.source, case when o.gift_note is not null then 'spin' else 'manual' end) as kind,
+              count(*)::int as orders, coalesce(sum(o.discount_paise), 0)::bigint as discount,
+              count(*) filter (where o.gift_note is not null)::int as gifts
+         from invoices v join orders o on o.id = v.order_id left join discount_codes dc on dc.id = o.discount_code_id
+        where ${IN_PERIOD('v.issued_at')} and (o.discount_code_id is not null or o.gift_note is not null or o.discount_paise > 0)
+        group by 1 order by 3 desc`,
+      [from, to]
+    ),
   ])
   const i = inv.rows[0]
   const received = pays.rows.reduce((t, p) => t + Number(p.amount), 0)
@@ -62,6 +83,7 @@ export async function accountsSummary(db, params) {
     openRefunds: refunds.rows[0].open,
     net: rupees(received - Number(refunds.rows[0].amount)),
     paidWithoutInvoice: pending.rows[0].n,
+    byOffer: offers.rows.map((r) => ({ kind: r.kind, label: OFFER_KINDS[r.kind] || 'Discount code', orders: r.orders, discount: rupees(r.discount), gifts: r.gifts })),
     byMethod: pays.rows.map((p) => ({ method: PAYMENT_METHOD[p.method] || p.method, payments: p.payments, amount: rupees(p.amount) })),
   }
 }
@@ -73,19 +95,22 @@ export async function invoiceRegister(db, params) {
   const { rows } = await db.query(
     `select v.invoice_number, v.issued_at, v.place_of_supply, v.total_paise,
             o.id as order_id, o.order_number, o.contact_name, o.contact_phone, o.status, o.payment_status, o.shipping_paise,
+            o.discount_paise, o.discount_code, o.gift_note, dc.source as discount_source,
             p.method, p.gateway, p.gateway_payment_id, p.paid_at, p.settlement_id, p.bank_utr, p.settled_at,
             (select coalesce(sum(r.amount_paise), 0) from refunds r where r.order_id = o.id and r.status in ('processed', 'manual'))::bigint as refunded_paise,
             (select string_agg(i.product_name || ' ' || trim(to_char(i.pack_kg, 'FM999')) || ' kg × ' || i.quantity, ', ')
                from order_items i where i.order_id = o.id) as items
        from invoices v
        join orders o on o.id = v.order_id
+       left join discount_codes dc on dc.id = o.discount_code_id
        left join payments p on p.order_id = o.id and p.status = 'paid'
       where ${IN_PERIOD('v.issued_at')}
+        and ${OFFER_FILTER}
         and ($3 = '' or v.invoice_number ilike '%' || $3 || '%' or o.order_number ilike '%' || $3 || '%'
              or o.contact_name ilike '%' || $3 || '%' or coalesce(p.gateway_payment_id, '') ilike '%' || $3 || '%')
       order by v.issued_at desc
       limit 2000`,
-    [from, to, q]
+    [from, to, q, offerParam(params)]
   )
   return rows.map((r) => ({
     invoiceNumber: r.invoice_number,
@@ -104,6 +129,9 @@ export async function invoiceRegister(db, params) {
     paidAt: r.paid_at,
     orderStatus: r.status,
     paymentStatus: r.payment_status,
+    // The offer behind the discount (Spin & Win, Refer a friend…), its code, the amount off and any free gift.
+    offer: orderOffer(r),
+    discount: rupees(r.discount_paise || 0),
   }))
 }
 
@@ -177,8 +205,8 @@ export async function invoiceRegisterCsv(db, params) {
   }
   const day = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '')
   const head = ['Invoice No', 'Invoice Date', 'Order No', 'Customer', 'Phone', 'State', 'Items',
-    'Invoice Total', 'of which Delivery', 'Refunded', 'Payment Method', 'Razorpay Payment ID', 'UTIB (bank reference)', 'Settlement ID', 'Settled On', 'Order Status']
+    'Invoice Total', 'of which Delivery', 'Offer', 'Offer Code', 'Discount', 'Free Gift', 'Refunded', 'Payment Method', 'Razorpay Payment ID', 'UTIB (bank reference)', 'Settlement ID', 'Settled On', 'Order Status']
   const lines = [head].concat(rows.map((r) => [r.invoiceNumber, day(r.issuedAt), r.orderNumber, r.customer, r.phone, r.placeOfSupply, r.items,
-    r.total.toFixed(2), r.delivery.toFixed(2), r.refunded.toFixed(2), r.method, r.paymentId, r.bankUtr, r.settlementId, day(r.settledAt), r.orderStatus]))
+    r.total.toFixed(2), r.delivery.toFixed(2), r.offer?.label || '', r.offer?.code || '', r.discount ? r.discount.toFixed(2) : '', r.offer?.gift || '', r.refunded.toFixed(2), r.method, r.paymentId, r.bankUtr, r.settlementId, day(r.settledAt), r.orderStatus]))
   return '﻿' + lines.map((l) => l.map(cell).join(',')).join('\r\n')
 }

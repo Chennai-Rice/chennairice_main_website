@@ -108,6 +108,7 @@ export default function AccountsView({ say, onAuthError }) {
   const qs = `from=${range.from}&to=${range.to}`
   const [tab, setTab] = useState('invoices')
   const [q, setQ] = useState('')
+  const [offer, setOffer] = useState('') // '' | spin | referral | cart | manual | any | none
   const [payStatus, setPayStatus] = useState('paid')
   const [summary, setSummary] = useState(null)
   const [rows, setRows] = useState(null)
@@ -124,7 +125,7 @@ export default function AccountsView({ say, onAuthError }) {
   useEffect(() => {
     let live = true
     setRows(null)
-    const path = tab === 'invoices' ? `invoices?${qs}&q=${encodeURIComponent(q)}`
+    const path = tab === 'invoices' ? `invoices?${qs}&q=${encodeURIComponent(q)}&offer=${offer}`
       : tab === 'payments' ? `payments?${qs}&status=${payStatus}` : `refunds?${qs}`
     const t = window.setTimeout(() => {
       staffJson('/api/admin/accounts/' + path)
@@ -132,7 +133,7 @@ export default function AccountsView({ say, onAuthError }) {
         .catch(fail)
     }, tab === 'invoices' && q ? 300 : 0)
     return () => { live = false; window.clearTimeout(t) }
-  }, [tab, qs, q, payStatus, fail, tick])
+  }, [tab, qs, q, offer, payStatus, fail, tick])
 
   const s = summary
   return (
@@ -155,7 +156,7 @@ export default function AccountsView({ say, onAuthError }) {
           </>
         )}
         <span className="wh-muted wh-small wh-acc-range">{dayLabel(range.from + 'T06:00:00Z').text} – {dayLabel(range.to + 'T06:00:00Z').text}</span>
-        <button type="button" className="wh-btn wh-btn--outline" onClick={() => download(`/api/admin/accounts/invoices.csv?${qs}`, 'invoice-register.csv', say, onAuthError)}>
+        <button type="button" className="wh-btn wh-btn--outline" onClick={() => download(`/api/admin/accounts/invoices.csv?${qs}&offer=${offer}`, 'invoice-register.csv', say, onAuthError)}>
           <Icon name="download" size={18} /> Invoice register (CSV)
         </button>
       </div>
@@ -188,6 +189,21 @@ export default function AccountsView({ say, onAuthError }) {
               <p className="wh-small wh-acc-note">{s.paidWithoutInvoice} paid {s.paidWithoutInvoice === 1 ? 'order has' : 'orders have'} no invoice number yet — it is issued when the order is confirmed.</p>
             )}
           </section>
+          <section className="wh-panel">
+            <h2 className="wh-panel-title">Offers used</h2>
+            <p className="wh-muted wh-small">Spin &amp; Win, Refer a friend and discount codes on the invoices of this period.</p>
+            {s.byOffer?.length ? (
+              <table className="wh-acc-mini">
+                <thead><tr><th>Offer</th><th>Orders</th><th>Discount given</th></tr></thead>
+                <tbody>{s.byOffer.map((o) => (
+                  <tr key={o.kind}>
+                    <td><button type="button" className="wh-link-btn" onClick={() => { setTab('invoices'); setOffer(o.kind === 'reward' ? 'referral' : o.kind) }}>{o.label}</button>{o.gifts ? <span className="wh-muted wh-small"> · {o.gifts} free gift{o.gifts === 1 ? '' : 's'}</span> : null}</td>
+                    <td>{o.orders}</td><td>{rupees(o.discount)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            ) : <p className="wh-empty">No offers used in this period.</p>}
+          </section>
         </div>
       )}
 
@@ -204,6 +220,18 @@ export default function AccountsView({ say, onAuthError }) {
               <span className="visually-hidden">Search invoices</span>
               <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Invoice no, order no, customer or pay_…" />
             </label>
+          )}
+          {tab === 'invoices' && (
+            <label className="wh-filter"><span>Offer</span>
+              <span className="wh-select"><select value={offer} onChange={(e) => setOffer(e.target.value)}>
+                <option value="">All invoices</option>
+                <option value="spin">Spin &amp; Win</option>
+                <option value="referral">Refer a friend</option>
+                <option value="cart">Cart reminder</option>
+                <option value="manual">Other discount codes</option>
+                <option value="any">Any offer</option>
+                <option value="none">No offer</option>
+              </select></span></label>
           )}
           {tab === 'payments' && (
             <label className="wh-filter"><span>Status</span>
@@ -223,7 +251,12 @@ export default function AccountsView({ say, onAuthError }) {
               <div key={r.invoiceNumber} className="wh-acc-tr" role="row">
                 <span role="cell"><strong className="wh-mono">{r.invoiceNumber}</strong><br /><span className="wh-muted wh-small">{when(r.issuedAt)}</span></span>
                 <span role="cell">{r.customer}<br /><span className="wh-muted wh-small wh-mono">{r.orderNumber}</span> <span className="wh-muted wh-small">· {r.placeOfSupply}</span><br /><span className="wh-muted wh-small">{r.items}</span></span>
-                <span role="cell"><span className="wh-k">Total</span><strong>{rupees(r.total)}</strong>{r.refunded > 0 && <><br /><span className="wh-small wh-acc-bad">Refunded {rupees(r.refunded)}</span></>}</span>
+                <span role="cell"><span className="wh-k">Total</span><strong>{rupees(r.total)}</strong>{r.offer && (
+                  <><br /><span className={'wh-badge wh-badge--offer wh-badge--offer-' + r.offer.kind} title={[r.offer.label, r.offer.code, r.discount ? 'Discount ' + rupees(r.discount) : '', r.offer.gift ? 'Free gift: ' + r.offer.gift : ''].filter(Boolean).join(' · ')}>
+                    {r.offer.label}{r.discount ? ' −' + rupees(r.discount) : ''}</span>
+                    {r.offer.code && <><br /><span className="wh-mono wh-small wh-muted">{r.offer.code}</span></>}
+                    {r.offer.gift && <><br /><span className="wh-small">🎁 {r.offer.gift}</span></>}</>
+                )}{r.refunded > 0 && <><br /><span className="wh-small wh-acc-bad">Refunded {rupees(r.refunded)}</span></>}</span>
                 <span role="cell"><span className="wh-k">Payment</span>{r.method || '—'}<br /><span className="wh-mono wh-small">{r.paymentId || '—'}</span>{r.bankUtr ? <><br /><span className="wh-mono wh-small" title="The bank's reference of the Razorpay payout — what the bank statement shows">UTIB {r.bankUtr}</span></> : null}</span>
                 <span role="cell" className="wh-acc-actions">
                   <button type="button" className="wh-btn wh-btn--outline" onClick={() => viewInvoice(r.orderId, say, onAuthError)}><Icon name="eye" size={16} /> View</button>

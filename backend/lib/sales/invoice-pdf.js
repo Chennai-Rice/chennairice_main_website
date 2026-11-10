@@ -140,7 +140,7 @@ export function invoicePdf(detail) {
     y += 11
   }
   for (const t of m.taxRows) sideRow(t.label, t.pct, money(t.amount))
-  if (m.discount) sideRow('Less : Discount', null, '(-)' + money(m.discount))
+  if (m.discount) sideRow(m.offer ? `Less : Discount (${m.offer.label}${m.offer.code ? ', ' + m.offer.code : ''})` : 'Less : Discount', null, '(-)' + money(m.discount))
   if (m.roundOff) sideRow('Rounded Off', null, money(m.roundOff))
   y = Math.max(y + 6, tableTop + 230)
   const totalTop = y
@@ -158,6 +158,11 @@ export function invoicePdf(detail) {
   font(false, 6.5).text('Amount Chargeable (in words)', L + pad, y + 3)
   font(false, 7, true).text('E. & O.E', L, y + 3, { width: W - pad, align: 'right' })
   font(true, 8).text(m.totalWords, L + pad, y + 12, { width: W - pad * 2 })
+  // The offer used on this order (Spin & Win, Refer a friend…) and any free gift.
+  if (m.offer) {
+    const parts = [m.offer.label, m.offer.code && 'code ' + m.offer.code, m.discount && 'Rs. ' + money(m.discount) + ' off'].filter(Boolean)
+    font(false, 7).text('Offer applied: ' + parts.join(' - ') + (m.offer.gift ? '.  Free gift: ' + m.offer.gift + ' (no charge).' : ''), L + pad, doc.y + 3, { width: W - pad * 2 })
+  }
   y = doc.y + 4
   box(L, itemsBottom, W, y - itemsBottom)
 

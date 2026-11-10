@@ -89,7 +89,9 @@ export async function listOrders({ status, q, attention, limit = 50, offset = 0 
 
 export async function getOrderDetail(id, db = { query }) {
   assertId(id)
-  const { rows: [order] } = await db.query('select * from orders where id = $1', [id])
+  // With the offer's kind (Spin & Win, Refer a friend…), for the invoice and the order page.
+  const { rows: [order] } = await db.query(
+    'select o.*, dc.source as discount_source from orders o left join discount_codes dc on dc.id = o.discount_code_id where o.id = $1', [id])
   if (!order) throw httpError('No such order.', { status: 404 })
   const [items, history, notes, payments, refunds, shipments, shipmentItems, invoice] = await Promise.all([
     db.query('select * from order_items where order_id = $1 order by product_name', [id]),

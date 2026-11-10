@@ -486,3 +486,9 @@
   .lead-tools .wh-src-find { width: 100%; }
   .lead-pager { justify-content: center; }
 }
+
+/* Accounts → Invoices: the offer used (Nov 2026). */
+.wh-badge--offer { display: inline-block; margin-top: 4px; white-space: nowrap; background: #f3ecff; color: #5b3aa8; border: 1px solid #d9caf5; }
+.wh-badge--offer-spin { background: #fdf3dc; color: #8a5a12; border-color: #e8c766; }
+.wh-badge--offer-referral, .wh-badge--offer-reward { background: #e5f4ea; color: #2f7a4b; border-color: #b7dcc3; }
+.wh-badge--offer-cart { background: #e7f0fb; color: #1f5fa8; border-color: #b9d0ee; }
