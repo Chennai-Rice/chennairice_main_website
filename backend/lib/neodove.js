@@ -47,6 +47,9 @@ export function leadType(campaign, source) {
   return SOURCE_TYPES[source] || 'Website sign-up'
 }
 
+// No lead goes to NeoDove before this (6:30 pm India time, 10 Nov 2026), see sendNeodoveLeads.
+export const NEODOVE_PAUSE_UNTIL = '2026-11-10T18:30:00+05:30'
+
 const MAX_ATTEMPTS = 8
 const BACKOFF = [1, 5, 15, 30, 60, 120, 360, 720] // minutes
 
@@ -325,7 +328,13 @@ async function post(body, url) {
  * Sends queued leads to their NeoDove campaigns (oldest first). With `id`, just that one. A campaign
  * without an endpoint yet keeps its leads queued. Never throws.
  */
-export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQuery } = {}) {
+export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQuery, now = new Date() } = {}) {
+  // Sending paused until this time (owner, 10 Nov 2026: pause, resume at 6:30 pm today). Leads keep being queued and go out after it.
+  // NEODOVE_PAUSE_UNTIL (an ISO time) overrides it; empty or past means sending as usual.
+  const pausedUntil = new Date(process.env.NEODOVE_PAUSE_UNTIL ?? NEODOVE_PAUSE_UNTIL)
+  if (!Number.isNaN(pausedUntil.getTime()) && now < pausedUntil) {
+    return { sent: 0, failed: 0, skipped: 'paused until ' + pausedUntil.toISOString() }
+  }
   const bad = badAgentEndpoints()
   if (bad.length) {
     console.error('[neodove] sending is paused: the endpoint of', bad.join(', '), 'is not one clean https link')
@@ -424,6 +433,71 @@ export async function backfillLeadTypes({ query = defaultQuery, apply = false, l
     } else {
       out.failed++
       console.error('[neodove] backfill refused:', result.status, String(result.text).slice(0, 120))
+    }
+  }
+  return out
+}
+
+/** What a telecaller's remark says about the call, as one status (the team's own-phone call sheets, Nov 2026). */
+export function callStatus(remark) {
+  const r = String(remark || '').toLowerCase()
+  if (!r.trim()) return 'Called'
+  if (/\brnr\b|busy|voi?c?e ?mail|call ?cut|disconnect|switch(ed)? ?off|not reachable|no answer|not answering|ringing/.test(r)) return 'Not connected'
+  if (/placed (the |an |his |her )?order|ordered/.test(r)) return 'Ordered'
+  if (/already (purchased|bought)|bought in|purchased in/.test(r)) return 'Already bought'
+  if (/not interested|no need|price is high|don'?t need|wrong number/.test(r)) return 'Not interested'
+  if (/interested|\bneed\b.*\b(rice|bag|kg|pink|ponni|idly|price)|\d+ ?kg|send (the )?link|will (order|place|purchase|buy)|place order|order (pink|in|online)/.test(r)) return 'Interested'
+  if (/call\s*back|will check|after (diwali|some ?time|\d)|if (he|she) needs|later/.test(r)) return 'Call back'
+  return 'Called'
+}
+
+/**
+ * Leads the team called from their own phones (Nov 2026 call sheets), into NeoDove with what was said. By mobile:
+ * a lead NeoDove already has (we sent it, so `neodove_outbox` knows which telecaller) is updated through that
+ * campaign's "update only" link (?update=true) with the remark; any other lead is added, the telecallers taking turns
+ * (round robin, as for new leads). `rows` are { name, mobile, email, leadType, remarks, location, pincode, signedUp }.
+ * With `apply` false nothing is sent: the result says what would happen.
+ */
+export async function importCalledLeads(rows, { query = defaultQuery, apply = false } = {}) {
+  const pool = poolAgents()
+  const out = { rows: rows.length, update: 0, add: 0, skipped: 0, failed: 0, byAgent: {}, problems: [], plan: [] }
+  if (!pool.length) return { ...out, problems: ['No telecaller NeoDove link is set (NEODOVE_ENDPOINT_GAYATHRI / _RAMYA / _LAVANYA).'] }
+  const { rows: [lastRow] } = await query(
+    `select agent from neodove_outbox where agent = any($1::text[]) order by coalesce(sent_at, next_try_at) desc, created_at desc limit 1`, [pool])
+  let last = lastRow?.agent ?? null
+  const next = () => (last = pool[(pool.indexOf(last) + 1) % pool.length])
+  for (const r of rows) {
+    const mobile = crmMobile(r.mobile)
+    if (!/^[6-9]\d{9}$/.test(mobile) || isBlockedMobile(mobile)) { out.skipped++; out.problems.push(`skipped ${r.name || ''} ${r.mobile || ''}`.trim()); continue }
+    const { rows: [had] } = await query(
+      `select agent from neodove_outbox where mobile = $1 and status = 'sent' and agent = any($2::text[]) order by sent_at desc nulls last limit 1`, [mobile, pool])
+    const agent = had?.agent || next()
+    const mode = had ? 'update' : 'add'
+    out[mode]++
+    out.byAgent[agent] = out.byAgent[agent] || { update: 0, add: 0 }
+    out.byAgent[agent][mode]++
+    out.plan.push({ agent: AGENT_NAMES[agent], mobile, name: r.name || '', status: callStatus(r.remarks), remarks: r.remarks || '', mode })
+    if (!apply) continue
+    // An existing lead is changed only through the campaign's own "Endpoint (Update only)" link from NeoDove's
+    // Custom Integration screen (NEODOVE_UPDATE_ENDPOINT_<NAME>); the create link with ?update=true is ignored by NeoDove.
+    const updateLink = String(process.env[`NEODOVE_UPDATE_ENDPOINT_${agent.toUpperCase()}`] || '').trim()
+    if (mode === 'update' && !usable(updateLink)) {
+      out.failed++
+      out.problems.push(`update ${mobile}: NEODOVE_UPDATE_ENDPOINT_${agent.toUpperCase()} (the "Endpoint (Update only)" link) is not set`)
+      continue
+    }
+    const url = mode === 'update' ? updateLink : agentEndpoint(agent)
+    const body = {
+      name: r.name || `Lead ${mobile}`, mobile: Number(mobile), email: r.email || '',
+      'Call status': callStatus(r.remarks), Remarks: r.remarks || '', Called: 'Yes - own phone (before NeoDove)',
+      ...(r.location && { Location: r.location }), ...(r.pincode && { Pincode: String(r.pincode) }),
+      ...(mode === 'add' && { 'Lead type': r.leadType || 'Website sign-up', tags: r.leadType || 'Website sign-up', Telecaller: AGENT_NAMES[agent], ...(r.signedUp && { 'Signed up': r.signedUp }) }),
+    }
+    let result
+    try { result = await post(body, url) } catch (err) { result = { status: 0, text: err.message } }
+    if (result.status < 200 || result.status >= 300) {
+      out.failed++
+      out.problems.push(`${mode} ${mobile} to ${agent}: ${result.status} ${String(result.text).slice(0, 120)}`)
     }
   }
   return out

@@ -40,6 +40,7 @@ export async function startDatabase() {
 
 /** Environment the gateway modules read when they are first imported. */
 export function setTestEnv() {
+  process.env.NEODOVE_PAUSE_UNTIL = '' // tests send to their fake NeoDove whatever the live pause says
   process.env.RAZORPAY_KEY_ID = 'rzp_test_fake'
   process.env.RAZORPAY_KEY_SECRET = RAZORPAY_SECRET
   process.env.RAZORPAY_WEBHOOK_SECRET = WEBHOOK_SECRET
