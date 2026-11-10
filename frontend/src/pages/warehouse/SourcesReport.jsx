@@ -14,6 +14,8 @@ const istToday = () => new Date(Date.now() + 330 * 60000).toISOString().slice(0,
 const daysBack = (n) => new Date(Date.parse(istToday() + 'T00:00:00Z') - (n - 1) * 86400000).toISOString().slice(0, 10)
 const PERIODS = [
   { key: 'today', label: 'Today', range: () => ({ from: istToday(), to: istToday() }) },
+  // This month: from the 1st (India date) to today, the Analyst dashboard's default too, so both pages match.
+  { key: 'month', label: 'This month', range: () => ({ from: istToday().slice(0, 8) + '01', to: istToday() }) },
   { key: '7', label: 'Last 7 days', range: () => ({ from: daysBack(7), to: istToday() }) },
   { key: '30', label: 'Last 30 days', range: () => ({ from: daysBack(30), to: istToday() }) },
   { key: '90', label: 'Last 90 days', range: () => ({ from: daysBack(90), to: istToday() }) },
@@ -139,7 +141,7 @@ function CopyLine({ label, text }) {
 }
 
 export default function SourcesReport({ say, onAuthError }) {
-  const [period, setPeriod] = useState('30')
+  const [period, setPeriod] = useState('month')
   const [custom, setCustom] = useState(() => ({ from: daysBack(30), to: istToday() }))
   const range = period === 'custom' ? custom : PERIODS.find((p) => p.key === period).range()
   const rq = rangeQuery(range)
@@ -486,7 +488,7 @@ function ContestLeads({ rq, range, channel = '', say, onAuthError }) {
     <section className="wh-panel wh-src">
       <header className="wh-src-head">
         <div>
-          <h2 className="wh-panel-title">New leads: contest sign-ups, WhatsApp chats and expo QR</h2>
+          <h2 className="wh-panel-title">New leads: contest sign-ups, WhatsApp chats and expo QR · {range.from === range.to ? range.from : `${range.from} to ${range.to}`}</h2>
           <p className="wh-muted wh-small">
             The same leads the Analyst dashboard counts as New leads: Super Slogan Contest sign-ups, people who messaged
             our WhatsApp for the first time, and expo QR leads, by the day they first came
