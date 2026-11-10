@@ -186,27 +186,25 @@ export function CustomersView({ say, onAuthError, onOpenOrders }) {
       </header>
 
       <div className="wh-cust-filters">
-        <div className="wh-seg" role="group" aria-label="Converted or not">
-          {[['', 'All', counts.all], ['converted', 'Converted', counts.converted], ['not_converted', 'Not converted', counts.notConverted]].map(([key, label, n]) => (
-            <button key={key || 'all'} type="button" className={`wh-seg-btn${status === key ? ' is-active' : ''}`} aria-pressed={status === key} onClick={() => setStatus(key)}>
-              {label}{n != null ? ` (${n})` : ''}
-            </button>
-          ))}
-        </div>
-        <div className="wh-seg" role="group" aria-label="Source">
-          {['', 'Meta', 'WhatsApp', 'Expo QR', 'Google Ads', 'Google search', 'Direct'].map((key) => (
-            <button key={key || 'any'} type="button" className={`wh-seg-btn${source === key ? ' is-active' : ''}`} aria-pressed={source === key} onClick={() => setSource(key)}>
-              {key || 'All sources'}
-            </button>
-          ))}
-        </div>
-        <div className="wh-seg" role="group" aria-label="Date">
-          {DATE_PRESETS.map(([key, label]) => (
-            <button key={key || 'alltime'} type="button" className={`wh-seg-btn${preset === key ? ' is-active' : ''}`} aria-pressed={preset === key} onClick={() => pickPreset(key)}>
-              {label}
-            </button>
-          ))}
-        </div>
+        <label className="wh-filter"><span>Status</span>
+          <span className="wh-select"><select value={status} onChange={(e) => setStatus(e.target.value)}>
+            {[['', 'All', counts.all], ['converted', 'Converted', counts.converted], ['not_converted', 'Not converted', counts.notConverted]].map(([key, label, n]) => (
+              <option key={key || 'all'} value={key}>{label}{n != null ? ` (${n})` : ''}</option>
+            ))}
+          </select></span>
+        </label>
+        <label className="wh-filter"><span>Source</span>
+          <span className="wh-select"><select value={source} onChange={(e) => setSource(e.target.value)}>
+            {['', 'Meta', 'WhatsApp', 'Expo QR', 'Google Ads', 'Google search', 'Direct'].map((key) => (
+              <option key={key || 'any'} value={key}>{key || 'All sources'}</option>
+            ))}
+          </select></span>
+        </label>
+        <label className="wh-filter"><span>Date</span>
+          <span className="wh-select"><select value={preset} onChange={(e) => pickPreset(e.target.value)}>
+            {DATE_PRESETS.map(([key, label]) => <option key={key || 'alltime'} value={key}>{label}</option>)}
+          </select></span>
+        </label>
         {preset === 'custom' && (
           <div className="wh-daterange">
             <label>From <input type="date" value={from} max={to || istDay()} onChange={(e) => setFrom(e.target.value)} /></label>
