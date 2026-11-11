@@ -362,7 +362,7 @@ const GRAIN = {
     </g>
   ),
   husk: <path d="M -6 1.5 Q -1 -3.5 6 -1 Q 1 -1.6 -6 1.5 Z" fill="#c8913c" stroke="#9a6418" strokeWidth="0.4" />,
-  stone: <path d="M -3.4 -0.6 Q -2.4 -3.2 0.6 -3 Q 3.6 -2.4 3.4 0.4 Q 3 3 0 3 Q -3.2 2.8 -3.4 -0.6 Z" transform="scale(0.68)" fill="#6b625c" stroke="#3f3834" strokeWidth="0.55" />,
+  stone: <path d="M -3.4 -0.6 Q -2.4 -3.2 0.6 -3 Q 3.6 -2.4 3.4 0.4 Q 3 3 0 3 Q -3.2 2.8 -3.4 -0.6 Z" transform="scale(0.52)" fill="#6b625c" stroke="#3f3834" strokeWidth="0.55" />,
   straw: <path d="M -7 0.6 L 7 -0.6" stroke="#d8b765" strokeWidth="1.3" strokeLinecap="round" />,
 }
 

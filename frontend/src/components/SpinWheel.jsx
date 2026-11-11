@@ -55,15 +55,82 @@ function pictureSlice(prize) {
 // The wheel is the designed picture (Nov 2026, "Seven-Segment Chennai Rice Prize Wheel"): the stage (red, the
 // light ring, the pointer on the right, the stand and gifts) stays put and only the seven slices turn, laid exactly
 // over the wheel in the stage picture (centre 379,359 and radius 279 in its 740 × 900 px).
-function Wheel({ slices, angle, spinning }) {
+function Wheel({ slices, rotorRef, angleRef }) {
   return (
     <div className="spin-stage">
       <img className="spin-stage-bg" src="/assets/spin7-stage.jpg" alt="" width="740" height="900" />
-      <div className={'spin-rotor7' + (spinning ? ' is-spinning' : '')} style={{ transform: `rotate(${angle}deg)` }}>
+      <div className="spin-rotor7" ref={rotorRef} style={{ transform: `rotate(${angleRef.current}deg)` }}>
         <img src="/assets/spin7-rotor.webp" alt={'Prize wheel: ' + [...new Set(slices.map((p) => p.label))].join(', ')} width="558" height="558" />
       </div>
     </div>
   )
+}
+
+// How the wheel turns. One continuous motion drawn frame by frame (no CSS transition), so its speed never
+// jumps: it speeds up to a steady spin, keeps spinning while the server picks the prize, then slows from that
+// same speed to a gentle stop on the prize. (Two CSS transitions, one while waiting and one to land, gave a
+// visible jerk where the second took over.)
+const SPEED = 0.72 // degrees per millisecond at full spin (two turns a second)
+const SPIN_UP = 600 // ms to reach full spin
+const MIN_TRAVEL = 900 // at least two and a half turns more once the prize is known
+const STOP_MS = 1200 // slowing to a stop when there is no prize (an error)
+const mod360 = (a) => ((a % 360) + 360) % 360
+function reducedMotion() {
+  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { return false }
+}
+
+/**
+ * Starts the wheel turning; returns { land(target, done), cancel() }. land() with the prize's angle (0-360)
+ * stops on it and then calls done; land(null) slows to a stop wherever it is.
+ */
+function startSpin(rotorRef, angleRef) {
+  const reduce = reducedMotion()
+  const from = angleRef.current
+  let raf = 0
+  let t0 = null
+  let pending = null // { target, done }: the prize, waiting for full spin
+  let landing = null // { from, delta, dur, t, done }
+  const set = (a) => {
+    angleRef.current = a
+    if (rotorRef.current) rotorRef.current.style.transform = `rotate(${a}deg)`
+  }
+  // speeding up evenly, then a steady spin
+  const angleAt = (t) => (t < SPIN_UP ? from + (SPEED * t * t) / (2 * SPIN_UP) : from + SPEED * (t - SPIN_UP / 2))
+  function frame(now) {
+    if (t0 == null) t0 = now
+    const t = now - t0
+    if (landing) {
+      // cubic ease-out: starts at the wheel's own speed (delta * 3 / dur) and comes to rest without a bump
+      const s = Math.min(1, (now - landing.t) / landing.dur)
+      set(landing.from + landing.delta * (1 - (1 - s) ** 3))
+      if (s >= 1) { landing.done?.(); return }
+    } else {
+      if (!reduce) set(angleAt(t))
+      if (pending && (reduce || t >= SPIN_UP)) {
+        const a = angleRef.current
+        let delta
+        let dur
+        if (reduce) {
+          delta = pending.target == null ? 0 : mod360(pending.target - a) + 360
+          dur = 600
+        } else if (pending.target == null) {
+          delta = (SPEED * STOP_MS) / 3
+          dur = STOP_MS
+        } else {
+          delta = mod360(pending.target - a)
+          while (delta < MIN_TRAVEL) delta += 360
+          dur = (3 * delta) / SPEED
+        }
+        landing = { from: a, delta, dur, t: now, done: pending.done }
+      }
+    }
+    raf = window.requestAnimationFrame(frame)
+  }
+  raf = window.requestAnimationFrame(frame)
+  return {
+    land(target, done) { pending = { target, done } },
+    cancel() { window.cancelAnimationFrame(raf) },
+  }
 }
 
 function Wheat() {
@@ -99,7 +166,10 @@ export default function SpinWheel() {
   const [form, setForm] = useState({ name: '', phone: '' })
   const [state, setState] = useState('form') // form | spinning | won
   const [error, setError] = useState('')
-  const [angle, setAngle] = useState(0)
+  const rotorRef = useRef(null) // the turning part of the wheel
+  const angleRef = useRef(0) // its angle, kept between spins
+  const spinRef = useRef(null) // the spin in progress (startSpin)
+  useEffect(() => () => spinRef.current?.cancel(), [])
   const [win, setWin] = useState(savedWin)
   const [copied, setCopied] = useState(false)
   const dialogRef = useRef(null)
@@ -153,7 +223,10 @@ export default function SpinWheel() {
     if (name.length < 2) return setError('Please enter your name.')
     if (!/^[6-9]\d{9}$/.test(digits)) return setError('Please enter a valid 10-digit mobile number.')
     setState('spinning')
-    setAngle((a) => a + 720) // spins while the server answers, then lands on the prize
+    // spins while the server answers, then lands on the prize
+    spinRef.current?.cancel()
+    const spin = startSpin(rotorRef, angleRef)
+    spinRef.current = spin
     try {
       const res = await fetch('/api/spin', {
         method: 'POST',
@@ -165,18 +238,26 @@ export default function SpinWheel() {
       // The slice of the picture with this prize (by what it is, so the order of the saved list never matters).
       const i = pictureSlice(data.prize)
       const target = landingAngle(i)
-      setAngle((a) => a - (a % 360) + 360 * 5 + target)
       const result = {
         code: data.code, gives: data.gives, label: data.prize.label, key: data.prize.key,
         expiresAt: data.expiresAt, minOrder: data.minOrder, region: data.region, already: data.already,
       }
-      window.setTimeout(() => {
+      const done = () => {
         store.set('localStorage', WON_KEY, JSON.stringify(result))
         store.set('sessionStorage', CODE_KEY, result.code)
         setWin(result)
         setState('won')
-      }, data.already ? 300 : 4300)
+      }
+      // A first spin shows the prize once the wheel has stopped on it; a number that has already spun
+      // gets its prize straight away.
+      if (data.already) {
+        spin.land(target)
+        window.setTimeout(done, 300)
+      } else {
+        spin.land(target, done)
+      }
     } catch (err) {
+      spin.land(null)
       setState('form')
       setError(err.message)
     }
@@ -192,10 +273,10 @@ export default function SpinWheel() {
     <>
       {!quiet && !open && (
         <button type="button" className={'spin-fab' + (win ? ' has-prize' : '')} onClick={show} aria-label={win ? 'Your Spin & Win prize' : 'Spin & Win'}>
-          {/* The Spin & Win wheel picture (bottom left, like Soru Kutty on the right). */}
+          {/* The Lucky Spin Wheel Contest emblem (bottom left, like Soru Kutty on the right). */}
           <picture>
-            <source srcSet="/assets/spin-contest.webp" type="image/webp" />
-            <img src="/assets/spin-contest.png" alt="" width="104" height="71" className="spin-fab-img" />
+            <source srcSet="/assets/spin-emblem.webp" type="image/webp" />
+            <img src="/assets/spin-emblem.png" alt="" width="104" height="87" className="spin-fab-img" />
           </picture>
           {win && <span className="spin-fab-badge">Your prize</span>}
         </button>
@@ -207,7 +288,7 @@ export default function SpinWheel() {
             <Wheat />
             <div className="spin-wave" aria-hidden="true" />
             <div className="spin-left">
-              <Wheel slices={slices} angle={angle} spinning={state === 'spinning'} />
+              <Wheel slices={slices} rotorRef={rotorRef} angleRef={angleRef} />
             </div>
             <div className="spin-right">
               <h2 id="spin-title" className="spin-heading spin-heading--img">
