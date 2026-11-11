@@ -38,7 +38,7 @@ const WORK = '/assets/infrastructure/machines/working/'
 // The machine(s) at each stage: file, width ÷ height and drawn height (viewBox units).
 // `work` = a working Bühler machine (animated); otherwise the site's illustration.
 const MACHINES = [
-  [{ file: 'raw-paddy-hopper', ratio: 342 / 440, h: 136, motion: true }], // paddy hopper with its bucket elevator (HopperMotion over it)
+  [{ file: 'raw-paddy-hopper-white', ratio: 342 / 440, h: 136, motion: true }], // paddy hopper with its bucket elevator (HopperMotion over it)
   [{ file: 'pre-cleaner', ratio: 572 / 338, h: 96, work: true, name: 'MTRA / MVSF separator' }],
   [{ file: 'destoner', ratio: 434 / 450, h: 140, work: true, name: 'Gravity destoner' }],
   [
@@ -100,7 +100,7 @@ const GAP = 22 // between two machines at one station (the route rises in it)
 // picture (read off the images), with the direction it travels there.
 const DOWN = [0, 1]
 const IO = {
-  'raw-paddy-hopper': { in: [0.42, 0.15], out: [0.95, 0.1], outDir: [1, 0] }, // into the hopper, out of the elevator head
+  'raw-paddy-hopper-white': { in: [0.42, 0.15], out: [0.95, 0.1], outDir: [1, 0] }, // into the hopper, out of the elevator head
   'pre-cleaner': { in: [0.07, 0.03], out: [0.9, 0.98] },
   destoner: { in: [0.22, 0.01], out: [0.86, 0.98] },
   huller: { in: [0.27, 0.03], out: [0.37, 0.99] },

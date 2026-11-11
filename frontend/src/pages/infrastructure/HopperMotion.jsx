@@ -1,5 +1,5 @@
 /*
-  Motion drawn over the raw-paddy hopper image (raw-paddy-hopper.webp, 342 x 440):
+  Motion drawn over the raw-paddy hopper image (raw-paddy-hopper-white.webp, 342 x 440):
   paddy pouring into the hopper. The picture
   itself is untouched; this is an SVG laid exactly over it, in the image's own
   0-100 x 0-128.7 coordinate space (100 wide, height scaled to its ratio).
