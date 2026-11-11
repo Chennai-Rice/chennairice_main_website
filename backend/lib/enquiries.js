@@ -87,6 +87,8 @@ export async function insertEnquiry(table, row) {
   const cols = Object.keys(row)
   const error = await query(`insert into ${table} (${cols.join(', ')}) values (${cols.map((_, i) => '$' + (i + 1)).join(', ')})`, cols.map((c) => row[c]))
     .then(() => null, (e) => e)
+  // Table not created yet (migration 053 not run): not stored, but the visitor is not shown an error.
+  if (error?.code === '42P01') { console.error('[enquiries] table missing, run migration 053'); return false }
   if (error) {
     const err = new Error(`Database insert into ${table} failed: ${error.message}`)
     err.status = 502

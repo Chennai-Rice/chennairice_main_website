@@ -328,6 +328,8 @@ export async function insertInteractions(body) {
 }
 
 function storeError(table, cause) {
+  // Tables not created yet (migration 053 not run): quietly not stored, never an error in the visitor's browser.
+  if (cause?.code === '42P01') { const quiet = new Error('analytics tables missing'); quiet.status = 200; quiet.publicMessage = 'not stored'; quiet.missingTable = true; return quiet }
   const err = new Error(`Database write to ${table} failed: ${cause.message}`)
   err.status = 502
   err.publicMessage = 'Could not save analytics data.'
