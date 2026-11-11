@@ -1064,20 +1064,31 @@ test('delivery charge: by PIN code region, per pack, with its GST on the invoice
   }
 })
 
-test('in-house delivery: a flat ₹200 choice in Tamil Nadu, checked again at order time, shown to the warehouse', async () => {
-  const { rows: [v] } = await db.query(
-    `select v.id, v.price_paise from product_variants v join products p on p.id = v.product_id
-      where p.slug = 'alibaba' and v.pack_kg = 10`)
-  await db.query('update stock_levels set on_hand = on_hand + 10 where variant_id = $1', [v.id])
-  await db.query(`insert into shipping_zones (code, name) values ('TN', 'Tamil Nadu'), ('SOUTH', 'South India')`)
-  await db.query(`update shipping_zones set is_active = false, is_default = false where code not in ('TN', 'SOUTH')`)
-  await db.query(`insert into variant_region_prices (variant_id, region, price_paise, delivery_paise) values
-    ($1, 'TN', $2, 21000), ($1, 'SOUTH', $2, 40900)`, [v.id, v.price_paise])
-  const quote = (pincode, deliveryMethod, qty = 2) =>
-    api('POST', '/api/checkout/quote', { body: { pincode, deliveryMethod, items: [{ id: 'alibaba-10kg', qty }] } })
+test('in-house delivery: a flat ₹200 choice in Tamil Nadu for the big bags, checked again at order time, shown to the warehouse', async () => {
+  // Our team carries only the big bags: the 26 kg pack here; a 5 or 10 kg bag keeps the cart on courier.
+  const pack = async (slug, kg) => (await db.query(
+    `select v.id, v.price_paise, v.mrp_paise from product_variants v join products p on p.id = v.product_id
+      where p.slug = $1 and v.pack_kg = $2`, [slug, kg])).rows[0]
+  const v = await pack('alibaba', 10)
+  const big = await pack('chennai-bullets', 26)
+  const packs = [v, big]
+  const BIG = 'chennai-bullets-26kg'
+  const quote = (pincode, deliveryMethod, qty = 2, items = [{ id: BIG, qty }]) =>
+    api('POST', '/api/checkout/quote', { body: { pincode, deliveryMethod, items } })
   const setting = (key, value) => db.query(
     `insert into company_settings (key, value) values ($1, $2) on conflict (key) do update set value = excluded.value`, [key, value])
   try {
+    // packs without a price in the test data get one for this test (put back afterwards)
+    for (const x of packs) {
+      const { rows: [p] } = await db.query(
+        `update product_variants set price_paise = coalesce(price_paise, pack_kg * 8000), mrp_paise = coalesce(mrp_paise, pack_kg * 9000)
+          where id = $1 returning price_paise`, [x.id])
+      await db.query('update stock_levels set on_hand = on_hand + 10 where variant_id = $1', [x.id])
+      await db.query(`insert into variant_region_prices (variant_id, region, price_paise, delivery_paise) values
+        ($1, 'TN', $2, 21000), ($1, 'SOUTH', $2, 40900)`, [x.id, p.price_paise])
+    }
+    await db.query(`insert into shipping_zones (code, name) values ('TN', 'Tamil Nadu'), ('SOUTH', 'South India')`)
+    await db.query(`update shipping_zones set is_active = false, is_default = false where code not in ('TN', 'SOUTH')`)
     // Tamil Nadu: both choices; in-house is ₹200 for the whole order (the pricing sheet); until the
     // customer chooses, the cheaper one is preselected.
     const tn = await quote('641001')
@@ -1103,6 +1114,22 @@ test('in-house delivery: a flat ₹200 choice in Tamil Nadu, checked again at or
     assert.deepEqual((await quote('641001', 'in_house', 2)).body.deliveryOptions.map((o) => [o.method, o.charge]), [['courier', 420], ['in_house', 250]])
     await db.query(`delete from company_settings where key in ('in_house_delivery_paise', 'in_house_delivery_only_cheaper')`)
 
+    // 5 and 10 kg bags: courier only, in Tamil Nadu too, and also when they share the cart with a 26 kg bag
+    // (5 kg: the price list test below).
+    for (const items of [[{ id: 'alibaba-10kg', qty: 2 }], [{ id: BIG, qty: 1 }, { id: 'alibaba-10kg', qty: 1 }]]) {
+      const small = await quote('641001', 'in_house', 0, items)
+      assert.equal(small.status, 200, JSON.stringify(small.body))
+      assert.deepEqual(small.body.deliveryOptions.map((o) => o.method), ['courier'], JSON.stringify(items))
+      assert.equal(small.body.deliveryMethod, 'courier')
+    }
+    // An order that says in-house for 10 kg bags is refused with the reason, never switched quietly.
+    const smallOrder = await api('POST', '/api/checkout/session', {
+      body: { ...buyer(), deliveryMethod: 'in_house', items: [{ id: 'alibaba-10kg', qty: 2 }] },
+      headers: { 'X-Forwarded-For': '10.9.9.3' },
+    })
+    assert.equal(smallOrder.status, 422, JSON.stringify(smallOrder.body))
+    assert.match(smallOrder.body.error, /only for 25 and 26 kg bags/)
+
     // Kerala: courier only.
     const kerala = await quote('682001', 'in_house', 1)
     assert.deepEqual(kerala.body.deliveryOptions.map((o) => o.method), ['courier'])
@@ -1110,7 +1137,7 @@ test('in-house delivery: a flat ₹200 choice in Tamil Nadu, checked again at or
 
     // An order that says in-house for a PIN outside the area is refused, never switched quietly.
     const tampered = await api('POST', '/api/checkout/session', {
-      body: { ...buyer({ pincode: '682001', city: 'Kochi', state: 'Kerala' }), deliveryMethod: 'in_house', items: [{ id: 'alibaba-10kg', qty: 1 }] },
+      body: { ...buyer({ pincode: '682001', city: 'Kochi', state: 'Kerala' }), deliveryMethod: 'in_house', items: [{ id: BIG, qty: 1 }] },
       headers: { 'X-Forwarded-For': '10.9.9.1' },
     })
     assert.equal(tampered.status, 422, JSON.stringify(tampered.body))
@@ -1122,7 +1149,7 @@ test('in-house delivery: a flat ₹200 choice in Tamil Nadu, checked again at or
     assert.equal(unknown.status, 400, JSON.stringify(unknown.body))
 
     // A real in-house order: ₹200 charged, saved as in_house, shown as such in the warehouse list.
-    const { session, verify } = await buy([{ id: 'alibaba-10kg', qty: 2 }], { ...buyer(), deliveryMethod: 'in_house' })
+    const { session, verify } = await buy([{ id: BIG, qty: 2 }], { ...buyer(), deliveryMethod: 'in_house' })
     assert.equal(verify.status, 200, JSON.stringify(verify.body))
     assert.equal(session.amount, own.body.total)
     assert.equal(session.deliveryMethod, 'in_house')
@@ -1146,7 +1173,10 @@ test('in-house delivery: a flat ₹200 choice in Tamil Nadu, checked again at or
     assert.deepEqual((await quote('600001', 'in_house')).body.deliveryOptions.map((o) => o.method), ['courier'])
   } finally {
     await db.query(`delete from company_settings where key like 'in_house_delivery_%'`)
-    await db.query('delete from variant_region_prices where variant_id = $1', [v.id])
+    await db.query('delete from variant_region_prices where variant_id = any($1)', [packs.map((x) => x.id)])
+    for (const x of packs) {
+      await db.query('update product_variants set price_paise = $2, mrp_paise = $3 where id = $1', [x.id, x.price_paise, x.mrp_paise])
+    }
     await db.query(`delete from shipping_zones where code in ('TN', 'SOUTH')`)
     await db.query(`update shipping_zones set is_active = true, is_default = true where code = 'ALL_INDIA'`)
   }
@@ -1481,15 +1511,20 @@ test('Final price list (Nov 2026): website prices top bag to bottom, in-house a 
   // In-house a bag, summed for the order.
   const { deliveryOptions: opts } = await import('../lib/sales/delivery.js')
   const own = (lines) => opts(99999, '641001', {}, { lines }).find((o) => o.method === 'in_house').paise
-  assert.equal(own([{ inHousePaise: 4900, quantity: 2 }]), 9800)
-  assert.equal(own([{ inHousePaise: 6000, quantity: 1 }, { inHousePaise: 20000, quantity: 1 }]), 26000)
+  assert.equal(own([{ inHousePaise: 4900, quantity: 2, packKg: 26 }]), 9800)
+  assert.equal(own([{ inHousePaise: 6000, quantity: 1, packKg: 25 }, { inHousePaise: 20000, quantity: 1, packKg: 26 }]), 26000)
+  // 5 and 10 kg bags go by courier (Nov 2026), also beside a 26 kg bag.
+  const hasOwn = (lines) => opts(99999, '641001', {}, { lines }).some((o) => o.method === 'in_house')
+  assert.equal(hasOwn([{ inHousePaise: 5000, quantity: 1, packKg: 5 }]), false)
+  assert.equal(hasOwn([{ inHousePaise: 9000, quantity: 1, packKg: 10 }]), false)
+  assert.equal(hasOwn([{ inHousePaise: 11000, quantity: 1, packKg: 26 }, { inHousePaise: 5000, quantity: 1, packKg: 5 }]), false)
 
   // In-house: ₹200 with a 26 kg bag, ₹100 otherwise; the owner can change both.
   const { deliveryOptions } = await import('../lib/sales/delivery.js')
   assert.equal(deliveryOptions(58900, '641001', {}, { largestPackKg: 26 }).find((o) => o.method === 'in_house').paise, 20000)
-  // ₹200 with every pack size, offered even when the courier is cheaper (5 kg: courier ₹54).
-  assert.equal(deliveryOptions(25000, '641001', {}, { largestPackKg: 5 }).find((o) => o.method === 'in_house').paise, 20000)
-  assert.equal(deliveryOptions(5400, '641001', {}, { largestPackKg: 5 }).find((o) => o.method === 'in_house').paise, 20000)
+  // Offered even when the courier is cheaper (a 25 kg bag, courier ₹54); never for a 5 kg bag.
+  assert.equal(deliveryOptions(5400, '641001', {}, { largestPackKg: 25 }).find((o) => o.method === 'in_house').paise, 20000)
+  assert.ok(!deliveryOptions(25000, '641001', {}, { largestPackKg: 5 }).some((o) => o.method === 'in_house'))
   const saved = await api('PATCH', '/api/admin/settings', { token: OWNER, body: {
     in_house_delivery_paise: '15000', in_house_delivery_26kg_paise: '25000', in_house_delivery_pins: '638, 641001 638',
   } })
