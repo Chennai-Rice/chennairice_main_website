@@ -12,6 +12,7 @@
 // Without a token, messages wait in the outbox and go out once one is set.
 import { hasDatabase, query as defaultQuery } from './db.js'
 import { crmMobile } from './crm.js'
+import { sendMessage, templateMessage } from './wa/cloud.js'
 
 const MAX_ATTEMPTS = 8
 // Minutes to wait before each retry.
@@ -73,7 +74,12 @@ async function post(body) {
  * customer's payment or the job.
  */
 export async function sendWhatsAppMessages({ id = null, limit = 20, query = defaultQuery } = {}) {
-  if (!hasDatabase() || !whatsappEnabled()) return { sent: 0, failed: 0, skipped: whatsappEnabled() ? 'no database' : 'no API token' }
+  if (!hasDatabase()) return { sent: 0, failed: 0, skipped: 'no database' }
+  // Which route the order message takes: AskEva (default) or our own Cloud API number, switched in
+  // /whatsapp → Settings once Meta has approved the order_placed template there.
+  const { rows: [via] } = await query(`select value from company_settings where key = 'whatsapp_order_via'`).catch(() => ({ rows: [] }))
+  const cloud = via?.value === 'cloud'
+  if (cloud ? !process.env.WHATSAPP_TOKEN : !whatsappEnabled()) return { sent: 0, failed: 0, skipped: 'no API token' }
   let sent = 0
   let failed = 0
   try {
@@ -87,14 +93,30 @@ export async function sendWhatsAppMessages({ id = null, limit = 20, query = defa
     )
     for (const r of rows) {
       let result
+      let wamid = null
       try {
-        result = await post(templateBody(r.to_phone, templateName(), r.params))
+        if (cloud) {
+          wamid = await sendMessage(templateMessage(r.to_phone, 'order_placed', { params: r.params }))
+          result = { status: 200, data: {} }
+        } else {
+          result = await post(templateBody(r.to_phone, templateName(), r.params))
+        }
       } catch (err) {
-        result = { status: 0, data: { message: err.message } }
+        // Meta's refusals carry their HTTP status (err.meta.status); a network problem has none.
+        result = { status: err.meta?.status || 0, data: { message: err.publicMessage || err.message } }
       }
       if (result.status >= 200 && result.status < 300) {
         sent++
         await query(`update whatsapp_outbox set status = 'sent', sent_at = now(), attempts = attempts + 1, last_error = null where id = $1`, [r.id])
+        // Which route took it (migration 050); kept separate so a missing column can never get a sent message resent.
+        await query(`update whatsapp_outbox set via = $2, wamid = $3 where id = $1`, [r.id, cloud ? 'cloud' : 'askeva', wamid]).catch(() => {})
+        if (wamid) {
+          // In the /whatsapp log too, so delivered / read come back on it.
+          await query(
+            `insert into wa_messages (wamid, direction, phone, kind, template_name, category, body, status, source)
+             values ($1, 'out', $2, 'template', 'order_placed', 'utility', $3, 'sent', 'order_placed') on conflict (wamid) do nothing`,
+            [wamid, r.to_phone.slice(2), `Order #${r.params?.[1] || ''} placed (to ${r.params?.[0] || ''})`]).catch(() => {})
+        }
         continue
       }
       failed++
@@ -108,7 +130,7 @@ export async function sendWhatsAppMessages({ id = null, limit = 20, query = defa
         `update whatsapp_outbox set attempts = $2, last_error = $3, status = $4,
                 next_try_at = now() + make_interval(mins => $5) where id = $1`,
         [r.id, attempts, error, permanent ? 'failed' : 'queued', BACKOFF[Math.min(attempts - 1, BACKOFF.length - 1)]])
-      console.error('[whatsapp] AskEva did not take a message:', error)
+      console.error(cloud ? '[whatsapp] Meta did not take a message:' : '[whatsapp] AskEva did not take a message:', error)
     }
   } catch (err) {
     console.error('[whatsapp]', err.message)

@@ -52,6 +52,10 @@ import { metaAdsReport } from './meta-ads.js'
 import { googleAdsReport } from './google-ads.js'
 import { checkAutomationKey, automationContacts } from './automation.js'
 import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
+import { verifyChallenge, signatureOk, handleWebhook } from '../wa/webhook.js'
+import { listTemplates, saveTemplate, duplicateTemplate, submitTemplate, deleteTemplate, syncTemplates, checkModel } from '../wa/templates.js'
+import { overview as waOverview, settings as waSettings, saveSettings as saveWaSettings, connectWebhook, sendTest as waSendTest, recentMessages } from '../wa/admin.js'
+import { uploadHeaderSample } from '../wa/cloud.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { listDiscountCodes, createDiscountCode, setDiscountCodeActive } from './discounts.js'
@@ -222,6 +226,18 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   router.post('/api/neodove/webhook', rateLimit({ windowMs: 60000, max: 600 }), wrap(async (req, res) => {
     checkNeodoveKey(req)
     res.json(await recordNeodoveWebhook(req.body))
+  }))
+
+  // Meta's WhatsApp Cloud API → us (wa/webhook.js). GET is Meta's one-time check; every POST must carry
+  // Meta's signature (X-Hub-Signature-256, WHATSAPP_APP_SECRET) and always gets a 200 once stored.
+  router.get('/api/whatsapp/webhook', wrap(async (req, res) => {
+    res.type('text/plain').send(verifyChallenge(req.query))
+  }))
+  router.post('/api/whatsapp/webhook', rateLimit({ windowMs: 60000, max: 3000 }), wrap(async (req, res) => {
+    if (!signatureOk(req.rawBody, req.get('x-hub-signature-256'))) {
+      throw httpError('Bad WhatsApp signature', { status: 401, publicMessage: 'Unauthorised.' })
+    }
+    res.json(await handleWebhook(req.body))
   }))
 
   router.get('/api/askeva/webhook', wrap(async (req, res) => {
@@ -755,6 +771,32 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.set('Cache-Control', 'private, no-store')
     res.type('application/pdf').attachment(`Invoice ${detail.invoice.invoice_number.replaceAll('/', '-')}.pdf`).send(await invoicePdf(detail))
   }))
+
+  // ---- /whatsapp: the WhatsApp dashboard (wa/*.js) ----
+  const wa = perm('whatsapp.manage')
+  const noStore = (res) => res.set('Cache-Control', 'no-store')
+  admin.get('/whatsapp/overview', wa, wrap(async (req, res) => { noStore(res); res.json(await waOverview({ period: req.query.period })) }))
+  admin.get('/whatsapp/messages', wa, wrap(async (req, res) => { noStore(res); res.json({ messages: await recentMessages(req.query) }) }))
+  admin.get('/whatsapp/templates', wa, wrap(async (_req, res) => { noStore(res); res.json(await listTemplates()) }))
+  admin.post('/whatsapp/templates/check', wa, wrap(async (req, res) => res.json({ problems: checkModel(req.body || {}) })))
+  admin.post('/whatsapp/templates', wa, wrap(async (req, res) => res.json(await saveTemplate(req.body || {}, req.staff))))
+  admin.post('/whatsapp/templates/sync', wa, wrap(async (_req, res) => res.json(await syncTemplates())))
+  admin.post('/whatsapp/templates/:id/submit', wa, wrap(async (req, res) => res.json(await submitTemplate(req.params.id))))
+  admin.post('/whatsapp/templates/:id/duplicate', wa, wrap(async (req, res) => res.json(await duplicateTemplate(req.params.id, req.staff))))
+  admin.delete('/whatsapp/templates/:id', wa, wrap(async (req, res) => res.json(await deleteTemplate(req.params.id))))
+  // A header picture / video / PDF sample for a template: the file itself as the body (up to 16 MB).
+  admin.post('/whatsapp/templates/upload', wa, express.raw({ type: ['image/*', 'video/*', 'application/pdf'], limit: '16mb' }), wrap(async (req, res) => {
+    const buf = Buffer.isBuffer(req.body) && req.body.length ? req.body : req.rawBody
+    const type = String(req.get('content-type') || '').split(';')[0]
+    if (!buf?.length || !['image/jpeg', 'image/png', 'video/mp4', 'application/pdf'].includes(type)) {
+      throw httpError('Bad file', { publicMessage: 'Use a JPG or PNG picture, an MP4 video or a PDF.' })
+    }
+    res.json({ handle: await uploadHeaderSample(buf, type) })
+  }))
+  admin.post('/whatsapp/test', wa, wrap(async (req, res) => res.json(await waSendTest(req.body || {}, req.staff))))
+  admin.get('/whatsapp/settings', wa, wrap(async (_req, res) => { noStore(res); res.json(await waSettings()) }))
+  admin.put('/whatsapp/settings', wa, wrap(async (req, res) => res.json(await saveWaSettings(req.body || {}))))
+  admin.post('/whatsapp/webhook/connect', wa, wrap(async (_req, res) => res.json(await connectWebhook())))
 
   router.use('/api/admin', admin)
 
