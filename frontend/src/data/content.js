@@ -382,9 +382,8 @@ export const FOOTER = {
       label: 'Chennai Rice Industries on Facebook',
       href: 'https://www.facebook.com/profile.php?id=61593389732476&sk=about',
     },
-    // LinkedIn and YouTube: shown as soon as their page addresses are filled in.
     { key: 'linkedin', label: 'Chennai Rice Industries on LinkedIn', href: 'https://www.linkedin.com/company/chennai-rice-industries/' },
-    { key: 'youtube', label: 'Chennai Rice Industries on YouTube', href: '' },
+    { key: 'youtube', label: 'Chennai Rice Industries on YouTube', href: 'https://www.youtube.com/@Chennairiceindustries' },
   ],
 
   phone: '+91 70666 46667',
