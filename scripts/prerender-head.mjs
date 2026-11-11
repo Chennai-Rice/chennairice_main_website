@@ -147,7 +147,7 @@ for (const [key, page] of Object.entries(LANDING)) {
       about: (page.productIds || []).filter((id) => PRODUCT_SEO[id]).map((id) => ({ '@type': 'Product', name: productName(id), url: abs(productPath(id)) })),
     }, organization)
   }
-  items.push(key === 'taHome' ? breadcrumb() : crumb(key))
+  items.push(crumb(key))
   SCHEMA[key] = items
 }
 
