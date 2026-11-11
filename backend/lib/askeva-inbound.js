@@ -16,6 +16,7 @@
 import { hasDatabase, tx, query as defaultQuery } from './db.js'
 import { crmMobile, queueCrmLead, sendCrmLeads, crmEnabled, isBlockedMobile } from './crm.js'
 import { httpError, safeEqual } from './sales/util.js'
+import { forwardContestTaps, isContestTap, withoutContestTaps } from './cff-contest.js'
 
 export function checkAskevaKey(req) {
   const key = process.env.ASKEVA_WEBHOOK_KEY
@@ -154,15 +155,31 @@ function fromBlockedNumber(payload) {
 
 /** Handles one webhook call. Never throws on content — a bad payload is kept for checking. */
 export async function recordAskevaWebhook(payload) {
+  // Chennai Fresh Foods' Diwali contest button (cff-contest.js): handed to the
+  // CFF backend before anything else, and before the retailer block, so a
+  // blocked retailer's tap still reaches Chennai Fresh Foods. It is taken out
+  // here, so it is never saved here or sent to this site's Sales Daddy.
+  const all = parseMessages(payload)
+  const contest = all.filter((m) => isContestTap(m.text))
+  if (contest.length) {
+    const forwarded = await forwardContestTaps(payload)
+    // Only contest taps in this call: a failure is answered 502, so AskEva sends it again.
+    if (contest.length === all.length) {
+      if (!forwarded) throw httpError('Could not hand the contest tap to Chennai Fresh Foods', { status: 502, publicMessage: 'Try again.' })
+      return { ok: true, messages: 0, contest: contest.length }
+    }
+  }
   if (!hasDatabase()) return { ok: true, stored: false }
-  const parsed = parseMessages(payload)
+  const parsed = all.filter((m) => !isContestTap(m.text))
   // Replies to a trade campaign are dropped before anything is stored (see saveMessage).
   const messages = []
   for (const m of parsed) if (!(await fromCampaign({ query: defaultQuery }, m.phone, m.text))) messages.push(m)
   if (parsed.length && !messages.length) return { ok: true, messages: 0, campaign: true }
   // Only the company's own number in it (crm.js isBlockedMobile): not even the raw call is kept.
   if (!messages.length && fromBlockedNumber(payload)) return { ok: true, messages: 0, blocked: true }
-  const { rows: [ev] } = await defaultQuery('insert into askeva_events (payload) values ($1) returning id', [payload ?? {}])
+  // A contest tap that came with other messages is left out of the stored copy too.
+  const kept = contest.length ? withoutContestTaps(payload) : payload
+  const { rows: [ev] } = await defaultQuery('insert into askeva_events (payload) values ($1) returning id', [kept ?? {}])
   const toSend = []
   try {
     await tx(async (db) => {

@@ -242,6 +242,15 @@ export default function DeliveriesView({ say, onAuthError, initialTab }) {
                   <button type="button" className="wh-btn wh-btn--outline wh-btn--small" onClick={() => setDialog({ kind: 'track', s })}>Track</button>
                   {s.status === 'shipped' && (
                     <>
+                      {s.outForDeliveryAt ? (
+                        <span className="wh-badge wh-badge--pay-paid" title={'Out for delivery since ' + dayLabel(s.outForDeliveryAt).text}>Out for delivery</span>
+                      ) : (
+                        <button type="button" className="wh-btn wh-btn--outline wh-btn--small" disabled={busy}
+                          title="Emails the customer: Arriving today"
+                          onClick={() => act(() => staffJson(`/api/admin/shipments/${s.id}/out-for-delivery`, { method: 'POST', body: '{}' }), `${s.orderNumber}: customer told it arrives today`)}>
+                          Out for delivery
+                        </button>
+                      )}
                       <button type="button" className="wh-btn wh-btn--primary wh-btn--small" disabled={busy} onClick={() => setDialog({ kind: 'deliver', s })}>
                         Delivered
                       </button>

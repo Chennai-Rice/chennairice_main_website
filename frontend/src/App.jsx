@@ -15,6 +15,7 @@ import Navbar from './components/Navbar.jsx'
 import Footer from './components/Footer.jsx'
 import SoruKutty from './components/chatbot/SoruKutty.jsx'
 import CookieBanner from './components/CookieBanner.jsx'
+import SpinWheel from './components/SpinWheel.jsx'
 import ContestPopup from './components/ContestPopup.jsx'
 
 import HomePage from './pages/HomePage.jsx'
@@ -39,6 +40,8 @@ const ContestPage = lazy(() => import('./shop/pages/ContestPage.jsx'))
 const FounderPage = lazy(() => import('./shop/pages/FounderPage.jsx'))
 const CartPage = lazy(() => import('./shop/pages/CartPage.jsx'))
 const CheckoutPage = lazy(() => import('./shop/pages/CheckoutPage.jsx'))
+const ReferPage = lazy(() => import('./shop/pages/ReferPage.jsx'))
+const ReviewPage = lazy(() => import('./shop/pages/ReviewPage.jsx'))
 const WishlistPage = lazy(() => import('./shop/pages/WishlistPage.jsx'))
 const InfrastructurePage = lazy(() => import('./pages/infrastructure/InfrastructurePage.jsx'))
 
@@ -48,6 +51,8 @@ const InfrastructurePage = lazy(() => import('./pages/infrastructure/Infrastruct
 const AdminPage = lazy(() => import('./pages/admin/AdminPage.jsx'))
 // Staff-only order screen for the mill; loaded only when visited.
 const WarehousePage = lazy(() => import('./pages/warehouse/WarehousePage.jsx'))
+// Staff-only offers dashboard (Spin & Win, Refer a friend, discount codes).
+const OffersPage = lazy(() => import('./pages/offers/OffersPage.jsx'))
 const CloudPage = lazy(() => import('./pages/CloudPage.jsx'))
 // Local test only (npm run dev): the journal on a local test database. Not part of any production build.
 const DevJournalPage = import.meta.env.DEV ? lazy(() => import('./pages/DevJournalPage.jsx')) : null
@@ -123,7 +128,7 @@ export default function App() {
      It gets no marketing chrome and, importantly, no visitor tracking:
      whoever is reading the numbers or writing the posts must not appear
      inside them. */
-  const isTool = pathname.startsWith('/admin') || pathname.startsWith('/warehouse') || pathname.startsWith('/cloud') || pathname.startsWith('/dev/')
+  const isTool = pathname.startsWith('/admin') || pathname.startsWith('/warehouse') || pathname.startsWith('/offers') || pathname.startsWith('/cloud') || pathname.startsWith('/dev/')
   const isStorefront = !isTool && !isEmbedded
 
   return (
@@ -144,6 +149,14 @@ export default function App() {
           element={
             <Suspense fallback={null}>
               <AdminPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/offers"
+          element={
+            <Suspense fallback={null}>
+              <OffersPage />
             </Suspense>
           }
         />
@@ -224,6 +237,10 @@ export default function App() {
           />
         ))}
         <Route path="/cart" element={<CartPage />} />
+        {/* Refer a friend: a customer's code and rewards. */}
+        <Route path="/refer" element={<ReferPage />} />
+        <Route path="/review" element={<ReviewPage />} />
+        <Route path="/reviews" element={<ReviewPage />} />
         {/* Checkout is built and working, but stays behind VITE_CHECKOUT_ENABLED
             until payments go live. Gating the route (not just the cart button)
             means typing /checkout directly lands on Coming Soon too. */}
@@ -264,6 +281,8 @@ export default function App() {
       {!isTool && <Footer />}
       {isStorefront && <SoruKutty />}
       {isStorefront && <CookieBanner />}
+      {/* Spin & Win: shows only while switched on in Warehouse → Settings. */}
+      {isStorefront && <SpinWheel />}
       {/* Appears 8 seconds into the visit; once closed, not again for a day. */}
       {isStorefront && <ContestPopup />}
       {/* Only for visitors from the expo QR code: opens 2 seconds into the visit. */}

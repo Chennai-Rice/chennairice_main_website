@@ -65,7 +65,13 @@ function ContestPopupInner() {
   // between pages; it only waits while they are on a quiet page.
   useEffect(() => {
     if (quiet || open || hiddenUntil() > Date.now()) return undefined
-    const t = window.setTimeout(() => setOpen(true), SHOW_DELAY_MS)
+    let t
+    // Never over the Spin & Win wheel: wait until it is closed.
+    const tryOpen = () => {
+      if (document.querySelector('.spin-dialog')) { t = window.setTimeout(tryOpen, 2000); return }
+      setOpen(true)
+    }
+    t = window.setTimeout(tryOpen, SHOW_DELAY_MS)
     return () => window.clearTimeout(t)
   }, [quiet, open])
 

@@ -15,6 +15,10 @@ import { tx, query } from '../db.js'
 import { createSessionWithFailover, getGateway } from '../gateways.js'
 import { priceCart, quoteShipping } from './catalog.js'
 import { deliveryTaxRateBp } from './tax.js'
+import { deliveryOptions, chooseDelivery } from './delivery.js'
+import { quoteDiscount, applyDiscount, cleanCode } from './discounts.js'
+import { ensureReferrer } from './referrals.js'
+import { pushCrmLead } from '../crm.js'
 import { cleanAttribution, classify } from './attribution.js'
 import { moveStock, releaseForOrder } from './stock.js'
 import { queueEmail, templates, trackUrl } from './email.js'
@@ -34,6 +38,8 @@ export function buildGuestCustomer(body) {
     name: f('name'), email: f('email').toLowerCase(), phone: f('phone'),
     addressLine1: f('addressLine1'), addressLine2: f('addressLine2'), city: f('city'),
     state: f('state'), pincode: f('pincode'), landmark: f('landmark'),
+    deliveryMethod: f('deliveryMethod') || 'courier',
+    discountCode: cleanCode(body?.discountCode),
   }
   if (!c.name || c.name.length > 120) return { error: 'Please tell us your name.' }
   if (!c.email || !EMAIL_PATTERN.test(c.email) || c.email.length > 200) return { error: 'A valid email address is required.' }
@@ -52,9 +58,24 @@ export function buildGuestCustomer(body) {
 export async function quoteCart(body) {
   const priced = await priceCart({ query }, body?.items, { shipState: str(body?.state), pincode: str(body?.pincode) })
   // Regional pricing needs the PIN code for the delivery charge; without one, shipping is null.
-  const shipping = priced.regional
+  const courier = priced.regional
     ? priced.deliveryPaise
     : await quoteShipping({ query }, { state: body?.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg })
+  // Courier, and Chennai Rice's own delivery where it covers the PIN code; the charge shown is the chosen one.
+  const settings = await getSettings({ query })
+  const largestPackKg = Math.max(0, ...priced.lines.map((l) => Number(l.packKg)))
+  const options = priced.regional || str(body?.pincode) ? deliveryOptions(courier, str(body?.pincode), settings, { largestPackKg, lines: priced.lines }) : []
+  // The customer's choice; until they choose ('auto' or nothing), the cheaper of the two.
+  const cheapest = options.length ? options.reduce((a, b) => (b.paise < a.paise ? b : a)) : null
+  const chosen = options.find((o) => o.method === str(body?.deliveryMethod)) || cheapest
+  const shipping = chosen ? chosen.paise : courier
+  // A discount code, checked the same way as when the order is placed; one that does not apply is
+  // explained (discountError) and the cart is still priced without it.
+  // Without a code, a referral reward of the customer's (mobile number + email) is used by itself.
+  const d = await quoteDiscount({ query }, body?.discountCode, {
+    phone: body?.phone, email: body?.email, pincode: str(body?.pincode), subtotalPaise: priced.subtotalPaise, shippingPaise: shipping,
+  })
+  const discountPaise = d && !d.error ? d.discountPaise : 0
   return {
     lines: priced.lines.map((l) => ({
       id: l.slug + '-' + l.packKg + 'kg', name: l.name, packKg: l.packKg, qty: l.quantity,
@@ -63,8 +84,12 @@ export async function quoteCart(body) {
     })),
     subtotal: toRupees(priced.subtotalPaise),
     shipping: shipping == null ? null : toRupees(shipping),
+    deliveryMethod: chosen?.method || (shipping == null ? null : 'courier'),
+    deliveryOptions: options.map((o) => ({ method: o.method, charge: toRupees(o.paise), promise: o.promise })),
     region: priced.region,
-    total: toRupees(priced.subtotalPaise + (shipping || 0)),
+    discount: d && !d.error ? { code: d.code.code, amount: toRupees(d.discountPaise), label: d.label, auto: Boolean(d.auto), source: d.code.source, gift: d.gift || null } : null,
+    discountError: d?.error || null,
+    total: toRupees(priced.subtotalPaise + (shipping || 0) - discountPaise),
     taxIncluded: toRupees(priced.taxPaise),
     currency: 'INR',
   }
@@ -80,10 +105,20 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
     if (!loc) throw httpError('No fulfilment location is set up.', { status: 503, publicMessage: 'Ordering is temporarily unavailable.' })
 
     const priced = await priceCart(db, items, { shipState: customer.state, pincode: customer.pincode })
-    const shipping = priced.regional
+    const courier = priced.regional
       ? priced.deliveryPaise
       : await quoteShipping(db, { state: customer.state, subtotalPaise: priced.subtotalPaise, totalKg: priced.totalKg })
-    if (shipping == null) throw httpError('Please add a valid 6-digit PIN code.')
+    if (courier == null) throw httpError('Please add a valid 6-digit PIN code.')
+    // The chosen delivery, checked again here: never a method the PIN code does not get, never another amount.
+    const delivery = chooseDelivery(courier, customer.pincode, customer.deliveryMethod, settings,
+      { largestPackKg: Math.max(0, ...priced.lines.map((l) => Number(l.packKg))), lines: priced.lines })
+    const shipping = delivery.paise
+    // The discount code, checked again inside this transaction (its row locked, so two orders cannot
+    // both take the last use). A code that no longer applies stops the order with the reason.
+    const discount = await applyDiscount(db, customer.discountCode, {
+      phone: customer.phone, email: customer.email, pincode: customer.pincode, subtotalPaise: priced.subtotalPaise, shippingPaise: shipping,
+      address: { line1: customer.addressLine1, pincode: customer.pincode },
+    })
     // GST inside the delivery charge, kept with the order for its invoice.
     const shippingTaxRateBp = deliveryTaxRateBp(settings)
 
@@ -107,16 +142,31 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
       `insert into orders (order_number, customer_id, contact_name, contact_email, contact_phone,
                            shipping_address, ship_state, fulfilment_location_id,
                            subtotal_paise, shipping_paise, total_paise, tax_paise, reservation_expires_at,
-                           shipping_tax_rate_bp, attribution, traffic_source, traffic_campaign, traffic_ad)
+                           shipping_tax_rate_bp, attribution, traffic_source, traffic_campaign, traffic_ad, delivery_method,
+                           discount_paise, discount_code_id, discount_code)
        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now() + make_interval(mins => $13), $14,
-               $15, $16, $17, $18)
+               $15, $16, $17, $18, $19, $20, $21, $22)
        returning *`,
       [await reserveId(db, 'order', newOrderNumber), cust.id, customer.name, customer.email, customer.phone,
         address, customer.state, loc.id, priced.subtotalPaise, shipping,
-        priced.subtotalPaise + shipping, priced.taxPaise, holdMinutes, shipping ? shippingTaxRateBp : 0,
-        attribution, traffic.source, traffic.campaign || null, traffic.ad || null]
+        priced.subtotalPaise + shipping - discount.discountPaise, priced.taxPaise, holdMinutes, shipping ? shippingTaxRateBp : 0,
+        attribution, traffic.source, traffic.campaign || null, traffic.ad || null, delivery.method,
+        discount.discountPaise, discount.code?.id || null, discount.code?.code || null]
     )
     await linkId(db, order.order_number, order.id)
+    // A gift prize (Spin & Win): kept with the order so the warehouse packs it.
+    if (discount.gift) {
+      await db.query('update orders set gift_note = $2 where id = $1', [order.id, discount.gift])
+      order.gift_note = discount.gift
+    }
+    // Bought with a friend's referral code: remembered, so the friend is rewarded once it is delivered.
+    if (discount.code?.source === 'referral') {
+      const { rows: [ref] } = await db.query('select id from referrers where code_id = $1', [discount.code.id])
+      if (ref) {
+        await db.query('update orders set referrer_id = $2 where id = $1', [order.id, ref.id])
+        order.referrer_id = ref.id
+      }
+    }
 
     for (const l of priced.lines) {
       await db.query(
@@ -204,6 +254,8 @@ export async function createCheckoutSession(body, client = {}) {
     orderId: order.id,
     orderNumber: order.order_number,
     amount: toRupees(order.total_paise),
+    deliveryMethod: order.delivery_method,
+    discount: Number(order.discount_paise) || order.gift_note ? { code: order.discount_code, amount: toRupees(order.discount_paise), gift: order.gift_note || null } : null,
     currency: 'INR',
     gateway: session.gateway,
     gatewayLabel: session.label,
@@ -212,6 +264,18 @@ export async function createCheckoutSession(body, client = {}) {
     customer: { name: customer.name, email: customer.email, phone: customer.phone },
     failedOver: session.attempts.length ? session.attempts.map((a) => a.gateway) : undefined,
   }
+}
+
+/** A referred friend's paid order, as a Sales Daddy lead naming the customer who referred them. */
+async function referralLead(order) {
+  const { rows: [r] } = await query(
+    'select r.name, r.phone, c.code from referrers r join discount_codes c on c.id = r.code_id where r.id = $1', [order.referrer_id])
+  if (!r) return
+  await pushCrmLead('referral', {
+    name: order.contact_name, phone: order.contact_phone, email: order.contact_email, source: 'website',
+    note: `Referral: first order ${order.order_number} with ${r.name}'s code ${r.code} (referred by ${r.name}, ${r.phone}).`,
+    custom: { came_from: 'Referral', referred_by: r.name, referrer_mobile: r.phone, code: r.code },
+  })
 }
 
 /**
@@ -227,6 +291,8 @@ export async function markOrderPaid(args) {
   if (!result.already) sendWhatsAppMessages({ limit: 5 }).catch(() => {})
   // The Purchase to Meta from the server (best effort; the 10-minute job retries it).
   if (!result.already) sendPurchaseToMeta(result.order.id).catch(() => {})
+  // Bought with a friend's referral: a lead for the team, with who referred them (best effort).
+  if (!result.already && result.order.referrer_id) referralLead(result.order).catch(() => {})
   return result
 }
 
@@ -295,7 +361,9 @@ async function markOrderPaidTx({ paymentRowId, outcome, actor }) {
       `select i.*, p.image_url from order_items i
          left join product_variants v on v.id = i.variant_id left join products p on p.id = v.product_id
         where i.order_id = $1 order by i.product_name`, [order.id])
-    const forCustomer = templates.orderPlaced(updated, items, paid)
+    // The customer's own referral code, for the email and the order-confirmed page (while Refer a friend is on).
+    const referrer = await ensureReferrer(db, updated).catch(() => null)
+    const forCustomer = templates.orderPlaced(updated, items, paid, { referralCode: referrer?.code || null })
     await queueEmail(db, {
       to: updated.contact_email, ...forCustomer, orderId: order.id, dedupeKey: 'placed:' + order.id,
       attachments: [{ kind: 'invoice', orderId: order.id }], // GST invoice PDF, made when sent
@@ -303,7 +371,7 @@ async function markOrderPaidTx({ paymentRowId, outcome, actor }) {
     await queueOrderPlaced(db, updated, trackUrl(updated))
     // The team hears about new orders in the daily 9 o'clock summary (digest.js), not one email each.
 
-    return { order: updated, payment: paid, already: false, mismatch: problems.length > 0 && outcome.amountPaise !== Number(order.total_paise) }
+    return { order: updated, payment: paid, referralCode: referrer?.code || null, already: false, mismatch: problems.length > 0 && outcome.amountPaise !== Number(order.total_paise) }
   })
 }
 
@@ -335,7 +403,7 @@ export async function confirmCheckout(body) {
 
   if (order.payment_status === 'paid') {
     const { rows: [settled] } = await query(`select * from payments where order_id = $1 and status = 'paid'`, [order.id])
-    return receipt(order, settled, { alreadyConfirmed: true })
+    return receipt(order, settled, { alreadyConfirmed: true, referralCode: await referralCodeFor(order) })
   }
 
   const { rows: [pending] } = await query(
@@ -382,7 +450,15 @@ export async function confirmCheckout(body) {
       publicMessage: 'We received a payment of a different amount. Our team will contact you shortly.',
     })
   }
-  return receipt(result.order, result.payment)
+  return receipt(result.order, result.payment, { referralCode: result.referralCode || (await referralCodeFor(result.order)) })
+}
+
+/** The customer's referral code, if they have one (for a receipt shown again). */
+async function referralCodeFor(order) {
+  const { rows: [r] } = await query(
+    `select c.code from referrers r join discount_codes c on c.id = r.code_id
+      where r.phone = right(regexp_replace($1, '\\D', '', 'g'), 10) and c.is_active`, [order.contact_phone])
+  return r?.code || null
 }
 
 /** Cancel unpaid orders whose stock hold has lapsed, and free the stock. */

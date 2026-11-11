@@ -53,33 +53,57 @@ export const DELIVERY = {
   26: { absorbed: 250, cost: { TN: 687.23, SOUTH: 1374.46, NORTH: 2061.7, NE: 3092.54 } },
 }
 
+// 26 kg packs from the "26 kg Pricing" sheet (Nov 2026): the MRP as the sheet gives it, a hidden part per
+// product (₹99 to ₹179), and one courier charge for every product: Tamil Nadu ₹589 = the ₹687 courier cost
+// less the ₹98 the price always carries, so the cost is recovered on every product. Other regions follow
+// the same rule: their courier cost less ₹98.
+export const SHEET_26 = { oldMrp: true, deliveryInPrice: 98, inHouse: 200 }
+
+// 10 kg and 5 kg packs from the pricing sheets (Nov 2026), MRP as given:
+//   10 kg: one courier charge for every product, Tamil Nadu ₹120 (other regions: their cost less the same
+//          ₹210.40 Tamil Nadu leaves out); in-house ₹100 a bag.
+//   5 kg:  courier = the region's cost less the hidden part (Tamil Nadu ₹165 − ₹75 = ₹90; Kitchidi ₹125);
+//          in-house ₹49 a bag (Kitchidi ₹60).
+export const SHEET_10 = { oldMrp: true, deliveryInPrice: 330.4 - 120, inHouse: 100 }
+export const SHEET_5 = { oldMrp: true, inHouse: 49 }
+
 // slug → { packKg: [list price, MRP before the delivery share, absorbed (only where the sheet differs
-// from the size's usual amount), { oldMrp: true } to show the bag's MRP without the delivery share] }. Item and variety as on the sheets.
+// from the size's usual amount), options] }. Options: oldMrp: true shows the MRP as given (no delivery
+// share added); deliveryInPrice: the delivery charge is the region's cost less this (instead of less the
+// absorbed part); inHouse: the in-house delivery charge for one bag (₹). Item and variety as on the sheets.
 export const PRICE_LIST = {
-  'kitchidi-ponni-rice': { 5: [515, 599, 40, { oldMrp: true }], 26: [2470, 2699] }, // Chennai Rice Premium Kitchidi Ponni Rice (pink bag); 5 kg: retail ₹515, website price kept at ₹555 (₹40 absorbed) and the old MRP, so Tamil Nadu pays ₹125 delivery, ₹680 in all (4 Nov 2026)
-  'special-rajabhogam': { 5: [515, 599], 10: [1020, 1129], 26: [2470, 2699] }, // Chennai Rice-Red-Raj.Ponni · Vada Kolam Kitchidi Ponni (red bag)
-  'vintage': { 5: [515, 619], 10: [1020, 1209], 26: [2470, 2899] },            // Vintage Spl Ponni · JSR Kolam
-  'united-5kg': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },          // United · Shikaripura Amaan Ponni
-  'vijaya-nagaram': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },      // Vijayanagaram · Shikaripura Amaan Ponni
-  'viruchagam': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },          // Viruchagam · Shikaripura Amaan Ponni
-  'nayara-super-aged': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },   // Nayara · Akshaya Amman Ponni
-  'a1-special-ponni': { 5: [501, 619], 10: [990, 1209], 26: [2400, 2899] },    // A1 Ponni Rice · Akshaya Amman Ponni
-  'chennai-bullets': { 5: [501, 599], 10: [990, 1129], 26: [2400, 2699] },     // Chennai Bullets · TN RNR / Kodad Bapatla / KA KNM
-  'alibaba': { 5: [501, 599], 10: [990, 1129], 26: [2400, 2699] },             // Alibaba · TN RNR / Kodad Bapatla / KA KNM
-  'special-idly-rice': { 5: [295, 349, 45], 10: [566, 739], 26: [1350, 1749] }, // Special Idly Rice (Pink) · Kalli Muthan kar (5 kg: retail ₹295, website price kept at ₹340 (₹45 absorbed), so Tamil Nadu pays ₹120 delivery, ₹460 in all; 4 Nov 2026)
+  // Final website prices (Nov 2026), top bag to bottom: base, MRP, hidden (website price − base), and the
+  // courier = the full delivery cost for the region, the same for every bag (Website_Price_with_Courier, Nov 2026:
+  // 5 kg TN ₹165.20 · South ₹264.32 · North ₹396.48 · NE ₹528.64; 10 kg ₹330.40 · ₹528.64 · ₹792.96 · ₹1,057.28;
+  // 26 kg ₹687.23 · ₹1,374.46 · ₹2,061.70 · ₹3,092.54), and the
+  // in-house delivery a bag in Tamil Nadu (5 kg ₹50, 10 kg ₹90, 26 kg ₹110, the same for every bag).
+  'kitchidi-ponni-rice': { 5: [515, 699, 40, { ...SHEET_5, deliveryInPrice: 0, inHouse: 50 }], 26: [2470, 2999, 29, { ...SHEET_26, deliveryInPrice: 0, inHouse: 110 }] }, // Chennai Rice Premium Kitchidi Ponni Rice (pink bag)
+  'special-rajabhogam': { 5: [515, 699, 34, { ...SHEET_5, deliveryInPrice: 0, inHouse: 50 }], 10: [1020, 1299, 79, { ...SHEET_10, deliveryInPrice: 0, inHouse: 90 }], 26: [2470, 2999, 18, { ...SHEET_26, deliveryInPrice: 0, inHouse: 110 }] }, // Chennai Rice-Red-Raj.Ponni · Vada Kolam Kitchidi Ponni (red bag)
+  'vintage': { 5: [515, 699, 24, { ...SHEET_5, deliveryInPrice: 0, inHouse: 50 }], 10: [1020, 1299, 68, { ...SHEET_10, deliveryInPrice: 0, inHouse: 90 }], 26: [2470, 2999, 7, { ...SHEET_26, deliveryInPrice: 0, inHouse: 110 }] }, // Vintage Spl Ponni · JSR Kolam
+  'united-5kg': { 5: [501, 679, 28, { ...SHEET_5, deliveryInPrice: 0, inHouse: 50 }], 10: [990, 1279, 59, { ...SHEET_10, deliveryInPrice: 0, inHouse: 90 }], 26: [2400, 2899, 69, { ...SHEET_26, deliveryInPrice: 0, inHouse: 110 }] }, // United · Shikaripura Amaan Ponni
+  'vijaya-nagaram': { 5: [501, 679, 26, { ...SHEET_5, deliveryInPrice: 0, inHouse: 50 }], 10: [990, 1279, 55, { ...SHEET_10, deliveryInPrice: 0, inHouse: 90 }], 26: [2400, 2899, 65, { ...SHEET_26, deliveryInPrice: 0, inHouse: 110 }] }, // Vijayanagaram · Shikaripura Amaan Ponni
+  'viruchagam': { 5: [501, 679, 24, { ...SHEET_5, deliveryInPrice: 0, inHouse: 50 }], 10: [990, 1279, 45, { ...SHEET_10, deliveryInPrice: 0, inHouse: 90 }], 26: [2400, 2899, 55, { ...SHEET_26, deliveryInPrice: 0, inHouse: 110 }] }, // Viruchagam · Shikaripura Amaan Ponni
+  'nayara-super-aged': { 5: [501, 679, 20, { ...SHEET_5, deliveryInPrice: 0, inHouse: 50 }], 10: [990, 1279, 40, { ...SHEET_10, deliveryInPrice: 0, inHouse: 90 }], 26: [2400, 2899, 44, { ...SHEET_26, deliveryInPrice: 0, inHouse: 110 }] }, // Nayara · Akshaya Amman Ponni
+  'a1-special-ponni': { 5: [501, 679, 14, { ...SHEET_5, deliveryInPrice: 0, inHouse: 50 }], 10: [990, 1279, 39, { ...SHEET_10, deliveryInPrice: 0, inHouse: 90 }], 26: [2400, 2899, 39, { ...SHEET_26, deliveryInPrice: 0, inHouse: 110 }] }, // A1 Ponni Rice · Akshaya Amman Ponni
+  'chennai-bullets': { 5: [501, 679, 11, { ...SHEET_5, deliveryInPrice: 0, inHouse: 50 }], 10: [990, 1279, 35, { ...SHEET_10, deliveryInPrice: 0, inHouse: 90 }], 26: [2400, 2899, 29, { ...SHEET_26, deliveryInPrice: 0, inHouse: 110 }] }, // Chennai Bullets · TN RNR / Kodad Bapatla / KA KNM
+  'alibaba': { 5: [501, 679, 8, { ...SHEET_5, deliveryInPrice: 0, inHouse: 50 }], 10: [990, 1279, 29, { ...SHEET_10, deliveryInPrice: 0, inHouse: 90 }], 26: [2400, 2899, 19, { ...SHEET_26, deliveryInPrice: 0, inHouse: 110 }] }, // Alibaba · TN RNR / Kodad Bapatla / KA KNM
+  'special-idly-rice': { 5: [295, 449, 4, { ...SHEET_5, deliveryInPrice: 0, inHouse: 50 }], 10: [566, 799, 33, { ...SHEET_10, deliveryInPrice: 0, inHouse: 90 }], 26: [1350, 1699, 49, { ...SHEET_26, deliveryInPrice: 0, inHouse: 110 }] }, // Special Idly Rice (Pink) · Kalli Muthan kar
   // Chennai Rice Jeera Rice (Jeera Old, 26 kg ₹1,200) is on the sheet but not sold online.
 }
 
 /** Website price, absorbed part and delivery charge per region (₹) for one pack. */
-export function packPricing(packKg, listPrice, mrp, absorbed, { oldMrp = false } = {}) {
+export function packPricing(packKg, listPrice, mrp, absorbed, { oldMrp = false, deliveryInPrice = null, inHouse = null } = {}) {
   const size = DELIVERY[packKg]
   if (!size) throw new Error(`No delivery costs for ${packKg} kg packs.`)
   if (!oldMrp) mrp += Math.round(size.cost.TN * MRP_DELIVERY_SHARE)
   const take = Math.max(0, Math.min(absorbed ?? size.absorbed, mrp - listPrice, MAX_PACK_PRICE - listPrice))
   const website = listPrice + take
+  const offset = deliveryInPrice ?? take
   const delivery = Object.fromEntries(Object.entries(size.cost)
-    .map(([code, cost]) => [code, Math.max(0, Math.round(cost - take))]))
-  return { website, mrp, absorbed: take, delivery }
+    .map(([code, cost]) => [code, Math.max(0, deliveryInPrice === 0
+      ? Math.round(cost * 100) / 100 // the full cost, to the paisa, as on the sheet (Nov 2026)
+      : Math.round(cost - offset))]))
+  return { website, mrp, absorbed: take, delivery, inHouse }
 }
 
 // On the price list and added after the first catalog: created if missing,
@@ -150,24 +174,25 @@ export async function applyPriceList({ pool, stock = 0, log = console.log } = {}
       const shown = []
       for (const [kg, [listPrice, bagMrp, absorbedRupees, opts]] of Object.entries(prices)) {
         const packKg = Number(kg)
-        const { website, mrp, delivery } = packPricing(packKg, listPrice, bagMrp, absorbedRupees, opts)
+        const { website, mrp, delivery, inHouse } = packPricing(packKg, listPrice, bagMrp, absorbedRupees, opts)
         const { rows: [v] } = await client.query(
-          `insert into product_variants (product_id, sku, pack_kg, price_paise, mrp_paise, tax_rate_bp, reorder_level, is_active)
-           values ($1, $2, $3, $4, $5, $6, 20, true)
+          `insert into product_variants (product_id, sku, pack_kg, price_paise, mrp_paise, tax_rate_bp, reorder_level, is_active, in_house_paise)
+           values ($1, $2, $3, $4, $5, $6, 20, true, $7)
            on conflict (product_id, pack_kg) do update
-             set price_paise = excluded.price_paise, mrp_paise = excluded.mrp_paise, is_active = true
+             set price_paise = excluded.price_paise, mrp_paise = excluded.mrp_paise, is_active = true,
+                 in_house_paise = excluded.in_house_paise
            returning id`,
-          [p.id, skuFor(p.slug, packKg), packKg, website * 100, mrp * 100, defaultTaxRateBp(packKg)]
+          [p.id, skuFor(p.slug, packKg), packKg, website * 100, mrp * 100, defaultTaxRateBp(packKg), inHouse == null ? null : Math.round(inHouse * 100)]
         )
         for (const [region, rupees] of Object.entries(delivery)) {
           await client.query(
             `insert into variant_region_prices (variant_id, region, price_paise, delivery_paise) values ($1, $2, $3, $4)
              on conflict (variant_id, region) do update
                set price_paise = excluded.price_paise, delivery_paise = excluded.delivery_paise`,
-            [v.id, region, website * 100, rupees * 100]
+            [v.id, region, Math.round(website * 100), Math.round(rupees * 100)]
           )
         }
-        shown.push(`${kg} kg MRP ₹${mrp} → ₹${website} + delivery TN ${delivery.TN} · S ${delivery.SOUTH} · N ${delivery.NORTH} · NE ${delivery.NE}`)
+        shown.push(`${kg} kg MRP ₹${mrp} → ₹${website} + delivery TN ${delivery.TN} · S ${delivery.SOUTH} · N ${delivery.NORTH} · NE ${delivery.NE}${inHouse == null ? '' : ' · in-house ' + inHouse}`)
         if (stock && loc) {
           const { rows: [lvl] } = await client.query(
             'select on_hand, reserved from stock_levels where location_id = $1 and variant_id = $2', [loc.id, v.id])

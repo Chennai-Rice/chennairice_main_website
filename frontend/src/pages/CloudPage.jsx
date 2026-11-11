@@ -30,7 +30,7 @@ export default function CloudPage() {
     <div className="ad-shell cloud-page">
       <header className="cloud-page-top">
         <a href="/" className="cloud-page-brand">
-          <img src="/assets/logo-full-v2.png" alt="Chennai Rice" width="40" height="40" />
+          <img src="/assets/logo-full-v3.png" alt="Chennai Rice" width="40" height="40" />
           <span>Chennai Rice · IT</span>
         </a>
         {signedIn && <button type="button" className="cloud-page-out" onClick={signOut}>Sign out</button>}

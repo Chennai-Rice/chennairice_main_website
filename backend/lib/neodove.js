@@ -40,6 +40,8 @@ const SOURCE_TYPES = {
 }
 export function leadType(campaign, source) {
   if (campaign === 'bulk_enquiry') return 'Bulk enquiry'
+  if (campaign === 'spin_wheel') return 'Spin & Win'
+  if (campaign === 'referral') return 'Referral'
   if (campaign === 'checkout_payment') return 'Checkout: payment not completed'
   if (campaign === 'checkout_details') return 'Checkout: left at details'
   return SOURCE_TYPES[source] || 'Website sign-up'
@@ -67,7 +69,10 @@ export const badAgentEndpoints = () => Object.keys(NEODOVE_AGENTS).filter((a) =>
 /** The telecallers whose campaign has a real endpoint. */
 export const poolAgents = () => Object.keys(NEODOVE_AGENTS).filter((a) => usable(agentEndpoint(a)))
 export const neodoveEnabled = (campaign = 'signup') => poolAgents().length > 0 || usable(endpoint(campaign))
-const enabledCampaigns = () => (poolAgents().length ? [...Object.keys(NEODOVE_CAMPAIGNS), 'bulk_enquiry'] : Object.keys(NEODOVE_CAMPAIGNS).filter((c) => usable(endpoint(c))))
+const enabledCampaigns = () => (poolAgents().length ? [...Object.keys(NEODOVE_CAMPAIGNS), ...TEAM_ONLY] : Object.keys(NEODOVE_CAMPAIGNS).filter((c) => usable(endpoint(c))))
+
+// Leads that go out only through the telecallers' campaigns (no campaign endpoint of their own).
+const TEAM_ONLY = ['bulk_enquiry', 'spin_wheel', 'referral']
 
 export function checkNeodoveKey(req) {
   const key = process.env.NEODOVE_WEBHOOK_KEY
@@ -263,6 +268,30 @@ export async function recordBulkEnquiry(db, { name, phone, email, company, buyer
   }
 }
 
+/**
+ * A Spin & Win spin or a referred friend: queued for NeoDove once per mobile and campaign, shared between the
+ * telecallers. `fields` are shown on the lead (Prize, Code, Referred by…). Returns the outbox id to send now,
+ * or null. Never throws.
+ */
+export async function recordWebsiteLead(db, campaign, { name, phone, fields = {} }) {
+  if (!hasDatabase() || !['spin_wheel', 'referral'].includes(campaign)) return null
+  const mobile = crmMobile(phone)
+  if (!/^[6-9]\d{9}$/.test(mobile)) return null
+  try {
+    const { rows: [seen] } = await db.query('select 1 from neodove_outbox where mobile = $1 and campaign = $2 limit 1', [mobile, campaign])
+    if (seen) return null
+    const payload = {
+      name: name || leadType(campaign), mobile: Number(mobile),
+      'Lead type': leadType(campaign), tags: leadType(campaign), ...fields, When: fmt(new Date()),
+    }
+    const { rows: [o] } = await db.query('insert into neodove_outbox (mobile, campaign, payload) values ($1, $2, $3) returning id', [mobile, campaign, payload])
+    return o?.id || null
+  } catch (err) {
+    console.error('[neodove] could not record a ' + campaign + ' lead:', err.message)
+    return null
+  }
+}
+
 /** A paid order on this mobile: the lead is converted (and is not sent to NeoDove any more). Never throws. */
 export async function markLeadConverted(db, mobileRaw) {
   if (!hasDatabase()) return
@@ -313,7 +342,7 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
   const pickAgent = async () => {
     if (last === undefined) {
       const { rows: [r] } = await query(
-        `select agent from neodove_outbox where agent = any($1::text[]) order by coalesce(sent_at, next_try_at) desc limit 1`, [pool])
+        `select agent from neodove_outbox where agent = any($1::text[]) order by coalesce(sent_at, next_try_at) desc, created_at desc limit 1`, [pool])
       last = r?.agent ?? null
     }
     last = pool[(pool.indexOf(last) + 1) % pool.length]

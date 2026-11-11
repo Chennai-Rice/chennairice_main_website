@@ -119,6 +119,9 @@ function paymentMethod(payment) {
   return payment.method === 'card' && payment.card_last4 ? `${label} ending ${payment.card_last4}` : label
 }
 
+/** The customer chose delivery by Chennai Rice's own team (delivery.js), not the courier. */
+const ownDelivery = (order) => order.delivery_method === 'in_house'
+
 /** {{Variables}} for templates/order-confirmation.html. */
 function orderConfirmationVars(order, payment) {
   const a = order.shipping_address || {}
@@ -127,6 +130,9 @@ function orderConfirmationVars(order, payment) {
     'Order ID': order.order_number,
     'Order Date': placedDate(order),
     'Delivery Charge': Number(order.shipping_paise) ? formatInr(order.shipping_paise) : '',
+    'Delivery Label': ownDelivery(order) ? 'Chennai Rice delivery (our own team)' : 'Delivery charge',
+    'Discount': Number(order.discount_paise) ? '−' + formatInr(order.discount_paise) : order.gift_note ? 'FREE' : '',
+    'Discount Label': order.gift_note ? `Gift: ${order.gift_note}` : order.discount_code ? `Discount (${order.discount_code})` : 'Discount',
     'Total Amount': formatInr(order.total_paise),
     'Payment Method': paymentMethod(payment),
     'Payment Status': PAYMENT_STATUS[order.payment_status] || order.payment_status,
@@ -181,8 +187,56 @@ function shippingDetails(s) {
 const shipmentRef = (s) =>
   s.method === 'pickup' ? 'pickup' : s.tracking_number || s.lr_number || s.vehicle_number || null
 
+/** An order's lines with each pack's photo, for the emails. */
+export async function orderItemsForEmail(db, orderId) {
+  const { rows } = await db.query(
+    `select i.*, p.image_url from order_items i
+       left join product_variants v on v.id = i.variant_id left join products p on p.id = v.product_id
+      where i.order_id = $1 order by i.product_name`, [orderId])
+  return rows
+}
+
+// The order emails' progress steps (templates/order-update.html): done steps get the maroon tick.
+const ASSET = `${SITE}/assets/email/`
+const DONE = { Icon: ASSET + 'o-step-done.png', Weight: 'bold', Color: '#6e1420' }
+const STEPS = {
+  packed: { two: DONE, three: { Icon: ASSET + 'o-step-truck.png', Weight: 'normal', Color: '#4a3b32' }, label: 'On the Way' },
+  shipped: { two: DONE, three: DONE, label: 'On the Way' },
+  out: { two: DONE, three: DONE, label: 'Out for Delivery' },
+}
+const stepVars = (k) => {
+  const s = STEPS[k]
+  if (!s) return { 'Steps': '' }
+  return {
+    'Steps': 'yes', 'Step Three Label': s.label,
+    'Step Two Icon': s.two.Icon, 'Step Two Weight': s.two.Weight, 'Step Two Color': s.two.Color,
+    'Step Three Icon': s.three.Icon, 'Step Three Weight': s.three.Weight, 'Step Three Color': s.three.Color,
+  }
+}
+const addressOneLine = (a = {}) =>
+  [a.line1, a.line2, a.landmark && 'Landmark: ' + a.landmark, [a.city, a.state].filter(Boolean).join(', ') + (a.pincode ? ' – ' + a.pincode : '')]
+    .filter((l) => l && String(l).trim()).join(', ')
+const productLines = (items) => items.map((i) => ({
+  'Product Name': `${i.product_name} ${Number(i.pack_kg)} kg`,
+  'Quantity': i.quantity,
+  'Product Image': absolute(i.image_url) || `${SITE}/assets/shop/logo.png`,
+}))
+
+/** templates/order-update.html (Packed, Shipped, Out for Delivery, Payment Failed), filled in. */
+function updateHtml(order, items, vars) {
+  return renderTemplate('order-update.html', {
+    'Customer Name': String(order.contact_name || '').split(/\s+/)[0] || 'there',
+    'Order ID': order.order_number,
+    'Address': addressOneLine(order.shipping_address),
+    'Next Icon': ASSET + 'o-truck-big.png',
+    'Total Label': 'Total',
+    ...vars,
+  }, productLines(items))
+}
+const firstName = (order) => String(order.contact_name || '').split(/\s+/)[0] || 'there'
+
 export const templates = {
-  orderPlaced(order, items, payment = null) {
+  orderPlaced(order, items, payment = null, { referralCode = null } = {}) {
     return {
       template: 'order_placed',
       subject: `Order Confirmed - ${order.order_number}`,
@@ -191,12 +245,21 @@ export const templates = {
         `Your GST invoice is attached to this email.\n\n` +
         `Order ID: ${order.order_number}\nPlaced:   ${placedDate(order)}\n\n` +
         `${itemsText(items)}\n` +
-        (Number(order.shipping_paise) ? `  Delivery charge  ${formatInr(order.shipping_paise)}\n` : '') +
+        (Number(order.shipping_paise) ? `  ${ownDelivery(order) ? 'Chennai Rice delivery' : 'Delivery charge'}  ${formatInr(order.shipping_paise)}\n` : '') +
+        (Number(order.discount_paise) ? `  Discount${order.discount_code ? ' (' + order.discount_code + ')' : ''}  −${formatInr(order.discount_paise)}\n` : '') +
+        (order.gift_note ? `  Gift: ${order.gift_note}  FREE\n` : '') +
         `\nTotal paid: ${formatInr(order.total_paise)} (incl. GST)\n\n` +
+        (ownDelivery(order) ? 'Our own team will bring your order and will call you before they come.\n\n' : '') +
         `Delivering to:\n${[order.contact_name, ...addressLines(order.shipping_address), order.contact_phone].join('\n')}\n\n` +
         `${trackLine(order)}\nDownload your invoice: ${invoiceUrl(order)}\n\n` +
+        (referralCode ? `Refer a friend: share your code ${referralCode}. Your friend gets money off their first order, and you get a reward when it is delivered. ${SITE}/refer\n\n` : '') +
         `Chennai Rice Industries\n+91 70666 46667`,
-      html: renderTemplate('order-confirmation.html', orderConfirmationVars(order, payment), orderConfirmationItems(items)),
+      html: renderTemplate('order-confirmation.html', {
+        ...orderConfirmationVars(order, payment), 'Referral Code': referralCode || '', 'Refer URL': SITE + '/refer',
+        'Subject': `Order Confirmed - ${order.order_number}`,
+        'Preview': `Thanks for choosing Chennai Rice. Your order ${order.order_number} is confirmed.`,
+        'Customer Name': firstName(order),
+      }, orderConfirmationItems(items).map((i) => ({ ...i, 'Product Name': i['Product Name'].replace(/ \((\d+(?:\.\d+)?) kg\)$/, ' $1 kg') }))),
     }
   },
   // `who`: { source: label of where the buyer came from, campaign, ad, earlierOrders: paid orders before this one }
@@ -210,15 +273,28 @@ export const templates = {
         `${order.contact_name} (${order.contact_phone}) paid ${formatInr(order.total_paise)}.\n` +
         (who.earlierOrders == null ? '' : (isNew ? 'New customer: this is their first order.\n' : `Repeat customer: ${who.earlierOrders} earlier paid order${who.earlierOrders === 1 ? '' : 's'}.\n`)) +
         `Came from: ${from || 'Direct / typed the address'}\n` +
-        `Ship to: ${order.shipping_address.city}, ${order.ship_state}\n\n${itemsText(items)}\n\n` +
+        `Ship to: ${order.shipping_address.city}, ${order.ship_state}${ownDelivery(order) ? ' · OUR DELIVERY (own vehicle)' : ''}\n\n${itemsText(items)}\n\n` +
         `Confirm it in the admin panel.`,
     }
   },
-  orderConfirmed(order) {
+  // 02 Order Packed: sent when the warehouse confirms the order and starts packing it.
+  orderConfirmed(order, items = []) {
+    const subject = `Your order ${order.order_number} is being packed`
     return {
       template: 'order_confirmed',
-      subject: `Order ${order.order_number} is being packed`,
-      text: `Dear ${order.contact_name},\n\nYour order ${order.order_number} is confirmed and is being packed at our Erode mill.\n\n${trackLine(order)}`,
+      subject,
+      text: `Dear ${order.contact_name},\n\nYour order ${order.order_number} is confirmed and is being packed fresh at our Erode mill. ` +
+        `We will email you the tracking details as soon as it leaves.\n\n${trackLine(order)}\n\nTeam Chennai Rice\n+91 70666 46667`,
+      html: updateHtml(order, items, {
+        'Subject': subject, 'Preview': 'Our team at the Erode mill is packing your rice fresh for you.',
+        'Pill': 'Order Packed', 'Heading': 'Your Order is Being Packed',
+        'Total Label': 'Total Paid', 'Total Amount': formatInr(order.total_paise),
+        'Intro': 'Good news! Your order is confirmed and our team at the Erode mill is packing it fresh for you.',
+        ...stepVars('packed'),
+        'Next Title': 'What’s Next?',
+        'Next Text': 'We’ll share the courier and tracking details as soon as your order leaves our mill.',
+        'Button': 'Track Your Order', 'Button URL': trackUrl(order),
+      }),
     }
   },
   /**
@@ -279,14 +355,93 @@ export const templates = {
         (d.hint ? `${d.hint}\n` : '') +
         (products.length ? `\n${items.map((i) => `  ${i.quantity} × ${i.product_name} (${Number(i.pack_kg)} kg)`).join('\n')}\n` : '') +
         `\n${trackLine(order)}\n\nChennai Rice Industries\n${vars['Support Number']}`,
-      html: renderTemplate('order-shipped.html', vars, products),
+      html: updateHtml(order, items, {
+        'Subject': update ? `Tracking details - ${n}` : `Order Shipped - ${n}`,
+        'Preview': d.number ? `${d.partner} · ${d.label} ${d.number}` : intro,
+        'Pill': update ? 'Tracking Details' : 'Order Shipped',
+        'Heading': update ? 'Your Tracking Details' : 'Your Order is on its Way',
+        'Intro': intro,
+        'Shipment ID': shipment.shipment_number,
+        'Courier': d.partner,
+        'Tracking Label': d.label,
+        'Tracking Number': d.number,
+        'Expected Delivery': vars['Expected Delivery'],
+        ...stepVars('shipped'),
+        'Next Title': d.hint ? 'How to Track' : 'What’s Next?',
+        'Next Text': d.hint || 'Your rice is on the road. We’ll let you know when it’s out for delivery.',
+        'Button': d.url ? `Track on ${d.partner}` : 'Track Your Order',
+        'Button URL': d.url || trackUrl(order),
+      }),
     }
   },
-  orderDelivered(order) {
+  // 04 Out for Delivery: the warehouse presses "Out for delivery" (courier or our own van).
+  outForDelivery(order, shipment, items = []) {
+    const d = shippingDetails(shipment)
+    const n = order.order_number
+    const subject = `Arriving today: your Chennai Rice order ${n}`
+    const intro = shipment.method === 'own_vehicle'
+      ? 'Your Chennai Rice is out for delivery with our own team and will reach you today.'
+      : `Your Chennai Rice is out for delivery with ${d.partner} and will reach you today.`
+    return {
+      template: 'order_out_for_delivery',
+      subject,
+      text: `Dear ${order.contact_name},\n\n${intro} Please keep your phone handy; the delivery person may call you on ${order.contact_phone}.\n\n` +
+        `Order ID: ${n}\nDelivery partner: ${d.partner}\n` + (d.number ? `${d.label}: ${d.number}\n` : '') + (d.hint ? `${d.hint}\n` : '') +
+        `\n${trackLine(order)}\n\nTeam Chennai Rice\n+91 70666 46667`,
+      html: updateHtml(order, items, {
+        'Subject': subject, 'Preview': 'Your rice is arriving today. Keep your phone handy.',
+        'Pill': 'Arriving Today', 'Heading': 'Out for Delivery',
+        'Intro': intro,
+        'Courier': d.partner, 'Tracking Label': d.label, 'Tracking Number': d.number,
+        ...stepVars('out'),
+        'Next Title': 'Almost There!',
+        'Next Text': `Please keep your phone handy; the delivery person may call you on ${order.contact_phone}.` + (d.hint ? ` ${d.hint}` : ''),
+        'Button': d.url ? `Track on ${d.partner}` : 'Track Your Order',
+        'Button URL': d.url || trackUrl(order),
+      }),
+    }
+  },
+  // 05 Order Delivered: delivery confirmation and the review request (the stars open /review).
+  orderDelivered(order, items = [], { reviewUrl, deliveredAt = new Date() } = {}) {
+    const url = reviewUrl || `${SITE}/review`
+    const sep = url.includes('?') ? '' : '?'
+    const delivered = new Date(deliveredAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' })
+    const subject = `Delivered! How was your Chennai Rice, ${firstName(order)}?`
     return {
       template: 'order_delivered',
-      subject: `Order ${order.order_number} delivered`,
-      text: `Dear ${order.contact_name},\n\nYour order ${order.order_number} has been delivered. Thank you for choosing Chennai Rice.`,
+      subject,
+      text: `Vanakkam ${order.contact_name},\n\nYour order ${order.order_number} has been delivered. We hope you're enjoying your Chennai Rice.\n\n` +
+        `How was your experience? It takes just a minute: ${url}\n\n` +
+        `Something not right? Message us on WhatsApp (https://wa.me/917066646667) or reply to this email.\n\nTeam Chennai Rice\n+91 70666 46667`,
+      html: renderTemplate('order-delivered.html', {
+        'Subject': subject, 'Preview': 'We hope you’re enjoying your Chennai Rice. How was your experience?',
+        'Customer Name': firstName(order), 'Order ID': order.order_number, 'Delivered Date': delivered,
+        // The stars add "&rating=N", so the link always carries a "?".
+        'Review URL': url + sep,
+      }, productLines(items)),
+    }
+  },
+  // 06 Payment Failed: the order is saved; Retry Payment reopens checkout filled in.
+  paymentFailed(order, items = [], { retryUrl }) {
+    const subject = `Payment didn't go through for order ${order.order_number}`
+    return {
+      template: 'payment_failed',
+      subject,
+      text: `Dear ${order.contact_name},\n\nYour payment for order ${order.order_number} (${formatInr(order.total_paise)}) didn't go through. ` +
+        `If any amount was deducted, your bank will return it automatically.\n\nYour cart is saved. Retry securely: ${retryUrl}\n\n` +
+        `Need help? WhatsApp us: https://wa.me/917066646667\n\nTeam Chennai Rice\n+91 70666 46667`,
+      html: updateHtml(order, items, {
+        'Subject': subject, 'Preview': 'Your order is saved. Retry your payment securely in one tap.',
+        'Pill': 'Payment Failed', 'Heading': 'Payment Didn’t Go Through',
+        'Intro': 'Don’t worry, your order is saved. If any amount was deducted, your bank will return it automatically.',
+        'Total Label': 'Order Total', 'Total Amount': formatInr(order.total_paise),
+        'Address': '',
+        'Next Icon': ASSET + 'o-tr-shield.png',
+        'Next Title': 'Safe & Secure',
+        'Next Text': 'Payments are processed securely by Razorpay. You can pay by UPI, card or net banking.',
+        'Button': 'Retry Payment', 'Button URL': retryUrl,
+        'Note': 'Your details are already filled in, so you just press Pay.',
+      }),
     }
   },
   /**

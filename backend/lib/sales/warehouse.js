@@ -61,6 +61,9 @@ export function filterSql(f, params) {
     where.push(`exists (select 1 from order_items x where x.order_id = o.id and x.pack_kg = ${add(Number(f.pack))})`)
   }
 
+  if (f.delivery === 'in_house') where.push(`o.delivery_method = 'in_house'`)
+  else if (f.delivery === 'courier') where.push(`o.delivery_method = 'courier'`)
+
   if (f.state === 'tn') where.push(`lower(o.ship_state) in ('tamil nadu', 'tn')`)
   else if (f.state === 'other') where.push(`lower(o.ship_state) not in ('tamil nadu', 'tn')`)
 
@@ -114,6 +117,10 @@ function shapeRow(r) {
     packs: r.packs,
     totalKg: Number(r.total_kg),
     needsAttention: r.needs_attention,
+    // 'in_house' = the customer chose delivery by our own team (delivery.js).
+    deliveryMethod: r.delivery_method || 'courier',
+    // A Spin & Win gift to pack with the order (e.g. a free 5 kg bag).
+    giftNote: r.gift_note || null,
     // Shown as a red badge: waiting past the reminder times in jobs.js.
     overdue:
       r.status === 'placed' && hoursWaiting > 4 ? 'Waiting over 4 hours to confirm'
@@ -140,7 +147,7 @@ export async function listWarehouseOrders(f = {}, { maxLimit = MAX_PAGE, money =
   const listParams = [...params, TABS[tab]]
   const { rows } = await query(
     `select o.id, o.order_number, o.shipment_id, o.status, o.payment_status, ${WHEN} as placed_at, o.shipped_at,
-            o.contact_name, o.contact_phone, o.shipping_address, o.needs_attention, o.total_paise,
+            o.contact_name, o.contact_phone, o.shipping_address, o.needs_attention, o.total_paise, o.delivery_method, o.gift_note,
             (select json_build_object('id', sh.id, 'method', sh.method, 'carrier', sh.carrier_name,
                     'trackingNumber', sh.tracking_number, 'lrNumber', sh.lr_number, 'vehicle', sh.vehicle_number,
                     'trackingUrl', sh.tracking_url, 'driverName', sh.driver_name, 'driverPhone', sh.driver_phone,
@@ -280,8 +287,19 @@ export async function listWarehouseCustomers(f = {}, { maxLimit = 100 } = {}) {
     params.push(source)
     sourceSql = `src_label = $${params.length}`
   }
+  // Date range (India dates, both days included): their latest activity, i.e. last order or sign-up.
+  const day = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(str(v)) && !Number.isNaN(Date.parse(str(v))) ? str(v) : '')
+  const dates = []
+  if (day(f.from)) {
+    params.push(day(f.from))
+    dates.push(`recent >= ($${params.length}::date)::timestamp at time zone 'Asia/Kolkata'`)
+  }
+  if (day(f.to)) {
+    params.push(day(f.to))
+    dates.push(`recent < ($${params.length}::date + 1)::timestamp at time zone 'Asia/Kolkata'`)
+  }
   // The counts on the toggle ignore the status, so each button shows how many people it would list.
-  const baseWhere = [search, sourceSql].filter(Boolean).join(' and ')
+  const baseWhere = [search, sourceSql, ...dates].filter(Boolean).join(' and ')
   const where = [baseWhere, status === 'converted' ? 'converted' : status === 'not_converted' ? 'not converted' : ''].filter(Boolean).join(' and ')
   const limit = Math.min(Math.max(Number(f.limit) || 20, 1), maxLimit)
   const offset = Math.max(Number(f.offset) || 0, 0)

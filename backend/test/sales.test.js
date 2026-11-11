@@ -497,6 +497,14 @@ test('warehouse page: list without prices, one Dispatched switch with undo, sele
   assert.doesNotMatch(JSON.stringify(cust.body), /price|paise|total_|amount/i)
   const byPhone = await api('GET', '/api/admin/warehouse/customers?q=12345', { token: wh })
   assert.ok(byPhone.body.customers.some((c) => c.name === 'Meena Sundaram'))
+  // Date range: today includes her; a range in the past does not.
+  const ist = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
+  const today = await api('GET', `/api/admin/warehouse/customers?q=Meena&from=${ist}&to=${ist}`, { token: wh })
+  assert.ok(today.body.customers.some((c) => c.name === 'Meena Sundaram'), JSON.stringify(today.body))
+  const old = await api('GET', '/api/admin/warehouse/customers?q=Meena&from=2020-01-01&to=2020-01-31', { token: wh })
+  assert.ok(!old.body.customers.some((c) => c.name === 'Meena Sundaram'))
+  const junk = await api('GET', '/api/admin/warehouse/customers?q=Meena&from=junk', { token: wh })
+  assert.equal(junk.status, 200)
   const report = await api('GET', '/api/admin/warehouse/reports?days=30', { token: wh })
   assert.equal(report.status, 200, JSON.stringify(report.body))
   assert.ok(report.body.dispatched >= 4)
@@ -865,9 +873,9 @@ test('order confirmation email: sent over SMTP once payment verifies, with the o
     assert.ok(m.text.includes(`/api/orders/${session.orderId}/invoice?n=${session.orderNumber}`), 'invoice link')
     // The HTML template: every placeholder filled, one product row per item, payment details.
     assert.ok(!/\{\{[A-Za-z ]+\}\}/.test(m.html), 'no placeholder left unfilled')
-    assert.ok(m.html.includes('Rudra (') && m.html.includes('/assets/shop/'), 'product row with its image')
-    assert.ok(m.html.includes('Card ending 1111') && m.html.includes('>Paid<'), 'payment method and status')
-    assert.ok(m.html.includes('Coimbatore, Tamil Nadu - 641001'), 'city, state, pincode')
+    assert.ok(m.html.includes('Rudra 25 kg &times;'), 'one line per product')
+    assert.ok(m.html.includes('Card ending 1111') && m.html.includes('&#10004; Paid'), 'payment method and status')
+    assert.ok(m.html.includes('Coimbatore, Tamil Nadu &ndash; 641001'), 'city, state, pincode')
     // The GST invoice is attached as a PDF, the same invoice the receipt's download shows.
     const { rows: [inv] } = await db.query('select invoice_number from invoices where order_id = $1', [session.orderId])
     assert.ok(inv, 'invoice issued when the email was sent')
@@ -879,7 +887,7 @@ test('order confirmation email: sent over SMTP once payment verifies, with the o
     assert.ok(pdf.content.includes(`Invoice ${inv.invoice_number}`), 'invoice number in the PDF')
     assert.ok(m.text.includes('invoice is attached'))
     // Names are escaped in the HTML.
-    assert.ok(m.html.includes('Mail &lt;Test&gt;') && !m.html.includes('Mail <Test>'))
+    assert.ok(m.html.includes('Chennai Rice, Mail.') && !m.html.includes('<Test>'))
     const { rows: [row] } = await db.query(`select status, attempts from email_outbox where order_id = $1 and template = 'order_placed'`, [session.orderId])
     assert.deepEqual([row.status, row.attempts], ['sent', 1])
 
@@ -1003,7 +1011,7 @@ test('delivery charge: by PIN code region, per pack, with its GST on the invoice
   await db.query(`insert into variant_region_prices (variant_id, region, price_paise, delivery_paise) values
     ($1, 'TN', $2, 21000), ($1, 'SOUTH', $2, 40900)`, [v.id, v.price_paise])
   const quote = (pincode, qty = 2) =>
-    api('POST', '/api/checkout/quote', { body: { pincode, items: [{ id: 'alibaba-10kg', qty }] } })
+    api('POST', '/api/checkout/quote', { body: { pincode, deliveryMethod: 'courier', items: [{ id: 'alibaba-10kg', qty }] } })
   try {
     const tn = await quote('641001')
     assert.equal(tn.status, 200, JSON.stringify(tn.body))
@@ -1054,6 +1062,444 @@ test('delivery charge: by PIN code region, per pack, with its GST on the invoice
     await db.query(`delete from shipping_zones where code in ('TN', 'SOUTH')`)
     await db.query(`update shipping_zones set is_active = true, is_default = true where code = 'ALL_INDIA'`)
   }
+})
+
+test('in-house delivery: a flat ₹200 choice in Tamil Nadu, checked again at order time, shown to the warehouse', async () => {
+  const { rows: [v] } = await db.query(
+    `select v.id, v.price_paise from product_variants v join products p on p.id = v.product_id
+      where p.slug = 'alibaba' and v.pack_kg = 10`)
+  await db.query('update stock_levels set on_hand = on_hand + 10 where variant_id = $1', [v.id])
+  await db.query(`insert into shipping_zones (code, name) values ('TN', 'Tamil Nadu'), ('SOUTH', 'South India')`)
+  await db.query(`update shipping_zones set is_active = false, is_default = false where code not in ('TN', 'SOUTH')`)
+  await db.query(`insert into variant_region_prices (variant_id, region, price_paise, delivery_paise) values
+    ($1, 'TN', $2, 21000), ($1, 'SOUTH', $2, 40900)`, [v.id, v.price_paise])
+  const quote = (pincode, deliveryMethod, qty = 2) =>
+    api('POST', '/api/checkout/quote', { body: { pincode, deliveryMethod, items: [{ id: 'alibaba-10kg', qty }] } })
+  const setting = (key, value) => db.query(
+    `insert into company_settings (key, value) values ($1, $2) on conflict (key) do update set value = excluded.value`, [key, value])
+  try {
+    // Tamil Nadu: both choices; in-house is ₹200 for the whole order (the pricing sheet); until the
+    // customer chooses, the cheaper one is preselected.
+    const tn = await quote('641001')
+    assert.equal(tn.status, 200, JSON.stringify(tn.body))
+    assert.deepEqual(tn.body.deliveryOptions.map((o) => [o.method, o.charge]), [['courier', 420], ['in_house', 200]])
+    assert.equal(tn.body.deliveryMethod, 'in_house')
+    assert.equal(tn.body.shipping, 200)
+    assert.equal((await quote('641001', 'courier')).body.shipping, 420)
+    const own = await quote('641001', 'in_house')
+    assert.equal(own.body.deliveryMethod, 'in_house')
+    assert.equal(own.body.shipping, 200)
+    assert.equal(own.body.total, own.body.subtotal + 200)
+
+    // One bag, courier ₹210, our charge set to ₹250: still offered, the courier is preselected as cheaper.
+    await setting('in_house_delivery_paise', '25000')
+    const one = await quote('641001', 'auto', 1)
+    assert.deepEqual(one.body.deliveryOptions.map((o) => [o.method, o.charge]), [['courier', 210], ['in_house', 250]])
+    assert.equal(one.body.deliveryMethod, 'courier')
+    assert.equal((await quote('641001', 'in_house', 1)).body.shipping, 250)
+    // "Only when cheaper" switched on: then courier only.
+    await setting('in_house_delivery_only_cheaper', 'true')
+    assert.deepEqual((await quote('641001', 'in_house', 1)).body.deliveryOptions.map((o) => o.method), ['courier'])
+    assert.deepEqual((await quote('641001', 'in_house', 2)).body.deliveryOptions.map((o) => [o.method, o.charge]), [['courier', 420], ['in_house', 250]])
+    await db.query(`delete from company_settings where key in ('in_house_delivery_paise', 'in_house_delivery_only_cheaper')`)
+
+    // Kerala: courier only.
+    const kerala = await quote('682001', 'in_house', 1)
+    assert.deepEqual(kerala.body.deliveryOptions.map((o) => o.method), ['courier'])
+    assert.equal(kerala.body.deliveryMethod, 'courier')
+
+    // An order that says in-house for a PIN outside the area is refused, never switched quietly.
+    const tampered = await api('POST', '/api/checkout/session', {
+      body: { ...buyer({ pincode: '682001', city: 'Kochi', state: 'Kerala' }), deliveryMethod: 'in_house', items: [{ id: 'alibaba-10kg', qty: 1 }] },
+      headers: { 'X-Forwarded-For': '10.9.9.1' },
+    })
+    assert.equal(tampered.status, 422, JSON.stringify(tampered.body))
+    assert.match(tampered.body.error, /not available for this PIN code/)
+    const unknown = await api('POST', '/api/checkout/session', {
+      body: { ...buyer(), deliveryMethod: 'drone', items: [{ id: 'alibaba-10kg', qty: 1 }] },
+      headers: { 'X-Forwarded-For': '10.9.9.2' },
+    })
+    assert.equal(unknown.status, 400, JSON.stringify(unknown.body))
+
+    // A real in-house order: ₹200 charged, saved as in_house, shown as such in the warehouse list.
+    const { session, verify } = await buy([{ id: 'alibaba-10kg', qty: 2 }], { ...buyer(), deliveryMethod: 'in_house' })
+    assert.equal(verify.status, 200, JSON.stringify(verify.body))
+    assert.equal(session.amount, own.body.total)
+    assert.equal(session.deliveryMethod, 'in_house')
+    const { rows: [o] } = await db.query('select * from orders where id = $1', [session.orderId])
+    assert.equal(o.delivery_method, 'in_house')
+    assert.equal(Number(o.shipping_paise), 20000)
+    const { listWarehouseOrders } = await import('../lib/sales/warehouse.js')
+    const list = await listWarehouseOrders({ tab: 'all', delivery: 'in_house' })
+    assert.ok(list.orders.some((r) => r.id === o.id && r.deliveryMethod === 'in_house'))
+    assert.ok(!(await listWarehouseOrders({ tab: 'all', delivery: 'courier' })).orders.some((r) => r.id === o.id))
+    const { templates } = await import('../lib/sales/email.js')
+    assert.match(templates.orderPlaced(o, []).text, /Chennai Rice delivery {2}₹200/)
+
+    // The settings: a different charge and area, then switched off.
+    await setting('in_house_delivery_paise', '5000')
+    await setting('in_house_delivery_pins', '600, 638104')
+    assert.equal((await quote('600001', 'in_house')).body.shipping, 50)
+    assert.deepEqual((await quote('641001')).body.deliveryOptions.map((o) => o.method), ['courier'])
+    assert.equal((await quote('638104', 'in_house')).body.deliveryMethod, 'in_house')
+    await setting('in_house_delivery_enabled', 'false')
+    assert.deepEqual((await quote('600001', 'in_house')).body.deliveryOptions.map((o) => o.method), ['courier'])
+  } finally {
+    await db.query(`delete from company_settings where key like 'in_house_delivery_%'`)
+    await db.query('delete from variant_region_prices where variant_id = $1', [v.id])
+    await db.query(`delete from shipping_zones where code in ('TN', 'SOUTH')`)
+    await db.query(`update shipping_zones set is_active = true, is_default = true where code = 'ALL_INDIA'`)
+  }
+})
+
+test('discount codes: made by the owner, checked at quote and order, locked to a mobile, on the order and invoice', async () => {
+  const { rows: [v] } = await db.query(
+    `select v.id, v.price_paise from product_variants v join products p on p.id = v.product_id
+      where p.slug = 'alibaba' and v.pack_kg = 10`)
+  await db.query('update stock_levels set on_hand = on_hand + 20 where variant_id = $1', [v.id])
+  await db.query(`insert into shipping_zones (code, name) values ('TN', 'Tamil Nadu'), ('SOUTH', 'South India')`)
+  await db.query(`update shipping_zones set is_active = false, is_default = false where code not in ('TN', 'SOUTH')`)
+  await db.query(`insert into variant_region_prices (variant_id, region, price_paise, delivery_paise) values
+    ($1, 'TN', $2, 21000), ($1, 'SOUTH', $2, 40900)`, [v.id, v.price_paise])
+  const price = Number(v.price_paise) / 100
+  const quote = (body) => api('POST', '/api/checkout/quote', { body: { pincode: '641001', items: [{ id: 'alibaba-10kg', qty: 1 }], deliveryMethod: 'courier', ...body } })
+  const make = (body) => api('POST', '/api/admin/discounts', { token: OWNER, body })
+  let ip = 0
+  const session = (over) => api('POST', '/api/checkout/session', {
+    body: { ...buyer(), deliveryMethod: 'courier', items: [{ id: 'alibaba-10kg', qty: 1 }], ...over },
+    headers: { 'X-Forwarded-For': `10.8.${Math.floor(++ip / 250)}.${ip % 250}` },
+  })
+  try {
+    // Only owners and IT make codes; the panel's checks.
+    assert.equal((await api('POST', '/api/admin/discounts', { token: tokens.sales, body: { code: 'NOPE10', kind: 'amount', amount: 10 } })).status, 403)
+    assert.equal((await make({ code: 'x', kind: 'amount', amount: 10 })).status, 400)
+    assert.equal((await make({ code: 'TRY50', kind: 'percent', percent: 80 })).status, 400)
+    const made = await make({ code: 'try50', kind: 'amount', amount: 50, minOrder: price + 1 })
+    assert.equal(made.status, 200, JSON.stringify(made.body))
+    assert.equal(made.body.code.code, 'TRY50')
+    assert.equal((await make({ code: 'TRY50', kind: 'amount', amount: 5 })).status, 409)
+
+    // Minimum order not met: explained, cart still priced.
+    const short = await quote({ discountCode: 'try50', phone: '98765 43210' })
+    assert.equal(short.status, 200)
+    assert.equal(short.body.discount, null)
+    assert.match(short.body.discountError, /Add ₹1 more/)
+    assert.equal(short.body.total, short.body.subtotal + short.body.shipping)
+    assert.match((await quote({ discountCode: 'NOSUCH', phone: '9876543210' })).body.discountError, /could not find/)
+
+    // ₹50 off with two packs; the order and the invoice carry it.
+    const two = await quote({ discountCode: 'TRY50', phone: '9876543210', items: [{ id: 'alibaba-10kg', qty: 2 }] })
+    assert.deepEqual(two.body.discount, { code: 'TRY50', amount: 50, label: '₹50 off', auto: false, source: 'manual', gift: null })
+    assert.equal(two.body.total, two.body.subtotal + two.body.shipping - 50)
+    const { session: s1, verify } = await buy([{ id: 'alibaba-10kg', qty: 2 }], { ...buyer({ phone: '+91 90000 11111', email: 'code1@example.com' }), discountCode: 'TRY50' })
+    assert.equal(verify.status, 200, JSON.stringify(verify.body))
+    assert.deepEqual(s1.discount, { code: 'TRY50', amount: 50, gift: null })
+    const { rows: [o] } = await db.query('select * from orders where id = $1', [s1.orderId])
+    assert.equal(Number(o.discount_paise), 5000)
+    assert.equal(o.discount_code, 'TRY50')
+    assert.equal(Number(o.total_paise), Number(o.subtotal_paise) + Number(o.shipping_paise) - 5000)
+    const { issueInvoice } = await import('../lib/sales/operations.js')
+    const inv = await issueInvoice(db, o)
+    assert.equal(Number(inv.total_paise), Number(o.total_paise))
+    assert.equal(Number(inv.discount_paise ?? 5000), 5000)
+    const { templates } = await import('../lib/sales/email.js')
+    assert.match(templates.orderPlaced(o, []).text, /Discount \(TRY50\) {2}−₹50/)
+    // Once per mobile number.
+    assert.match((await quote({ discountCode: 'TRY50', phone: '9000011111', items: [{ id: 'alibaba-10kg', qty: 2 }] })).body.discountError, /already used/)
+    const again = await session({ ...buyer({ phone: '9000011111', email: 'code1@example.com' }), discountCode: 'TRY50', items: [{ id: 'alibaba-10kg', qty: 2 }] })
+    assert.equal(again.status, 422)
+    assert.match(again.body.error, /already used/)
+
+    // Locked to one mobile, Tamil Nadu only, free delivery, uses in all.
+    await db.query(`insert into discount_codes (code, kind, locked_phone, region, max_uses) values ('SPIN-FREE', 'free_delivery', '9111122222', 'TN', 1)`)
+    assert.match((await quote({ discountCode: 'SPIN-FREE', phone: '9333344444' })).body.discountError, /another mobile/)
+    assert.match((await quote({ discountCode: 'SPIN-FREE', phone: '9111122222', pincode: '682001' })).body.discountError, /Tamil Nadu only/)
+    const free = await quote({ discountCode: 'SPIN-FREE', phone: '9111122222' })
+    assert.equal(free.body.discount.amount, free.body.shipping)
+    assert.equal(free.body.total, free.body.subtotal)
+    assert.equal((await session({ ...buyer({ phone: '9333344444', email: 'x@example.com' }), discountCode: 'SPIN-FREE' })).status, 422)
+    const okFree = await session({ ...buyer({ phone: '9111122222', email: 'spin@example.com' }), discountCode: 'SPIN-FREE' })
+    assert.equal(okFree.status, 200, JSON.stringify(okFree.body))
+    // Its one use is held while the payment is open.
+    assert.match((await quote({ discountCode: 'SPIN-FREE', phone: '9111122222' })).body.discountError, /used up|already used/)
+
+    // Percent with a cap; expired; switched off.
+    await make({ code: 'TEN', kind: 'percent', percent: 10, maxOff: 30 })
+    assert.equal((await quote({ discountCode: 'TEN', phone: '9444455555' })).body.discount.amount, 30)
+    await db.query(`insert into discount_codes (code, kind, amount_paise, expires_at) values ('OLD25', 'amount', 2500, now() - interval '1 day')`)
+    assert.match((await quote({ discountCode: 'OLD25', phone: '9444455555' })).body.discountError, /expired on/)
+    const list = await api('GET', '/api/admin/discounts', { token: OWNER })
+    const ten = list.body.codes.find((c) => c.code === 'TEN')
+    assert.equal(list.body.codes.find((c) => c.code === 'TRY50').uses, 1)
+    assert.equal(list.body.codes.find((c) => c.code === 'TRY50').given, 50)
+    assert.equal((await api('PATCH', '/api/admin/discounts/' + ten.id, { token: OWNER, body: { active: false } })).status, 200)
+    assert.match((await quote({ discountCode: 'TEN', phone: '9444455555' })).body.discountError, /could not find/)
+
+    // No code: nothing changes.
+    const plain = await quote({})
+    assert.equal(plain.body.discount, null)
+    assert.equal(plain.body.discountError, null)
+  } finally {
+    await db.query(`update orders set discount_code_id = null where discount_code_id is not null`)
+    await db.query(`delete from discount_codes`)
+    await db.query('delete from variant_region_prices where variant_id = $1', [v.id])
+    await db.query(`delete from shipping_zones where code in ('TN', 'SOUTH')`)
+    await db.query(`update shipping_zones set is_active = true, is_default = true where code = 'ALL_INDIA'`)
+  }
+})
+
+test('Spin & Win: off until switched on, one spin per mobile and browser, prize code locked to the mobile, settings checked', async () => {
+  const spinApi = (body, n = 1) => api('POST', '/api/spin', { body: { name: 'Kavya', ...body }, headers: { 'X-Forwarded-For': '10.7.7.' + n } })
+  try {
+    // Off by default: nothing on the website.
+    assert.equal((await api('GET', '/api/spin')).body.enabled, false)
+    assert.equal((await spinApi({ name: 'Kavya', phone: '9876500001' })).status, 404)
+
+    // Settings: owners and IT only; chances must add up to 100.
+    assert.equal((await api('PUT', '/api/admin/spin', { token: tokens.sales, body: { enabled: true } })).status, 403)
+    const bad = await api('PUT', '/api/admin/spin', { token: OWNER, body: { prizes: [
+      { label: 'A', kind: 'amount', amount: 10, chance: 50 }, { label: 'B', kind: 'amount', amount: 20, chance: 20 }] } })
+    assert.equal(bad.status, 400)
+    const on = await api('PUT', '/api/admin/spin', { token: OWNER, body: { enabled: true } })
+    assert.equal(on.status, 200, JSON.stringify(on.body))
+    assert.equal(on.body.enabled, true)
+    const cfg = (await api('GET', '/api/spin')).body
+    assert.equal(cfg.enabled, true)
+    assert.equal(cfg.prizes.length, 8)
+    assert.ok(cfg.prizes.every((p) => p.label && p.chance === undefined)) // chances are never sent to the browser
+
+    // The pick follows the chances.
+    const { pickPrize, DEFAULT_PRIZES } = await import('../lib/sales/spin.js')
+    // The wheel's eight prizes, clockwise: ₹25 4%, ₹150 5%, ₹50 30%, free delivery 15%, ₹75 20%, 5% off 15%, ₹100 10%, free bag 1%.
+    assert.equal(pickPrize(DEFAULT_PRIZES, 0).key, 'p25')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 3.99).key, 'p25')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 4).key, 'p150')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 50).key, 'free')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 80).key, 'pct5')
+    assert.equal(pickPrize(DEFAULT_PRIZES, 99.5).key, 'bag')
+
+    assert.equal((await spinApi({ name: 'Kavya', phone: '12345' })).status, 400)
+    assert.equal((await spinApi({ name: '', phone: '9876500001' })).status, 400) // the name is needed
+
+    const won = await spinApi({ name: 'Kavya', phone: '+91 98765 00001', deviceId: 'dev-1' })
+    assert.equal(won.status, 200, JSON.stringify(won.body))
+    assert.equal(won.body.already, false)
+    assert.match(won.body.code, /^SPIN-[0-9A-F]{6}$/)
+    assert.ok(cfg.prizes.some((p) => p.key === won.body.prize.key))
+    const { rows: [c] } = await db.query('select * from discount_codes where code = $1', [won.body.code])
+    assert.equal(c.locked_phone, '9876500001')
+    assert.equal(c.source, 'spin')
+    assert.equal(c.max_uses, 1)
+    assert.equal((await db.query(`select name from spins where phone = '9876500001'`)).rows[0].name, 'Kavya')
+    assert.ok(new Date(c.expires_at) - Date.now() > 29.9 * 86400000) // valid 30 days
+
+    // Same mobile again: the same prize, no second spin. Same browser, another mobile: refused.
+    const again = await spinApi({ name: 'Kavya', phone: '9876500001', deviceId: 'dev-9' }, 2)
+    assert.equal(again.body.already, true)
+    assert.equal(again.body.code, won.body.code)
+    assert.equal((await spinApi({ name: 'Kavi', phone: '9876500002', deviceId: 'dev-1' }, 3)).status, 409)
+    assert.equal((await db.query("select count(*)::int as n from spins where phone = '9876500001'")).rows[0].n, 1)
+
+    // At checkout the prize works only with the same mobile number.
+    const { evaluateDiscount } = await import('../lib/sales/discounts.js')
+    const other = await evaluateDiscount(db, won.body.code, { phone: '9000000000', pincode: '641001', subtotalPaise: 500000, shippingPaise: 21000 })
+    assert.match(other.error, /another mobile/)
+    const mine = await evaluateDiscount(db, won.body.code, { phone: '9876500001', pincode: '641001', subtotalPaise: 500000, shippingPaise: 21000 })
+    assert.ok(!mine.error, mine.error)
+    assert.ok(mine.discountPaise > 0 || mine.gift, 'money off, or a gift')
+
+    // A gift prize: nothing off, the gift kept for the warehouse; a 5% prize: 5% of the rice, up to ₹150.
+    await db.query("insert into discount_codes (code, kind, gift_label, locked_phone, source) values ('SPIN-GIFT01', 'gift', 'Free 5 kg Kitchidi Ponni Slogan Bag', '9876500001', 'spin')")
+    const gift = await evaluateDiscount(db, 'SPIN-GIFT01', { phone: '9876500001', pincode: '641001', subtotalPaise: 200000, shippingPaise: 9000 })
+    assert.deepEqual([gift.discountPaise, gift.gift], [0, 'Free 5 kg Kitchidi Ponni Slogan Bag'])
+    await db.query("insert into discount_codes (code, kind, percent_bp, max_off_paise, locked_phone, source) values ('SPIN-PCT05', 'percent', 500, 15000, '9876500001', 'spin')")
+    assert.equal((await evaluateDiscount(db, 'SPIN-PCT05', { phone: '9876500001', pincode: '641001', subtotalPaise: 200000, shippingPaise: 9000 })).discountPaise, 10000)
+    assert.equal((await evaluateDiscount(db, 'SPIN-PCT05', { phone: '9876500001', pincode: '641001', subtotalPaise: 500000, shippingPaise: 9000 })).discountPaise, 15000)
+
+    // The admin view counts it.
+    const admin = await api('GET', '/api/admin/spin', { token: OWNER })
+    assert.equal(admin.body.report.spins, 1)
+
+    // Switched off again: the wheel goes away.
+    await api('PUT', '/api/admin/spin', { token: OWNER, body: { enabled: false } })
+    assert.equal((await api('GET', '/api/spin')).body.enabled, false)
+  } finally {
+    await db.query('delete from spins')
+    await db.query(`delete from discount_codes where source = 'spin'`)
+    await db.query(`delete from company_settings where key like 'spin_%'`)
+  }
+})
+
+test('Refer a friend: code after paying, friend saves on a first order, never their own, reward on delivery used by itself', async () => {
+  const { rows: [v] } = await db.query(
+    `select v.id from product_variants v join products p on p.id = v.product_id where p.slug = 'alibaba' and v.pack_kg = 10`)
+  await db.query('update stock_levels set on_hand = on_hand + 20 where variant_id = $1', [v.id])
+  const cart = [{ id: 'alibaba-10kg', qty: 1 }]
+  const lakshmi = buyer({ name: 'Lakshmi Narayanan', phone: '9845000001', email: 'lakshmi.ref@example.com', addressLine1: '7 Temple Street', pincode: '641002' })
+  const priya = buyer({ name: 'Priya S', phone: '9845000002', email: 'priya.ref@example.com', addressLine1: '22 Lake View', pincode: '641004' })
+  const ravi = buyer({ name: 'Ravi K', phone: '9845000003', email: 'ravi.ref@example.com', addressLine1: '3 Mill Road', pincode: '641005' })
+  const quote = (who, extra = {}) => api('POST', '/api/checkout/quote', { body: { items: cart, pincode: who.pincode, phone: who.phone, email: who.email, ...extra } })
+  try {
+    // Off: no codes are made.
+    const before = await buy(cart, lakshmi)
+    assert.equal(before.verify.body.referralCode, null)
+    assert.equal((await api('POST', '/api/referral/me', { body: { phone: lakshmi.phone, email: lakshmi.email } })).status, 404)
+
+    assert.equal((await api('PUT', '/api/admin/referrals', { token: tokens.sales, body: { enabled: true } })).status, 403)
+    const on = await api('PUT', '/api/admin/referrals', { token: OWNER, body: { enabled: true, friend: 50, reward: 60, cap: 2, days: 60 } })
+    assert.equal(on.status, 200, JSON.stringify(on.body))
+    assert.equal((await api('GET', '/api/referral')).body.enabled, true)
+
+    // Lakshmi's code: at /refer with her mobile number (a number with no paid order: not found).
+    assert.equal((await api('POST', '/api/referral/me', { body: { phone: '9845099998' } })).status, 404)
+    const me = await api('POST', '/api/referral/me', { body: { phone: '+91 98450 00001' } })
+    assert.equal(me.status, 200, JSON.stringify(me.body))
+    assert.match(me.body.code, /^LAKSHMI\d{2,3}$/)
+    assert.equal(me.body.friendGets, 50)
+    assert.equal(me.body.youGet, 60)
+    assert.equal(me.body.friends, 0)
+    const code = me.body.code
+    // Her next paid order shows the same code on the receipt and in the email.
+    const second = await buy(cart, lakshmi)
+    assert.equal(second.verify.body.referralCode, code)
+    const { rows: [mail] } = await db.query(`select body_text, body_html from email_outbox where order_id = $1 and template = 'order_placed'`, [second.session.orderId])
+    assert.match(mail.body_text, new RegExp('share your code ' + code))
+    assert.ok(mail.body_html.includes(code))
+
+    // Priya: the code, or Lakshmi's mobile number, gives ₹50 off her first order.
+    const byCode = await quote(priya, { discountCode: code.toLowerCase() })
+    assert.equal(byCode.body.discount.amount, 50, JSON.stringify(byCode.body))
+    const byMobile = await quote(priya, { discountCode: '+91 98450 00001' })
+    assert.equal(byMobile.body.discount.code, code)
+    assert.match((await quote(priya, { discountCode: '9845099999' })).body.discountError, /referral for that mobile/)
+    // Never Lakshmi herself: her mobile, her email, or her address under another number.
+    assert.match((await quote(lakshmi, { discountCode: code })).body.discountError, /your own code/)
+    assert.match((await quote({ ...priya, email: lakshmi.email }, { discountCode: code })).body.discountError, /your own code/)
+    const sameHouse = await api('POST', '/api/checkout/session', {
+      body: { ...buyer({ name: 'L N', phone: '9845000009', email: 'ln2@example.com', addressLine1: '7, Temple street', pincode: '641002' }), discountCode: code, items: cart },
+      headers: { 'X-Forwarded-For': '10.6.6.1' },
+    })
+    assert.equal(sameHouse.status, 422)
+    assert.match(sameHouse.body.error, /your own code/)
+
+    const friend = await buy(cart, { ...priya, discountCode: code })
+    assert.equal(friend.verify.status, 200, JSON.stringify(friend.verify.body))
+    const { rows: [fo] } = await db.query('select * from orders where id = $1', [friend.session.orderId])
+    assert.equal(Number(fo.discount_paise), 5000)
+    assert.ok(fo.referrer_id)
+    // Priya is a customer now: the referral is for first orders only.
+    assert.match((await quote(priya, { discountCode: code })).body.discountError, /first orders only/)
+
+    // Delivered: Lakshmi's reward, locked to her mobile + email, used by itself at her checkout; emailed to her.
+    const { releaseReferralReward } = await import('../lib/sales/referrals.js')
+    const reward = await releaseReferralReward(db, fo)
+    assert.ok(reward)
+    assert.equal(Number(reward.amount_paise), 6000)
+    assert.equal(reward.locked_phone, '9845000001')
+    assert.equal(reward.locked_email, 'lakshmi.ref@example.com')
+    assert.equal(await releaseReferralReward(db, fo), null) // once per order
+    const { rows: [rmail] } = await db.query(`select subject from email_outbox where dedupe_key = $1`, ['referral-reward:' + fo.id])
+    assert.match(rmail.subject, /₹60 off is waiting/)
+    const auto = await quote(lakshmi)
+    assert.equal(auto.body.discount.auto, true)
+    assert.equal(auto.body.discount.amount, 60)
+    assert.equal(auto.body.total, auto.body.subtotal + auto.body.shipping - 60)
+    assert.equal((await quote({ ...lakshmi, email: 'someone@example.com' })).body.discount, null)
+    const stats = await api('POST', '/api/referral/me', { body: { phone: lakshmi.phone, email: lakshmi.email } })
+    assert.equal(stats.body.friends, 1)
+    assert.equal(stats.body.available, 60)
+    // Her next order uses it without a code.
+    const third = await buy(cart, lakshmi)
+    const { rows: [to] } = await db.query('select * from orders where id = $1', [third.session.orderId])
+    assert.equal(Number(to.discount_paise), 6000)
+    assert.equal(to.discount_code, reward.code)
+    assert.equal((await api('POST', '/api/referral/me', { body: { phone: lakshmi.phone, email: lakshmi.email } })).body.used, 60)
+
+    // Monthly limit (2): Ravi's order makes the second reward; a third friend's would be over the limit.
+    const ravisOrder = await buy(cart, { ...ravi, discountCode: code })
+    const { rows: [ro] } = await db.query('select * from orders where id = $1', [ravisOrder.session.orderId])
+    const r2 = await releaseReferralReward(db, ro)
+    assert.ok(r2)
+    await api('PUT', '/api/admin/referrals', { token: OWNER, body: { cap: 1 } })
+    const meena = buyer({ name: 'Meena', phone: '9845000004', email: 'meena.ref@example.com', addressLine1: '9 Hill Lane', pincode: '641006' })
+    const meenasOrder = await buy(cart, { ...meena, discountCode: code })
+    assert.equal(Number((await db.query('select discount_paise from orders where id = $1', [meenasOrder.session.orderId])).rows[0].discount_paise), 5000)
+    const { rows: [mo] } = await db.query('select * from orders where id = $1', [meenasOrder.session.orderId])
+    assert.equal(await releaseReferralReward(db, mo), null)
+    assert.equal((await db.query('select status from referral_rewards where friend_order_id = $1', [mo.id])).rows[0].status, 'over_limit')
+
+    // The team takes back a reward: its code stops working.
+    const admin = await api('GET', '/api/admin/referrals', { token: OWNER })
+    assert.equal(admin.body.top[0].code, code)
+    assert.equal(admin.body.top[0].friends, 3)
+    const given = admin.body.recent.find((x) => x.code === r2.code)
+    assert.equal((await api('POST', '/api/admin/referrals/rewards/' + given.id + '/cancel', { token: OWNER })).status, 200)
+    assert.equal((await quote(lakshmi)).body.discount, null)
+
+    // Switched off: codes stop working.
+    await api('PUT', '/api/admin/referrals', { token: OWNER, body: { enabled: false } })
+    const off = await quote(buyer({ phone: '9845000005', email: 'new@example.com', addressLine1: '1 New St', pincode: '641007' }), { discountCode: code })
+    assert.match(off.body.discountError, /not running/)
+  } finally {
+    await db.query(`delete from referral_rewards`)
+    await db.query(`update orders set referrer_id = null, discount_code_id = null where referrer_id is not null or discount_code_id is not null`)
+    await db.query(`delete from referrers`)
+    await db.query(`delete from discount_codes where source in ('referral', 'reward')`)
+    await db.query(`delete from company_settings where key like 'referral_%'`)
+  }
+})
+
+test('Final price list (Nov 2026): website prices top bag to bottom, in-house a bag in Tamil Nadu within each range; settings saved', async () => {
+  const { PRICE_LIST, packPricing } = await import('../db/apply-price-list.js')
+  const ORDER = ['kitchidi-ponni-rice', 'special-rajabhogam', 'vintage', 'united-5kg', 'vijaya-nagaram', 'viruchagam',
+    'nayara-super-aged', 'a1-special-ponni', 'chennai-bullets', 'alibaba', 'special-idly-rice']
+  // The website prices as given, in that order (no Kitchidi 10 kg).
+  const WEB = {
+    5: [555, 549, 539, 529, 527, 525, 521, 515, 512, 509, 299],
+    10: [null, 1099, 1088, 1049, 1045, 1035, 1030, 1029, 1025, 1019, 599],
+    26: [2499, 2488, 2477, 2469, 2465, 2455, 2444, 2439, 2429, 2419, 1399],
+  }
+  const RANGE = { 5: [50, 90], 10: [90, 110], 26: [110, 150] }
+  for (const kg of [5, 10, 26]) {
+    let last = 0
+    ORDER.forEach((slug, i) => {
+      if (WEB[kg][i] == null) return assert.equal(PRICE_LIST[slug][kg], undefined, slug + ' ' + kg)
+      const [list, mrp, absorbed, opts] = PRICE_LIST[slug][kg]
+      const p = packPricing(kg, list, mrp, absorbed, opts)
+      assert.equal(p.website, WEB[kg][i], slug + ' ' + kg)
+      assert.ok(p.website <= p.mrp && p.website <= 2800, slug + ' ' + kg)
+      // In-house a bag in Tamil Nadu, the same for every bag: 5 kg ₹50, 10 kg ₹90, 26 kg ₹110.
+      assert.equal(p.inHouse, { 5: 50, 10: 90, 26: 110 }[kg], slug + ' ' + kg + ' kg in-house')
+      last = p.inHouse
+    })
+  }
+  // The ends of each range: top bag lowest, bottom bag highest.
+  assert.equal(packPricing(5, ...PRICE_LIST['kitchidi-ponni-rice'][5]).inHouse, 50)
+  assert.equal(packPricing(5, ...PRICE_LIST['special-idly-rice'][5]).inHouse, 50)
+  assert.equal(packPricing(10, ...PRICE_LIST['special-rajabhogam'][10]).inHouse, 90)
+  assert.equal(packPricing(26, ...PRICE_LIST['special-idly-rice'][26]).inHouse, 110)
+  // In-house a bag, summed for the order.
+  const { deliveryOptions: opts } = await import('../lib/sales/delivery.js')
+  const own = (lines) => opts(99999, '641001', {}, { lines }).find((o) => o.method === 'in_house').paise
+  assert.equal(own([{ inHousePaise: 4900, quantity: 2 }]), 9800)
+  assert.equal(own([{ inHousePaise: 6000, quantity: 1 }, { inHousePaise: 20000, quantity: 1 }]), 26000)
+
+  // In-house: ₹200 with a 26 kg bag, ₹100 otherwise; the owner can change both.
+  const { deliveryOptions } = await import('../lib/sales/delivery.js')
+  assert.equal(deliveryOptions(58900, '641001', {}, { largestPackKg: 26 }).find((o) => o.method === 'in_house').paise, 20000)
+  // ₹200 with every pack size, offered even when the courier is cheaper (5 kg: courier ₹54).
+  assert.equal(deliveryOptions(25000, '641001', {}, { largestPackKg: 5 }).find((o) => o.method === 'in_house').paise, 20000)
+  assert.equal(deliveryOptions(5400, '641001', {}, { largestPackKg: 5 }).find((o) => o.method === 'in_house').paise, 20000)
+  const saved = await api('PATCH', '/api/admin/settings', { token: OWNER, body: {
+    in_house_delivery_paise: '15000', in_house_delivery_26kg_paise: '25000', in_house_delivery_pins: '638, 641001 638',
+  } })
+  assert.equal(saved.status, 200, JSON.stringify(saved.body))
+  const v = Object.fromEntries(saved.body.settings.map((x) => [x.key, x.value]))
+  assert.equal(v.in_house_delivery_26kg_paise, '25000')
+  assert.equal(v.in_house_delivery_pins, '638, 641001')
+  assert.equal((await api('PATCH', '/api/admin/settings', { token: OWNER, body: { in_house_delivery_paise: 'abc' } })).status, 400)
+  assert.equal((await api('PATCH', '/api/admin/settings', { token: OWNER, body: { in_house_delivery_pins: '63a' } })).status, 400)
+  await db.query(`delete from company_settings where key like 'in_house_delivery_%'`)
 })
 
 test('PIN code regions and the delivered-price sheets', async () => {
@@ -2402,6 +2848,15 @@ test('checkout journeys: cart → checkout → details → payment → cancelled
   const found = await api('GET', '/api/admin/journeys?days=7&q=Meena', { token: OWNER })
   assert.deepEqual(found.body.journeys.map((x) => x.id), [j1])
   assert.equal((await api('GET', '/api/admin/journeys', { token: 'store@x.test|uid-store' })).status, 403)
+  // The performance role: Analyst, Advisor, journeys, reports and ad campaigns; no orders, warehouse or team.
+  const perf = 'perf@x.test|uid-perf'
+  assert.equal((await api('POST', '/api/admin/staff', { token: OWNER, body: { email: 'perf@x.test', fullName: 'Performance', role: 'performance' } })).status, 200)
+  for (const p of ['/api/admin/analyst', '/api/admin/journeys', '/api/admin/reports', '/api/admin/warehouse/sources', '/api/admin/warehouse/customers', '/api/admin/warehouse/customers.csv']) {
+    assert.equal((await api('GET', p, { token: perf })).status, 200, p)
+  }
+  for (const p of ['/api/admin/warehouse/orders', '/api/admin/warehouse/dashboard', '/api/admin/staff', '/api/admin/dashboard']) {
+    assert.equal((await api('GET', p, { token: perf })).status, 403, p)
+  }
 })
 
 test('slogan contest: entries by day, pack, region, district and shop; demo left out; entrants who bought online; owner and IT only', async () => {
@@ -2978,6 +3433,15 @@ test('the MIS dashboard: columns are found by name, statuses and dates are read,
     const me = await api('GET', '/api/admin/me', { token: M })
     assert.equal(me.body.role, 'mis')
     assert.deepEqual(me.body.permissions, ['mis.view'])
+    // The Performance login: email and password too (no Supabase), and it opens the Analyst pages.
+    await api('POST', '/api/admin/staff', { token: OWNER, body: { email: 'perf-two@example.com', fullName: 'Performance', role: 'performance' } })
+    await db.query('update staff_users set password_hash = $2 where email = $1', ['perf-two@example.com', await hashPassword('a long enough password')])
+    const P = (await login('perf-two@example.com', 'a long enough password')).body.token
+    assert.ok(P)
+    assert.equal((await api('GET', '/api/admin/analyst', { token: P })).status, 200)
+    assert.equal((await api('GET', '/api/admin/warehouse/sources', { token: P })).status, 200)
+    assert.equal((await api('GET', '/api/admin/warehouse/orders', { token: P })).status, 403)
+    assert.equal((await api('GET', '/api/admin/mis/data', { token: P })).status, 403)
 
     assert.equal((await api('GET', '/api/admin/mis/data')).status, 401)
     assert.equal((await api('GET', '/api/admin/mis/data', { token: B })).status, 403)
@@ -3331,4 +3795,179 @@ test('AskEva: replies from a campaign list number, or the campaign button, are n
   assert.equal(rows[0].n, 0) // not saved here either (kept in the owner's separate database)
   const { rows: ev } = await db.query(`select count(*)::int n from askeva_events where payload::text like '%97333000_1%' or payload::text like '%9733300002%'`)
   assert.equal(ev[0].n, 0)
+})
+
+test('Ad campaigns: reports and sign-ups take a From-To date range (India dates, one day = same date twice)', async () => {
+  const { reportRange, contestLeads, sourcesReport } = await import('../lib/sales/attribution.js')
+  const today = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
+  assert.deepEqual(reportRange({ from: '2026-11-03', to: '2026-11-01' }), { from: '2026-11-01', to: '2026-11-03' })
+  assert.deepEqual(reportRange({ from: '2026-11-01' }), { from: '2026-11-01', to: today })
+  assert.equal(reportRange({ days: 1 }).from, today)
+  await db.query(`insert into contest_leads (name, phone, email, source, created_at) values
+    ('Range Old', '9744400001', 'o@b.co', 'meta_ads', now() - interval '10 days'), ('Range Now', '9744400002', 'n@b.co', 'google_ads', now())
+    on conflict (phone) do nothing`)
+  const phones = (rows) => rows.map((l) => l.phone).filter((p) => p.startsWith('974440'))
+  assert.deepEqual(phones(await contestLeads({ query: db.query }, { from: today, to: today })), ['9744400002'])
+  assert.deepEqual(phones(await contestLeads({ query: db.query }, { from: '2024-01-01', to: today })).sort(), ['9744400001', '9744400002'])
+  const r = await sourcesReport({ query: db.query }, { from: today, to: today })
+  assert.deepEqual([r.from, r.to], [today, today])
+})
+
+test('cart reminder emails: email 1 after an hour, email 2 with a free-delivery code, resume link, unsubscribe, never after paying, results', async () => {
+  const { sendCartReminders } = await import('../lib/sales/cart-recovery.js')
+  const { randomUUID } = await import('node:crypto')
+  // Off until switched on.
+  const off = await api('GET', '/api/admin/cart-reminders', { token: OWNER })
+  assert.equal(off.status, 200, JSON.stringify(off.body))
+  assert.equal(off.body.enabled, false)
+  assert.deepEqual(await sendCartReminders(db), { off: true })
+  const on = await api('PUT', '/api/admin/cart-reminders', { token: OWNER, body: { enabled: true, offer: 'free_delivery' } })
+  assert.equal(on.body.enabled, true)
+
+  // Noon India time today; the shopper stopped two hours before.
+  const noon = new Date(new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10) + 'T06:30:00Z').getTime()
+  const shop = async (phone, email) => {
+    const id = randomUUID()
+    const r = await api('POST', '/api/journey', { body: { journeyId: id, stage: 'details', items: [{ id: 'alibaba-10kg', name: 'Alibaba (10 kg)', qty: 2, price: 990 }], value: 1980,
+      contact: { name: 'Kavya Ramesh', phone, email, city: 'Erode', state: 'Tamil Nadu', pincode: '638001' } } })
+    assert.equal(r.status, 200, JSON.stringify(r.body))
+    await db.query(`update checkout_journeys set started_at = $2, updated_at = $2 where id = $1`, [id, new Date(noon - 2 * 3600000)])
+    return id
+  }
+  const j = await shop('9733300088', 'kavya.cart@example.com')
+
+  // Late at night nothing goes; at noon email 1 does, once.
+  assert.deepEqual(await sendCartReminders(db, { now: noon + 11 * 3600000 }), { waiting: true })
+  assert.deepEqual(await sendCartReminders(db, { now: noon }), { sent1: 1, sent2: 0 })
+  assert.deepEqual(await sendCartReminders(db, { now: noon + 600000 }), { sent1: 0, sent2: 0 })
+  const { rows: [m1] } = await db.query(`select * from email_outbox where dedupe_key = $1`, [`cart-reminder:${j}:1`])
+  assert.equal(m1.to_email, 'kavya.cart@example.com')
+  assert.match(m1.subject, /Kavya, your Chennai Rice order is waiting/)
+  assert.match(m1.body_html, /Complete my order/)
+  assert.match(m1.body_html, /Alibaba \(10 kg\)/)
+  const token = /checkout\?resume=([A-Za-z0-9_-]+)/.exec(m1.body_html)[1]
+  assert.ok(m1.body_html.includes('/api/cart/unsubscribe?t='), 'has an unsubscribe link')
+
+  // The link brings the cart and the details back, and counts the click.
+  const back = await api('GET', `/api/cart/resume/${token}`)
+  assert.equal(back.status, 200, JSON.stringify(back.body))
+  assert.deepEqual(back.body.items.map((i) => [i.id, i.qty, i.packKg]), [['alibaba-10kg', 2, 10]])
+  assert.equal(back.body.contact.email, 'kavya.cart@example.com')
+  assert.equal(back.body.code, null)
+  assert.equal((await api('GET', '/api/cart/resume/not-a-real-token-123')).status, 404)
+
+  // A day later, still unpaid: email 2 with a free-delivery code for that mobile only.
+  assert.deepEqual(await sendCartReminders(db, { now: noon + 25 * 3600000 }), { sent1: 0, sent2: 1 })
+  const { rows: [m2] } = await db.query(`select * from email_outbox where dedupe_key = $1`, [`cart-reminder:${j}:2`])
+  const code = /CART-[A-Z0-9]{6}/.exec(m2.body_html)?.[0]
+  assert.ok(code, 'email 2 has a code')
+  assert.match(m2.subject, /free delivery/i)
+  const { rows: [dc] } = await db.query('select kind, locked_phone, max_uses, source from discount_codes where code = $1', [code])
+  assert.deepEqual(dc, { kind: 'free_delivery', locked_phone: '9733300088', max_uses: 1, source: 'cart' })
+  const token2 = /checkout\?resume=([A-Za-z0-9_-]+)/.exec(m2.body_html)[1]
+  assert.equal((await api('GET', `/api/cart/resume/${token2}`)).body.code, code)
+  assert.deepEqual(await sendCartReminders(db, { now: noon + 50 * 3600000 }), { sent1: 0, sent2: 0 })
+
+  // Paid in the meantime: no reminder.
+  const paidPhone = '9733300099'
+  await shop(paidPhone, 'paid.cart@example.com')
+  await buy([{ id: 'alibaba', packKg: 10, qty: 1 }], buyer({ phone: paidPhone, email: 'paid.cart@example.com' }))
+  const { rows: [{ n: before }] } = await db.query(`select count(*)::int as n from cart_reminders where email = 'paid.cart@example.com'`)
+  await sendCartReminders(db, { now: noon })
+  const { rows: [{ n: after }] } = await db.query(`select count(*)::int as n from cart_reminders where email = 'paid.cart@example.com'`)
+  assert.equal(after, before)
+
+  // Unsubscribe: a page, and no more reminders to that email.
+  const un = await api('GET', `/api/cart/unsubscribe?t=${token}`)
+  assert.equal(un.status, 200)
+  assert.match(un.body, /unsubscribed/)
+  await db.query(`delete from cart_reminders where email = 'kavya.cart@example.com'`)
+  await shop('9733300088', 'kavya.cart@example.com')
+  await sendCartReminders(db, { now: noon })
+  const { rows: [{ n: again }] } = await db.query(`select count(*)::int as n from cart_reminders where email = 'kavya.cart@example.com'`)
+  assert.equal(again, 0)
+
+  // Results for /offers; a warehouse login cannot see them.
+  const res = await api('GET', '/api/admin/cart-reminders', { token: OWNER })
+  assert.equal(res.body.stats.unsubscribed, 1)
+  assert.equal((await api('GET', '/api/admin/cart-reminders', { token: 'store@x.test|uid-store' })).status, 403)
+  await api('PUT', '/api/admin/cart-reminders', { token: OWNER, body: { enabled: false } })
+})
+
+test('order emails: packed, out for delivery, delivered with the review link, review published on /review, payment failed with retry', async () => {
+  const { templates } = await import('../lib/sales/email.js')
+  // 02 Packed: the new design, with the items.
+  const sample = { id: 'x', order_number: 'CR-TEST-1', contact_name: 'Kavya R', contact_phone: '9733300011', total_paise: 68000, shipping_address: { line1: '1 Main Rd', city: 'Erode', state: 'Tamil Nadu', pincode: '638001' } }
+  const packed = templates.orderConfirmed(sample, [{ product_name: 'Alibaba', pack_kg: 10, quantity: 2 }])
+  assert.match(packed.html, /Your Order is Being Packed/)
+  assert.match(packed.html, /Alibaba 10 kg &times; 2/)
+  assert.ok(!packed.html.includes('INCLUDE'), 'shared parts are filled in')
+  assert.ok(packed.html.includes('From Our Fields to Every Family'))
+
+  // 04 Out for delivery on a shipment still on its way: the "Arriving today" email, once.
+  const { rows: [sh] } = await db.query(`select s.id, s.order_id from shipments s join orders o on o.id = s.order_id
+    where s.status = 'shipped' and o.status = 'shipped' and o.contact_email is not null order by s.shipped_at desc limit 1`)
+  assert.ok(sh, 'an earlier test left a shipment on its way')
+  const out = await api('POST', `/api/admin/shipments/${sh.id}/out-for-delivery`, { token: OWNER })
+  assert.equal(out.status, 200, JSON.stringify(out.body))
+  assert.equal((await api('POST', `/api/admin/shipments/${sh.id}/out-for-delivery`, { token: OWNER })).body.already, true)
+  const { rows: [m4] } = await db.query(`select subject, body_html from email_outbox where dedupe_key = $1`, ['out:' + sh.id])
+  assert.match(m4.subject, /Arriving today/)
+  assert.match(m4.body_html, /Out for Delivery/)
+
+  // 05 Delivered: the email's stars and button open /review with a signed link for that order.
+  const dv = await api('POST', `/api/admin/shipments/${sh.id}/deliver`, { token: OWNER, body: { note: 'Handed over' } })
+  assert.equal(dv.status, 200, JSON.stringify(dv.body))
+  const { rows: [m5] } = await db.query(`select body_html from email_outbox where dedupe_key = $1`, ['delivered:' + sh.order_id])
+  assert.match(m5.body_html, /How Was Your Experience/)
+  const link = /\/review\?o=([^&"]+)&amp;t=([A-Za-z0-9_-]{22})/.exec(m5.body_html)
+  assert.ok(link, 'review link in the email')
+  const [, o, t] = link
+  assert.match(m5.body_html, /&amp;rating=5/)
+
+  // The form: a wrong signature is refused; the right one shows the order; the review waits until published.
+  assert.equal((await api('GET', `/api/reviews/form?o=${o}&t=${'x'.repeat(22)}`)).status, 404)
+  const form = await api('GET', `/api/reviews/form?o=${o}&t=${t}`)
+  assert.equal(form.status, 200, JSON.stringify(form.body))
+  assert.equal(form.body.review, null)
+  assert.equal((await api('POST', '/api/reviews', { body: { o, t, rating: 9 } })).status, 400)
+  const sent = await api('POST', '/api/reviews', { body: { o, t, rating: 5, text: 'Soft, fragrant rice. Delivered on time!', name: 'Kavya Ramesh' } })
+  assert.equal(sent.status, 200, JSON.stringify(sent.body))
+  assert.equal((await api('GET', '/api/reviews')).body.count, 0)
+  const list = await api('GET', '/api/admin/reviews?status=pending', { token: OWNER })
+  const mine = list.body.reviews.find((r) => r.orderNumber === decodeURIComponent(o))
+  assert.ok(mine)
+  assert.equal((await api('PUT', `/api/admin/reviews/${mine.id}`, { token: 'store@x.test|uid-store', body: { status: 'published' } })).status, 403)
+  assert.equal((await api('PUT', `/api/admin/reviews/${mine.id}`, { token: OWNER, body: { status: 'published' } })).status, 200)
+  const pub = await api('GET', '/api/reviews')
+  assert.equal(pub.body.count, 1)
+  assert.equal(pub.body.average, 5)
+  assert.deepEqual([pub.body.reviews[0].name, pub.body.reviews[0].text], ['Kavya R.', 'Soft, fragrant rice. Delivered on time!'])
+  // Published: it can no longer be changed from the link.
+  assert.equal((await api('POST', '/api/reviews', { body: { o, t, rating: 1 } })).status, 409)
+
+  // 06 Payment failed: an order whose payment failed gets the email 15 minutes later, once, with a Retry Payment
+  // link that brings its packs and details back at checkout.
+  const { sendPaymentFailedEmails } = await import('../lib/sales/cart-recovery.js')
+  const s = await api('POST', '/api/checkout/session', {
+    body: { ...buyer({ phone: '9733300055', email: 'failed.pay@example.com' }), items: [{ id: 'alibaba', packKg: 10, qty: 2 }] },
+    headers: { 'X-Forwarded-For': '10.77.0.1' },
+  })
+  assert.equal(s.status, 200, JSON.stringify(s.body))
+  await db.query(`update orders set payment_status = 'failed' where id = $1`, [s.body.orderId])
+  const failMails = async () => (await db.query(`select count(*)::int as n from email_outbox where dedupe_key = $1`, ['payfail:' + s.body.orderId])).rows[0].n
+  await sendPaymentFailedEmails(db)
+  assert.equal(await failMails(), 0) // too soon
+  await sendPaymentFailedEmails(db, { now: Date.now() + 20 * 60000 })
+  await sendPaymentFailedEmails(db, { now: Date.now() + 30 * 60000 })
+  assert.equal(await failMails(), 1)
+  const { rows: [m6] } = await db.query(`select to_email, subject, body_html from email_outbox where dedupe_key = $1`, ['payfail:' + s.body.orderId])
+  assert.equal(m6.to_email, 'failed.pay@example.com')
+  assert.match(m6.body_html, /Retry Payment/)
+  const retry = decodeURIComponent(/checkout\?resume=([^"&]+)/.exec(m6.body_html)[1])
+  const back = await api('GET', `/api/cart/resume/${encodeURIComponent(retry)}`)
+  assert.equal(back.status, 200, JSON.stringify(back.body))
+  assert.deepEqual(back.body.items.map((i) => [i.id, i.qty]), [['alibaba-10kg', 2]])
+  assert.equal(back.body.contact.email, 'failed.pay@example.com')
+  assert.equal((await api('GET', `/api/cart/resume/${encodeURIComponent(retry.slice(0, -3) + 'abc')}`)).status, 404)
 })

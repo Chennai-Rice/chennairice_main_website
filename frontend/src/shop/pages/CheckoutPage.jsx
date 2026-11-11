@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import SiteLayout from "../layouts/SiteLayout.jsx";
 import { useCart } from "../hooks/useCart.jsx";
@@ -9,6 +9,35 @@ import { recordJourney, endJourney, journeyItems, journeyValue } from "../../ser
 import { formatRupees } from "../utils/format.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
+import DeliveryChoice from "../components/DeliveryChoice.jsx";
+import DiscountCode from "../components/DiscountCode.jsx";
+import SuggestInput from "../components/SuggestInput.jsx";
+import { matchTowns } from "../data/indianTowns.js";
+import ReferralShare from "../components/ReferralShare.jsx";
+
+// The discount code for this visit (sessionStorage): typed here, or filled in by Spin & Win or a referral.
+export const DISCOUNT_CODE_KEY = "cr.checkout.code";
+function readDiscountCode() {
+  try { return window.sessionStorage.getItem(DISCOUNT_CODE_KEY) || ""; } catch { return ""; }
+}
+function saveDiscountCode(code) {
+  try {
+    if (code) window.sessionStorage.setItem(DISCOUNT_CODE_KEY, code);
+    else window.sessionStorage.removeItem(DISCOUNT_CODE_KEY);
+  } catch { /* private mode: kept for this page only */ }
+}
+
+// The delivery method the customer picked on this visit (sessionStorage); until they choose, 'auto':
+// the server preselects the cheaper of courier and our own team.
+const DELIVERY_CHOICE_KEY = "cr.checkout.delivery";
+function readDeliveryChoice() {
+  try {
+    const v = window.sessionStorage.getItem(DELIVERY_CHOICE_KEY);
+    return v === "courier" || v === "in_house" ? v : "auto";
+  } catch {
+    return "auto";
+  }
+}
 import { metaCheckoutSignal, trackMetaEvent, trackMetaPurchase } from "../../services/metaPixel.js";
 import { trackGooglePurchase } from "../../services/googleAnalytics.js";
 import {
@@ -61,11 +90,25 @@ function validate(form) {
 }
 
 export default function CheckoutPage() {
-  const { items, count, clear } = useCart();
+  const { items, count, clear, replace: replaceCart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState(EMPTY_FORM);
-  const { subtotal, shipping, region, total, hasPin, error: quoteError } = useCartQuote(form.pincode);
+  // Courier, or Chennai Rice's own team where it delivers (offered once the PIN code is known, and only
+  // when it costs less than the courier). Our team is the default: where it is not offered, the server's
+  // quote answers with the courier, and that answer (deliveryMethod) is what is shown and paid. The
+  // choice is kept for the visit, so it is still there if the customer goes back to the cart and returns.
+  const [deliveryChoice, setDeliveryChoiceState] = useState(readDeliveryChoice);
+  const setDeliveryChoice = useCallback((method) => {
+    setDeliveryChoiceState(method);
+    try { window.sessionStorage.setItem(DELIVERY_CHOICE_KEY, method); } catch { /* private mode: kept for this page only */ }
+  }, []);
+  const [discountCode, setDiscountCodeState] = useState(readDiscountCode);
+  const setDiscountCode = useCallback((code) => { setDiscountCodeState(code); saveDiscountCode(code); }, []);
+  const {
+    subtotal, shipping, region, total, hasPin, deliveryOptions, deliveryMethod, discount, discountError, error: quoteError,
+  } = useCartQuote(form.pincode, deliveryChoice, { discountCode, phone: form.phone, email: form.email });
+  const ownDelivery = deliveryMethod === "in_house";
   const [errors, setErrors] = useState({});
   // After payment the receipt moves to /order-confirmed (a page of its own
   // for ad and Tag Manager conversion tracking). The receipt rides in the
@@ -86,6 +129,7 @@ export default function CheckoutPage() {
       transactionId: confirmed.orderNumber,
       value: Number(confirmed.amount),
       shipping: confirmed.shipping,
+      coupon: confirmed.coupon,
       items: confirmed.items || [],
     });
   }, [onConfirmedPage, status, confirmed]);
@@ -103,6 +147,84 @@ export default function CheckoutPage() {
     // stale complaint under a field the customer is actively fixing.
     setErrors((current) => (current[key] ? { ...current, [key]: undefined } : current));
   };
+
+  // A cart reminder email's "Complete my order" link (/checkout?resume=…): the cart, the details and email 2's
+  // code come back, so the customer only presses Pay. The link is then dropped from the address bar.
+  const [resumeNote, setResumeNote] = useState("");
+  useEffect(() => {
+    const token = new URLSearchParams(location.search).get("resume");
+    if (!token) return undefined;
+    let gone = false;
+    fetch(`/api/cart/resume/${encodeURIComponent(token)}`)
+      .then(async (r) => ({ ok: r.ok, body: await r.json().catch(() => ({})) }))
+      .then(({ ok, body }) => {
+        if (gone) return;
+        if (!ok) { setResumeNote(body.error || "This link has expired."); return; }
+        if (body.items?.length) replaceCart(body.items);
+        const c = body.contact || {};
+        setForm((current) => {
+          const next = { ...current };
+          for (const k of ["name", "email", "phone", "addressLine1", "addressLine2", "city", "state", "pincode"]) if (c[k]) next[k] = c[k];
+          return next;
+        });
+        if (body.code) setDiscountCode(body.code);
+        setResumeNote(body.code ? `Welcome back! Your cart is ready, and code ${body.code} is applied.` : "Welcome back! Your cart and details are ready. Just check and press Pay.");
+      })
+      .catch(() => {})
+      .finally(() => { if (!gone) navigate(location.pathname, { replace: true }); });
+    return () => { gone = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fill several address fields at once (a picked suggestion), clearing their errors.
+  const fill = (values) => {
+    setForm((current) => ({ ...current, ...values }));
+    setErrors((current) => {
+      const next = { ...current };
+      Object.keys(values).forEach((k) => { next[k] = undefined; });
+      return next;
+    });
+  };
+
+  // Address suggestions (India Post directory through our server): a full PIN gives its city, state and areas;
+  // three letters of an area give matching areas with their PIN.
+  const [pinInfo, setPinInfo] = useState(null);
+  const [areaHits, setAreaHits] = useState([]);
+  useEffect(() => {
+    const pin = String(form.pincode || "").replace(/\D/g, "");
+    if (!PINCODE_PATTERN.test(pin)) { setPinInfo(null); return undefined; }
+    let gone = false;
+    fetch(`/api/places/pin/${pin}`).then((r) => (r.ok ? r.json() : null)).then((info) => {
+      if (gone || !info?.pin) return;
+      setPinInfo(info);
+      setForm((current) => ({ ...current, city: current.city || info.city, state: current.state || info.state }));
+    }).catch(() => {});
+    return () => { gone = true; };
+  }, [form.pincode]);
+  useEffect(() => {
+    const q = String(form.addressLine2 || "").trim();
+    if (q.length < 3) { setAreaHits([]); return undefined; }
+    let gone = false;
+    const t = window.setTimeout(() => {
+      fetch(`/api/places/areas?${new URLSearchParams({ q, state: form.state || "" })}`)
+        .then((r) => (r.ok ? r.json() : null)).then((d) => { if (!gone) setAreaHits(d?.areas || []); }).catch(() => {});
+    }, 350);
+    return () => { gone = true; window.clearTimeout(t); };
+  }, [form.addressLine2, form.state]);
+  const citySuggestions = useMemo(() => {
+    const typed = String(form.city || "").trim().toLowerCase();
+    const list = matchTowns(form.city, form.state);
+    return list.length === 1 && list[0].name.toLowerCase() === typed ? [] : list.map((t) => ({ key: t.name + t.state, label: t.name, sub: t.state, city: t.name, state: t.state }));
+  }, [form.city, form.state]);
+  const areaSuggestions = useMemo(() => {
+    const typed = String(form.addressLine2 || "").trim().toLowerCase();
+    const fromPin = (pinInfo?.areas || [])
+      .filter((a) => !typed || a.toLowerCase().includes(typed))
+      .map((a) => ({ key: "p" + a, label: a, sub: `${pinInfo.city} ${pinInfo.pin}`, area: a }));
+    const fromSearch = areaHits.map((h) => ({ key: h.area + h.pin, label: h.area, sub: `${h.city}, ${h.state} ${h.pin}`, area: h.area, city: h.city, state: h.state, pin: h.pin }));
+    const all = [...fromPin, ...fromSearch.filter((h) => !fromPin.some((p) => p.label === h.label))].slice(0, 8);
+    return all.length === 1 && all[0].label.toLowerCase() === typed ? [] : all;
+  }, [form.addressLine2, pinInfo, areaHits]);
 
   const isEmpty = items.length === 0;
 
@@ -157,6 +279,13 @@ export default function CheckoutPage() {
       return;
     }
 
+    // A code that does not apply (wrong mobile number, minimum not met…) is explained in the summary;
+    // the order is not started until it is fixed or removed, so nobody pays without the discount they expected.
+    if (discountCode && discountError) {
+      setFailure(`Your code ${discountCode} cannot be used: ${discountError} Remove it to continue without it.`);
+      return;
+    }
+
     setStatus("paying");
     // Checkout journey, step 3: details filled (the form passed its checks).
     recordJourney("details", {
@@ -180,6 +309,8 @@ export default function CheckoutPage() {
       try {
         session = await initiatePayment({
           ...form,
+          deliveryMethod: deliveryMethod || "courier",
+          ...(discountCode ? { discountCode } : {}),
           items: items.map((item) => ({ id: item.id, qty: item.qty })),
           attribution: currentAttribution(),
           meta: metaCheckoutSignal(),
@@ -249,9 +380,16 @@ export default function CheckoutPage() {
         // What was bought, kept on the receipt (the cart is emptied below) for the Google purchase event
         // sent when the order-confirmed page opens.
         shipping: shipping || 0,
+        discount: session.discount?.amount || 0,
+        coupon: session.discount?.code || "",
+        deliveryMethod: session.deliveryMethod || deliveryMethod || "courier",
+        // The customer's own referral code (while Refer a friend is on), to share from the receipt.
+        referralCode: result.referralCode || null,
         items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, packKg: i.packKg, qty: i.qty })),
       };
       setConfirmed(receipt);
+      // The code is used: the next order starts without it.
+      saveDiscountCode("");
       // The Meta Purchase event is sent when /order-confirmed opens (below the receipt state).
       // Checkout journey: purchased (the server checks the order really is paid).
       recordJourney("purchased", { orderId: session.orderId });
@@ -293,6 +431,12 @@ export default function CheckoutPage() {
             {/* No confirmation email is sent yet — nothing in this app sends
                 mail — so this says to keep the reference rather than promising
                 a message that will never arrive. */}
+            {confirmed.deliveryMethod === "in_house" && (
+              <p className="receipt-own-delivery">
+                <strong>Chennai Rice delivery:</strong> our own team will bring your order. We will call before we come.
+              </p>
+            )}
+            {confirmed.referralCode && <ReferralShare code={confirmed.referralCode} compact />}
             <p>
               Keep your order number safe — quote it if you need to ask us anything about this
               order.
@@ -351,6 +495,7 @@ export default function CheckoutPage() {
                 form, so it is associated by id instead of by nesting. */}
             <form id="checkout-form" className="checkout-form" onSubmit={handleSubmit} noValidate>
               <h2 className="checkout-form-title">Where should we deliver?</h2>
+              {resumeNote && <p className="checkout-resume-note" role="status">{resumeNote}</p>}
               <p className="checkout-form-note">
                 We save these details as you fill them in, so our team can help if you can't finish your order.{" "}
                 <Link to="/privacy">Privacy Policy</Link>
@@ -418,27 +563,24 @@ export default function CheckoutPage() {
                 <span className="field-label">
                   Area, landmark <span className="field-optional">(optional)</span>
                 </span>
-                <input
-                  type="text"
+                <SuggestInput
                   value={form.addressLine2}
                   onChange={set("addressLine2")}
-                  placeholder="Area, nearby landmark"
-                  autoComplete="address-line2"
-                  disabled={busy}
+                  items={areaSuggestions}
+                  onPick={(it) => fill(it.pin ? { addressLine2: it.area, city: it.city, state: it.state, pincode: it.pin } : { addressLine2: it.area })}
+                  inputProps={{ placeholder: "Area, nearby landmark", autoComplete: "off", disabled: busy }}
                 />
               </label>
 
               <div className="checkout-field-row">
                 <label className="field">
                   <span className="field-label">City / town</span>
-                  <input
-                    type="text"
+                  <SuggestInput
                     value={form.city}
                     onChange={set("city")}
-                    placeholder="Chennai"
-                    autoComplete="address-level2"
-                    aria-invalid={!!errors.city}
-                    disabled={busy}
+                    items={citySuggestions}
+                    onPick={(it) => fill({ city: it.city, state: it.state })}
+                    inputProps={{ placeholder: "Chennai", autoComplete: "off", "aria-invalid": !!errors.city, disabled: busy }}
                   />
                   {errors.city && <span className="field-error">{errors.city}</span>}
                 </label>
@@ -474,6 +616,8 @@ export default function CheckoutPage() {
                 </label>
               </div>
 
+              <DeliveryChoice options={deliveryOptions} value={deliveryMethod || deliveryChoice} onChange={setDeliveryChoice} disabled={busy} />
+
               {(failure || quoteError) && (
                 <p className="field-error checkout-failure" role="alert">
                   {failure || quoteError}
@@ -506,9 +650,21 @@ export default function CheckoutPage() {
                   <dd>{count}</dd>
                 </div>
                 <div className="summary-row">
-                  <dt>Delivery charge {region && <span className="summary-sub">({region.name})</span>}</dt>
+                  <dt>
+                    {ownDelivery ? "Chennai Rice delivery" : "Delivery charge"}
+                    {region && !ownDelivery && <span className="summary-sub"> ({region.name})</span>}
+                  </dt>
                   <dd>{shipping == null ? (hasPin ? "—" : "Enter PIN code") : formatRupees(shipping)}</dd>
                 </div>
+                <DiscountCode
+                  applied={discountCode}
+                  discount={discount}
+                  error={discountError}
+                  checking={Boolean(discountCode && !discount && !discountError)}
+                  onApply={setDiscountCode}
+                  onRemove={() => setDiscountCode("")}
+                  disabled={busy}
+                />
                 <div className="summary-row summary-row--total">
                   <dt>Total</dt>
                   <dd>{formatRupees(total)}</dd>

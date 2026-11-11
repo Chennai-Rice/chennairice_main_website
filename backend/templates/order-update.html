@@ -1,0 +1,180 @@
+<!-- INCLUDE _o-top.html -->
+
+  <!-- Pill + headline + greeting -->
+  <tr>
+    <td align="center" class="px" bgcolor="#fcf2e9" style="background-color:#fcf2e9; padding:4px 36px 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tr>
+        <td style="border:1px solid #d9b77f; border-radius:14px; padding:3px 16px; font-family:Georgia, 'Times New Roman', serif; font-size:14px; line-height:20px; color:#7a1420; background-color:#fdf6ec;">{{Pill}}</td>
+      </tr></table>
+      <h1 class="h1" style="margin:12px 0 0; font-family:Georgia, 'Times New Roman', serif; font-size:36px; line-height:42px; font-weight:bold; letter-spacing:-0.5px; color:#6e1420;">
+        {{Heading}}
+      </h1>
+      <img src="https://chennairiceindustries.com/assets/email/ornament.png" width="24" alt="" style="display:block; width:24px; height:auto; border:0; margin:10px auto 0;">
+      <p style="margin:10px 0 0; font-family:Georgia, 'Times New Roman', serif; font-size:24px; line-height:30px; font-weight:bold; color:#7a1420;">Vanakkam {{Customer Name}},</p>
+      <p style="margin:8px 0 0; font-family:Georgia, 'Times New Roman', serif; font-size:17px; line-height:26px; color:#2b1d17;">{{Intro}}</p>
+    </td>
+  </tr>
+
+  <!-- Scene: the pack in the paddy field -->
+  <tr>
+    <td bgcolor="#fcf2e9" style="background-color:#fcf2e9; padding-top:10px; font-size:0; line-height:0;">
+      <img class="img-full" src="https://chennairiceindustries.com/assets/email/cr-hero-scene-v2.jpg" width="600" alt="Chennai Rice"
+        style="display:block; width:600px; height:auto; border:0; outline:none;">
+    </td>
+  </tr>
+
+  <!-- Details card -->
+  <tr>
+    <td class="px" bgcolor="#fcf2e9" style="background-color:#fcf2e9; padding:8px 28px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fffaf5"
+        style="background-color:#fffaf5; border:1px solid #f0e0cf; border-radius:18px; box-shadow:0 8px 22px rgba(110,20,32,0.08);">
+        <tr><td style="padding:18px 22px 6px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td width="40" valign="top" style="padding:4px 0 12px;"><img src="https://chennairiceindustries.com/assets/email/o-ic-lock.png" width="26" alt="" style="display:block; width:26px; height:auto; border:0;"></td>
+              <td valign="top" style="padding:0 0 12px; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif;">
+                <p style="margin:0; font-size:14px; line-height:19px; color:#4a3b32;">Order ID</p>
+                <p style="margin:2px 0 0; font-size:17px; line-height:22px; font-weight:bold; color:#6e1420;">{{Order ID}}</p>
+              </td>
+            </tr>
+            <!-- IF Shipment ID -->
+            <tr>
+              <td width="40" valign="top" style="padding:4px 0 12px;"><img src="https://chennairiceindustries.com/assets/email/o-ic-box.png" width="26" alt="" style="display:block; width:26px; height:auto; border:0;"></td>
+              <td valign="top" style="padding:0 0 12px; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif;">
+                <p style="margin:0; font-size:14px; line-height:19px; color:#4a3b32;">Shipment ID</p>
+                <p style="margin:2px 0 0; font-size:17px; line-height:22px; font-weight:bold; color:#6e1420;">{{Shipment ID}}</p>
+              </td>
+            </tr>
+            <!-- END IF Shipment ID -->
+            <!-- IF Courier -->
+            <tr>
+              <td width="40" valign="top" style="padding:4px 0 12px;"><img src="https://chennairiceindustries.com/assets/email/o-step-truck.png" width="28" alt="" style="display:block; width:28px; height:auto; border:0;"></td>
+              <td valign="top" style="padding:0 0 12px; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif;">
+                <p style="margin:0; font-size:14px; line-height:19px; color:#4a3b32;">Delivery partner</p>
+                <p style="margin:2px 0 0; font-size:17px; line-height:22px; font-weight:bold; color:#6e1420;">{{Courier}}</p>
+              </td>
+            </tr>
+            <!-- END IF Courier -->
+            <!-- IF Tracking Number -->
+            <tr>
+              <td width="40" valign="top" style="padding:4px 0 12px;"><img src="https://chennairiceindustries.com/assets/email/o-ic-card.png" width="26" alt="" style="display:block; width:26px; height:auto; border:0;"></td>
+              <td valign="top" style="padding:0 0 12px; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif;">
+                <p style="margin:0; font-size:14px; line-height:19px; color:#4a3b32;">{{Tracking Label}}</p>
+                <p style="margin:2px 0 0; font-family:'Courier New', Courier, monospace; font-size:18px; line-height:22px; font-weight:bold; letter-spacing:1px; color:#6e1420;">{{Tracking Number}}</p>
+              </td>
+            </tr>
+            <!-- END IF Tracking Number -->
+            <!-- IF Expected Delivery -->
+            <tr>
+              <td width="40" valign="top" style="padding:4px 0 12px;"><img src="https://chennairiceindustries.com/assets/email/o-ic-cal.png" width="26" alt="" style="display:block; width:26px; height:auto; border:0;"></td>
+              <td valign="top" style="padding:0 0 12px; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif;">
+                <p style="margin:0; font-size:14px; line-height:19px; color:#4a3b32;">Expected delivery</p>
+                <p style="margin:2px 0 0; font-size:17px; line-height:22px; font-weight:bold; color:#6e1420;">{{Expected Delivery}}</p>
+              </td>
+            </tr>
+            <!-- END IF Expected Delivery -->
+            <tr>
+              <td width="40" valign="top" style="padding:4px 0 12px;"><img src="https://chennairiceindustries.com/assets/email/o-ic-box.png" width="26" alt="" style="display:block; width:26px; height:auto; border:0;"></td>
+              <td valign="top" style="padding:0 0 12px; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif;">
+                <p style="margin:0; font-size:14px; line-height:19px; color:#4a3b32;">Items</p>
+                <!-- ITEM START: one line per pack -->
+                <p style="margin:2px 0 0; font-size:16px; line-height:22px; font-weight:bold; color:#6e1420;">{{Product Name}} &times; {{Quantity}}</p>
+                <!-- ITEM END -->
+              </td>
+            </tr>
+            <!-- IF Total Amount -->
+            <tr>
+              <td width="40" valign="top" style="padding:4px 0 12px;"><img src="https://chennairiceindustries.com/assets/email/o-ic-rupee.png" width="26" alt="" style="display:block; width:26px; height:auto; border:0;"></td>
+              <td valign="top" style="padding:0 0 12px; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif;">
+                <p style="margin:0; font-size:14px; line-height:19px; color:#4a3b32;">{{Total Label}}</p>
+                <p style="margin:2px 0 0; font-size:19px; line-height:24px; font-weight:bold; color:#6e1420;">{{Total Amount}} <span style="font-size:13px; font-weight:normal; color:#7c6b5e;">(incl. GST)</span></p>
+              </td>
+            </tr>
+            <!-- END IF Total Amount -->
+            <!-- IF Address -->
+            <tr>
+              <td width="40" valign="top" style="padding:4px 0 12px;"><img src="https://chennairiceindustries.com/assets/email/o-step-home.png" width="26" alt="" style="display:block; width:26px; height:auto; border:0;"></td>
+              <td valign="top" style="padding:0 0 12px; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif;">
+                <p style="margin:0; font-size:14px; line-height:19px; color:#4a3b32;">Delivering to</p>
+                <p style="margin:2px 0 0; font-size:14px; line-height:20px; color:#2b1d17;">{{Address}}</p>
+              </td>
+            </tr>
+            <!-- END IF Address -->
+          </table>
+        </td></tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- Progress -->
+  <!-- IF Steps -->
+  <tr>
+    <td class="px" bgcolor="#fcf2e9" style="background-color:#fcf2e9; padding:22px 24px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td width="25%" align="center" valign="top">
+            <img src="https://chennairiceindustries.com/assets/email/o-step-done.png" width="34" alt="" style="display:block; width:34px; height:auto; border:0; margin:0 auto;">
+            <p class="step-label" style="margin:6px 0 0; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:14px; line-height:18px; font-weight:bold; color:#6e1420;">Order Confirmed</p>
+          </td>
+          <td width="25%" align="center" valign="top">
+            <img src="{{Step Two Icon}}" width="34" alt="" style="display:block; width:34px; height:auto; border:0; margin:0 auto;">
+            <p class="step-label" style="margin:6px 0 0; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:14px; line-height:18px; font-weight:{{Step Two Weight}}; color:{{Step Two Color}};">Packed</p>
+          </td>
+          <td width="25%" align="center" valign="top">
+            <img src="{{Step Three Icon}}" width="34" alt="" style="display:block; width:34px; height:auto; border:0; margin:0 auto;">
+            <p class="step-label" style="margin:6px 0 0; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:14px; line-height:18px; font-weight:{{Step Three Weight}}; color:{{Step Three Color}};">{{Step Three Label}}</p>
+          </td>
+          <td width="25%" align="center" valign="top">
+            <img src="https://chennairiceindustries.com/assets/email/o-step-home.png" width="34" alt="" style="display:block; width:34px; height:auto; border:0; margin:0 auto;">
+            <p class="step-label" style="margin:6px 0 0; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:14px; line-height:18px; color:#4a3b32;">Delivered</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <!-- END IF Steps -->
+
+  <!-- What's next -->
+  <!-- IF Next Title -->
+  <tr>
+    <td class="px" bgcolor="#fcf2e9" style="background-color:#fcf2e9; padding:22px 28px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fbf1e6"
+        style="background-color:#fbf1e6; border:1px solid #f0dcc6; border-radius:18px;">
+        <tr>
+          <td class="stack-c" width="110" align="center" valign="middle" style="padding:16px 8px 16px 16px;">
+            <img src="{{Next Icon}}" width="72" alt="" style="display:inline-block; width:72px; height:auto; border:0;">
+          </td>
+          <td class="stack-c" valign="middle" style="padding:16px 22px 16px 18px; border-left:1px solid #d9b98a;">
+            <p style="margin:0; font-family:Georgia, 'Times New Roman', serif; font-size:21px; line-height:27px; font-weight:bold; color:#6e1420;">{{Next Title}}</p>
+            <p style="margin:6px 0 0; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; font-size:15px; line-height:22px; color:#2b1d17;">{{Next Text}}</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <!-- END IF Next Title -->
+
+  <!-- Button -->
+  <tr>
+    <td align="center" class="px" bgcolor="#fcf2e9" style="background-color:#fcf2e9; padding:26px 40px 0;">
+      <!--[if mso]>
+      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{Button URL}}"
+        style="height:54px; v-text-anchor:middle; width:320px;" arcsize="50%" stroke="f" fillcolor="#7a1420">
+        <w:anchorlock/>
+        <center style="color:#ffffff; font-family:Georgia, serif; font-size:20px; font-weight:bold;">{{Button}} &rarr;</center>
+      </v:roundrect>
+      <![endif]-->
+      <!--[if !mso]><!-- -->
+      <a href="{{Button URL}}" target="_blank" class="btn"
+        style="display:inline-block; background-color:#7a1420; color:#ffffff; font-family:Georgia, 'Times New Roman', serif; font-size:20px; line-height:54px; font-weight:bold; text-decoration:none; text-align:center; width:320px; border-radius:27px; box-shadow:0 6px 14px rgba(110,20,32,0.25); -webkit-text-size-adjust:none;">
+        {{Button}}&nbsp;&nbsp;&rarr;
+      </a>
+      <!--<![endif]-->
+      <!-- IF Note -->
+      <p style="margin:10px 0 0; font-family:Georgia, 'Times New Roman', serif; font-size:15px; line-height:22px; font-style:italic; color:#2b1d17;">{{Note}}</p>
+      <!-- END IF Note -->
+    </td>
+  </tr>
+
+<!-- INCLUDE _o-trust.html -->
+<!-- INCLUDE _o-bottom.html -->

@@ -22,9 +22,12 @@ import { createCheckoutSession, confirmCheckout, quoteCart } from './checkout.js
 import { handleRazorpayWebhook } from './webhooks.js'
 import { runJobs } from './jobs.js'
 import { sendQueued } from './email.js'
+import { pinInfo, searchAreas } from './places.js'
+import { resumeCart, unsubscribeCart, cartRemindersAdmin, saveCartReminderSettings } from './cart-recovery.js'
+import { reviewForm, submitReview, publicReviews, adminReviews, setReviewStatus } from './reviews.js'
 import { staffAuth, permissionsFor, requirePermission, listStaff, createStaff, updateStaff, can } from './staff.js'
 import {
-  listOrders, getOrderDetail, confirmOrder, packOrder, shipOrder, deliverShipment, cancelOrder,
+  listOrders, getOrderDetail, confirmOrder, packOrder, shipOrder, deliverShipment, outForDelivery, cancelOrder,
   returnOrder, addNote, resolveAttention, refundOrder, deleteOrder, trackOrder, customerInvoice, setDispatched, setDispatchedMany, setPacking, updateShipmentDetails,
 } from './operations.js'
 import {
@@ -51,6 +54,10 @@ import { checkAutomationKey, automationContacts } from './automation.js'
 import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
+import { listDiscountCodes, createDiscountCode, setDiscountCodeActive } from './discounts.js'
+import { spinConfig, spin, spinAdmin, saveSpinSettings } from './spin.js'
+import { myReferral, referralAdmin, saveReferralSettings, cancelReferralReward } from './referrals.js'
+import { referralsOn } from './discounts.js'
 import { listReports, reportCsv } from './reports.js'
 import { contestReport } from './contest.js'
 import { loginWriter } from './writer-login.js'
@@ -60,7 +67,7 @@ import { syncSettlements, importSettlementFile } from './settlements.js'
 import { accountsSummary, invoiceRegister, invoiceRegisterCsv, paymentsList, refundsList, period } from './accounts.js'
 import { invoicePdf } from './invoice-pdf.js'
 import { query } from '../db.js'
-import { httpError, safeEqual } from './util.js'
+import { httpError, safeEqual, getSettings } from './util.js'
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next)
 
@@ -107,6 +114,30 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   const router = express.Router()
 
   // ---- public -------------------------------------------------------------
+  // Checkout address suggestions (India Post directory, cached): a PIN's city, state and areas; areas by name.
+  router.get('/api/places/pin/:pin', rateLimit({ windowMs: 60000, max: 40 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=86400')
+    res.json((await pinInfo(req.params.pin)) || { pin: null, city: '', state: '', areas: [] })
+  }))
+  router.get('/api/places/areas', rateLimit({ windowMs: 60000, max: 60 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=86400')
+    res.json({ areas: await searchAreas(req.query.q, { state: req.query.state }) })
+  }))
+  // Cart reminder emails: "Complete my order" (cart, form and code back) and "Unsubscribe from reminders".
+  router.get('/api/cart/resume/:token', rateLimit({ windowMs: 60000, max: 20 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await resumeCart({ query }, req.params.token))
+  }))
+  router.get('/api/cart/unsubscribe', rateLimit({ windowMs: 60000, max: 20 }), wrap(async (req, res) => {
+    const ok = await unsubscribeCart({ query }, req.query.t)
+    res.set('Cache-Control', 'no-store').type('html').send(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Chennai Rice</title><body style="margin:0;background:#f6f1e7;font-family:Arial,sans-serif;color:#2b1d17"><div style="max-width:480px;margin:60px auto;padding:32px;background:#fff;border-radius:16px;text-align:center"><h1 style="font-family:Georgia,serif;color:#6e1420;font-size:24px">${ok ? 'You’re unsubscribed' : 'Link not found'}</h1><p style="line-height:1.6">${ok ? 'We won’t send you any more cart reminders. Order emails (confirmation, shipping) still come as usual.' : 'This link is not valid.'}</p><p><a href="/" style="color:#6e1420">Back to chennairiceindustries.com</a></p></div></body>`)
+  }))
+  // Customer reviews: the published ones (/review), the form behind the delivery email's link, and sending one.
+  router.get('/api/reviews', wrap(async (_req, res) => { res.set('Cache-Control', 'public, max-age=300'); res.json(await publicReviews({ query })) }))
+  router.get('/api/reviews/form', rateLimit({ windowMs: 60000, max: 30 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store'); res.json(await reviewForm({ query }, req.query))
+  }))
+  router.post('/api/reviews', rateLimit({ windowMs: 10 * 60000, max: 10 }), wrap(async (req, res) => res.json(await submitReview({ query }, req.body))))
   router.get('/api/catalog', wrap(async (_req, res) => {
     res.set('Cache-Control', 'public, max-age=60')
     res.json({ products: await listCatalog({ query }) })
@@ -156,6 +187,19 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   }))
 
   // The lead form at /expo, opened from the QR code at an expo.
+  // Spin & Win: what the wheel shows, and the spin itself (one per mobile number; the prize is a code locked to it).
+  router.get('/api/spin', wrap(async (_req, res) => { res.set('Cache-Control', 'no-store'); res.json(await spinConfig({ query })) }))
+  router.post('/api/spin', rateLimit({ windowMs: 10 * 60000, max: 8 }), wrap(async (req, res) => {
+    res.json(await spin({ query }, req.body, { ip: clientKey(req) }))
+  }))
+
+  // Refer a friend: whether it is running, and a customer's code and rewards (mobile number + order email).
+  router.get('/api/referral', wrap(async (_req, res) => { res.set('Cache-Control', 'no-store'); res.json({ enabled: referralsOn(await getSettings({ query })) }) }))
+  router.post('/api/referral/me', rateLimit({ windowMs: 10 * 60000, max: 10 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await myReferral({ query }, req.body))
+  }))
+
   router.post('/api/expo/lead', rateLimit({ windowMs: 10 * 60000, max: 20 }), wrap(async (req, res) => {
     res.json(await saveExpoLead({ query }, req.body))
   }))
@@ -392,11 +436,11 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.set('Cache-Control', 'no-store')
     res.json(await listWarehouseOrders(req.query, { money: can(req.staff, 'money.view') }))
   }))
-  admin.get('/warehouse/customers', perm('warehouse.view'), wrap(async (req, res) => {
+  admin.get('/warehouse/customers', perm('customers.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await listWarehouseCustomers(req.query))
   }))
-  admin.get('/warehouse/customers.csv', perm('warehouse.view'), wrap(async (req, res) => {
+  admin.get('/warehouse/customers.csv', perm('customers.view'), wrap(async (req, res) => {
     const day = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
     res.set('Cache-Control', 'no-store')
     res.set('Content-Disposition', `attachment; filename="customers-${day}.csv"`)
@@ -612,6 +656,7 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.json(await setDispatchedMany(req.staff, req.body))
   }))
   admin.post('/shipments/:id/deliver', wrap(async (req, res) => res.json(await deliverShipment(req.staff, req.params.id, req.body))))
+  admin.post('/shipments/:id/out-for-delivery', wrap(async (req, res) => res.json(await outForDelivery(req.staff, req.params.id))))
 
   admin.get('/inventory', perm('inventory.view'), wrap(async (_req, res) => res.json({ stock: await listStock() })))
   admin.get('/inventory/movements', perm('inventory.view'), wrap(async (req, res) => res.json({ movements: await listMovements(req.query) })))
@@ -636,6 +681,21 @@ export function createSalesRouter({ verifyIdToken } = {}) {
 
   admin.get('/settings', perm('settings.manage'), wrap(async (_req, res) => res.json({ settings: await getSettingsAdmin() })))
   admin.patch('/settings', wrap(async (req, res) => res.json({ settings: await updateSettings(req.staff, req.body) })))
+  // Warehouse → Settings → Discount codes (owners and IT): list with uses and money given, add, switch on/off.
+  admin.get('/discounts', wrap(async (req, res) => res.json(await listDiscountCodes({ query }, req.staff, req.query))))
+  admin.post('/discounts', wrap(async (req, res) => res.json({ code: await createDiscountCode({ query }, req.staff, req.body) })))
+  admin.patch('/discounts/:id', wrap(async (req, res) => res.json({ code: await setDiscountCodeActive({ query }, req.staff, req.params.id, req.body?.active) })))
+  // Warehouse → Settings → Spin & Win (owners and IT): prizes, chances, budget, on/off, and how it is doing.
+  // Warehouse → Settings → Refer a friend (owners and IT): amounts, limit, on/off, top referrers, rewards.
+  admin.get('/referrals', wrap(async (req, res) => res.json(await referralAdmin({ query }, req.staff))))
+  admin.put('/referrals', wrap(async (req, res) => res.json(await saveReferralSettings({ query }, req.staff, req.body))))
+  admin.post('/referrals/rewards/:id/cancel', wrap(async (req, res) => res.json(await cancelReferralReward({ query }, req.staff, req.params.id))))
+  admin.get('/reviews', wrap(async (req, res) => res.json(await adminReviews({ query }, req.staff, req.query))))
+  admin.put('/reviews/:id', wrap(async (req, res) => res.json(await setReviewStatus({ query }, req.staff, req.params.id, req.body?.status))))
+  admin.get('/cart-reminders', wrap(async (req, res) => res.json(await cartRemindersAdmin({ query }, req.staff, { days: req.query.days }))))
+  admin.put('/cart-reminders', wrap(async (req, res) => res.json(await saveCartReminderSettings({ query }, req.staff, req.body))))
+  admin.get('/spin', wrap(async (req, res) => res.json(await spinAdmin({ query }, req.staff))))
+  admin.put('/spin', wrap(async (req, res) => res.json(await saveSpinSettings({ query }, req.staff, req.body))))
   admin.get('/shipping-zones', perm('shipping.manage'), wrap(async (_req, res) => res.json({ zones: await listZones() })))
   admin.put('/shipping-zones', wrap(async (req, res) => res.json({ zone: await upsertZone(req.staff, req.body) })))
   admin.get('/emails', perm('emails.view'), wrap(async (req, res) => res.json({ emails: await listEmails(req.query) })))

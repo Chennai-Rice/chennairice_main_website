@@ -2743,3 +2743,24 @@
 /* "(Tamil Nadu)" beside "Delivery charge" in the order summary. */
 .shop-scope .summary-sub { font-weight: 400; font-size: 0.85em; opacity: 0.7; }
 .shop-scope .field-hint { display: block; margin-top: 4px; font-size: 0.8rem; opacity: 0.75; }
+
+/* Checkout address suggestions (SuggestInput, Nov 2026): a list under the box. */
+.shop-scope .suggest { position: relative; display: block; }
+.shop-scope .suggest-list {
+  position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px);
+  margin: 0; padding: 4px; list-style: none; max-height: 280px; overflow-y: auto;
+  background: #fff; border: 1px solid var(--cream-300); border-radius: var(--radius-sm);
+  box-shadow: 0 10px 24px rgba(60, 30, 20, 0.14);
+}
+.shop-scope .suggest-item {
+  display: flex; flex-direction: column; gap: 1px; padding: 9px 12px; border-radius: 6px; cursor: pointer;
+}
+.shop-scope .suggest-item:hover, .shop-scope .suggest-item.is-active { background: var(--cream-100, #f7efe2); }
+.shop-scope .suggest-label { color: var(--ink-900); font-weight: 500; }
+.shop-scope .suggest-sub { color: var(--ink-500); font-size: 0.85em; }
+
+/* Checkout opened from a cart reminder email (Nov 2026). */
+.shop-scope .checkout-resume-note {
+  margin: 0 0 var(--s-3); padding: 10px 14px; border-radius: var(--radius-sm);
+  background: #e8f3ec; color: #2f7a4b; font-weight: 500;
+}

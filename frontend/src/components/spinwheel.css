@@ -1,0 +1,283 @@
+/* Spin & Win (SpinWheel.jsx): cream card, gold-rimmed wheel on the left, "Spin to win" on the right. */
+/* The wheel picture in the bottom-left corner (Soru Kutty sits bottom right). */
+.spin-fab {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 60;
+  width: 104px;
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  filter: drop-shadow(0 8px 14px rgba(110, 27, 34, 0.28));
+  animation: spin-fab-in 0.4s ease-out, spin-fab-bob 3.2s ease-in-out 0.6s infinite;
+  -webkit-tap-highlight-color: transparent;
+}
+.spin-fab-img { display: block; width: 100%; height: auto; transition: transform 0.2s; }
+.spin-fab:hover .spin-fab-img, .spin-fab:focus-visible .spin-fab-img { transform: scale(1.06) rotate(-4deg); }
+.spin-fab:focus-visible { outline: 3px solid #e8c766; outline-offset: 2px; border-radius: 50%; }
+.spin-fab-badge {
+  position: absolute;
+  top: -4px;
+  right: -10px;
+  padding: 3px 9px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #2f7a46;
+  color: #fff;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+}
+@keyframes spin-fab-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes spin-fab-in { from { transform: translateY(12px); opacity: 0; } }
+
+.spin-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(43, 27, 22, 0.55);
+  overflow-y: auto;
+}
+.spin-dialog {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  align-items: center;
+  gap: 24px;
+  width: min(940px, 100%);
+  padding: 40px 36px 44px;
+  border-radius: 24px;
+  background: radial-gradient(120% 90% at 30% 20%, #fffaf0 0%, #fdf1d8 70%, #f9e7c2 100%);
+  box-shadow: 0 30px 80px rgba(43, 27, 22, 0.4);
+  animation: spin-pop 0.35s ease-out;
+}
+@keyframes spin-pop { from { transform: scale(0.94); opacity: 0; } }
+.spin-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 3;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  color: #8a1c28;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+.spin-close:disabled { opacity: 0.3; }
+.spin-wheat { position: absolute; left: -6px; bottom: -6px; width: 150px; height: auto; opacity: 0.85; pointer-events: none; }
+.spin-wave {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 70px;
+  background: radial-gradient(120% 100% at 70% 100%, #f6dfb1 0%, rgba(246, 223, 177, 0) 70%);
+  pointer-events: none;
+}
+.spin-left, .spin-right { position: relative; z-index: 1; }
+
+/* The wheel */
+.spin-wheel-wrap { position: relative; width: min(420px, 100%); margin: 0 auto; filter: drop-shadow(0 18px 30px rgba(168, 122, 34, 0.35)); }
+.spin-wheel-svg { display: block; width: 100%; height: auto; }
+.spin-pointer { position: absolute; top: -18px; left: 50%; z-index: 2; width: 44px; transform: translateX(-50%); filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.3)); }
+/* The new wheel (Nov 2026): the pointer on the right, pointing in. */
+.spin-pointer--right { top: 50%; left: auto; right: -14px; width: 46px; transform: translateY(-50%); }
+.spin-wheel-wrap { filter: drop-shadow(0 18px 30px rgba(140, 13, 22, 0.35)); }
+.spin-rotor { transform-origin: 150px 150px; transform-box: view-box; }
+.spin-rotor.is-spinning { transition: transform 4.2s cubic-bezier(0.17, 0.67, 0.12, 0.99); }
+.spin-bulb { fill: #fff8d6; filter: drop-shadow(0 0 2px #ffe28a); animation: spin-blink 1.2s infinite; }
+.spin-bulb--alt { animation-delay: 0.6s; }
+@keyframes spin-blink { 50% { fill: #ffd34d; } }
+.spin-bulb { fill: #fff3c4; }
+
+/* "SPIN TO win" */
+.spin-heading { position: relative; margin: 0 0 18px; line-height: 0.9; text-align: center; }
+.spin-heading-top {
+  display: block;
+  font-family: var(--serif, Georgia, serif);
+  font-size: clamp(46px, 6.6vw, 82px);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #8a1c28;
+}
+.spin-heading-win {
+  display: inline-block;
+  margin-top: -6px;
+  font-family: 'Pacifico', 'Brush Script MT', 'Segoe Script', 'Lucida Handwriting', cursive;
+  font-size: clamp(64px, 9vw, 112px);
+  font-weight: 400;
+  line-height: 1.1;
+  color: #e0262f;
+  background: linear-gradient(180deg, #ff5a4f 0%, #d61f2a 60%, #a8141f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 4px 0 #ffd1c9) drop-shadow(0 8px 10px rgba(168, 20, 31, 0.3));
+}
+.spin-sticker {
+  position: absolute;
+  right: -4px;
+  bottom: 6px;
+  padding: 8px 14px;
+  border: 2px solid #2f6b2a;
+  border-radius: 50%;
+  background: #d9f26b;
+  color: #2f3b14;
+  font-family: var(--sans, Arial, sans-serif);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.15;
+  transform: rotate(-8deg);
+  max-width: 130px;
+}
+
+.spin-form, .spin-won { display: grid; gap: 12px; text-align: center; }
+.spin-tagline {
+  margin: 0 0 6px;
+  font-family: ui-monospace, 'Courier New', monospace;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.45;
+  color: #3a2a22;
+}
+.spin-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 18px;
+  border: 1.5px solid #c9a38a;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+.spin-input::placeholder { color: #8a7a70; letter-spacing: 0.06em; }
+.spin-input:focus { outline: none; border-color: #c08a2d; box-shadow: 0 0 0 3px rgba(192, 138, 45, 0.2); }
+.spin-go {
+  width: 100%;
+  padding: 16px;
+  border: 3px solid #f2c14e;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #c42332 0%, #8a1c28 100%);
+  color: #fff;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  box-shadow: 0 8px 18px rgba(138, 28, 40, 0.3);
+  cursor: pointer;
+}
+.spin-go:disabled { opacity: 0.75; cursor: default; }
+.spin-nothanks {
+  justify-self: center;
+  padding: 4px 8px;
+  border: 0;
+  background: none;
+  color: #8a1c28;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.spin-error { margin: 0; font-size: 14px; color: #b3261e; }
+.spin-fine { margin: 0; font-size: 12px; color: #7a6459; }
+
+.spin-prize { margin: 0; font-family: var(--serif, Georgia, serif); font-size: 38px; font-weight: 800; color: #8a1c28; }
+.spin-code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px 12px 18px;
+  border: 2px dashed #c08a2d;
+  border-radius: 14px;
+  background: #fff;
+}
+.spin-code-text { font-size: 24px; font-weight: 800; letter-spacing: 0.08em; color: #8a1c28; }
+.spin-copy { padding: 8px 16px; border: 0; border-radius: 999px; background: #fbe9bd; color: #8a1c28; font: inherit; font-weight: 700; cursor: pointer; }
+.spin-terms { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 14px; color: #4e3a32; }
+.spin-terms li::before { content: '✓ '; color: #2f7a46; font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) {
+  .spin-rotor.is-spinning { transition-duration: 0.6s; }
+  .spin-fab, .spin-dialog { animation: none; }
+  .spin-fab-img { transition: none; }
+  .spin-bulb { animation: none; }
+}
+/* Phones: heading, wheel, form, one under the other. */
+@media (max-width: 760px) {
+  .spin-dialog { grid-template-columns: 1fr; gap: 6px; padding: 26px 16px 24px; }
+  .spin-right { order: -1; }
+  .spin-left { order: 0; }
+  .spin-heading { margin-bottom: 4px; }
+  .spin-heading-top { font-size: 44px; }
+  .spin-heading-win { font-size: 62px; }
+  .spin-sticker { right: 0; bottom: 0; font-size: 11px; max-width: 100px; padding: 6px 10px; }
+  .spin-wheel-wrap { width: min(300px, 82vw); }
+  .spin-form { margin-top: 6px; }
+  .spin-tagline { font-size: 13px; }
+  .spin-go { font-size: 17px; padding: 14px; }
+  .spin-wheat { width: 80px; opacity: 0.5; }
+}
+@media (max-width: 760px) {
+  /* The form goes under the wheel on phones: the right column is split. */
+  .spin-right { display: contents; }
+  .spin-heading { order: -2; }
+  .spin-left { order: -1; }
+  .spin-form, .spin-won { order: 1; }
+}
+@media (max-width: 480px) {
+  .spin-fab { left: 6px; bottom: 10px; width: 86px; height: auto; }
+}
+
+/* The wheel picture (Nov 2026): it turns; the pointer on the right stays put. */
+.spin-rotor-img { width: 100%; aspect-ratio: 1; border-radius: 50%; }
+.spin-rotor-img img { display: block; width: 100%; height: auto; }
+.spin-rotor-img.is-spinning { transition: transform 4.2s cubic-bezier(0.17, 0.67, 0.12, 0.99); }
+@media (prefers-reduced-motion: reduce) { .spin-rotor-img.is-spinning { transition-duration: 0.6s; } }
+
+/* Phones (Nov 2026): the whole pop-up fits on one screen, close button always in view. */
+@media (max-width: 760px) {
+  .spin-backdrop { place-items: start center; padding: 10px; }
+  .spin-dialog { margin: auto 0; width: 100%; max-height: calc(100dvh - 20px); overflow-y: auto; gap: 4px; padding: 14px 14px 12px; border-radius: 18px; }
+  .spin-close { position: sticky; top: 0; margin-left: auto; margin-bottom: -34px; width: 34px; height: 34px; font-size: 24px; background: rgba(255, 255, 255, 0.9); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12); order: -3; justify-self: end; }
+  .spin-heading { margin: 0; }
+  .spin-heading-top { font-size: clamp(28px, 9vw, 36px); }
+  .spin-heading-win { font-size: clamp(40px, 13vw, 52px); margin-top: -4px; }
+  .spin-sticker { font-size: 10px; max-width: 88px; padding: 5px 8px; right: -2px; bottom: 2px; }
+  .spin-wheel-wrap { width: min(250px, 66vw, 36dvh); margin: 2px auto 4px; }
+  .spin-pointer--right { width: 32px; right: -8px; }
+  .spin-form, .spin-won { gap: 8px; margin-top: 0; }
+  .spin-tagline { font-size: 11.5px; letter-spacing: 0.05em; line-height: 1.35; margin: 0 0 2px; }
+  .spin-input { padding: 11px 14px; font-size: 15px; }
+  .spin-go { font-size: 16px; padding: 12px; border-width: 2px; }
+  .spin-nothanks { font-size: 13px; padding: 2px 8px; }
+  .spin-fine { font-size: 11px; }
+  .spin-prize { font-size: 28px; }
+  .spin-code { padding: 8px 10px 8px 14px; }
+  .spin-code-text { font-size: 19px; }
+  .spin-terms { font-size: 13px; gap: 2px; }
+  .spin-wheat { width: 60px; opacity: 0.35; }
+}
+/* Short phones: a smaller wheel still. */
+@media (max-width: 760px) and (max-height: 700px) {
+  .spin-wheel-wrap { width: min(210px, 60vw, 32dvh); }
+  .spin-heading-top { font-size: 28px; }
+  .spin-heading-win { font-size: 38px; }
+  .spin-sticker { display: none; }
+}

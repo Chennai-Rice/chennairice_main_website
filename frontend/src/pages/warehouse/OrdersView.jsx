@@ -12,7 +12,7 @@ const KPIS = [
   { key: 'cancelled', label: 'Cancelled', note: 'Cancelled orders', icon: 'cancel', tone: 'pink' },
 ]
 
-const EMPTY = { q: '', date: '', from: '', to: '', payment: '', pack: '', state: '', abandoned: false }
+const EMPTY = { q: '', date: '', from: '', to: '', payment: '', pack: '', state: '', delivery: '', abandoned: false }
 const REFRESH_MS = 30000
 
 // Rows the checkbox and bulk actions can change.
@@ -32,7 +32,7 @@ function dateRange(f) {
 function queryString(status, sort, f, extra = {}) {
   const p = new URLSearchParams({ tab: status, sort })
   const { from, to } = dateRange(f)
-  for (const [k, v] of Object.entries({ q: f.q.trim(), payment: f.payment, pack: f.pack, state: f.state, abandoned: f.abandoned ? '1' : '', from, to, ...extra })) {
+  for (const [k, v] of Object.entries({ q: f.q.trim(), payment: f.payment, pack: f.pack, state: f.state, delivery: f.delivery, abandoned: f.abandoned ? '1' : '', from, to, ...extra })) {
     if (v !== '' && v != null) p.set(k, v)
   }
   return p.toString()
@@ -156,6 +156,8 @@ function Details({ order, onClose }) {
               <span className={`wh-badge wh-badge--pay-${order.paymentStatus}`}>{PAYMENT[order.paymentStatus]}</span>{' '}
               <span className={`wh-status wh-status--${STATUS_KEY[order.status]}`}>{STATUS[order.status]}</span>
             </p>
+            {order.giftNote && <p className="wh-gift-note"><strong>🎁 Pack the gift:</strong> {order.giftNote} (Spin &amp; Win prize).</p>}
+            {order.deliveryMethod === 'in_house' && <p className="wh-own-note"><strong>Our delivery:</strong> the customer chose delivery by our own team. Dispatch with Own vehicle and call before going.</p>}
             {order.needsAttention && <p className="wh-flag-note">Flagged: {order.needsAttention}</p>}
           </div>
         </div>
@@ -482,6 +484,16 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
             </span>
           </label>
           <label className="wh-filter">
+            <span>Delivery</span>
+            <span className="wh-select">
+              <select value={filters.delivery} onChange={set('delivery')}>
+                <option value="">All deliveries</option>
+                <option value="in_house">Our delivery</option>
+                <option value="courier">Courier</option>
+              </select>
+            </span>
+          </label>
+          <label className="wh-filter">
             <span>Sort by</span>
             <span className="wh-select">
               <select value={sort} onChange={(e) => setSort(e.target.value)}>
@@ -597,6 +609,8 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
                 <span role="cell" className="wh-td-order">
                   <strong>ORDER #{(page - 1) * pageSize + i + 1}</strong>
                   <span className="wh-mono wh-muted">{o.orderNumber}</span>
+                  {o.deliveryMethod === 'in_house' && <span className="wh-badge wh-badge--own" title="The customer chose delivery by our own team. Dispatch with Own vehicle.">Our delivery</span>}
+                  {o.giftNote && <span className="wh-badge wh-badge--gift" title={'Pack this gift with the order: ' + o.giftNote}>🎁 Gift</span>}
                   {o.needsAttention && <span className="wh-badge wh-badge--flag" title={o.needsAttention}>Flagged</span>}
                 </span>
                 <span role="cell" className="wh-td-date">

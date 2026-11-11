@@ -22,6 +22,7 @@ import MisGate from '../mis/MisGate.jsx'
 import MisDashboard from '../mis/MisDashboard.jsx'
 import { hasStaffSession, signInWriter, signOutStaff, staffJson } from '../../services/staffAuth.js'
 import CampaignsPanel from './CampaignsPanel.jsx'
+import CustomersPanel from './CustomersPanel.jsx'
 import EnquiriesPanel from './EnquiriesPanel.jsx'
 import AnalystPanel from './AnalystPanel.jsx'
 import AdvisorPanel from './AdvisorPanel.jsx'
@@ -69,6 +70,7 @@ const ANALYTICS_NAV = [
   { id: 'realtime', label: 'Realtime', subtitle: 'Who is on the site now', icon: 'pulse' },
   { id: 'analyst', label: 'Analyst', subtitle: 'Sales, leads, campaigns and delivery — the KPI dashboard', icon: 'grid' },
   { id: 'advisor', label: 'Business Advisor', subtitle: 'Ask about the business — analysis, suggestions and strategy checks', icon: 'spark' },
+  { id: 'customers', label: 'Customers', subtitle: 'Everyone who ordered or signed up: converted or not, source, dates, CSV', icon: 'user' },
   { id: 'campaigns', label: 'Ad campaigns', subtitle: 'Orders from Meta ads, Google Ads and direct visits', icon: 'target' },
   { id: 'enquiries', label: 'Enquiries', subtitle: 'Contact and bulk-order enquiries from the website', icon: 'mail' },
   { id: 'reports', label: 'Reports', subtitle: 'Download the website’s data — orders, customers, sign-ups, enquiries, checkout journeys', icon: 'doc' },
@@ -125,7 +127,7 @@ async function passwordRole() {
   if (!(await hasStaffSession())) return ''
   try {
     const { role } = await staffJson('/api/admin/me')
-    return role === 'blog' || role === 'mis' ? role : ''
+    return role === 'blog' || role === 'mis' || role === 'performance' ? role : ''
   } catch {
     return ''
   }
@@ -186,6 +188,7 @@ export default function AdminPage() {
   }
 
   if (writer === 'mis') return <MisDashboard standalone />
+  if (writer === 'performance') return <PerformanceDashboard />
   if (writer) return <JournalPage />
 
   return session && access ? (
@@ -226,7 +229,7 @@ function LoginScreen({ onSignedIn, onWriter }) {
       // Not an analyst: a password login (the blog writer, or the MIS user) opens its own screen.
       let why = ''
       const writer = await signInWriter(email.trim(), password).catch((e) => { why = e.message; return null })
-      if (writer?.role === 'blog' || writer?.role === 'mis') {
+      if (writer?.role === 'blog' || writer?.role === 'mis' || writer?.role === 'performance') {
         onWriter(writer.role)
         return
       }
@@ -266,6 +269,70 @@ function LoginScreen({ onSignedIn, onWriter }) {
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
+    </div>
+  )
+}
+
+/* ------------------------------------------------- performance login */
+
+// The Performance login (email and password, checked by our own server on Google Cloud; no Supabase): the sales,
+// advisor and ad sections only. Each panel loads its own data from the server.
+const PERFORMANCE_NAV = ['analyst', 'customers', 'advisor', 'campaigns', 'checkout', 'reports'].map((id) => ANALYTICS_NAV.find((n) => n.id === id))
+
+function PerformanceDashboard() {
+  const [view, setView] = useState('analyst')
+  const [navOpen, setNavOpen] = useState(false)
+  const [email, setEmail] = useState('')
+  useEffect(() => { staffJson('/api/admin/me').then((me) => setEmail(me.email || '')).catch(() => {}) }, [])
+  const active = PERFORMANCE_NAV.find((n) => n.id === view) || PERFORMANCE_NAV[0]
+  return (
+    <div className={`ad-shell ad-app${navOpen ? ' is-nav-open' : ''}`}>
+      <a className="ad-skip" href="#ad-main">Skip to content</a>
+      <button type="button" className="ad-backdrop" aria-label="Close navigation" tabIndex={navOpen ? 0 : -1} onClick={() => setNavOpen(false)} />
+      <aside className="ad-side" aria-label="Dashboard sections">
+        <div className="ad-side-brand">
+          <span className="ad-logo" aria-hidden="true">CR</span>
+          <span className="ad-side-name">Performance</span>
+        </div>
+        <nav className="ad-nav">
+          {PERFORMANCE_NAV.map((item) => (
+            <button key={item.id} type="button" className={`ad-nav-item${item.id === view ? ' is-active' : ''}`}
+                    aria-current={item.id === view ? 'page' : undefined} onClick={() => { setView(item.id); setNavOpen(false) }}>
+              <NavIcon name={item.icon} />
+              {item.label}
+            </button>
+          ))}
+        </nav>
+        <div className="ad-side-user">
+          <span className="ad-avatar" aria-hidden="true">{(email || 'P').charAt(0).toUpperCase()}</span>
+          <span className="ad-side-user-text">
+            <span className="ad-side-email" title={email}>{email}</span>
+            <span className="ad-muted ad-small">Performance</span>
+          </span>
+        </div>
+      </aside>
+      <div className="ad-main-col">
+        <header className="ad-topbar">
+          <button type="button" className="ad-btn ad-btn-quiet ad-nav-toggle" onClick={() => setNavOpen((o) => !o)} aria-expanded={navOpen} aria-label="Toggle navigation">
+            <span aria-hidden="true">☰</span>
+          </button>
+          <div className="ad-topbar-title">
+            <h1 className="ad-page-title">{active.label}</h1>
+            <p className="ad-muted ad-small">{active.subtitle}</p>
+          </div>
+          <div className="ad-topbar-actions">
+            <button type="button" className="ad-btn ad-btn-quiet" onClick={async () => { await signOutStaff(); window.location.reload() }}>Sign out</button>
+          </div>
+        </header>
+        <main className="ad-main" id="ad-main">
+          {view === 'analyst' ? <AnalystPanel />
+            : view === 'advisor' ? <AdvisorPanel />
+            : view === 'campaigns' ? <CampaignsPanel />
+            : view === 'customers' ? <CustomersPanel />
+            : view === 'checkout' ? <CheckoutJourneysPanel />
+            : <ReportsPanel />}
+        </main>
+      </div>
     </div>
   )
 }
@@ -486,7 +553,7 @@ function Dashboard({ session, access, onSignOut }) {
           </div>
 
           <div className="ad-topbar-actions">
-            {view !== 'realtime' && view !== 'journal' && view !== 'mis' && view !== 'mis' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
+            {view !== 'realtime' && view !== 'journal' && view !== 'mis' && view !== 'mis' && view !== 'campaigns' && view !== 'customers' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
               <label className="ad-select-wrap">
                 <span className="ad-sr">Date range</span>
                 <select className="ad-select" value={rangeId} onChange={(e) => setRangeId(e.target.value)}>
@@ -496,7 +563,7 @@ function Dashboard({ session, access, onSignOut }) {
                 </select>
               </label>
             )}
-            {view !== 'journal' && view !== 'mis' && view !== 'campaigns' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
+            {view !== 'journal' && view !== 'mis' && view !== 'campaigns' && view !== 'customers' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
               <button type="button" className="ad-btn ad-btn-quiet" onClick={refresh} disabled={loading}>
                 {loading ? 'Refreshing…' : 'Refresh'}
               </button>
@@ -516,6 +583,8 @@ function Dashboard({ session, access, onSignOut }) {
             <AnalystPanel />
           ) : view === 'campaigns' ? (
             <CampaignsPanel />
+          ) : view === 'customers' ? (
+            <CustomersPanel />
           ) : view === 'enquiries' ? (
             <EnquiriesPanel />
           ) : view === 'checkout' ? (

@@ -17,8 +17,9 @@ export const ASSETS = {
      `immutable` for a year, so a stable name like logo.png meant returning
      visitors kept the old mark indefinitely — the browser never even asked.
      Bump the suffix whenever the artwork changes. */
-  logo: '/assets/logo-white-v2.png',
-  logoOnLight: '/assets/logo-full-v2.png',
+  // Menu bar (Nov 2026): the round Chennai Rice mark with a cream edge, so it reads on the maroon bar.
+  logo: '/assets/logo-nav-v4.png',
+  logoOnLight: '/assets/logo-full-v3.png',
   /* Re-encoded from the original 94.8 MB master (kept in git history as
      assets/hero.mp4): letterbox bars cropped off (1920x918 picture from
      y=80), scaled to 1280 wide, H.264 CRF 27, no audio track — the hero
@@ -41,6 +42,8 @@ export const NAV_LINKS = [
   { label: 'Blog', to: '/blog' },
   { label: 'Contact', to: '/contact-us' },
   { label: 'Track Order', to: '/track-order' },
+  // Refer a friend: a customer's code and rewards (only useful while it is switched on in /offers).
+  { label: 'Refer a Friend', to: '/refer' },
 ]
 
 // The Super Slogan Contest logo in the bar (after the links on desktop,

@@ -13,6 +13,14 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
+  // "Refer a Friend" shows only while Refer a friend is switched on (Offers dashboard).
+  const [referOn, setReferOn] = useState(false)
+  useEffect(() => {
+    let live = true
+    fetch('/api/referral').then((r) => (r.ok ? r.json() : null)).then((d) => { if (live) setReferOn(Boolean(d?.enabled)) }).catch(() => {})
+    return () => { live = false }
+  }, [])
+  const links = NAV_LINKS.filter((l) => l.to !== '/refer' || referOn)
   const { count: cartCount } = useCart()
   const { count: savedCount } = useWishlist()
 
@@ -38,7 +46,7 @@ export default function Navbar() {
         </Link>
 
         <nav className="nav-links">
-          {NAV_LINKS.map(link => (
+          {links.map(link => (
             <NavLink
               key={link.label}
               to={link.to}
@@ -112,7 +120,7 @@ export default function Navbar() {
 
       {open && (
         <div className="nav-mobile">
-          {NAV_LINKS.map(link => (
+          {links.map(link => (
             <Link key={link.label} to={link.to} onClick={() => setOpen(false)}>
               {link.label}
             </Link>
