@@ -1,5 +1,5 @@
 /*
-  A colour sorter at work, drawn over its picture (colour-sorter-teal.webp,
+  A colour sorter at work, drawn over its picture (colour-sorter-white.webp,
   380 x 440) inside the line's SVG: the machine body stays still, as a real one
   does. What moves is what moves in the machine:
     - the vibratory feeder under the hopper buzzes (a fine, fast jitter),
@@ -12,13 +12,13 @@ const H = (100 * 440) / 380
 
 // the four chutes: where each grain stream starts (under its light) and ends
 const CHUTES = [
-  [[23.6, 38], [17.6, 47]],
-  [[34.6, 39], [28.4, 48]],
-  [[44, 40.6], [37.6, 49.6]],
-  [[53.8, 41.6], [47.4, 50.6]],
+  [[25.5, 40.4], [21.2, 49.2]],
+  [[36.9, 41.5], [33, 50.8]],
+  [[48.3, 43], [44.4, 52.3]],
+  [[60.1, 44], [55.8, 53.4]],
 ].map(([a, b]) => [[a[0], (a[1] / 100) * H], [b[0], (b[1] / 100) * H]])
 
-const LIGHTS = [[24, 37], [34.6, 38.2], [44.2, 40], [53.8, 41]].map(([x, y]) => [x, (y / 100) * H])
+const LIGHTS = [[25.4, 39.4], [36.8, 40.5], [48.2, 42], [60.1, 43]].map(([x, y]) => [x, (y / 100) * H])
 
 // feeder tray under the hopper (the grain bed that vibrates)
 const FEEDER = { x: 38, y: (19 / 100) * H, w: 22, h: (6.5 / 100) * H }
