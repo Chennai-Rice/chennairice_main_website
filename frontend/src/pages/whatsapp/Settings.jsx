@@ -63,7 +63,7 @@ export default function Settings() {
           </form>
           <details className="wa-meta-raw">
             <summary>What Meta says</summary>
-            <pre>{JSON.stringify({ account: s.account?.waba, phone: s.account?.phone, lookup: s.wabaLookup }, null, 2)}</pre>
+            <pre>{JSON.stringify({ sendsTo: s.metaWebhook, appsOnAccount: s.metaApps, account: s.account?.waba, phone: s.account?.phone, lookup: s.wabaLookup }, null, 2)}</pre>
           </details>
           {s.wabaLookup && !s.wabaLookup.found && (
             <div className="wa-alert">

@@ -121,6 +121,13 @@ export async function settings({ query = defaultQuery, fetchImpl } = {}) {
       }
     }
     out.subscribed = await webhookSubscribed({ fetchImpl }).then((apps) => apps.length > 0).catch(() => null)
+    // For "What Meta says": where Meta sends this number's messages (the app's address, or an override on the
+    // account or the number), and which apps receive the account's webhooks.
+    out.metaWebhook = await graph(`/${PHONE_ID()}`, { fetchImpl, query: { fields: 'webhook_configuration' } })
+      .then((d) => d.webhook_configuration || d).catch((err) => ({ error: err.publicMessage || err.message }))
+    out.metaApps = await graph(`/${WABA_ID()}/subscribed_apps`, { fetchImpl })
+      .then((d) => (d.data || []).map((a) => ({ app: a.whatsapp_business_api_data?.name || a.name, id: a.whatsapp_business_api_data?.id || a.id, override: a.override_callback_uri || null })))
+      .catch((err) => ({ error: err.publicMessage || err.message }))
   }
   return out
 }
