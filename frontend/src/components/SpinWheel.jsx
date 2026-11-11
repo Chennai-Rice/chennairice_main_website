@@ -317,7 +317,7 @@ export default function SpinWheel() {
             </div>
             <div className="spin-right">
               <h2 id="spin-title" className="spin-heading spin-heading--img">
-                <img src="/assets/spin7-title.webp" alt="Spin to win — how much will you save?" width="660" height="290" />
+                <img src="/assets/spin7-title-v2.webp" alt="Spin to win — how much will you save?" width="660" height="290" />
               </h2>
 
               {state !== 'won' && (
