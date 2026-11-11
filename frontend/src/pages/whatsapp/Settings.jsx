@@ -49,6 +49,22 @@ export default function Settings() {
             <Tick ok={!phone.error && !!phone.display_phone_number}>Phone number {phone.display_phone_number ? `${phone.display_phone_number} · ${phone.verified_name || ''}` : phone.error || ''}</Tick>
             <Tick ok={phone.name_status === 'APPROVED' || phone.name_status === 'AVAILABLE_WITHOUT_REVIEW'}>Display name {phone.name_status ? `(${phone.name_status.toLowerCase().replaceAll('_', ' ')})` : ''}</Tick>
           </ul>
+          <form className="wa-idform" onSubmit={(e) => {
+            e.preventDefault()
+            const id = new FormData(e.currentTarget).get('waba').trim()
+            run('waba', () => staffJson('/api/admin/whatsapp/settings', { method: 'PUT', body: JSON.stringify({ wabaId: id }) }), 'Account ID saved.')
+          }}>
+            <label>
+              <span>WhatsApp Business Account ID</span>
+              <input name="waba" defaultValue={s.ids.waba} inputMode="numeric" key={s.ids.waba} />
+            </label>
+            <button type="submit" className="wa-btn wa-btn--small" disabled={!!busy}>{busy === 'waba' ? 'Saving…' : 'Save'}</button>
+            <small className="wa-muted">Find it in WhatsApp Manager (business.facebook.com/wa/manage): the address bar ends with <b>waba_id=</b> followed by the number. Choose the account with +91 70666 46667.</small>
+          </form>
+          <details className="wa-meta-raw">
+            <summary>What Meta says</summary>
+            <pre>{JSON.stringify({ account: s.account?.waba, phone: s.account?.phone, lookup: s.wabaLookup }, null, 2)}</pre>
+          </details>
           {s.wabaLookup && !s.wabaLookup.found && (
             <div className="wa-alert">
               <b>The token cannot reach the WhatsApp account that holds this number.</b>{' '}

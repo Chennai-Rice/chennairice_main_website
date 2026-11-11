@@ -257,3 +257,10 @@
   .wa-brand span { display: none; }
   .wa-brand::after { content: 'WhatsApp'; font-weight: 600; font-size: 16px; }
 }
+.wa-idform { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; margin: 14px 0 10px; }
+.wa-idform label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--wa-muted); flex: 1 1 220px; }
+.wa-idform input { border: 1px solid var(--wa-line); border-radius: 12px; padding: 9px 12px; font: inherit; font-size: 14px; background: #fff; }
+.wa-idform small { flex-basis: 100%; }
+.wa-meta-raw { margin: 6px 0 12px; font-size: 12.5px; }
+.wa-meta-raw summary { cursor: pointer; color: var(--wa-muted); }
+.wa-meta-raw pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #fff; border: 1px solid var(--wa-line); border-radius: 12px; padding: 10px; max-height: 280px; overflow: auto; }

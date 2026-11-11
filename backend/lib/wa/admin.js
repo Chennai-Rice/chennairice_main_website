@@ -135,6 +135,18 @@ export async function loadWabaId(query = defaultQuery) {
 }
 
 export async function saveSettings(input, { query = defaultQuery } = {}) {
+  // The WhatsApp Business Account ID typed in Settings (WhatsApp Manager shows it in its address: …?waba_id=…).
+  if (input.wabaId !== undefined) {
+    const id = String(input.wabaId || '').trim()
+    if (id && !/^\d{6,25}$/.test(id)) throw httpError('Bad id', { publicMessage: 'The account ID is a long number, e.g. 1234567890123456.' })
+    if (id) {
+      await query(`insert into company_settings (key, value) values ('whatsapp_waba_id', $1)
+                   on conflict (key) do update set value = excluded.value, updated_at = now()`, [id])
+    } else {
+      await query(`delete from company_settings where key = 'whatsapp_waba_id'`)
+    }
+    setWabaId(id || null)
+  }
   if (input.orderVia !== undefined) {
     const via = input.orderVia === 'cloud' ? 'cloud' : 'askeva'
     if (via === 'cloud') {

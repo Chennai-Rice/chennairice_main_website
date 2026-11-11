@@ -59,7 +59,7 @@ export async function accountInfo({ fetchImpl } = {}) {
     }).catch((err) => ({ error: err.publicMessage || err.message })),
     graph(`/${WABA_ID()}`, {
       fetchImpl,
-      query: { fields: 'name,currency,timezone_id,account_review_status,business_verification_status' },
+      query: { fields: 'id,name,currency,account_review_status' },
     }).catch((err) => ({ error: err.publicMessage || err.message })),
   ])
   return { phone, waba }
