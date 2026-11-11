@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { staffJson } from '../../services/staffAuth.js'
 import { I, when } from './ui.jsx'
+import ProfileCard from './ProfileCard.jsx'
 
 const Tick = ({ ok, children }) => (
   <li className={ok ? 'is-ok' : 'is-no'}><span className="wa-tick">{ok ? <I name="check" size={14} /> : <I name="x" size={14} />}</span>{children}</li>
@@ -40,6 +41,7 @@ export default function Settings() {
       <div className="wa-titlebar"><h1>Settings</h1></div>
       {note && <p className={note.bad ? 'wa-alert' : 'wa-ok'}>{note.text}</p>}
       <div className="wa-settings">
+        <ProfileCard />
         <section className="wa-card">
           <h2 className="wa-h2">Connection</h2>
           <ul className="wa-checks">

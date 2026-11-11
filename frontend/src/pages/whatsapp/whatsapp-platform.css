@@ -140,3 +140,10 @@
   .wa-msg-bubble { max-width: 88%; }
   .wa-segf .wa-search { width: 100%; }
 }
+
+/* WhatsApp profile card (Settings) */
+.wa-profile { display: flex; flex-direction: column; gap: 10px; grid-row: span 2; }
+.wa-profile-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.wa-profile-top img, .wa-profile-nophoto { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 1px solid var(--wa-line); display: grid; place-items: center; background: #f2f2f2; color: var(--wa-muted); font-size: 12px; }
+.wa-profile textarea { border: 1px solid var(--wa-line); border-radius: 12px; padding: 9px 12px; font: inherit; font-size: 14px; resize: vertical; }
+.wa-profile .wa-lbl small { float: right; }

@@ -57,6 +57,7 @@ import { listTemplates, saveTemplate, duplicateTemplate, submitTemplate, deleteT
 import { overview as waOverview, settings as waSettings, saveSettings as saveWaSettings, connectWebhook, sendTest as waSendTest, recentMessages, loadWabaId } from '../wa/admin.js'
 import { uploadHeaderSample } from '../wa/cloud.js'
 import { getBot, saveBot, simulate as simulateBot } from '../wa/bot.js'
+import { getProfile as waProfile, saveProfile as saveWaProfile, setProfilePhoto as setWaPhoto } from '../wa/profile.js'
 import { rawAnalytics, behaviour as webBehaviour, heatmap as webHeatmap } from './web-analytics.js'
 import { runWhatsAppAutomations, automationsAdmin, saveAutomations, testAutomation } from '../wa/automations.js'
 import { optIn as waOptIn, listContacts, contactsCsv, setTags, setPermission, importContacts } from '../wa/contacts.js'
@@ -856,6 +857,13 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/whatsapp/reports.csv', wa, wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.type('text/csv').attachment('whatsapp-report.csv').send(await waReportCsv(req.query, { money: can(req.staff, 'money.view') }))
+  }))
+  // The WhatsApp Business profile (photo, About, description, address, email, websites, category).
+  admin.get('/whatsapp/profile', wa, wrap(async (_req, res) => { noStore(res); res.json(await waProfile()) }))
+  admin.put('/whatsapp/profile', wa, wrap(async (req, res) => res.json(await saveWaProfile(req.body || {}))))
+  admin.post('/whatsapp/profile/photo', wa, express.raw({ type: ['image/jpeg', 'image/png'], limit: '6mb' }), wrap(async (req, res) => {
+    const buf = Buffer.isBuffer(req.body) && req.body.length ? req.body : req.rawBody
+    res.json(await setWaPhoto(buf, String(req.get('content-type') || '').split(';')[0]))
   }))
   admin.post('/whatsapp/webhook/connect', wa, wrap(async (_req, res) => res.json(await connectWebhook())))
 
