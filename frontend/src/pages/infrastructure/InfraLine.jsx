@@ -46,8 +46,8 @@ const MACHINES = [
     { file: 'husk-separator', ratio: 357 / 310, h: 92, work: true, name: 'TopHusk hull separator' },
   ],
   [{ file: 'paddy-separator', ratio: 354 / 340, h: 124, work: true, name: 'Paddy separator' }],
-  [{ file: 'whitener-teal', ratio: 330 / 440, h: 134 }], // rice whitener / polisher
-  [{ file: 'grader-teal', ratio: 471 / 440, h: 124 }], // rotary sieve grader
+  [{ file: 'whitener-white', ratio: 330 / 440, h: 134 }], // rice whitener / polisher
+  [{ file: 'grader-white', ratio: 471 / 440, h: 124 }], // rotary sieve grader
   [{ file: 'colour-sorter-teal', ratio: 380 / 440, h: 134, sorter: true }], // optical colour sorter (SorterMotion over it)
   [{ file: 'quality-lab-teal', ratio: 502 / 440, h: 122 }], // rice analysis workstation
   [{ file: 'packing-machine-teal', ratio: 346 / 440, h: 140 }], // bags ride its conveyor (see routes)
@@ -106,8 +106,8 @@ const IO = {
   huller: { in: [0.27, 0.03], out: [0.37, 0.99] },
   'husk-separator': { in: [0.25, 0.08], out: [0.72, 0.99] },
   'paddy-separator': { in: [0.5, 0.04], out: [0.5, 0.97] },
-  'whitener-teal': { in: [0.36, 0.02], out: [0.06, 0.66] }, // into the hopper, out of the discharge chute
-  'grader-teal': { in: [0.17, 0.02], out: [0.52, 0.76] }, // into the hopper, out of a sieve chute
+  'whitener-white': { in: [0.36, 0.02], out: [0.06, 0.66] }, // into the hopper, out of the discharge chute
+  'grader-white': { in: [0.17, 0.02], out: [0.52, 0.76] }, // into the hopper, out of a sieve chute
   'colour-sorter-teal': { in: [0.5, 0.02], out: [0.42, 0.9] }, // into the hopper, out of the chutes
   'quality-lab-teal': { in: [0.02, 0.34], inDir: [1, 0], out: [0.99, 0.66], outDir: [1, 0] }, // in over the counter, out low on its right (under the magnifier)
   'packing-machine-teal': { in: [0.56, 0.05], out: [0.45, 0.66] }, // into the hopper; bags out of the filling spout
