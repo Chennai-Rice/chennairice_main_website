@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FOOTER } from '../data/content.js'
 import { useCookieConsent } from '../hooks/useCookieConsent.jsx'
@@ -36,23 +35,6 @@ const Social = {
 
 export default function Footer() {
   const { reopen } = useCookieConsent()
-  const [email, setEmail] = useState('')
-  const [state, setState] = useState(null) // 'ok' | 'bad'
-
-  const subscribe = e => {
-    e.preventDefault()
-    const value = email.trim()
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-      setState('bad')
-      return
-    }
-    // No mailing-list backend is connected yet — this records the address so
-    // the control is testable and shows the confirmation state.
-    // eslint-disable-next-line no-console
-    console.info('Newsletter signup (not yet sent to a server):', value)
-    setState('ok')
-    setEmail('')
-  }
 
   return (
     <footer className="foot" id="contact">
@@ -64,36 +46,6 @@ export default function Footer() {
           <source srcSet="/assets/footer-band.webp" type="image/webp" />
           <img src="/assets/footer-band.png" alt="" />
         </picture>
-      </div>
-
-      {/* Stay Connected: one band across the top, text on the left, the form on the right. */}
-      <div className="container foot-news">
-        <div className="foot-news-copy">
-          <h2 className="foot-title">{FOOTER.newsletter.title}</h2>
-          <p className="foot-connect-text">{FOOTER.newsletter.text}</p>
-        </div>
-        <div className="foot-news-form">
-          <form className="foot-subscribe" onSubmit={subscribe} noValidate>
-            <input
-              type="email"
-              value={email}
-              placeholder={FOOTER.newsletter.placeholder}
-              aria-label="Email address"
-              aria-invalid={state === 'bad'}
-              onChange={e => {
-                setEmail(e.target.value)
-                setState(null)
-              }}
-            />
-            <button type="submit">Subscribe</button>
-          </form>
-          {state === 'bad' && <p className="foot-note foot-note-bad">Please enter a valid email address.</p>}
-          {state === 'ok' && (
-            <p className="foot-note" role="status">
-              Thank you — saved. No mailing list is connected yet, so nothing was sent.
-            </p>
-          )}
-        </div>
       </div>
 
       {/* Brand | links | Reach Us. */}

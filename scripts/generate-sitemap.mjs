@@ -24,9 +24,6 @@ const STATIC_ROUTES = [
   ['/ponni-rice', 0.9, 'weekly'],
   ['/idli-rice', 0.9, 'weekly'],
   ['/rice-distributorship', 0.7, 'monthly'],
-  ['/ta', 0.6, 'monthly'],
-  ['/ta/ponni-rice', 0.6, 'monthly'],
-  ['/ta/idli-rice', 0.6, 'monthly'],
   // Rice guides (frontend/src/data/guides.js).
   ['/best-ponni-rice-for-daily-meals', 0.8, 'monthly'],
   ['/raw-rice-vs-boiled-rice', 0.8, 'monthly'],

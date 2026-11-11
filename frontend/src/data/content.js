@@ -329,12 +329,6 @@ export const FOOTER = {
     { label: 'Return & Refund Policy', to: '/refund' },
   ],
 
-  newsletter: {
-    title: 'Stay Connected',
-    text: 'Subscribe to get special offers, recipes, and the latest updates from Chennai Rice.',
-    placeholder: 'Enter your email',
-  },
-
   columns: [
     {
       // The topic pages (SEO sheet Phase 2), linked from every page.
@@ -343,7 +337,6 @@ export const FOOTER = {
         { label: 'Ponni Rice', to: '/ponni-rice' },
         { label: 'Idli Rice', to: '/idli-rice' },
         { label: 'Become a Distributor', to: '/rice-distributorship' },
-        { label: 'தமிழ்', to: '/ta' },
       ],
     },
     {

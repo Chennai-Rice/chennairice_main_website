@@ -63,6 +63,21 @@
     ],
     "redirects": [
       {
+        "source": "/ta",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/ta/ponni-rice",
+        "destination": "/ponni-rice",
+        "type": 301
+      },
+      {
+        "source": "/ta/idli-rice",
+        "destination": "/idli-rice",
+        "type": 301
+      },
+      {
         "source": "/home",
         "destination": "/",
         "type": 301
