@@ -27,7 +27,7 @@ export const ASSETS = {
      fully downloaded. 6.7 MB, same 44.9 s length. */
   heroVideo: '/assets/hero-v2.mp4',
   wheatLeft: '/assets/decor/wheat-left.webp',
-  wheatRight: '/assets/decor/wheat-right.webp',
+  wheatRight: '/assets/decor/rice-stalks.webp', // Golden Rice Stalks (Nov 2026)
   riceBowl: '/assets/decor/rice-bowl.webp',
   grainsGold: '/assets/decor/grains-gold.webp',
   paddySpray: '/assets/decor/paddy-spray.webp',
