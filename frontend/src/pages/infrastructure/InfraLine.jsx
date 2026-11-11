@@ -38,7 +38,7 @@ const WORK = '/assets/infrastructure/machines/working/'
 // The machine(s) at each stage: file, width ÷ height and drawn height (viewBox units).
 // `work` = a working Bühler machine (animated); otherwise the site's illustration.
 const MACHINES = [
-  [{ file: 'raw-paddy-hopper', ratio: 342 / 440, h: 136, motion: true }], // paddy hopper with its bucket elevator (HopperMotion over it)
+  [{ file: 'raw-paddy-hopper-white', ratio: 342 / 440, h: 136, motion: true }], // paddy hopper with its bucket elevator (HopperMotion over it)
   [{ file: 'pre-cleaner', ratio: 572 / 338, h: 96, work: true, name: 'MTRA / MVSF separator' }],
   [{ file: 'destoner', ratio: 434 / 450, h: 140, work: true, name: 'Gravity destoner' }],
   [
@@ -46,11 +46,11 @@ const MACHINES = [
     { file: 'husk-separator', ratio: 357 / 310, h: 92, work: true, name: 'TopHusk hull separator' },
   ],
   [{ file: 'paddy-separator', ratio: 354 / 340, h: 124, work: true, name: 'Paddy separator' }],
-  [{ file: 'whitener-teal', ratio: 330 / 440, h: 134 }], // rice whitener / polisher
-  [{ file: 'grader-teal', ratio: 471 / 440, h: 124 }], // rotary sieve grader
-  [{ file: 'colour-sorter-teal', ratio: 380 / 440, h: 134, sorter: true }], // optical colour sorter (SorterMotion over it)
-  [{ file: 'quality-lab-teal', ratio: 502 / 440, h: 122 }], // rice analysis workstation
-  [{ file: 'packing-machine-teal', ratio: 346 / 440, h: 140 }], // bags ride its conveyor (see routes)
+  [{ file: 'whitener-white', ratio: 330 / 440, h: 134 }], // rice whitener / polisher
+  [{ file: 'grader-white', ratio: 471 / 440, h: 124 }], // rotary sieve grader
+  [{ file: 'colour-sorter-white', ratio: 380 / 440, h: 134, sorter: true }], // optical colour sorter (SorterMotion over it)
+  [{ file: 'quality-lab-white', ratio: 502 / 440, h: 122 }], // rice analysis workstation
+  [{ file: 'packing-machine-white', ratio: 346 / 440, h: 140 }], // bags ride its conveyor (see routes)
   [{ file: 'lorry', ratio: 1432 / 1016, h: 168, lorry: true }], // dispatch: bags go up a ramp into its open back
   [{ file: 'home', ratio: 746 / 420, h: 164, home: true, span: 1.15 }], // home delivery: the truck stands before the house
 ]
@@ -72,7 +72,7 @@ const frontBag = (house) => {
   return { x: house.x + HOME.front.x * house.w, y: house.y + HOME.front.base * house.h - h, w: h * (85 / 120), h }
 }
 // the stations with a part of their own in the route
-const PACK_AT = MACHINES.findIndex((ms) => ms[0].file === 'packing-machine-teal')
+const PACK_AT = MACHINES.findIndex((ms) => ms[0].file === 'packing-machine-white')
 const LORRY_AT = MACHINES.findIndex((ms) => ms[0].lorry)
 const HOME_AT = MACHINES.findIndex((ms) => ms[0].home)
 
@@ -100,17 +100,17 @@ const GAP = 22 // between two machines at one station (the route rises in it)
 // picture (read off the images), with the direction it travels there.
 const DOWN = [0, 1]
 const IO = {
-  'raw-paddy-hopper': { in: [0.42, 0.15], out: [0.95, 0.1], outDir: [1, 0] }, // into the hopper, out of the elevator head
+  'raw-paddy-hopper-white': { in: [0.42, 0.15], out: [0.95, 0.1], outDir: [1, 0] }, // into the hopper, out of the elevator head
   'pre-cleaner': { in: [0.07, 0.03], out: [0.9, 0.98] },
   destoner: { in: [0.22, 0.01], out: [0.86, 0.98] },
   huller: { in: [0.27, 0.03], out: [0.37, 0.99] },
   'husk-separator': { in: [0.25, 0.08], out: [0.72, 0.99] },
   'paddy-separator': { in: [0.5, 0.04], out: [0.5, 0.97] },
-  'whitener-teal': { in: [0.36, 0.02], out: [0.06, 0.66] }, // into the hopper, out of the discharge chute
-  'grader-teal': { in: [0.17, 0.02], out: [0.52, 0.76] }, // into the hopper, out of a sieve chute
-  'colour-sorter-teal': { in: [0.5, 0.02], out: [0.42, 0.9] }, // into the hopper, out of the chutes
-  'quality-lab-teal': { in: [0.02, 0.34], inDir: [1, 0], out: [0.99, 0.66], outDir: [1, 0] }, // in over the counter, out low on its right (under the magnifier)
-  'packing-machine-teal': { in: [0.56, 0.05], out: [0.45, 0.66] }, // into the hopper; bags out of the filling spout
+  'whitener-white': { in: [0.36, 0.02], out: [0.06, 0.66] }, // into the hopper, out of the discharge chute
+  'grader-white': { in: [0.17, 0.02], out: [0.52, 0.76] }, // into the hopper, out of a sieve chute
+  'colour-sorter-white': { in: [0.5, 0.02], out: [0.42, 0.9] }, // into the hopper, out of the chutes
+  'quality-lab-white': { in: [0.02, 0.43], inDir: [1, 0], out: [0.99, 0.66], outDir: [1, 0] }, // in over the counter, out low on its right (under the magnifier)
+  'packing-machine-white': { in: [0.56, 0.05], out: [0.45, 0.66] }, // into the hopper; bags out of the filling spout
 }
 
 /** Each machine in line order with its inlet and outlet in viewBox units. */
@@ -211,7 +211,7 @@ function routes() {
   const pk = layout(PACK_AT)[0]
   const pkTop = ROWS[2] - 2 - pk.h
   const belt = (fx, fy) => [pk.x + fx * pk.w, pkTop + fy * pk.h]
-  const [b0, b1] = [belt(0.42, 0.735), belt(0.07, 0.815)]
+  const [b0, b1] = [belt(0.42, 0.735), belt(0.09, 0.81)]
   const lz = lorryBox()
   const sill = [lz.x + LORRY.sill[0] * lz.w, lz.y + LORRY.sill[1] * lz.h]
   const inside = [lz.x + LORRY.inside[0] * lz.w, lz.y + LORRY.inside[1] * lz.h]
