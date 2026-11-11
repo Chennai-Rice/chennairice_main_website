@@ -54,7 +54,7 @@ import { checkAutomationKey, automationContacts } from './automation.js'
 import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
 import { verifyChallenge, signatureOk, handleWebhook } from '../wa/webhook.js'
 import { listTemplates, saveTemplate, duplicateTemplate, submitTemplate, deleteTemplate, syncTemplates, checkModel } from '../wa/templates.js'
-import { overview as waOverview, settings as waSettings, saveSettings as saveWaSettings, connectWebhook, sendTest as waSendTest, recentMessages } from '../wa/admin.js'
+import { overview as waOverview, settings as waSettings, saveSettings as saveWaSettings, connectWebhook, sendTest as waSendTest, recentMessages, loadWabaId } from '../wa/admin.js'
 import { uploadHeaderSample } from '../wa/cloud.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
@@ -774,6 +774,8 @@ export function createSalesRouter({ verifyIdToken } = {}) {
 
   // ---- /whatsapp: the WhatsApp dashboard (wa/*.js) ----
   const wa = perm('whatsapp.manage')
+  // The WhatsApp account ID found from the token (Settings) before any call to Meta.
+  admin.use('/whatsapp', (_req, _res, next) => { loadWabaId().then(() => next(), () => next()) })
   const noStore = (res) => res.set('Cache-Control', 'no-store')
   admin.get('/whatsapp/overview', wa, wrap(async (req, res) => { noStore(res); res.json(await waOverview({ period: req.query.period })) }))
   admin.get('/whatsapp/messages', wa, wrap(async (req, res) => { noStore(res); res.json({ messages: await recentMessages(req.query) }) }))

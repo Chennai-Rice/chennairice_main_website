@@ -3,7 +3,7 @@
 import { query as defaultQuery } from '../db.js'
 import { httpError, str } from '../sales/util.js'
 import { whatsappNumber } from '../whatsapp.js'
-import { WABA_ID, PHONE_ID, cloudEnabled, accountInfo, webhookSubscribed, subscribeWebhook, sendMessage, graph } from './cloud.js'
+import { WABA_ID, PHONE_ID, cloudEnabled, accountInfo, webhookSubscribed, subscribeWebhook, sendMessage, graph, findWabaId, setWabaId } from './cloud.js'
 import { fromComponents } from './templates.js'
 
 // Rough Meta rates for India in ₹ per delivered message (the dashboard says "approx."; Meta's own figure is shown beside it).
@@ -108,9 +108,30 @@ export async function settings({ query = defaultQuery, fetchImpl } = {}) {
   out.lastWebhookAt = last?.received_at || null
   if (cloudEnabled()) {
     out.account = await accountInfo({ fetchImpl })
+    if (out.account.waba?.error) {
+      // The account ID is wrong or not shared with the token: find the one that holds our number.
+      const look = await findWabaId({ fetchImpl }).catch((err) => ({ error: err.publicMessage || err.message, accounts: [] }))
+      out.wabaLookup = look
+      if (look.found && look.found !== WABA_ID()) {
+        await query(`insert into company_settings (key, value) values ('whatsapp_waba_id', $1)
+                     on conflict (key) do update set value = excluded.value, updated_at = now()`, [look.found])
+        setWabaId(look.found)
+        out.ids.waba = look.found
+        out.account = await accountInfo({ fetchImpl })
+      }
+    }
     out.subscribed = await webhookSubscribed({ fetchImpl }).then((apps) => apps.length > 0).catch(() => null)
   }
   return out
+}
+
+/** Loads the account ID saved by settings() (once per instance, then every 5 minutes). */
+let wabaLoadedAt = 0
+export async function loadWabaId(query = defaultQuery) {
+  if (Date.now() - wabaLoadedAt < 5 * 60e3) return
+  wabaLoadedAt = Date.now()
+  const { rows: [r] } = await query(`select value from company_settings where key = 'whatsapp_waba_id'`).catch(() => ({ rows: [] }))
+  if (r?.value) setWabaId(r.value)
 }
 
 export async function saveSettings(input, { query = defaultQuery } = {}) {

@@ -49,7 +49,18 @@ export default function Settings() {
             <Tick ok={!phone.error && !!phone.display_phone_number}>Phone number {phone.display_phone_number ? `${phone.display_phone_number} · ${phone.verified_name || ''}` : phone.error || ''}</Tick>
             <Tick ok={phone.name_status === 'APPROVED' || phone.name_status === 'AVAILABLE_WITHOUT_REVIEW'}>Display name {phone.name_status ? `(${phone.name_status.toLowerCase().replaceAll('_', ' ')})` : ''}</Tick>
           </ul>
-          {!allSecrets && <p className="wa-muted">Set the missing secrets with <code>npx firebase functions:secrets:set NAME</code>, then deploy.</p>}
+          {s.wabaLookup && !s.wabaLookup.found && (
+            <div className="wa-alert">
+              <b>The token cannot reach the WhatsApp account that holds this number.</b>{' '}
+              In business.facebook.com → Settings → Users → System users → <b>Chennai Rice Messaging</b> (or the user the token was made from) →
+              Assign assets → WhatsApp accounts → tick the account with +91 70666 46667 → <b>Full control</b>. Then reload this page.
+              {s.wabaLookup.accounts?.length > 0 && (
+                <> Accounts the token can reach now: {s.wabaLookup.accounts.map((a) => `${a.id} (${(a.phones || []).map((p) => p.number).join(', ') || 'no numbers'})`).join('; ')}.</>
+              )}
+              {s.wabaLookup.error && <> ({s.wabaLookup.error})</>}
+            </div>
+          )}
+          {!allSecrets &&<p className="wa-muted">Set the missing secrets with <code>npx firebase functions:secrets:set NAME</code>, then deploy.</p>}
           <dl className="wa-dl">
             <dt>WhatsApp account</dt><dd>{waba.name || '—'} · {s.ids.waba}</dd>
             <dt>Phone number ID</dt><dd>{s.ids.phone}</dd>

@@ -10,7 +10,10 @@
 // The two IDs are not secret; they can be overridden for testing on another number.
 import { httpError } from '../sales/util.js'
 
-export const WABA_ID = () => process.env.WHATSAPP_WABA_ID || '2041179226534821'
+// The account ID found from the token (company_settings 'whatsapp_waba_id', see findWabaId) wins over the default.
+let wabaFound = null
+export const WABA_ID = () => wabaFound || process.env.WHATSAPP_WABA_ID || '2041179226534821'
+export const setWabaId = (id) => { wabaFound = id ? String(id) : null }
 export const PHONE_ID = () => process.env.WHATSAPP_PHONE_ID || '1508922538960389'
 const VERSION = () => process.env.WHATSAPP_GRAPH_VERSION || 'v23.0'
 export const cloudEnabled = () => Boolean(process.env.WHATSAPP_TOKEN)
@@ -60,6 +63,27 @@ export async function accountInfo({ fetchImpl } = {}) {
     }).catch((err) => ({ error: err.publicMessage || err.message })),
   ])
   return { phone, waba }
+}
+
+/**
+ * Which WhatsApp Business Accounts the token can reach (from Meta's token check), and which of them holds our
+ * phone number. Returns { found, accounts: [{ id, phones }] }.
+ */
+export async function findWabaId({ fetchImpl } = {}) {
+  const info = await graph('/debug_token', { fetchImpl, query: { input_token: process.env.WHATSAPP_TOKEN } })
+  const scopes = info?.data?.granular_scopes || []
+  const ids = [...new Set(scopes
+    .filter((s) => /^whatsapp_business_(management|messaging)$/.test(s.scope))
+    .flatMap((s) => s.target_ids || []).map(String))]
+  const accounts = []
+  for (const id of ids.slice(0, 10)) {
+    const phones = await graph(`/${id}/phone_numbers`, { fetchImpl, query: { fields: 'id,display_phone_number' } })
+      .then((d) => (d.data || []).map((p) => ({ id: String(p.id), number: p.display_phone_number })))
+      .catch(() => null)
+    accounts.push({ id, phones })
+  }
+  const found = accounts.find((a) => a.phones?.some((p) => p.id === PHONE_ID()))?.id || null
+  return { found, accounts }
 }
 
 /** Is our app subscribed to the account's webhooks? */
