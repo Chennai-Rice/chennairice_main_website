@@ -20,9 +20,11 @@
   pointer-events: none;
   user-select: none;
 }
+/* The Golden Rice Stalks picture (Nov 2026) has its grains right up to its top edge, so it sits a
+   little below the section's top: above it, the section's overflow cut the tips off flat. */
 .showcase-paddy-a {
   right: 0;
-  top: -10px;
+  top: 18px;
   width: 255px;
   opacity: 0.95;
 }
