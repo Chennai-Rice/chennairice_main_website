@@ -50,7 +50,7 @@ const MACHINES = [
   [{ file: 'grader-white', ratio: 471 / 440, h: 124 }], // rotary sieve grader
   [{ file: 'colour-sorter-white', ratio: 380 / 440, h: 134, sorter: true }], // optical colour sorter (SorterMotion over it)
   [{ file: 'quality-lab-white', ratio: 502 / 440, h: 122 }], // rice analysis workstation
-  [{ file: 'packing-machine-teal', ratio: 346 / 440, h: 140 }], // bags ride its conveyor (see routes)
+  [{ file: 'packing-machine-white', ratio: 346 / 440, h: 140 }], // bags ride its conveyor (see routes)
   [{ file: 'lorry', ratio: 1432 / 1016, h: 168, lorry: true }], // dispatch: bags go up a ramp into its open back
   [{ file: 'home', ratio: 746 / 420, h: 164, home: true, span: 1.15 }], // home delivery: the truck stands before the house
 ]
@@ -72,7 +72,7 @@ const frontBag = (house) => {
   return { x: house.x + HOME.front.x * house.w, y: house.y + HOME.front.base * house.h - h, w: h * (85 / 120), h }
 }
 // the stations with a part of their own in the route
-const PACK_AT = MACHINES.findIndex((ms) => ms[0].file === 'packing-machine-teal')
+const PACK_AT = MACHINES.findIndex((ms) => ms[0].file === 'packing-machine-white')
 const LORRY_AT = MACHINES.findIndex((ms) => ms[0].lorry)
 const HOME_AT = MACHINES.findIndex((ms) => ms[0].home)
 
@@ -110,7 +110,7 @@ const IO = {
   'grader-white': { in: [0.17, 0.02], out: [0.52, 0.76] }, // into the hopper, out of a sieve chute
   'colour-sorter-white': { in: [0.5, 0.02], out: [0.42, 0.9] }, // into the hopper, out of the chutes
   'quality-lab-white': { in: [0.02, 0.43], inDir: [1, 0], out: [0.99, 0.66], outDir: [1, 0] }, // in over the counter, out low on its right (under the magnifier)
-  'packing-machine-teal': { in: [0.56, 0.05], out: [0.45, 0.66] }, // into the hopper; bags out of the filling spout
+  'packing-machine-white': { in: [0.56, 0.05], out: [0.45, 0.66] }, // into the hopper; bags out of the filling spout
 }
 
 /** Each machine in line order with its inlet and outlet in viewBox units. */
@@ -211,7 +211,7 @@ function routes() {
   const pk = layout(PACK_AT)[0]
   const pkTop = ROWS[2] - 2 - pk.h
   const belt = (fx, fy) => [pk.x + fx * pk.w, pkTop + fy * pk.h]
-  const [b0, b1] = [belt(0.42, 0.735), belt(0.07, 0.815)]
+  const [b0, b1] = [belt(0.42, 0.735), belt(0.09, 0.81)]
   const lz = lorryBox()
   const sill = [lz.x + LORRY.sill[0] * lz.w, lz.y + LORRY.sill[1] * lz.h]
   const inside = [lz.x + LORRY.inside[0] * lz.w, lz.y + LORRY.inside[1] * lz.h]
