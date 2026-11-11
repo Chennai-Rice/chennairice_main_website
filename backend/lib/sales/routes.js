@@ -57,6 +57,7 @@ import { listTemplates, saveTemplate, duplicateTemplate, submitTemplate, deleteT
 import { overview as waOverview, settings as waSettings, saveSettings as saveWaSettings, connectWebhook, sendTest as waSendTest, recentMessages, loadWabaId } from '../wa/admin.js'
 import { uploadHeaderSample } from '../wa/cloud.js'
 import { getBot, saveBot, simulate as simulateBot } from '../wa/bot.js'
+import { rawAnalytics, behaviour as webBehaviour, heatmap as webHeatmap } from './web-analytics.js'
 import { runWhatsAppAutomations, automationsAdmin, saveAutomations, testAutomation } from '../wa/automations.js'
 import { optIn as waOptIn, listContacts, contactsCsv, setTags, setPermission, importContacts } from '../wa/contacts.js'
 import { listBroadcasts, saveBroadcast, launchBroadcast, cancelBroadcast, deleteBroadcast, audience as broadcastAudience, FIELDS as BROADCAST_FIELDS } from '../wa/broadcasts.js'
@@ -784,6 +785,12 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.set('Cache-Control', 'private, no-store')
     res.type('application/pdf').attachment(`Invoice ${detail.invoice.invoice_number.replaceAll('/', '-')}.pdf`).send(await invoicePdf(detail))
   }))
+
+  // ---- /admin website analytics (web-analytics.js; Cloud SQL, no Supabase) ----
+  const web = perm('web.analytics')
+  admin.get('/web/raw', web, wrap(async (_req, res) => { res.set('Cache-Control', 'no-store'); res.json(await rawAnalytics()) }))
+  admin.get('/web/behaviour', web, wrap(async (req, res) => { res.set('Cache-Control', 'no-store'); res.json(await webBehaviour(req.query)) }))
+  admin.get('/web/heatmap', web, wrap(async (req, res) => { res.set('Cache-Control', 'no-store'); res.json(await webHeatmap(req.query)) }))
 
   // ---- /whatsapp: the WhatsApp dashboard (wa/*.js) ----
   const wa = perm('whatsapp.manage')

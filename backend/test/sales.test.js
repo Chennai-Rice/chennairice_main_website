@@ -2393,11 +2393,11 @@ test('order list: a cancelled, never-paid order is dated by when it was attempte
   assert.ok(dated.body.orders.some((o) => o.orderNumber === s.body.orderNumber), 'found by the date filter')
 })
 
-test('/admin enquiries: owner, admin, IT and sales only; empty when Supabase is not set up here', async () => {
+test('/admin enquiries: owner, admin, IT and sales only; read from Cloud SQL (no Supabase)', async () => {
   const list = await api('GET', '/api/admin/enquiries', { token: OWNER })
   assert.equal(list.status, 200, JSON.stringify(list.body))
-  assert.deepEqual(list.body.contact, [])
-  assert.equal(list.body.configured, false)
+  assert.ok(Array.isArray(list.body.contact))
+  assert.equal(list.body.configured, true)
   assert.equal((await api('GET', '/api/admin/enquiries', { token: tokens.sales })).status, 200)
   assert.equal((await api('GET', '/api/admin/enquiries', { token: tokens.dispatch })).status, 403)
   assert.equal((await api('GET', '/api/admin/enquiries', { token: 'accounts@x.test|uid-accounts' })).status, 403)
@@ -3716,7 +3716,7 @@ test('NeoDove team campaigns, end to end through the real routes: a sign-up, a b
       body: JSON.stringify({ type: 'wholesaler', company: 'Test Traders', gstin: '33AAAAA0000A1Z5', name: 'Test Bulk', email: 'e2e2@example.com', phone: '9811100002', message: 'test' }),
     })
     realServer.close()
-    assert.ok([200, 500, 503].includes(bulk.status), 'the form saves to Supabase, which the test has not got; the NeoDove side must still have run: ' + bulk.status)
+    assert.ok([200, 500, 503].includes(bulk.status), 'the form saves to Cloud SQL (the test server may have none); the NeoDove side must still have run: ' + bulk.status)
     // 3. a checkout that stopped at the details step, 40 minutes ago
     const id = crypto.randomUUID()
     await db.query(

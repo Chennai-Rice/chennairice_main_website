@@ -20,7 +20,7 @@ import JournalGate from '../blog/JournalGate.jsx'
 import JournalPage from '../JournalPage.jsx'
 import MisGate from '../mis/MisGate.jsx'
 import MisDashboard from '../mis/MisDashboard.jsx'
-import { hasStaffSession, signInWriter, signOutStaff, staffJson } from '../../services/staffAuth.js'
+import { canUseGoogleSignIn, canUseLocalSignIn, hasStaffSession, signInLocal, signInWithGoogle, signInWriter, signOutStaff, staffJson } from '../../services/staffAuth.js'
 import CampaignsPanel from './CampaignsPanel.jsx'
 import CustomersPanel from './CustomersPanel.jsx'
 import EnquiriesPanel from './EnquiriesPanel.jsx'
@@ -46,17 +46,17 @@ import './admin.css'
 /**
  * /admin — the analyst dashboard.
  *
- * This page holds no credentials and no privileged key. It signs in through
- * Supabase Auth and then reads whatever the RLS policies allow; a visitor
- * who is not in admin_users sees nothing here no matter what they do to the
- * JavaScript, because the restriction lives in Postgres, not in this file.
+ * This page holds no credentials and no privileged key. It signs in with the
+ * staff login (Google, or email and password; Firebase) and reads through our
+ * own API on Google Cloud, which checks the staff member's role on every
+ * request (no Supabase since Nov 2026).
  *
  * Navigation is local state rather than routes: the dashboard is one screen
  * with several panels over a single dataset, so switching section should
  * never refetch or reset the date range.
  */
 
-/* Sections that need a row in admin_users. */
+/* Sections for the analyst login (web.analytics: owner, admin, IT). */
 const ANALYTICS_NAV = [
   { id: 'overview', label: 'Overview', subtitle: 'How the site is performing', icon: 'grid' },
   { id: 'visitors', label: 'Visitors', subtitle: 'Everyone who has browsed', icon: 'user' },
@@ -142,10 +142,8 @@ export default function AdminPage() {
   useEffect(() => {
     let cancelled = false
 
-    // A Supabase session in localStorage is not proof of access — the
-    // account could have been removed from admin_users
-    // since last login, so both are re-checked on every load rather than
-    // trusted.
+    // A saved sign-in is not proof of access (the account could have been
+    // removed since), so the role is re-checked with the server on every load.
     getSession()
       .then(async (existing) => {
         if (cancelled) return
@@ -219,6 +217,37 @@ function LoginScreen({ onSignedIn, onWriter }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
+  // Google: the staff account's role decides what opens (analyst dashboard, or a writer / MIS / Performance screen).
+  const google = async () => {
+    setError('')
+    setBusy(true)
+    try {
+      await signInWithGoogle()
+      const access = await resolveAccess()
+      if (access.any) { onSignedIn(access); return }
+      const role = await passwordRole()
+      if (role) { onWriter(role); return }
+      await signOut()
+      setError('This Google account does not have access. Ask the IT team.')
+    } catch (err) {
+      setError(err.message || 'Could not sign in with Google.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  // This computer only (local test server): sign in by email alone.
+  const local = async () => {
+    setError('')
+    try {
+      await signInLocal(email.trim())
+      const access = await resolveAccess()
+      if (access.any) onSignedIn(access)
+      else setError('No analytics access for that email.')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   const submit = async (event) => {
     event.preventDefault()
     setError('')
@@ -268,6 +297,20 @@ function LoginScreen({ onSignedIn, onWriter }) {
         <button className="ad-btn ad-btn-primary" type="submit" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
+        {canUseGoogleSignIn && (
+          <button className="ad-btn ad-google" type="button" onClick={google} disabled={busy}>
+            <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+              <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 01-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z" />
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 009 18z" />
+              <path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 013.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 000 9c0 1.45.35 2.83.96 4.05l3.01-2.33z" />
+              <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 009 0 9 9 0 00.96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" />
+            </svg>
+            Sign in with Google
+          </button>
+        )}
+        {canUseLocalSignIn && (
+          <button className="ad-btn" type="button" onClick={local} disabled={busy || !email}>Local test sign-in (this computer only)</button>
+        )}
       </form>
     </div>
   )

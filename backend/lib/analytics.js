@@ -7,7 +7,16 @@
 // category — the frontend hook (src/hooks/useVisitorTracking.js) never
 // calls these endpoints otherwise.
 import { anonymiseIp, clientIp } from './consent.js'
-import { hasSupabase, supabase } from './supabase.js'
+import { hasDatabase, query } from './db.js'
+
+// Stored in Cloud SQL (migration 053) since Nov 2026; before that in Supabase.
+const hasStore = () => hasDatabase()
+
+/** INSERT one row object (column → value) into a table. */
+async function insertRow(table, row) {
+  const cols = Object.keys(row)
+  await query(`insert into ${table} (${cols.join(', ')}) values (${cols.map((_, i) => '$' + (i + 1)).join(', ')})`, cols.map((c) => row[c]))
+}
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{8,64}$/
 
@@ -130,38 +139,38 @@ export async function buildSessionRow({ body, req }) {
  * The dashboard left-joins this table so an unnumbered visitor still shows.
  */
 async function ensureVisitor(visitorId) {
-  const { error } = await supabase.rpc('ensure_visitor', { p_visitor_id: visitorId })
-  if (error) console.error('ensure_visitor failed (session still recorded):', error.message)
+  await query(`insert into visitors (visitor_id) values ($1) on conflict (visitor_id) do update set last_seen_at = now()`, [visitorId])
+    .catch((err) => console.error('ensure_visitor failed (session still recorded):', err.message))
 }
 
-/** Inserts a new session row. Resolves to false when Supabase isn't configured. */
+/** Inserts a new session row. Resolves to false when there is no database. */
 export async function insertSession(row) {
-  if (!hasSupabase) return false
+  if (!hasStore()) return false
   await ensureVisitor(row.visitor_id)
-  const { error } = await supabase.from('visitor_sessions').insert(row)
-  if (error) throw storeError('visitor_sessions', error)
+  try {
+    await insertRow('visitor_sessions', row)
+  } catch (err) {
+    if (err.code === '23505') return true // the same session started twice (a retry): already stored
+    throw storeError('visitor_sessions', err)
+  }
   return true
 }
 
 /**
  * Heartbeat: bumps last_seen_at/total_seconds/page_count on an existing
  * session. Silently a no-op if the session id is unknown — a heartbeat for a
- * session the server never saw (e.g. insert failed, or Supabase was briefly
+ * session the server never saw (e.g. insert failed, or the database was briefly
  * unconfigured) must not surface as an error to the visitor's tab.
  */
 export async function touchSession({ sessionId, totalSeconds, pageCount }) {
-  if (!hasSupabase) return false
+  if (!hasStore()) return false
   const sid = str(sessionId, 64)
   if (!sid || !ID_PATTERN.test(sid)) return false
 
-  const update = { last_seen_at: new Date().toISOString() }
-  const seconds = int(totalSeconds)
-  const pages = int(pageCount)
-  if (seconds !== null) update.total_seconds = seconds
-  if (pages !== null) update.page_count = pages
-
-  const { error } = await supabase.from('visitor_sessions').update(update).eq('session_id', sid)
-  if (error) throw storeError('visitor_sessions', error)
+  await query(
+    `update visitor_sessions set last_seen_at = now(), total_seconds = coalesce($2, total_seconds), page_count = coalesce($3, page_count)
+      where session_id = $1`, [sid, int(totalSeconds), int(pageCount)])
+    .catch((err) => { throw storeError('visitor_sessions', err) })
   return true
 }
 
@@ -172,17 +181,21 @@ export async function insertPageview(body) {
   if (!sessionId || !ID_PATTERN.test(sessionId)) return { error: 'A valid sessionId is required.' }
   if (!path) return { error: 'A path is required.' }
 
-  if (!hasSupabase) return { stored: false }
+  if (!hasStore()) return { stored: false }
 
-  const { error } = await supabase.from('visitor_pageviews').insert({
+  const error = await insertRow('visitor_pageviews', {
     session_id: sessionId,
     path,
     seconds_on_page: int(body?.secondsOnPage) || 0,
     // Null, not 0, when the client sent nothing: "not measured" and "never
     // scrolled" are different findings and must not be merged.
     max_scroll_percent: percent(body?.maxScrollPercent),
-  })
-  if (error) throw storeError('visitor_pageviews', error)
+  }).then(() => null, (err) => err)
+  // A pageview for a session that was never stored (foreign key) is dropped, not an error for the visitor.
+  if (error) {
+    if (error.code === '23503') return { stored: false }
+    throw storeError('visitor_pageviews', error)
+  }
   return { stored: true }
 }
 
@@ -210,13 +223,13 @@ export async function insertEvent(body) {
   if (!visitorId || !ID_PATTERN.test(visitorId)) return { error: 'A valid visitorId is required.' }
   if (!eventType || !EVENT_TYPES.has(eventType)) return { error: 'Unknown eventType.' }
 
-  if (!hasSupabase) return { stored: false }
+  if (!hasStore()) return { stored: false }
 
   const quantity = int(body?.quantity)
   const variantKg = Number(body?.variantKg)
   const value = Number(body?.valueInr)
 
-  const { error } = await supabase.from('visitor_events').insert({
+  const error = await insertRow('visitor_events', {
     session_id: sessionId,
     visitor_id: visitorId,
     event_type: eventType,
@@ -225,7 +238,7 @@ export async function insertEvent(body) {
     quantity: quantity === null ? null : quantity,
     value_inr: Number.isFinite(value) ? value : null,
     order_ref: str(body?.orderRef, 128),
-  })
+  }).then(() => null, (err) => err)
 
   // A foreign-key violation means the session row isn't there (yet). That is
   // a dropped event, not a server fault — reporting it as an error would put
@@ -297,9 +310,12 @@ export async function insertInteractions(body) {
   const skipped = items.length - rows.length
   if (!rows.length) return { stored: 0, skipped }
 
-  if (!hasSupabase) return { stored: 0, skipped }
+  if (!hasStore()) return { stored: 0, skipped }
 
-  const { error } = await supabase.from('visitor_interactions').insert(rows)
+  const cols = ['session_id', 'visitor_id', 'kind', 'path', 'selector', 'label', 'tag', 'rel_x', 'abs_y', 'viewport_width', 'doc_height', 'click_count']
+  const values = []
+  const tuples = rows.map((r, i) => '(' + cols.map((c, j) => { values.push(r[c] ?? null); return '$' + (i * cols.length + j + 1) }).join(', ') + ')')
+  const error = await query(`insert into visitor_interactions (${cols.join(', ')}) values ${tuples.join(', ')}`, values).then(() => null, (err) => err)
 
   // Same reasoning as insertEvent: a foreign-key violation means the
   // session row is not there, which is a dropped batch rather than a
@@ -312,7 +328,7 @@ export async function insertInteractions(body) {
 }
 
 function storeError(table, cause) {
-  const err = new Error(`Supabase write to ${table} failed: ${cause.message}`)
+  const err = new Error(`Database write to ${table} failed: ${cause.message}`)
   err.status = 502
   err.publicMessage = 'Could not save analytics data.'
   return err

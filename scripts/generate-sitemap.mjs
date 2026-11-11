@@ -1,7 +1,7 @@
 // Writes frontend/public/sitemap.xml and robots.txt before every build.
 //
 // Runs as the `prebuild` npm script, so the sitemap can never drift from what
-// the site actually contains: a product added to Supabase, or a blog post
+// the site actually contains: a product added to the catalog, or a blog post
 // published, appears in the next deploy's sitemap without anyone remembering
 // to update a hand-written file.
 //
@@ -62,35 +62,16 @@ function productSlugs() {
 }
 
 /**
- * Published blog posts, if Supabase credentials happen to be present. Absent
- * credentials are not an error: the sitemap is simply built without them, so a
- * machine that cannot reach the database can still produce a valid file.
+ * Published blog posts, from the live site's blog API (Cloud SQL; no Supabase). A machine that cannot
+ * reach it still produces a valid sitemap, just without the posts.
  */
 async function blogSlugs() {
-  const envPath = join(ROOT, 'backend', 'server', '.env')
-  let url = process.env.SUPABASE_URL
-  let key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if ((!url || !key) && existsSync(envPath)) {
-    for (const line of readFileSync(envPath, 'utf8').split(/\r?\n/)) {
-      const t = line.trim()
-      if (!t || t.startsWith('#')) continue
-      const i = t.indexOf('=')
-      const k = t.slice(0, i)
-      const v = t.slice(i + 1).trim()
-      if (k === 'SUPABASE_URL' && !url) url = v
-      if (k === 'SUPABASE_SERVICE_ROLE_KEY' && !key) key = v
-    }
-  }
-  if (!url || !key) return []
-
   try {
-    const res = await fetch(
-      url + '/rest/v1/blog_posts?select=slug,published_at&status=eq.published&order=published_at.desc',
-      { headers: { apikey: key, Authorization: 'Bearer ' + key } }
-    )
+    const res = await fetch(SITE + '/api/blog/posts', { signal: AbortSignal.timeout(8000) })
     if (!res.ok) return []
-    const rows = await res.json()
-    return rows.filter((r) => r.slug).map((r) => ({ slug: r.slug, lastmod: r.published_at }))
+    const data = await res.json()
+    const rows = Array.isArray(data) ? data : data.posts || []
+    return rows.filter((r) => r.slug).map((r) => ({ slug: r.slug, lastmod: r.publishedAt || r.published_at }))
   } catch {
     return []
   }
@@ -146,7 +127,7 @@ writeFileSync(join(PUBLIC_DIR, 'sitemap.xml'), xml)
 
 // /admin and /blog/studio are disallowed as a courtesy to crawlers, not as
 // security — they are client-side routes and robots.txt is advisory. Real
-// protection is the Supabase RLS behind them.
+// protection is the staff sign-in behind them.
 // The AI crawlers are named so it is plain they are welcome; they share the
 // one group (RFC 9309), so the same pages stay out for them too.
 const AI_AND_SEARCH_BOTS = [

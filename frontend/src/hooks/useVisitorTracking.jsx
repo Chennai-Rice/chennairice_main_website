@@ -10,7 +10,7 @@ import {
 
 /**
  * Visitor analytics: a unique visitor id, a per-tab session, pages visited,
- * and time spent, stored in Supabase (see api/track/*.js). Runs only once
+ * and time spent, stored in Cloud SQL (see backend/lib/analytics.js). Runs only once
  * the visitor has accepted the "analytics" cookie category — nothing here
  * ever fires before that, and everything stops the moment consent is
  * withdrawn (rejecting after having accepted does not retroactively delete

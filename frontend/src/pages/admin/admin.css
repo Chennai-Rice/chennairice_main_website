@@ -1059,3 +1059,6 @@
 .ad-report-dates { display: inline-flex; flex-wrap: wrap; gap: 12px; margin: 0 0 10px; }
 .ad-report-dates label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ad-ink, #2b1d17); }
 .ad-report-dates .ad-input { width: auto; padding: 6px 10px; }
+
+/* "Sign in with Google" on the staff login (no Supabase since Nov 2026). */
+.ad-google { display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 10px; background: #fff; }

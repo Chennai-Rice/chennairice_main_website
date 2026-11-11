@@ -2,7 +2,7 @@
 // answered with analysis and suggestions by Gemini on Vertex AI (Google Cloud,
 // no API key — the server's own Google identity). Read-only: the model can
 // only call the tools below, which return figures the server has calculated.
-// Website visitor analytics live in Supabase and are read by the /admin page
+// Website visitor analytics live in Cloud SQL (web-analytics.js, migration 053) and are read by the /admin page
 // itself, so the page sends its own summary along with each question.
 //
 // Cost control: every answer's tokens are priced and added to this month's

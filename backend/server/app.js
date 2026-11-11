@@ -31,8 +31,6 @@ import {
   insertEvent,
   insertInteractions,
 } from '../lib/analytics.js'
-import { hasSupabase } from '../lib/supabase.js'
-import { createCheckoutSession, confirmCheckout } from '../lib/checkout.js'
 import { availableGateways } from '../lib/gateways.js'
 import { hasDatabase } from '../lib/db.js'
 import { createSalesRouter } from '../lib/sales/routes.js'
@@ -58,7 +56,7 @@ app.use(
 
 // The sales backend (PostgreSQL / Cloud SQL): catalog, checkout, order
 // tracking, webhooks and the staff admin API. Mounted ahead of the older
-// Supabase checkout routes below, so once a database is configured it answers
+// fallback routes below, so once a database is configured it answers
 // /api/checkout/* and those are never reached. Without one, nothing changes.
 if (hasDatabase()) app.use(createSalesRouter())
 
@@ -67,7 +65,7 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY
 const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b'
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, hasKey: Boolean(GROQ_API_KEY), consentStore: hasStore, supabase: hasSupabase, salesDb: hasDatabase() })
+  res.json({ ok: true, hasKey: Boolean(GROQ_API_KEY), consentStore: hasStore, salesDb: hasDatabase() })
 })
 
 /* Cookie consent — mirrors api/consent.js so the banner behaves the same
@@ -248,26 +246,8 @@ app.post('/api/chat', async (req, res) => {
   }
 })
 
-/* Guest checkout — mirrors api/checkout/*.js so payment behaves the same
-   against the dev proxy as it does on Vercel. */
-app.post('/api/checkout/session', async (req, res) => {
-  try {
-    const session = await createCheckoutSession(req.body)
-    res.json({ ok: true, ...session })
-  } catch (err) {
-    console.error('Checkout session error:', err)
-    res
-      .status(err.status || 500)
-      .json({ error: err.publicMessage || 'We could not start your order. Please try again.' })
-  }
-})
-
-app.post('/api/checkout/verify', async (req, res) => {
-  try {
-    const result = await confirmCheckout(req.body)
-    res.json(result)
-  } catch (err) {
-    console.error('Checkout verify error:', err)
-    res.status(err.status || 500).json({ error: err.publicMessage || 'We could not confirm your payment.' })
-  }
+/* Checkout lives in the sales backend (Cloud SQL, lib/sales/checkout.js), mounted above. The old Supabase
+   checkout is gone (Nov 2026): without a database there is no checkout. */
+app.post(['/api/checkout/session', '/api/checkout/verify'], (_req, res) => {
+  res.status(503).json({ error: 'Checkout is not available right now. Please try again shortly.' })
 })
