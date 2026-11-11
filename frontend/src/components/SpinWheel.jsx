@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { currentAttribution } from '../services/attribution.js'
 import { useCookieConsent } from '../hooks/useCookieConsent.jsx'
@@ -55,9 +55,34 @@ function pictureSlice(prize) {
 // The wheel is the designed picture (Nov 2026, "Seven-Segment Chennai Rice Prize Wheel"): the stage (red, the
 // light ring, the pointer on the right, the stand and gifts) stays put and only the seven slices turn, laid exactly
 // over the wheel in the stage picture (centre 379,359 and radius 279 in its 740 × 900 px).
+const STAGE = { w: 740, h: 900, cx: 379, cy: 359, r: 279 }
+
 function Wheel({ slices, rotorRef, angleRef }) {
+  const stageRef = useRef(null)
+  // The stage picture fills its box like object-fit: cover (centred across, from the top), so on a computer,
+  // where the box is rarely the picture's own shape, part of it is cut off. The slices are placed on the
+  // picture's wheel by the same sums, measured again whenever the box changes size; percentages of the box
+  // (the CSS fallback) only fit when the box has the picture's shape.
+  useLayoutEffect(() => {
+    const stage = stageRef.current
+    if (!stage || typeof ResizeObserver === 'undefined') return undefined
+    const place = () => {
+      const el = rotorRef.current
+      const w = stage.clientWidth
+      const h = stage.clientHeight
+      if (!el || !w || !h) return
+      const s = Math.max(w / STAGE.w, h / STAGE.h)
+      el.style.left = `${(w - STAGE.w * s) / 2 + (STAGE.cx - STAGE.r) * s}px`
+      el.style.top = `${(STAGE.cy - STAGE.r) * s}px`
+      el.style.width = `${2 * STAGE.r * s}px`
+    }
+    place()
+    const ro = new ResizeObserver(place)
+    ro.observe(stage)
+    return () => ro.disconnect()
+  }, [rotorRef])
   return (
-    <div className="spin-stage">
+    <div className="spin-stage" ref={stageRef}>
       <img className="spin-stage-bg" src="/assets/spin7-stage.jpg" alt="" width="740" height="900" />
       <div className="spin-rotor7" ref={rotorRef} style={{ transform: `rotate(${angleRef.current}deg)` }}>
         <img src="/assets/spin7-rotor.webp" alt={'Prize wheel: ' + [...new Set(slices.map((p) => p.label))].join(', ')} width="558" height="558" />
