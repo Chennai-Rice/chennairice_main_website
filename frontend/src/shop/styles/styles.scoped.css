@@ -2764,3 +2764,8 @@
   margin: 0 0 var(--s-3); padding: 10px 14px; border-radius: var(--radius-sm);
   background: #e8f3ec; color: #2f7a4b; font-weight: 500;
 }
+
+/* Checkout: "Send me offers and updates on WhatsApp" (WhatsApp dashboard opt-in, Nov 2026). */
+.shop-scope .checkout-wa-optin { display: flex; align-items: flex-start; gap: 10px; margin: 4px 0 14px; font-size: 14px; line-height: 1.4; cursor: pointer; }
+.shop-scope .checkout-wa-optin input { width: 18px; height: 18px; margin-top: 1px; accent-color: #25d366; flex: none; }
+.shop-scope .checkout-wa-optin small { color: #6b6b6b; }

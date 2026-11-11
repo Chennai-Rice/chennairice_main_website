@@ -178,3 +178,61 @@ test('webhook: a new customer message is answered by the bot once', async () => 
   assert.equal(asked.length, 1)
   assert.deepEqual({ to: asked[0].to, phone: asked[0].phone, replyId: asked[0].replyId }, { to: '919876543210', phone: '9876543210', replyId: 'prices' })
 })
+
+// ---- Phases 2–4: segments, broadcasts, the queue's rules ----
+import { segmentWhere } from '../lib/wa/contacts.js'
+import { valuesFor } from '../lib/wa/broadcasts.js'
+import { sendQueue } from '../lib/wa/automations.js'
+
+test('segments: filters become safe SQL with parameters', () => {
+  const [where, params] = segmentWhere({ q: "Ravi'; drop", permission: 'in', bought: 'yes', lastOrderMin: 30, packKg: 26, spinUnused: 'true', source: 'buyer', tag: 'VIP' })
+  assert.match(where, /opted_in_at is not null and x\.opted_out_at is null/)
+  assert.match(where, /x\.orders > 0/)
+  assert.match(where, /x\.spin_unused/)
+  assert.ok(!where.includes('drop'))
+  assert.deepEqual(params.slice(1), ['vip', 30, 26, 'buyer'])
+  assert.equal(segmentWhere({})[0], '')
+})
+
+test('broadcasts: each person gets their own values', () => {
+  const v = valuesFor({ name: 'Meena Devi', city: 'Madurai', lastProduct: 'Kitchidi Ponni Rice', lastPackKg: 26 },
+    { body: [{ from: 'first_name' }, { from: 'last_product' }, { from: 'fixed', text: '₹50' }], buttons: { 1: { from: 'fixed', text: 'back-DIWALI' } } })
+  assert.deepEqual(v.body, ['Meena', 'Kitchidi Ponni Rice 26 kg', '₹50'])
+  assert.deepEqual(v.buttons, { 1: 'back-DIWALI' })
+})
+
+test('queue: no offers without a yes, none after STOP, 1 a day; utility still goes', async () => {
+  const sent = []
+  const people = { '9000000001': { opted_in_at: new Date() }, '9000000002': { opted_in_at: new Date(), opted_out_at: new Date() }, '9000000003': null, '9000000004': { opted_in_at: new Date() } }
+  const rows = [
+    { id: 1, phone: '9000000001', template_name: 't', language: 'en', category: 'marketing', source: 'broadcast', vals: {}, attempts: 1 },
+    { id: 2, phone: '9000000002', template_name: 't', language: 'en', category: 'marketing', source: 'broadcast', vals: {}, attempts: 1 },
+    { id: 3, phone: '9000000003', template_name: 't', language: 'en', category: 'marketing', source: 'broadcast', vals: {}, attempts: 1 },
+    { id: 4, phone: '9000000004', template_name: 't', language: 'en', category: 'marketing', source: 'broadcast', vals: {}, attempts: 1 },
+    { id: 5, phone: '9000000003', template_name: 't', language: 'en', category: 'utility', source: 'review', vals: {}, attempts: 1 },
+  ]
+  const outcome = {}
+  const query = async (sql, args = []) => {
+    if (sql.startsWith('update wa_queue set attempts = attempts + 1')) return { rows }
+    if (sql.startsWith('select * from wa_templates')) return { rows: [{ name: 't', language: 'en', components: [{ type: 'BODY', text: 'Hello there' }] }] }
+    if (sql.includes('from wa_contacts where phone')) return { rows: people[args[0]] ? [people[args[0]]] : [] }
+    if (sql.includes('as day, count(*)')) return { rows: [{ day: args[0] === '9000000004' ? 1 : 0, week: 1 }] }
+    if (sql.includes("status in ('placed'")) return { rows: [] }
+    if (sql.startsWith("update wa_queue set status = 'skipped'")) { outcome[args[0]] = args[1]; return { rows: [] } }
+    if (sql.startsWith("update wa_queue set status = 'sent'")) { outcome[args[0]] = 'sent'; return { rows: [] } }
+    return { rows: [], rowCount: 1 }
+  }
+  const realNow = Date.now
+  Date.now = () => new Date('2026-11-11T06:30:00Z').getTime() // 12 noon India time
+  process.env.WHATSAPP_TOKEN = 'test'
+  try {
+    const fetchImpl = async (url, opts) => { sent.push(JSON.parse(opts.body).to); return { ok: true, json: async () => ({ messages: [{ id: 'wamid.' + sent.length }] }) } }
+    await sendQueue({ query, fetchImpl })
+  } finally { Date.now = realNow }
+  assert.equal(outcome[1], 'sent')
+  assert.equal(outcome[2], 'said STOP')
+  assert.equal(outcome[3], 'no WhatsApp permission')
+  assert.match(outcome[4], /frequency/)
+  assert.equal(outcome[5], 'sent')
+  assert.deepEqual(sent, ['919000000001', '919000000003'])
+})

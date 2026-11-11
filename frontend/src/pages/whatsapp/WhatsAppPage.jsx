@@ -7,8 +7,14 @@ import Overview from './Overview.jsx'
 import Templates from './Templates.jsx'
 import Settings from './Settings.jsx'
 import Bot from './Bot.jsx'
+import Inbox from './Inbox.jsx'
+import Contacts from './Contacts.jsx'
+import Automations from './Automations.jsx'
+import Broadcasts from './Broadcasts.jsx'
+import Reports from './Reports.jsx'
 import '../warehouse/warehouse.css'
 import './whatsapp.css'
+import './whatsapp-platform.css'
 
 /**
  * /whatsappbot: Chennai Rice's own WhatsApp platform on Meta's WhatsApp Cloud API (Nov 2026), in place of
@@ -17,13 +23,13 @@ import './whatsapp.css'
  */
 const TABS = [
   { id: 'overview', label: 'Overview', icon: 'grid' },
-  { id: 'inbox', label: 'Inbox', icon: 'chat', phase: 2 },
-  { id: 'contacts', label: 'Contacts', icon: 'users', phase: 2 },
+  { id: 'inbox', label: 'Inbox', icon: 'chat' },
+  { id: 'contacts', label: 'Contacts', icon: 'users' },
   { id: 'templates', label: 'Templates', icon: 'template' },
-  { id: 'broadcasts', label: 'Broadcasts', icon: 'megaphone', phase: 4 },
-  { id: 'automations', label: 'Automations', icon: 'bolt', phase: 3 },
+  { id: 'broadcasts', label: 'Broadcasts', icon: 'megaphone' },
+  { id: 'automations', label: 'Automations', icon: 'bolt' },
   { id: 'bot', label: 'Bot', icon: 'bot' },
-  { id: 'reports', label: 'Reports', icon: 'chart', phase: 6 },
+  { id: 'reports', label: 'Reports', icon: 'chart' },
 ]
 const COMING = {
   inbox: 'Live team chat: every customer message to 70666 46667, assign to a person, labels, notes, quick replies, the 24-hour reply timer and the customer\'s orders beside the chat.',
@@ -81,6 +87,11 @@ function Shell() {
         {tab === 'templates' && <Templates />}
         {tab === 'settings' && <Settings />}
         {tab === 'bot' && <Bot />}
+        {tab === 'inbox' && <Inbox />}
+        {tab === 'contacts' && <Contacts />}
+        {tab === 'automations' && <Automations />}
+        {tab === 'broadcasts' && <Broadcasts />}
+        {tab === 'reports' && <Reports />}
         {current?.phase && <Coming tab={current} />}
       </main>
     </div>

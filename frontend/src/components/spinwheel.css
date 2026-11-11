@@ -334,3 +334,7 @@
   .spin-heading--img img { width: min(70%, 240px); }
   .spin-dialog--v7 .spin-tagline { font-size: 11px; letter-spacing: 0.12em; margin: 4px 0; }
 }
+
+/* "Send my prize code and offers on WhatsApp" (unticked until the player ticks it). */
+.spin-wa { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #5a1a20; text-align: left; cursor: pointer; margin: 2px 0; }
+.spin-wa input { width: 17px; height: 17px; accent-color: #25d366; flex: none; }

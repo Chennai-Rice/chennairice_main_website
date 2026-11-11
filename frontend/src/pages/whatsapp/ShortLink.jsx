@@ -23,7 +23,10 @@ export function shortLinkTarget(slug) {
   const [prefix, path, campaign] = ROUTES.find(([p]) => s.toLowerCase().startsWith(p)) || ['', '/', 'wa_link']
   const ref = s.slice(prefix.length)
   const q = new URLSearchParams({ utm_source: 'whatsapp', utm_medium: 'message', utm_campaign: campaign })
-  if (ref && (prefix === 'review-' || prefix === 'track-')) q.set('order', ref)
+  if (ref && prefix === 'track-') q.set('order', ref)
+  // review-<order number>.<token> → the signed review form; cart-<token> → the saved cart at checkout.
+  if (ref && prefix === 'review-') { const [o, t] = ref.split('.'); q.set('o', o); if (t) q.set('t', t) }
+  if (ref && prefix === 'cart-') return `/checkout?resume=${encodeURIComponent(ref)}&${q}`
   return `${path}?${q}`
 }
 

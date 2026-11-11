@@ -57,6 +57,11 @@ import { listTemplates, saveTemplate, duplicateTemplate, submitTemplate, deleteT
 import { overview as waOverview, settings as waSettings, saveSettings as saveWaSettings, connectWebhook, sendTest as waSendTest, recentMessages, loadWabaId } from '../wa/admin.js'
 import { uploadHeaderSample } from '../wa/cloud.js'
 import { getBot, saveBot, simulate as simulateBot } from '../wa/bot.js'
+import { runWhatsAppAutomations, automationsAdmin, saveAutomations, testAutomation } from '../wa/automations.js'
+import { optIn as waOptIn, listContacts, contactsCsv, setTags, setPermission, importContacts } from '../wa/contacts.js'
+import { listBroadcasts, saveBroadcast, launchBroadcast, cancelBroadcast, deleteBroadcast, audience as broadcastAudience, FIELDS as BROADCAST_FIELDS } from '../wa/broadcasts.js'
+import { report as waReport, reportCsv as waReportCsv } from '../wa/reports.js'
+import { listChats, getChat, replyText, replyTemplate, updateChat, addNote as addChatNote, listQuickReplies, saveQuickReply, deleteQuickReply } from '../wa/inbox.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { listDiscountCodes, createDiscountCode, setDiscountCodeActive } from './discounts.js'
@@ -72,7 +77,7 @@ import { syncSettlements, importSettlementFile } from './settlements.js'
 import { accountsSummary, invoiceRegister, invoiceRegisterCsv, paymentsList, refundsList, period } from './accounts.js'
 import { invoicePdf } from './invoice-pdf.js'
 import { query } from '../db.js'
-import { httpError, safeEqual, getSettings } from './util.js'
+import { httpError, safeEqual, getSettings, str } from './util.js'
 
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next)
 
@@ -195,7 +200,14 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   // Spin & Win: what the wheel shows, and the spin itself (one per mobile number; the prize is a code locked to it).
   router.get('/api/spin', wrap(async (_req, res) => { res.set('Cache-Control', 'no-store'); res.json(await spinConfig({ query })) }))
   router.post('/api/spin', rateLimit({ windowMs: 10 * 60000, max: 8 }), wrap(async (req, res) => {
-    res.json(await spin({ query }, req.body, { ip: clientKey(req) }))
+    const result = await spin({ query }, req.body, { ip: clientKey(req) })
+    // The prize code on WhatsApp straight away (if that automation is on and the player said yes to WhatsApp).
+    if (!result.already) await runWhatsAppAutomations({ query, only: ['spin_code'] }).catch(() => {})
+    res.json(result)
+  }))
+  // "Send me offers on WhatsApp" ticked on the spin form or at checkout (wa/contacts.js).
+  router.post('/api/whatsapp/optin', rateLimit({ windowMs: 10 * 60000, max: 10 }), wrap(async (req, res) => {
+    res.json(await waOptIn(req.body?.phone, { name: str(req.body?.name).slice(0, 80) || null, source: ['spin', 'checkout'].includes(req.body?.source) ? req.body.source : 'website' }))
   }))
 
   // Refer a friend: whether it is running, and a customer's code and rewards (mobile number + order email).
@@ -802,6 +814,42 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/whatsapp/bot', wa, wrap(async (_req, res) => { noStore(res); res.json(await getBot()) }))
   admin.put('/whatsapp/bot', wa, wrap(async (req, res) => res.json(await saveBot(req.body || {}))))
   admin.post('/whatsapp/bot/simulate', wa, wrap(async (req, res) => res.json(await simulateBot(req.body || {}))))
+  // Phase 2: Inbox and Contacts
+  admin.get('/whatsapp/chats', wa, wrap(async (req, res) => { noStore(res); res.json(await listChats(req.query, req.staff)) }))
+  admin.get('/whatsapp/chats/:phone', wa, wrap(async (req, res) => { noStore(res); res.json(await getChat(req.params.phone, req.staff, { money: can(req.staff, 'money.view') })) }))
+  admin.post('/whatsapp/chats/:phone/reply', wa, wrap(async (req, res) => res.json(await replyText(req.params.phone, req.body?.text, req.staff))))
+  admin.post('/whatsapp/chats/:phone/template', wa, wrap(async (req, res) => res.json(await replyTemplate(req.params.phone, req.body || {}, req.staff))))
+  admin.put('/whatsapp/chats/:phone', wa, wrap(async (req, res) => res.json(await updateChat(req.params.phone, req.body || {}, req.staff))))
+  admin.post('/whatsapp/chats/:phone/notes', wa, wrap(async (req, res) => res.json(await addChatNote(req.params.phone, req.body?.body, req.staff))))
+  admin.get('/whatsapp/quick-replies', wa, wrap(async (_req, res) => { noStore(res); res.json(await listQuickReplies()) }))
+  admin.post('/whatsapp/quick-replies', wa, wrap(async (req, res) => res.json(await saveQuickReply(req.body || {}))))
+  admin.delete('/whatsapp/quick-replies/:id', wa, wrap(async (req, res) => res.json(await deleteQuickReply(req.params.id))))
+  admin.get('/whatsapp/contacts', wa, wrap(async (req, res) => { noStore(res); res.json(await listContacts(req.query)) }))
+  admin.get('/whatsapp/contacts.csv', wa, wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.type('text/csv').attachment('whatsapp-contacts.csv').send(await contactsCsv(req.query))
+  }))
+  admin.put('/whatsapp/contacts/:phone/tags', wa, wrap(async (req, res) => res.json(await setTags(req.params.phone, req.body?.tags))))
+  admin.put('/whatsapp/contacts/:phone/permission', wa, wrap(async (req, res) => res.json(await setPermission(req.params.phone, req.body?.value))))
+  admin.post('/whatsapp/contacts/import', wa, express.json({ limit: '5mb' }), wrap(async (req, res) => res.json(await importContacts(req.body?.rows))))
+  // Phase 3: Automations
+  admin.get('/whatsapp/automations', wa, wrap(async (_req, res) => { noStore(res); res.json(await automationsAdmin()) }))
+  admin.put('/whatsapp/automations', wa, wrap(async (req, res) => res.json(await saveAutomations(req.body || {}))))
+  admin.post('/whatsapp/automations/:key/test', wa, wrap(async (req, res) => res.json(await testAutomation(req.params.key, req.body?.phone, req.staff))))
+  admin.post('/whatsapp/automations/run', wa, wrap(async (_req, res) => res.json(await runWhatsAppAutomations())))
+  // Phase 4: Broadcasts
+  admin.get('/whatsapp/broadcasts', wa, wrap(async (req, res) => { noStore(res); res.json({ broadcasts: await listBroadcasts({ money: can(req.staff, 'money.view') }), fields: BROADCAST_FIELDS }) }))
+  admin.post('/whatsapp/broadcasts', wa, wrap(async (req, res) => res.json(await saveBroadcast(req.body || {}, req.staff))))
+  admin.post('/whatsapp/broadcasts/audience', wa, wrap(async (req, res) => { const a = await broadcastAudience(req.body || {}); delete a.people; res.json(a) }))
+  admin.post('/whatsapp/broadcasts/:id/launch', wa, wrap(async (req, res) => res.json(await launchBroadcast(req.params.id, req.body || {}))))
+  admin.post('/whatsapp/broadcasts/:id/cancel', wa, wrap(async (req, res) => res.json(await cancelBroadcast(req.params.id))))
+  admin.delete('/whatsapp/broadcasts/:id', wa, wrap(async (req, res) => res.json(await deleteBroadcast(req.params.id))))
+  // Phase 6: Reports
+  admin.get('/whatsapp/reports', wa, wrap(async (req, res) => { noStore(res); res.json(await waReport(req.query, { money: can(req.staff, 'money.view') })) }))
+  admin.get('/whatsapp/reports.csv', wa, wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.type('text/csv').attachment('whatsapp-report.csv').send(await waReportCsv(req.query, { money: can(req.staff, 'money.view') }))
+  }))
   admin.post('/whatsapp/webhook/connect', wa, wrap(async (_req, res) => res.json(await connectWebhook())))
 
   router.use('/api/admin', admin)
