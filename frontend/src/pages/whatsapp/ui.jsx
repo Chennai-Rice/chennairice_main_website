@@ -68,8 +68,10 @@ export const when = (d) => {
 
 /** WhatsApp-style formatting for a preview: *bold*, _italic_, ~strike~, line breaks. */
 export function WaText({ text }) {
-  const parts = String(text || '').split(/(\*[^*\n]+\*|_[^_\n]+_|~[^~\n]+~)/g)
+  // Links are left as they are (WhatsApp does not format inside them either).
+  const parts = String(text || '').split(/(https?:\/\/\S+|\*[^*\n]+\*|_[^_\n]+_|~[^~\n]+~)/g)
   return parts.map((p, i) => {
+    if (/^https?:\/\//.test(p)) return <span key={i} className="wa-link-text">{p}</span>
     if (/^\*[^*]+\*$/.test(p)) return <strong key={i}>{p.slice(1, -1)}</strong>
     if (/^_[^_]+_$/.test(p)) return <em key={i}>{p.slice(1, -1)}</em>
     if (/^~[^~]+~$/.test(p)) return <s key={i}>{p.slice(1, -1)}</s>

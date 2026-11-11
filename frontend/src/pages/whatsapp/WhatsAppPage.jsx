@@ -6,6 +6,7 @@ import { I } from './ui.jsx'
 import Overview from './Overview.jsx'
 import Templates from './Templates.jsx'
 import Settings from './Settings.jsx'
+import Bot from './Bot.jsx'
 import '../warehouse/warehouse.css'
 import './whatsapp.css'
 
@@ -21,7 +22,7 @@ const TABS = [
   { id: 'templates', label: 'Templates', icon: 'template' },
   { id: 'broadcasts', label: 'Broadcasts', icon: 'megaphone', phase: 4 },
   { id: 'automations', label: 'Automations', icon: 'bolt', phase: 3 },
-  { id: 'bot', label: 'Bot', icon: 'bot', phase: 5 },
+  { id: 'bot', label: 'Bot', icon: 'bot' },
   { id: 'reports', label: 'Reports', icon: 'chart', phase: 6 },
 ]
 const COMING = {
@@ -79,6 +80,7 @@ function Shell() {
         {tab === 'overview' && <Overview go={setTab} />}
         {tab === 'templates' && <Templates />}
         {tab === 'settings' && <Settings />}
+        {tab === 'bot' && <Bot />}
         {current?.phase && <Coming tab={current} />}
       </main>
     </div>

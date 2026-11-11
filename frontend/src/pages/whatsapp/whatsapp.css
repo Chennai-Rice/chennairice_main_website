@@ -264,3 +264,46 @@
 .wa-meta-raw { margin: 6px 0 12px; font-size: 12.5px; }
 .wa-meta-raw summary { cursor: pointer; color: var(--wa-muted); }
 .wa-meta-raw pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #fff; border: 1px solid var(--wa-line); border-radius: 12px; padding: 10px; max-height: 280px; overflow: auto; }
+
+/* Bot builder */
+.wa-switch { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--wa-line); background: #fff; border-radius: 999px; padding: 6px 16px 6px 6px; font-size: 13.5px; font-weight: 500; }
+.wa-switch-knob { width: 40px; height: 24px; border-radius: 999px; background: #d4d6dc; position: relative; transition: background 0.2s; }
+.wa-switch-knob::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); }
+.wa-switch.is-on .wa-switch-knob { background: #1d9b4c; }
+.wa-switch.is-on .wa-switch-knob::after { transform: translateX(16px); }
+.wa-bot { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 14px; align-items: start; }
+.wa-bot-form select { width: 100%; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.92); border-radius: 14px; padding: 10px 12px; font: inherit; font-size: 14px; }
+.wa-bot-form input, .wa-bot-form textarea { width: 100%; box-sizing: border-box; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.92); color: var(--wa-ink); border-radius: 14px; padding: 10px 12px; font: inherit; font-size: 14px; outline: none; }
+.wa-bot-form textarea { resize: vertical; border-radius: 18px; line-height: 1.45; }
+.wa-bot-form .wa-seg { background: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.3); align-self: flex-start; }
+.wa-bot-form .wa-seg button { color: #fff; }
+.wa-bot-form .wa-seg button.is-on { background: #fff; color: var(--wa-ink); }
+.wa-items { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.wa-items li { border-radius: 18px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.22); }
+.wa-items li.is-open { background: rgba(255, 255, 255, 0.24); }
+.wa-item-head { display: flex; align-items: center; gap: 6px; padding: 6px 8px 6px 6px; }
+.wa-item-head .wa-round { background: rgba(255, 255, 255, 0.85); }
+.wa-item-title { flex: 1; display: flex; flex-direction: column; align-items: flex-start; border: 0; background: none; color: #fff; text-align: left; padding: 4px 8px; min-width: 0; }
+.wa-item-title b { font-weight: 500; font-size: 14px; }
+.wa-item-title small { color: #e5edf5; font-size: 12px; }
+.wa-item-body { display: flex; flex-direction: column; gap: 8px; padding: 4px 12px 12px; }
+.wa-field--inline { flex-direction: row; align-items: center; flex-wrap: wrap; }
+.wa-field--inline input { width: 80px !important; }
+.wa-bot-help { margin: 0; font-size: 12.5px; color: #eef3f8; }
+.wa-sim { position: sticky; top: 16px; }
+.wa-sim .wa-phone-chat { min-height: 380px; max-height: 480px; overflow-y: auto; border-radius: 0; }
+.wa-sim-tag { margin-left: auto; font-size: 11px; background: rgba(255, 255, 255, 0.2); padding: 2px 8px; border-radius: 999px; }
+.wa-sim-hint, .wa-sim-note { margin: 4px auto; max-width: 90%; text-align: center; font-size: 12px; color: #54656f; background: #fff8d6; padding: 6px 10px; border-radius: 8px; }
+.wa-bubble--me { align-self: flex-end; background: #d9fdd3; border-radius: 12px 4px 12px 12px; padding: 8px 10px; }
+button.wa-bubble-btn { border: 0; cursor: pointer; font: inherit; width: 92%; }
+.wa-sheet { display: flex; flex-direction: column; background: #fff; border-radius: 12px; overflow: hidden; max-width: 92%; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); }
+.wa-sheet button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; border: 0; border-bottom: 1px solid #eef0f2; background: #fff; padding: 9px 12px; text-align: left; font: inherit; font-size: 13.5px; cursor: pointer; }
+.wa-sheet button:hover { background: #f4f6f8; }
+.wa-sheet small { color: #667781; font-size: 12px; }
+.wa-sim-input { display: flex; gap: 6px; padding: 8px; background: #f0f2f5; border-radius: 0 0 26px 26px; }
+.wa-sim-input input { flex: 1; border: 0; border-radius: 999px; padding: 9px 14px; font: inherit; font-size: 14px; outline: none; }
+.wa-sim-phone { display: flex; flex-direction: column; gap: 4px; color: #cfd3d8; font-size: 12px; padding: 10px 6px 0; }
+.wa-sim-phone input { border: 0; border-radius: 10px; padding: 7px 10px; font: inherit; font-size: 13px; }
+.wa-sim-clear { color: #cfd3d8; font-size: 12px; padding: 6px; }
+@media (max-width: 1100px) { .wa-bot { grid-template-columns: 1fr; } .wa-sim { position: static; max-width: 340px; margin: 0 auto; } }
+.wa-link-text { color: #027eb5; overflow-wrap: anywhere; }

@@ -56,6 +56,7 @@ import { verifyChallenge, signatureOk, handleWebhook } from '../wa/webhook.js'
 import { listTemplates, saveTemplate, duplicateTemplate, submitTemplate, deleteTemplate, syncTemplates, checkModel } from '../wa/templates.js'
 import { overview as waOverview, settings as waSettings, saveSettings as saveWaSettings, connectWebhook, sendTest as waSendTest, recentMessages, loadWabaId } from '../wa/admin.js'
 import { uploadHeaderSample } from '../wa/cloud.js'
+import { getBot, saveBot, simulate as simulateBot } from '../wa/bot.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { listDiscountCodes, createDiscountCode, setDiscountCodeActive } from './discounts.js'
@@ -798,6 +799,9 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.post('/whatsapp/test', wa, wrap(async (req, res) => res.json(await waSendTest(req.body || {}, req.staff))))
   admin.get('/whatsapp/settings', wa, wrap(async (_req, res) => { noStore(res); res.json(await waSettings()) }))
   admin.put('/whatsapp/settings', wa, wrap(async (req, res) => res.json(await saveWaSettings(req.body || {}))))
+  admin.get('/whatsapp/bot', wa, wrap(async (_req, res) => { noStore(res); res.json(await getBot()) }))
+  admin.put('/whatsapp/bot', wa, wrap(async (req, res) => res.json(await saveBot(req.body || {}))))
+  admin.post('/whatsapp/bot/simulate', wa, wrap(async (req, res) => res.json(await simulateBot(req.body || {}))))
   admin.post('/whatsapp/webhook/connect', wa, wrap(async (_req, res) => res.json(await connectWebhook())))
 
   router.use('/api/admin', admin)

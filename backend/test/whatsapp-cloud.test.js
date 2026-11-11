@@ -104,3 +104,77 @@ test('readable lines for each kind of incoming message', () => {
   assert.equal(readable({ type: 'image', image: {} }), '📷 Photo')
   assert.equal(readable({ type: 'interactive', interactive: { list_reply: { title: '5 kg' } } }), '5 kg')
 })
+
+// ---- the bot ----
+import { DEFAULT_BOT, cleanBot, decide, render, menuMsg } from '../lib/wa/bot.js'
+
+const bot = cleanBot(DEFAULT_BOT)
+const deps = {
+  findOrder: async (ref, phone) => (ref.orderNumber === 'CR-20261111-AB12C' ? { orderNumber: ref.orderNumber, status: 'shipped', samePhone: phone === '9876543210', trackingUrl: 'https://track.example/1', expected: '14 Nov' } : null),
+  offers: async (phone) => (phone === '9876543210' ? [{ code: 'SPIN-A745B4', label: '₹75 off on orders above ₹1,000', until: '10 Dec' }] : []),
+  prices: async () => [{ name: 'Kitchadi Ponni', packKg: 5, price: 425, mrp: 480 }],
+  delivery: async (pin) => (pin === '600001' ? { delivers: true, region: { name: 'Tamil Nadu' }, charges: [{ packKg: 5, from: 54, to: 54 }] } : { delivers: false }),
+}
+
+test('bot: hi gets the welcome menu as a list with every item', async () => {
+  for (const t of ['Hi', 'hello!', 'Vanakkam', 'MENU']) assert.equal(decide(bot, { text: t }).kind, 'welcome', t)
+  const r = await render(bot, decide(bot, { text: 'hi' }), { name: 'Ravi Kumar' }, deps)
+  const m = r.messages[0]
+  assert.equal(m.interactive.type, 'list')
+  assert.match(m.interactive.body.text, /Vanakkam Ravi!/)
+  assert.equal(m.interactive.action.sections[0].rows.length, DEFAULT_BOT.items.length)
+  assert.ok(m.interactive.action.sections[0].rows.every((row) => row.title.length <= 24))
+})
+
+test('bot: three items or fewer can be buttons', () => {
+  const small = cleanBot({ ...DEFAULT_BOT, welcome: { ...DEFAULT_BOT.welcome, style: 'buttons' }, items: DEFAULT_BOT.items.slice(0, 3) })
+  const m = menuMsg(small, 'Hi')
+  assert.equal(m.interactive.type, 'button')
+  assert.equal(m.interactive.action.buttons.length, 3)
+  assert.ok(m.interactive.action.buttons.every((b) => b.reply.title.length <= 20))
+})
+
+test('bot: menu taps, keywords, order numbers, PIN codes and the fallback', async () => {
+  assert.equal(decide(bot, { replyId: 'prices' }).item.id, 'prices')
+  assert.equal(decide(bot, { text: 'what is the rate for 26 kg' }).item.id, 'prices')
+  assert.equal(decide(bot, { text: 'I want to talk to a person' }).item.id, 'human')
+  assert.equal(decide(bot, { text: 'my order CR-20261111-AB12C please' }).kind, 'track')
+  assert.equal(decide(bot, { text: '600001' }).kind, 'pincode')
+  assert.equal(decide(bot, { text: 'asdf qwerty' }).kind, 'fallback')
+
+  const own = await render(bot, decide(bot, { text: 'CR-20261111-AB12C' }), { phone: '9876543210' }, deps)
+  assert.match(own.messages[0].text.body, /on the way/)
+  assert.match(own.messages[0].text.body, /track\.example/)
+  const other = await render(bot, decide(bot, { text: 'CR-20261111-AB12C' }), { phone: '9000000000' }, deps)
+  assert.match(other.messages[0].text.body, /For your privacy/)
+
+  const ask = await render(bot, decide(bot, { replyId: 'track' }), {}, deps)
+  assert.equal(ask.state.awaiting, 'order_number')
+  const pin = await render(bot, decide(bot, { text: 'my pin is 600001' }, { awaiting: 'pincode', awaiting_at: new Date() }), {}, deps)
+  assert.match(pin.messages[0].text.body, /We deliver to 600001/)
+
+  const offers = await render(bot, decide(bot, { replyId: 'offers' }), { phone: '9876543210' }, deps)
+  assert.match(offers.messages[0].text.body, /SPIN-A745B4/)
+  const prices = await render(bot, decide(bot, { replyId: 'prices' }), {}, deps)
+  assert.match(prices.messages[0].text.body, /Kitchadi Ponni 5 kg: \*₹425\*/)
+  const hand = await render(bot, decide(bot, { replyId: 'human' }), {}, deps)
+  assert.equal(hand.state.pausedHours, 12)
+  const fb = await render(bot, decide(bot, { text: 'zzz' }), {}, deps)
+  assert.equal(fb.messages[0].interactive.type, 'list')
+})
+
+test('webhook: a new customer message is answered by the bot once', async () => {
+  const asked = []
+  let seen = false
+  const query = async (sql) => {
+    if (sql.startsWith('insert into wa_events')) return { rows: [{ id: 1 }] }
+    if (sql.includes("'in', $2")) { const first = !seen; seen = true; return { rows: first ? [{ id: 'x' }] : [] } }
+    return { rows: [], rowCount: 1 }
+  }
+  const msg = { from: '919876543210', id: 'wamid.A', timestamp: String(Math.floor(Date.now() / 1000)), type: 'interactive', interactive: { type: 'list_reply', list_reply: { id: 'prices', title: '💰 Prices' } } }
+  const payload = { entry: [{ changes: [{ field: 'messages', value: { messages: [msg] } }] }] }
+  await handleWebhook(payload, { query, contactsPath: async () => {}, bot: async (a) => asked.push(a) })
+  await handleWebhook(payload, { query, contactsPath: async () => {}, bot: async (a) => asked.push(a) })
+  assert.equal(asked.length, 1)
+  assert.deepEqual({ to: asked[0].to, phone: asked[0].phone, replyId: asked[0].replyId }, { to: '919876543210', phone: '9876543210', replyId: 'prices' })
+})

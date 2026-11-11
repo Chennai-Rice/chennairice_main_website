@@ -6,6 +6,8 @@ import { Navigate, useParams } from 'react-router-dom'
  * order are credited to WhatsApp in Analyst, Ad campaigns and Journeys.
  */
 const ROUTES = [
+  ['shop-', '/rice-products', 'wa_bot'],
+  ['spin-bot', '/', 'wa_bot'],
   ['spin-', '/rice-products', 'wa_spin'],
   ['ref-', '/refer', 'wa_referral'],
   ['reward-', '/rice-products', 'wa_referral_reward'],

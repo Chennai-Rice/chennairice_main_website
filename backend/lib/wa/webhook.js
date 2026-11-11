@@ -12,6 +12,7 @@ import { query as defaultQuery } from '../db.js'
 import { httpError, safeEqual } from '../sales/util.js'
 import { recordAskevaWebhook, waPhone } from '../askeva-inbound.js'
 import { templateEvent } from './templates.js'
+import { answer } from './bot.js'
 
 /** Meta's GET check: returns the challenge to echo back, or throws 403. */
 export function verifyChallenge(q = {}) {
@@ -63,18 +64,24 @@ async function onStatus(s, query) {
       s.pricing?.billable ?? null, RANK[status]])
 }
 
-async function onMessage(m, contacts, query) {
+async function onMessage(m, contacts, query, bot) {
   const phone = waPhone(m.from) || String(m.from || '')
   const name = contacts?.find((c) => c.wa_id === m.from)?.profile?.name || null
-  await query(
+  const { rows: [isNew] } = await query(
     `insert into wa_messages (wamid, direction, phone, kind, body, payload, status, created_at, status_at)
      values ($1, 'in', $2, $3, $4, $5, 'received', to_timestamp($6), to_timestamp($6))
-     on conflict (wamid) do nothing`,
+     on conflict (wamid) do nothing returning id`,
     [m.id, phone, m.type || 'text', readable(m).slice(0, 4000), JSON.stringify({ ...m, profileName: name }), Number(m.timestamp) || Date.now() / 1000])
+  // The bot answers each message once (Meta may deliver a call twice), and not old ones replayed after an outage.
+  const ageMin = (Date.now() / 1000 - (Number(m.timestamp) || Date.now() / 1000)) / 60
+  if (!isNew || !bot || ageMin > 15 || m.type === 'reaction') return
+  const replyId = m.interactive?.button_reply?.id || m.interactive?.list_reply?.id || m.button?.payload || ''
+  const text = m.text?.body || m.button?.text || m.interactive?.button_reply?.title || m.interactive?.list_reply?.title || ''
+  await bot({ to: String(m.from), phone, name, text, replyId: m.button ? '' : replyId }, { query })
 }
 
 /** Handles one webhook POST body (already checked). Never throws: errors are kept on the event. */
-export async function handleWebhook(payload, { query = defaultQuery, contactsPath = recordAskevaWebhook } = {}) {
+export async function handleWebhook(payload, { query = defaultQuery, contactsPath = recordAskevaWebhook, bot = answer } = {}) {
   const fields = new Set()
   let messages = 0
   let statuses = 0
@@ -86,7 +93,7 @@ export async function handleWebhook(payload, { query = defaultQuery, contactsPat
         const v = ch.value || {}
         if (ch.field === 'messages') {
           for (const s of v.statuses || []) { await onStatus(s, query); statuses++ }
-          for (const m of v.messages || []) { await onMessage(m, v.contacts, query); messages++ }
+          for (const m of v.messages || []) { await onMessage(m, v.contacts, query, bot); messages++ }
         } else if (/^(message_template_|template_category_)/.test(ch.field)) {
           await templateEvent(ch.field, v, { query })
         }
