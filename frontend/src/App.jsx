@@ -181,13 +181,14 @@ export default function App() {
         />
         {/* The WhatsApp dashboard (Cloud API), and the short links its messages carry (/w/spin-…, /w/ref-…). */}
         <Route
-          path="/whatsapp"
+          path="/whatsappbot"
           element={
             <Suspense fallback={null}>
               <WhatsAppPage />
             </Suspense>
           }
         />
+        <Route path="/whatsapp" element={<Navigate to="/whatsappbot" replace />} />
         <Route path="/w/:slug" element={<ShortLink />} />
         {DevJournalPage && <Route path="/dev/journal" element={<DevJournalPage />} />}
         <Route path="/" element={<HomePage />} />

@@ -10,7 +10,7 @@ import '../warehouse/warehouse.css'
 import './whatsapp.css'
 
 /**
- * /whatsapp: Chennai Rice's own WhatsApp platform on Meta's WhatsApp Cloud API (Nov 2026), in place of
+ * /whatsappbot: Chennai Rice's own WhatsApp platform on Meta's WhatsApp Cloud API (Nov 2026), in place of
  * AskEva. Phase 1: Overview, Templates (write, check, submit to Meta, test) and Settings. The other
  * sections arrive phase by phase and are shown as "coming".
  */
@@ -57,7 +57,7 @@ function Shell() {
   return (
     <div className="wa-app">
       <header className="wa-top">
-        <a className="wa-brand" href="/whatsapp">
+        <a className="wa-brand" href="/whatsappbot">
           <img src="/assets/warehouse-logo.png" alt="" width="34" height="34" />
           <span>Chennai Rice <b>WhatsApp</b></span>
         </a>
