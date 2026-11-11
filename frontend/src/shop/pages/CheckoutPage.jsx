@@ -116,6 +116,7 @@ export default function CheckoutPage() {
   const onConfirmedPage = location.pathname === "/order-confirmed";
   const fromHistory = onConfirmedPage ? location.state?.confirmed ?? null : null;
   const [status, setStatus] = useState(fromHistory ? "done" : "idle"); // idle | paying | done
+  const [waOptIn, setWaOptIn] = useState(false); // "Send me offers and updates on WhatsApp"
   const [failure, setFailure] = useState("");
   const [confirmed, setConfirmed] = useState(fromHistory);
 
@@ -287,6 +288,13 @@ export default function CheckoutPage() {
     }
 
     setStatus("paying");
+    // "Send me offers on WhatsApp" ticked: recorded for the WhatsApp dashboard (/whatsappbot → Contacts).
+    if (waOptIn) {
+      fetch("/api/whatsapp/optin", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: form.phone, name: form.name, source: "checkout" }),
+      }).catch(() => {});
+    }
     // Checkout journey, step 3: details filled (the form passed its checks).
     recordJourney("details", {
       items: journeyItems(items), value: journeyValue(items),
@@ -544,6 +552,11 @@ export default function CheckoutPage() {
                   {errors.phone && <span className="field-error">{errors.phone}</span>}
                 </label>
               </div>
+              {/* WhatsApp offers: unticked until the customer ticks it (their clear "yes"). Order updates come anyway. */}
+              <label className="checkout-wa-optin">
+                <input type="checkbox" checked={waOptIn} onChange={(e) => setWaOptIn(e.target.checked)} disabled={busy} />
+                <span>Send me offers and updates on WhatsApp <small>(you can reply STOP any time)</small></span>
+              </label>
 
               <label className="field">
                 <span className="field-label">Address</span>

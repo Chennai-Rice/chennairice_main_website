@@ -189,6 +189,7 @@ export default function SpinWheel() {
   const [config, setConfig] = useState(null)
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ name: '', phone: '' })
+  const [waOk, setWaOk] = useState(false) // "Send my prize code and offers on WhatsApp" (unticked until they tick it)
   const [state, setState] = useState('form') // form | spinning | won
   const [error, setError] = useState('')
   const rotorRef = useRef(null) // the turning part of the wheel
@@ -253,6 +254,10 @@ export default function SpinWheel() {
     const spin = startSpin(rotorRef, angleRef)
     spinRef.current = spin
     try {
+      // WhatsApp yes first, so the prize code can go to WhatsApp straight after the spin.
+      if (waOk) {
+        await fetch('/api/whatsapp/optin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: digits, name, source: 'spin' }) }).catch(() => {})
+      }
       const res = await fetch('/api/spin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -327,6 +332,10 @@ export default function SpinWheel() {
                     placeholder="YOUR NAME" autoComplete="name" maxLength={80} disabled={state === 'spinning'} aria-label="Your name" />
                   <input className="spin-input" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                     placeholder="YOUR PHONE NUMBER" inputMode="tel" autoComplete="tel" maxLength={16} disabled={state === 'spinning'} aria-label="Your phone number" />
+                  <label className="spin-wa">
+                    <input type="checkbox" checked={waOk} onChange={(e) => setWaOk(e.target.checked)} disabled={state === 'spinning'} />
+                    <span>Send my prize code and offers on WhatsApp</span>
+                  </label>
                   {error && <p className="spin-error" role="alert">{error}</p>}
                   <button type="submit" className="spin-go" disabled={state === 'spinning'}>{state === 'spinning' ? 'SPINNING…' : 'SPIN TO WIN'}</button>
                   <button type="button" className="spin-nothanks" onClick={close} disabled={state === 'spinning'}>NO THANKS</button>

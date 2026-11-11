@@ -13,7 +13,6 @@
     "postbuild": "node scripts/prerender-head.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.4",
     "firebase": "^11.10.0",
     "gsap": "^3.12.5",
     "jsbarcode": "3.12.1",

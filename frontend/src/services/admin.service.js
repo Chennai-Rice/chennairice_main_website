@@ -1,16 +1,11 @@
-// Analyst dashboard: authentication and the queries behind /admin.
+// Analyst dashboard: sign-in and the data behind /admin's website analytics.
 //
-// Every read here goes through the ordinary browser Supabase client using
-// the public anon key — there is no service-role key in this file, and there
-// must never be one. What makes the data readable is the caller's logged-in
-// session plus a row in admin_users; the RLS policies added in
-// database/migrations/add_admin_dashboard.sql are the actual security
-// boundary. A logged-out visitor running these exact queries gets zero rows.
+// Nov 2026: no Supabase. Sign-in is the staff login (Firebase / Google, services/staffAuth.js) and the data comes
+// from our own API on Google Cloud (/api/admin/web/*, Cloud SQL), which checks the web.analytics permission on
+// every request: the security boundary is the server, not this file. The reports are built here in the browser.
 //
-// This module owns all analytics logic. The React views under
-// src/pages/admin/ are presentation only and must not query Supabase
-// directly, so the data contract stays in one reviewable place.
-import { supabase, hasSupabase } from '../lib/supabaseClient.js'
+// This module owns all analytics logic. The React views under src/pages/admin/ are presentation only.
+import { hasStaffSession, signInWithPassword, signOutStaff, staffJson } from './staffAuth.js'
 
 /** Rows pulled per table. Aggregation happens in the browser (see below). */
 const ROW_LIMIT = 5000
@@ -20,45 +15,20 @@ export const REALTIME_WINDOW_MINUTES = 5
 
 export class AdminError extends Error {}
 
-function requireClient() {
-  if (!hasSupabase) {
-    throw new AdminError(
-      'Supabase is not configured — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
-    )
-  }
-}
-
-// ---------------------------------------------------------------- auth
-
-/**
- * What this account may do here.
- *
- * A row in admin_users grants the analytics sections. The journal no longer
- * lives in Supabase: it is behind the staff sign-in (blog.manage, see
- * pages/blog/JournalGate.jsx), so it is not decided here.
- *
- * The check reads back through RLS, so it cannot be faked from the
- * browser: a non-member simply reads nothing.
- */
+/** Who may see the website analytics: staff with web.analytics (owner, admin, IT). */
 export async function resolveAccess() {
-  const analyst = await isAdmin()
+  const me = await staffJson('/api/admin/me').catch(() => null)
+  const analyst = Boolean(me?.permissions?.includes('web.analytics'))
   return { analyst, any: analyst }
 }
 
+/** Email and password of a staff account (Firebase). Google sign-in is on the login screen itself. */
 export async function signIn(email, password) {
-  requireClient()
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) {
-    // Supabase returns the same message for "no such user" and "wrong
-    // password" on purpose — repeating it verbatim avoids turning the login
-    // form into a way to discover which email addresses exist.
+  try {
+    await signInWithPassword(email, password)
+  } catch {
     throw new AdminError('Incorrect email or password.')
   }
-
-  // Signing in is not the same as being allowed in. Anyone with a Supabase
-  // account authenticates successfully; only a listed analyst may
-  // go further, so that is checked separately and the session is dropped
-  // again if they are on neither list.
   const access = await resolveAccess()
   if (!access.any) {
     await signOut()
@@ -68,57 +38,29 @@ export async function signIn(email, password) {
 }
 
 export async function signOut() {
-  if (!hasSupabase) return
-  await supabase.auth.signOut()
+  await signOutStaff().catch(() => {})
 }
 
+/** The signed-in staff member ({ user: { email } }), or null. Blog, MIS and Performance logins have their own screens. */
 export async function getSession() {
-  if (!hasSupabase) return null
-  const { data } = await supabase.auth.getSession()
-  return data.session ?? null
+  if (!(await hasStaffSession())) return null
+  const me = await staffJson('/api/admin/me').catch(() => null)
+  if (!me || ['blog', 'mis', 'performance'].includes(me.role)) return null
+  return { user: { id: me.id, email: me.email } }
 }
 
-/**
- * True when the signed-in user is in admin_users. Relies on the
- * admin_users_read_self policy — a non-admin simply reads back nothing,
- * so this cannot be spoofed from the browser.
- */
 export async function isAdmin() {
-  if (!hasSupabase) return false
-  const { data, error } = await supabase.from('admin_users').select('user_id').maybeSingle()
-  if (error) return false
-  return Boolean(data)
+  return (await resolveAccess()).analyst
 }
 
-export function onAuthChange(callback) {
-  if (!hasSupabase) return () => {}
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => callback(session))
-  return () => data.subscription.unsubscribe()
+/** Sign-out happens through this page's own button, so there is nothing to listen to. */
+export function onAuthChange() {
+  return () => {}
 }
 
-/**
- * Best-effort record that this account opened the dashboard. Never blocks
- * rendering — an audit write failing must not deny the analyst their view.
- */
-export async function logAccess(action, target = null) {
-  if (!hasSupabase) return
-  try {
-    const session = await getSession()
-    if (!session) return
-    await supabase.from('admin_audit_log').insert({
-      user_id: session.user.id,
-      email: session.user.email,
-      action,
-      target,
-    })
-  } catch {
-    /* audit logging is best-effort */
-  }
-}
+/** Access is checked (and logged) by the server on every request. */
+export async function logAccess() {}
 
-// ------------------------------------------------------------ formatting
-
-/** "0001" — the human-facing id for a browser. */
 export function formatVisitorNo(no) {
   return no == null ? '—' : String(no).padStart(4, '0')
 }
@@ -212,27 +154,11 @@ function withinRange(iso, from, to) {
  * the UI says so rather than quietly under-reporting.
  */
 export async function fetchAnalytics() {
-  requireClient()
-
-  const [visitors, sessions, pageviews, events] = await Promise.all([
-    supabase.from('visitors').select('*').order('visitor_no', { ascending: true }).limit(ROW_LIMIT),
-    supabase.from('visitor_sessions').select('*').order('started_at', { ascending: false }).limit(ROW_LIMIT),
-    supabase.from('visitor_pageviews').select('*').order('entered_at', { ascending: false }).limit(ROW_LIMIT),
-    supabase.from('visitor_events').select('*').order('occurred_at', { ascending: false }).limit(ROW_LIMIT),
-  ])
-
-  const failed = [visitors, sessions, pageviews, events].find((r) => r.error)
-  if (failed) throw new AdminError(failed.error.message)
-
-  return {
-    visitors: visitors.data ?? [],
-    sessions: sessions.data ?? [],
-    pageviews: pageviews.data ?? [],
-    events: events.data ?? [],
-    truncated:
-      (sessions.data ?? []).length >= ROW_LIMIT ||
-      (pageviews.data ?? []).length >= ROW_LIMIT ||
-      (visitors.data ?? []).length >= ROW_LIMIT,
+  try {
+    const d = await staffJson('/api/admin/web/raw')
+    return { visitors: d.visitors ?? [], sessions: d.sessions ?? [], pageviews: d.pageviews ?? [], events: d.events ?? [], truncated: Boolean(d.truncated) }
+  } catch (err) {
+    throw new AdminError(err.message || 'Could not load the analytics.')
   }
 }
 
@@ -667,23 +593,9 @@ export const HEATMAP_DEVICES = [
 /** Ceiling on points drawn in one heatmap. Reported in the UI, never silent. */
 export const HEATMAP_POINT_LIMIT = 5000
 
-/**
- * Turns a Supabase RPC failure into something an analyst can act on.
- * The dashboard tends to be deployed before the migration is run, and
- * "Could not find the function" is not a message anyone can do anything
- * with — naming the file to run is.
- */
+/** A failed request, as a message the analyst can read. */
 function rpcError(error) {
-  const missing =
-    error.code === 'PGRST202' ||
-    /could not find the function|does not exist/i.test(error.message || '')
-
-  if (missing) {
-    return new AdminError(
-      'Interaction analytics is not set up yet. Run database/migrations/add_interaction_analytics.sql in the Supabase SQL editor, then refresh.'
-    )
-  }
-  return new AdminError(error.message)
+  return new AdminError(error?.message || 'Could not load the interaction analytics.')
 }
 
 const count = (value) => Number(value) || 0
@@ -691,28 +603,13 @@ const maybeNumber = (value) => (value == null ? null : Number(value))
 
 /** Everything the Behaviour and Heatmap sections need, for one date range. */
 export async function fetchBehaviour(rangeId = '7d') {
-  requireClient()
   const range = resolveRange(rangeId)
-  const from = range.from ? range.from.toISOString() : null
-
-  const [pages, rage, dead, elements, scroll] = await Promise.all([
-    supabase.rpc('interaction_page_summary', { p_from: from }),
-    supabase.rpc('interaction_element_summary', { p_kind: 'rage_click', p_from: from, p_path: null, p_limit: 100 }),
-    supabase.rpc('interaction_element_summary', { p_kind: 'dead_click', p_from: from, p_path: null, p_limit: 100 }),
-    supabase.rpc('interaction_element_summary', { p_kind: 'click', p_from: from, p_path: null, p_limit: 200 }),
-    supabase.rpc('scroll_depth_summary', { p_from: from }),
-  ])
-
-  const failed = [pages, rage, dead, elements, scroll].find((r) => r.error)
-  if (failed) throw rpcError(failed.error)
-
-  return {
-    range,
-    pages: pages.data ?? [],
-    rage: rage.data ?? [],
-    dead: dead.data ?? [],
-    elements: elements.data ?? [],
-    scroll: scroll.data ?? [],
+  const from = range.from ? range.from.toISOString() : ''
+  try {
+    const d = await staffJson('/api/admin/web/behaviour?' + new URLSearchParams({ from }))
+    return { range, pages: d.pages ?? [], rage: d.rage ?? [], dead: d.dead ?? [], elements: d.elements ?? [], scroll: d.scroll ?? [] }
+  } catch (err) {
+    throw rpcError(err)
   }
 }
 
@@ -788,18 +685,16 @@ export function buildBehaviour(raw) {
 
 /** Click positions for one page, narrowed to one viewport band. */
 export async function fetchHeatmap({ path, rangeId = '7d', device = 'desktop' }) {
-  requireClient()
   const band = HEATMAP_DEVICES.find((d) => d.id === device) ?? HEATMAP_DEVICES[0]
   const range = resolveRange(rangeId)
 
-  const { data, error } = await supabase.rpc('heatmap_points', {
-    p_path: path,
-    p_from: range.from ? range.from.toISOString() : null,
-    p_min_width: band.minWidth,
-    p_max_width: band.maxWidth,
-    p_limit: HEATMAP_POINT_LIMIT,
-  })
-  if (error) throw rpcError(error)
+  let data
+  try {
+    const q = new URLSearchParams({ path, from: range.from ? range.from.toISOString() : '', minWidth: band.minWidth ?? '', maxWidth: band.maxWidth ?? '', limit: HEATMAP_POINT_LIMIT })
+    data = (await staffJson('/api/admin/web/heatmap?' + q)).points
+  } catch (err) {
+    throw rpcError(err)
+  }
 
   const points = (data ?? [])
     .map((row) => ({ relX: Number(row.rel_x), absY: Number(row.abs_y), kind: row.kind }))

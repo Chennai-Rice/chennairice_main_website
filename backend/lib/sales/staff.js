@@ -75,6 +75,10 @@ const PERMISSIONS = {
   'emails.view': ['owner', 'admin', 'it'],
   // The register of every Order ID / Shipment ID issued, with Razorpay refs.
   'ids.view': ['owner', 'admin', 'it', 'accounts'],
+  // /whatsapp: the WhatsApp dashboard (templates, messages, settings; Cloud API, Nov 2026).
+  'whatsapp.manage': ['owner', 'admin', 'it'],
+  // /admin website analytics (visitors, pages, clicks, heatmaps), in Cloud SQL since Nov 2026 (web-analytics.js).
+  'web.analytics': ['owner', 'admin', 'it'],
 }
 
 export function can(staff, permission) {

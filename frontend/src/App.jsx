@@ -45,7 +45,7 @@ const ReviewPage = lazy(() => import('./shop/pages/ReviewPage.jsx'))
 const WishlistPage = lazy(() => import('./shop/pages/WishlistPage.jsx'))
 const InfrastructurePage = lazy(() => import('./pages/infrastructure/InfrastructurePage.jsx'))
 
-/* Lazily loaded so the dashboard and the Supabase auth code it pulls in stay
+/* Lazily loaded so the dashboard and the staff sign-in code it pulls in stay
    out of the bundle every ordinary shopper downloads — only someone who
    actually opens /admin pays for it. */
 const AdminPage = lazy(() => import('./pages/admin/AdminPage.jsx'))
@@ -54,6 +54,8 @@ const WarehousePage = lazy(() => import('./pages/warehouse/WarehousePage.jsx'))
 // Staff-only offers dashboard (Spin & Win, Refer a friend, discount codes).
 const OffersPage = lazy(() => import('./pages/offers/OffersPage.jsx'))
 const CloudPage = lazy(() => import('./pages/CloudPage.jsx'))
+const WhatsAppPage = lazy(() => import('./pages/whatsapp/WhatsAppPage.jsx'))
+const ShortLink = lazy(() => import('./pages/whatsapp/ShortLink.jsx'))
 // Local test only (npm run dev): the journal on a local test database. Not part of any production build.
 const DevJournalPage = import.meta.env.DEV ? lazy(() => import('./pages/DevJournalPage.jsx')) : null
 
@@ -128,7 +130,7 @@ export default function App() {
      It gets no marketing chrome and, importantly, no visitor tracking:
      whoever is reading the numbers or writing the posts must not appear
      inside them. */
-  const isTool = pathname.startsWith('/admin') || pathname.startsWith('/warehouse') || pathname.startsWith('/offers') || pathname.startsWith('/cloud') || pathname.startsWith('/dev/')
+  const isTool = pathname.startsWith('/admin') || pathname.startsWith('/warehouse') || pathname.startsWith('/offers') || pathname.startsWith('/cloud') || pathname.startsWith('/whatsapp') || pathname.startsWith('/w/') || pathname.startsWith('/dev/')
   const isStorefront = !isTool && !isEmbedded
 
   return (
@@ -177,6 +179,17 @@ export default function App() {
             </Suspense>
           }
         />
+        {/* The WhatsApp dashboard (Cloud API), and the short links its messages carry (/w/spin-…, /w/ref-…). */}
+        <Route
+          path="/whatsappbot"
+          element={
+            <Suspense fallback={null}>
+              <WhatsAppPage />
+            </Suspense>
+          }
+        />
+        <Route path="/whatsapp" element={<Navigate to="/whatsappbot" replace />} />
+        <Route path="/w/:slug" element={<ShortLink />} />
         {DevJournalPage && <Route path="/dev/journal" element={<DevJournalPage />} />}
         <Route path="/" element={<HomePage />} />
         {/* The FAQs live on the home page. */}

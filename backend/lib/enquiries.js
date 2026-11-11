@@ -2,7 +2,8 @@
 // (api/contact.js, api/bulk-order.js, production) and the local dev proxy
 // (backend/server/index.js). Keeping one copy avoids the two drifting apart, the
 // same arrangement as lib/consent.js.
-import { hasSupabase, supabase } from './supabase.js'
+// Stored in Cloud SQL (migration 053) since Nov 2026; before that in Supabase.
+import { hasDatabase, query } from './db.js'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_PATTERN = /^[+()\-\s\d]{8,16}$/
@@ -74,17 +75,22 @@ export function buildBulkOrderRow(body) {
 
 /**
  * Inserts one row into the given table. Resolves to true when stored and
- * false when Supabase is not configured — a missing store must not fail the
+ * false when there is no database — a missing store must not fail the
  * request, since the visitor should still see their enquiry as accepted only
  * once we are certain we can retain it, so callers surface `false` as a
  * clear "not delivered yet" state rather than a fabricated success.
  */
 export async function insertEnquiry(table, row) {
-  if (!hasSupabase) return false
+  if (!hasDatabase()) return false
+  if (!['contact_enquiries', 'bulk_order_enquiries'].includes(table)) throw new Error('Unknown enquiry table ' + table)
 
-  const { error } = await supabase.from(table).insert(row)
+  const cols = Object.keys(row)
+  const error = await query(`insert into ${table} (${cols.join(', ')}) values (${cols.map((_, i) => '$' + (i + 1)).join(', ')})`, cols.map((c) => row[c]))
+    .then(() => null, (e) => e)
+  // Table not created yet (migration 053 not run): not stored, but the visitor is not shown an error.
+  if (error?.code === '42P01') { console.error('[enquiries] table missing, run migration 053'); return false }
   if (error) {
-    const err = new Error(`Supabase insert into ${table} failed: ${error.message}`)
+    const err = new Error(`Database insert into ${table} failed: ${error.message}`)
     err.status = 502
     err.publicMessage = 'Could not save your enquiry. Please try again shortly.'
     throw err

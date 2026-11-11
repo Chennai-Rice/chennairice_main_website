@@ -19,6 +19,7 @@ import { syncSettlements } from './settlements.js'
 import { followUpJourneys } from './journey-followup.js'
 import { sendCartReminders, sendPaymentFailedEmails } from './cart-recovery.js'
 import { sendPendingPurchases } from './meta-capi.js'
+import { runWhatsAppAutomations } from '../wa/automations.js'
 
 export async function runJobs() {
   const expired = await expireUnpaidOrders()
@@ -34,6 +35,9 @@ export async function runJobs() {
   // Leads Sales Daddy could not take at the time are retried here.
   const crm = await sendCrmLeads({ query })
   const whatsapp = await sendWhatsAppMessages({ query })
+  // WhatsApp automations and broadcasts (wa/automations.js): who is due, then the queue.
+  const waAutomations = await runWhatsAppAutomations({ query })
+  await query("delete from wa_events where received_at < now() - interval '90 days'").catch(() => {})
   // Purchases the server could not send to Meta at the time (meta-capi.js).
   const metaCapi = await sendPendingPurchases().catch((err) => ({ error: err.message }))
   // Raw AskEva webhook calls are kept 90 days for checking, then dropped.
@@ -60,5 +64,5 @@ export async function runJobs() {
   }
   // Cloud Centre: uptime of every site, alert emails, and at night one PageSpeed check (cloud-checks.js).
   const cloud = await runCloudChecks({ query })
-  return { expired, digest, cartReminders, paymentFailed, email, journeys, crm, whatsapp, metaCapi, neodove, settlements, cloud }
+  return { expired, digest, cartReminders, paymentFailed, email, journeys, crm, whatsapp, waAutomations, metaCapi, neodove, settlements, cloud }
 }
