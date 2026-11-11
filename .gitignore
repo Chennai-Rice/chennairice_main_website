@@ -50,3 +50,6 @@ backend/.data/
 
 # Local blog test database and pictures (scripts/blog-local-server.mjs)
 scripts/.blog-local/
+
+# The one-off Supabase export (customer data): never committed.
+backend/db/supabase-export/

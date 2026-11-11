@@ -3,10 +3,10 @@
 // so these return the same rows the Supabase queries did. Staff only (web.analytics).
 import { query as defaultQuery } from '../db.js'
 
-const ROW_LIMIT = 5000
+const ROW_LIMIT = 50000 // the whole history (about 12,000 page views in Nov 2026); the dashboard warns if it is ever reached
 const ts = (v) => (v && !Number.isNaN(new Date(v).getTime()) ? new Date(v) : null)
 
-/** visitors, visitor_sessions, visitor_pageviews and visitor_events (newest first, up to 5,000 each). */
+/** visitors, visitor_sessions, visitor_pageviews and visitor_events (newest first, up to 50,000 each). */
 export async function rawAnalytics({ query = defaultQuery } = {}) {
   const [visitors, sessions, pageviews, events] = await Promise.all([
     query(`select * from visitors order by visitor_no asc limit ${ROW_LIMIT}`),
