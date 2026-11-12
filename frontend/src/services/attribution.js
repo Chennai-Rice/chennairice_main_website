@@ -3,8 +3,9 @@
 // On landing, the ad tags in the link (utm_*, Meta fbclid, Google gclid) and
 // the referring site are noted. The latest non-direct landing is remembered
 // for 30 days in this browser and sent with the order, so a customer who
-// clicks an ad and orders the next day is still counted for that ad. A plain
-// direct visit never overwrites an ad visit. The landing itself is counted
+// clicks an ad and orders the next day is still counted for that ad. A visit
+// that is not an ad (direct, a normal Google search, social, another site)
+// never overwrites an ad visit; only another ad click does. The landing itself is counted
 // once per visit (counts only: nothing about the visitor is sent).
 //
 // This is a note about the sale, not a tracker: it stays on this site, goes
@@ -138,8 +139,14 @@ export function captureAttribution() {
   if (!Object.keys(a).length) return // a direct visit keeps any earlier ad visit
   a.landing = url.pathname
   a.at = new Date().toISOString()
+  // An ad click in the last 30 days stays the source of the sale: a later visit that is not an ad (a normal
+  // Google search, Instagram, another site) does not replace it, as Google Ads and Meta count it (owner,
+  // 10 Nov 2026: a Google Ads buyer who came back through Google search was shown as "Google search").
+  // Only another ad click replaces it. The visit itself is still counted below.
+  const earlier = readStored()
+  const keepAd = earlier && isPaidAd(earlier) && !isPaidAd(a)
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(a))
+    if (!keepAd) window.localStorage.setItem(KEY, JSON.stringify(a))
   } catch { /* storage blocked: the order is counted as direct */ }
 
   // Count the landing once per visit.

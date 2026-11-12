@@ -263,6 +263,12 @@ function LoginScreen({ onSignedIn, onWriter }) {
         return
       }
       const base = err instanceof AdminError ? err.message : 'Could not sign in. Please try again.'
+      // A build without the Supabase settings cannot sign analysts in at all: say that plainly, with the
+      // password sign-in's own answer, instead of only the settings message.
+      if (/Supabase is not configured/.test(base)) {
+        setError(`Analyst sign-in is not available on this version of the site (Supabase settings missing). Password sign-in: ${why || 'failed'}`)
+        return
+      }
       setError(why && why !== 'Wrong email or password.' ? `${base} Writer sign-in: ${why}` : base)
     } finally {
       setBusy(false)

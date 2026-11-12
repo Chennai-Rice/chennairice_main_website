@@ -4,6 +4,8 @@
 //
 //   node db/import-called-leads.js            says what it would do, sends nothing
 //   node db/import-called-leads.js --apply    sends them
+//   node db/import-called-leads.js --save-here   only saves each call's remark and result in our database, so the
+//                                                 Analyst's New leads table shows them (nothing goes to NeoDove)
 //
 // Needs the database settings of db:migrate and NEODOVE_ENDPOINT_GAYATHRI / _RAMYA / _LAVANYA in the environment.
 import fs from 'node:fs'
@@ -13,7 +15,8 @@ import { closePool, query } from '../lib/db.js'
 import { importCalledLeads } from '../lib/neodove.js'
 
 const dir = process.argv.find((a) => !a.startsWith('--') && fs.existsSync(a) && fs.statSync(a).isDirectory() && !a.endsWith('.js')) || 'D:/Diwali/neodove_import'
-const apply = process.argv.includes('--apply')
+const saveHere = process.argv.includes('--save-here')
+const apply = process.argv.includes('--apply') && !saveHere
 const text = (v) => (v && typeof v === 'object' ? (v.text ?? v.result ?? (v.richText || []).map((t) => t.text).join('')) : v ?? '').toString().trim()
 
 const rows = []
@@ -56,7 +59,22 @@ try {
   for (const p of plan) counts[`${p.agent} · ${p.status}`] = (counts[`${p.agent} · ${p.status}`] || 0) + 1
   console.log(JSON.stringify({ ...summary, byTelecallerAndStatus: counts }, null, 2))
   console.log('Saved', file)
-  if (!apply) console.log('Nothing was sent. Run again with --apply to send them.')
+  if (saveHere) {
+    // The call result and remark on our own lead record (lead_status), as a NeoDove call result would be:
+    // the Analyst's New leads table shows them under Status and Remarks. A buyer stays converted.
+    let saved = 0
+    for (const p of plan) {
+      await query(
+        `insert into lead_status (mobile, name, status, last_disposition, last_remark, last_agent, last_called_at, calls)
+         values ($1, $2, 'not_converted', $3, $4, $5, now(), 1)
+         on conflict (mobile) do update set last_disposition = excluded.last_disposition, last_remark = excluded.last_remark,
+           last_agent = excluded.last_agent, last_called_at = excluded.last_called_at,
+           calls = greatest(lead_status.calls, 1), updated_at = now()`,
+        [p.mobile, p.name || null, p.status, p.remarks || null, `${p.agent} (own phone)`])
+      saved++
+    }
+    console.log(`Saved the remark and result of ${saved} calls in our database (Analyst → New leads → Remarks).`)
+  } else if (!apply) console.log('Nothing was sent. Run again with --apply to send them, or --save-here to show the remarks in the Analyst.')
 } finally {
   await closePool()
 }

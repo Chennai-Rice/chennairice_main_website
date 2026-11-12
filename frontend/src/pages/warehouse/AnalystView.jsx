@@ -297,11 +297,11 @@ function LeadList({ list }) {
   const srcCount = (k) => byType.filter((l) => leadChannel(l) === k && (!status || l.status === status)).length
   const statusCount = (k) => byType.filter((l) => l.status === k && (!src || leadChannel(l) === src)).length
   const rows = list.filter((l) => (!kind || l.kind === kind) && (!src || leadChannel(l) === src) && (!status || l.status === status)
-    && (!q || `${l.name} ${l.phone} ${l.email || ''} ${l.campaign || ''} ${l.detail || ''}`.toLowerCase().includes(q.trim().toLowerCase())))
+    && (!q || `${l.name} ${l.phone} ${l.email || ''} ${l.campaign || ''} ${l.detail || ''} ${l.remark || ''}`.toLowerCase().includes(q.trim().toLowerCase())))
   function download() {
     const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
-    const csv = [['Type', 'Name', 'Mobile', 'Email', 'Came from', 'Campaign', 'Ad', 'Details', 'Date', 'Status', 'Calls', 'Last call result', 'Caller'],
-      ...rows.map((l) => [KIND[l.kind], l.name, l.phone, l.email, SOURCE[l.source] || l.source, l.campaign, l.ad, l.detail, when(l.at), LEAD_STATUS[l.status][0], l.calls, l.result, l.caller])]
+    const csv = [['Type', 'Name', 'Mobile', 'Email', 'Came from', 'Campaign', 'Ad', 'Details', 'Date', 'Status', 'Calls', 'Last call result', 'Caller', 'Remarks', 'Last called'],
+      ...rows.map((l) => [KIND[l.kind], l.name, l.phone, l.email, SOURCE[l.source] || l.source, l.campaign, l.ad, l.detail, when(l.at), LEAD_STATUS[l.status][0], l.calls, l.result, l.caller, l.remark, l.calledAt ? when(l.calledAt) : ''])]
       .map((r) => r.map(cell).join(',')).join('\r\n')
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }))
@@ -349,6 +349,10 @@ function LeadList({ list }) {
             {(l.result || l.calls > 0) && <span className="an-sub">{[l.result, l.calls ? `${l.calls} call${l.calls === 1 ? '' : 's'}` : null, l.caller].filter(Boolean).join(' · ')}</span>}
           </>
         ) },
+        // What the telecaller noted on the latest NeoDove call.
+        { label: 'Remarks', value: (l) => (l.remark
+          ? <><span className="an-remark">{l.remark}</span>{l.calledAt && <span className="an-sub">{when(l.calledAt)}</span>}</>
+          : <span className="wh-muted">—</span>) },
       ]} rows={rows.slice(page * LEAD_PAGE, (page + 1) * LEAD_PAGE)} empty={list.length ? 'No leads match.' : 'No new leads in this period.'} />
       {rows.length > LEAD_PAGE && (
         <div className="an-pager">
