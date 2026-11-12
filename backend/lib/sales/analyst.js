@@ -216,7 +216,7 @@ async function leadList(p) {
        select 'whatsapp', w.name, w.phone, null, 'whatsapp', null, null, left(w.first_message, 160), coalesce(w.first_message_at, w.created_at)
          from whatsapp_contacts w where w.source = 'webhook'
           and coalesce(w.first_message_at, w.created_at) >= $1 and coalesce(w.first_message_at, w.created_at) < $2)
-     select l.*, s.calls, s.status as lead_status, s.last_disposition, s.last_agent,
+     select l.*, s.calls, s.status as lead_status, s.last_disposition, s.last_agent, s.last_remark, s.last_called_at,
             (select min(o.placed_at) from orders o where ${key10('o.contact_phone')} = ${key10('l.phone')} and ${WON}
                 and o.placed_at >= l.created_at - interval '1 day') as bought_at
        from l left join lead_status s on s.mobile = ${key10('l.phone')}
@@ -225,6 +225,8 @@ async function leadList(p) {
     kind: r.kind, name: r.name, phone: r.phone, email: r.email || null, source: r.source,
     campaign: r.campaign, ad: r.ad, detail: r.detail, at: r.created_at,
     calls: r.calls || 0, result: r.last_disposition || null, caller: r.last_agent || null,
+    // What the telecaller wrote on the call in NeoDove (latest call), shown as Remarks.
+    remark: r.last_remark || null, calledAt: r.last_called_at || null,
     status: r.bought_at ? 'bought' : r.lead_status === 'qualified' ? 'qualified' : r.lead_status === 'not_qualified' ? 'not_qualified' : r.calls ? 'called' : 'new',
     boughtAt: r.bought_at,
   }))

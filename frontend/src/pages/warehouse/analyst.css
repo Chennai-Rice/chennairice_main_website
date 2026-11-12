@@ -309,3 +309,6 @@
 .an-lead-sum { margin: 2px 0 10px; font-size: 14px; color: var(--an-ink, #2b1d17); }
 .an-lead-filter select { font-size: 14px; padding: 8px 30px 8px 12px; }
 .an-leadtools { flex-wrap: wrap; }
+
+/* New leads: what the telecaller noted on the call (NeoDove remark). */
+.an-remark { display: block; max-width: 280px; white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }

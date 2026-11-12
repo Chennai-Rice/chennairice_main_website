@@ -4006,3 +4006,46 @@ test('order emails: packed, out for delivery, delivered with the review link, re
   assert.equal(back.body.contact.email, 'failed.pay@example.com')
   assert.equal((await api('GET', `/api/cart/resume/${encodeURIComponent(retry.slice(0, -3) + 'abc')}`)).status, 404)
 })
+
+test('NeoDove: leads called from own phones - one NeoDove has gets its remark (update link, same telecaller), new ones are added in turn', async () => {
+  const http = await import('node:http')
+  const got = []
+  const fakeNeo = http.createServer((req, res) => {
+    let body = ''
+    req.on('data', (c) => (body += c)).on('end', () => { got.push({ url: req.url, body: JSON.parse(body) }); res.end('OK') })
+  })
+  await new Promise((r) => fakeNeo.listen(0, r))
+  const { importCalledLeads } = await import('../lib/neodove.js')
+  const url = `http://127.0.0.1:${fakeNeo.address().port}`
+  Object.assign(process.env, { NEODOVE_ENDPOINT_GAYATHRI: url + '/gayathri', NEODOVE_ENDPOINT_RAMYA: url + '/ramya', NEODOVE_ENDPOINT_LAVANYA: url + '/lavanya', NEODOVE_UPDATE_ENDPOINT_LAVANYA: url + '/lavanya-update' })
+  try {
+    await db.query(`update neodove_outbox set agent = null`)
+    await db.query(`insert into neodove_outbox (mobile, campaign, agent, status, sent_at, payload) values ('9755500001', 'signup', 'lavanya', 'sent', now(), '{}')
+      on conflict do nothing`)
+    const rows = [
+      { name: 'Had Lead', mobile: '+91 97555 00001', remarks: 'RNR' },
+      { name: 'New One', mobile: '9755500002', remarks: 'Call back', leadType: 'Meta Ads', location: 'Erode', pincode: '638001' },
+      { name: 'New Two', mobile: '9755500003', remarks: 'Interested' },
+      { name: 'Office', mobile: '9894006032', remarks: 'x' },
+      { name: 'Bad', mobile: '12345', remarks: 'x' },
+    ]
+    const dry = await importCalledLeads(rows, { query: db.query })
+    assert.deepEqual([dry.update, dry.add, dry.skipped, got.length], [1, 2, 2, 0])
+    const r = await importCalledLeads(rows, { query: db.query, apply: true })
+    assert.equal(r.failed, 0, JSON.stringify(r.problems))
+    assert.deepEqual(got.map((g) => [g.url, g.body.name, g.body.Remarks]), [
+      ['/lavanya-update', 'Had Lead', 'RNR'], // already Lavanya's: updated there, through her Update-only link
+      ['/gayathri', 'New One', 'Call back'], // new ones take turns after the last (Lavanya)
+      ['/ramya', 'New Two', 'Interested'],
+    ])
+    assert.deepEqual([got[1].body.Location, got[1].body.Pincode, got[1].body['Lead type']], ['Erode', '638001', 'Meta Ads'])
+    assert.deepEqual(got.map((g) => g.body['Call status']), ['Not connected', 'Call back', 'Interested'])
+    const { callStatus } = await import('../lib/neodove.js')
+    assert.deepEqual(['Voie mail', 'Already purchased pink bag in nearby shop', 'Price is high not interested,Location-Tambaram',
+      'Interested to buy after sometime , Location -Kanchipuram', 'If he needs, he will call back', 'She will place order in online', 'Busy', 'No need', '']
+      .map(callStatus), ['Not connected', 'Already bought', 'Not interested', 'Interested', 'Call back', 'Interested', 'Not connected', 'Not interested', 'Called'])
+  } finally {
+    for (const k of ['NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA', 'NEODOVE_UPDATE_ENDPOINT_LAVANYA']) delete process.env[k]
+    fakeNeo.close()
+  }
+})
