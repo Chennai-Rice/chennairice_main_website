@@ -67,7 +67,7 @@ export function checkModel(m) {
       if (uv.length && !str(b.sample)) problems.push(`${n}: give a sample for the end of the link (e.g. spin-A745B4).`)
     }
     if (b.type === 'PHONE_NUMBER' && !/^\+\d{8,15}$/.test(str(b.phone))) problems.push(`${n}: the phone number must look like +917066646667.`)
-    if (b.type === 'COPY_CODE' && !/^\S{1,15}$/.test(str(b.sample))) problems.push(`${n}: give a sample code of up to 15 characters, no spaces.`)
+    if (b.type === 'COPY_CODE' && !/^[A-Za-z0-9]{1,15}$/.test(str(b.sample))) problems.push(`${n}: give a sample code of up to 15 letters and numbers only (no - or spaces), e.g. SPINA745B4. Meta refuses anything else.`)
   })
   if (count('COPY_CODE') && m.category !== 'MARKETING') problems.push('A copy-code button is only allowed on Marketing templates.')
   return problems
@@ -157,16 +157,16 @@ export const STARTER_TEMPLATES = [
     ['Ravi', 'CR10482', 'https://chennairiceindustries.com/track-order']),
   draft('spin_code', 'MARKETING', 'Spin & Win: the prize code right after the spin',
     'Congratulations {{1}}! 🎉 You won *{{2}}* on Chennai Rice Spin & Win.\n\nUse it on orders above {{3}}, valid till *{{4}}*. Order from this mobile number and the code is filled in for you at checkout.',
-    ['Ravi', '₹75 OFF', '₹1,000', '10 Dec'], { buttons: [copy('SPIN-A745B4'), link('Shop now', 'spin-A745B4')] }),
+    ['Ravi', '₹75 OFF', '₹1,000', '10 Dec'], { buttons: [copy('SPINA745B4'), link('Shop now', 'spin-A745B4')] }),
   draft('spin_gift_won', 'MARKETING', 'Spin & Win: the free 5 kg bag prize',
     'Congratulations {{1}}! 🎁 You won a *Free 5 kg Kitchadi Ponni Slogan Bag* on Chennai Rice Spin & Win.\n\nIt comes free with your next order above {{2}}, placed before *{{3}}*. Order from this mobile number and it is added automatically.',
     ['Ravi', '₹1,000', '10 Dec'], { buttons: [link('Shop now', 'spin-A745B4')] }),
   draft('spin_reminder', 'MARKETING', 'Spin & Win: reminder 3 days later if the code is unused',
     'Hi {{1}}, your *{{2}}* from Spin & Win is still waiting for you! 🍚\n\nStock up on Kitchadi Ponni before *{{3}}*. The code is applied automatically when you order from this number.',
-    ['Ravi', '₹75 OFF', '10 Dec'], { buttons: [copy('SPIN-A745B4'), link('Use my offer', 'spin-A745B4')] }),
+    ['Ravi', '₹75 OFF', '10 Dec'], { buttons: [copy('SPINA745B4'), link('Use my offer', 'spin-A745B4')] }),
   draft('spin_last_chance', 'MARKETING', 'Spin & Win: 2 days before the code expires',
     'Last chance, {{1}}! ⏳ Your *{{2}}* ends on *{{3}}*.\n\nAfter that the code cannot be used. Order today and save on your rice.',
-    ['Ravi', '₹75 OFF', '10 Dec'], { buttons: [copy('SPIN-A745B4'), link('Order now', 'spin-A745B4')] }),
+    ['Ravi', '₹75 OFF', '10 Dec'], { buttons: [copy('SPINA745B4'), link('Order now', 'spin-A745B4')] }),
   draft('ref_share_code', 'MARKETING', 'Refer a friend: after the first delivery',
     'Hi {{1}}, glad your rice reached you safely! 🙏\n\nShare Chennai Rice with friends: they get *{{2}} off* their first order with your code *{{3}}*, and you get *{{4}}* when their order is delivered.\n\nTap below to share your code.',
     ['Lakshmi', '₹50', 'LAKSHMI47', '₹50'], { buttons: [link('Share my code', 'ref-LAKSHMI47')] }),
@@ -175,10 +175,10 @@ export const STARTER_TEMPLATES = [
     ['Lakshmi', 'Meena', 'LAKSHMI47', '₹50']),
   draft('ref_reward_ready', 'MARKETING', 'Refer a friend: the reward is ready',
     'Your reward is ready, {{1}}! 🎁\n\nThanks for referring {{2}}: you have earned *{{3}} off* your next order, valid till *{{4}}*. It is applied automatically when you order from this mobile number.',
-    ['Lakshmi', 'Meena', '₹50', '9 Jan'], { buttons: [copy('REF-7K2M9Q'), link('Use my reward', 'reward-7K2M9Q')] }),
+    ['Lakshmi', 'Meena', '₹50', '9 Jan'], { buttons: [copy('REF7K2M9Q'), link('Use my reward', 'reward-7K2M9Q')] }),
   draft('ref_reward_expiring', 'MARKETING', 'Refer a friend: 7 days before the reward expires',
     'Hi {{1}}, your *{{2}} referral reward* ends on *{{3}}*. ⏳\n\nDo not miss it: it is applied automatically at checkout from this mobile number.',
-    ['Lakshmi', '₹50', '9 Jan'], { buttons: [copy('REF-7K2M9Q'), link('Order now', 'reward-7K2M9Q')] }),
+    ['Lakshmi', '₹50', '9 Jan'], { buttons: [copy('REF7K2M9Q'), link('Order now', 'reward-7K2M9Q')] }),
   draft('ref_nudge', 'MARKETING', 'Refer a friend: a reminder to share (optional)',
     'Hi {{1}}, know someone who loves good rice? 🍚\n\nYour friends get *{{2}} off* their first Chennai Rice order with code *{{3}}*, and you earn *{{4}}* for every friend who orders.',
     ['Lakshmi', '₹50', 'LAKSHMI47', '₹50'], { buttons: [link('Share my code', 'ref-LAKSHMI47')] }),
@@ -187,7 +187,7 @@ export const STARTER_TEMPLATES = [
     ['Ravi', '22', 'Kitchadi Ponni 5 kg'], { buttons: [link('Reorder now', 'reorder-CR10482')] }),
   draft('winback_offer', 'MARKETING', 'Retention: 60 days without an order',
     'We miss you, {{1}}! 💛\n\nHere is *{{2}} off* your next order of Chennai Rice, valid till *{{3}}*. It is applied automatically when you order from this mobile number.',
-    ['Ravi', '₹50', '20 Nov'], { buttons: [copy('BACK-4H8P2L'), link('Shop now', 'back-4H8P2L')] }),
+    ['Ravi', '₹50', '20 Nov'], { buttons: [copy('BACK4H8P2L'), link('Shop now', 'back-4H8P2L')] }),
   draft('cart_reminder', 'MARKETING', 'Retention: items left in the cart',
     'Hi {{1}}, you left *{{2}}* in your cart. 🛒\n\nYour items are saved. Complete your order in one tap before they sell out.',
     ['Ravi', 'Kitchadi Ponni 26 kg and 1 more'], { buttons: [link('Complete my order', 'cart-9f3k2a')] }),
