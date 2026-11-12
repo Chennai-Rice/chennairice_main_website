@@ -97,7 +97,35 @@ export default function Reports() {
             <div><b>{inr(t.cost)}</b><span>approx. cost</span></div>
             <div><b>{num(d.inbound.messages)}</b><span>messages from {num(d.inbound.customers)} customers</span></div>
           </div>
-          <section className="wa-dark">
+          <section className="wa-card wa-split-cost">
+            <div className="wa-split-head">
+              <h2 className="wa-h2">Marketing, utility and free: messages and cost</h2>
+              <span className="wa-muted">
+                {d.metaCurrency ? `Meta's own figures are in ${d.metaCurrency}.` : d.metaError ? `Meta's figures not available: ${d.metaError}` : "Meta's figures appear once the account has a payment method."}
+              </span>
+            </div>
+            <div className="wa-split-grid">
+              {d.split.filter((s) => s.category !== 'authentication' || s.sent).map((s) => {
+                const total = d.split.reduce((a, x) => a + x.sent, 0)
+                const label = { marketing: 'Marketing', utility: 'Utility', service: 'Free (replies within 24 h)', authentication: 'Authentication' }[s.category]
+                const what = { marketing: 'Offers, reminders, broadcasts', utility: 'Order updates, reward ready, review asks', service: 'Bot and team replies to a customer who wrote in the last 24 hours', authentication: 'Login codes' }[s.category]
+                return (
+                  <div key={s.category} className={'wa-split-card wa-split-card--' + s.category}>
+                    <span className="wa-split-label">{label}</span>
+                    <b className="wa-split-num">{num(s.sent)}</b>
+                    <small>messages · {pct(s.sent, total)}% of all · {num(s.delivered)} delivered</small>
+                    <div className="wa-split-cost-row">
+                      <span>Cost</span>
+                      <b>{s.category === 'service' ? 'Free' : s.meta ? `${s.meta.cost} ${d.metaCurrency || ''}`.trim() : inr(s.approxCost)}</b>
+                    </div>
+                    <small>{s.category === 'service' ? 'WhatsApp does not charge these' : s.meta ? `Meta charged ${num(s.meta.messages)} · our estimate ${inr(s.approxCost)}` : 'estimate (Meta’s India rate)'}</small>
+                    <small className="wa-split-what">{what}</small>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+          <section className="wa-dark wa-mt2">
             <div className="wa-dark-head"><h2>By message type</h2></div>
             <Table rows={d.bySource} first="Sent by" />
           </section>

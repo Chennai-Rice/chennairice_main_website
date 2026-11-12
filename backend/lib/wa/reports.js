@@ -6,6 +6,8 @@
 //   team        per person: chats handled, messages, median and average first reply time
 import { query as defaultQuery } from '../db.js'
 import { formatInr } from '../sales/util.js'
+import { metaCost } from './admin.js'
+import { cloudEnabled } from './cloud.js'
 
 const RATE = { marketing: 0.78, utility: 0.115, authentication: 0.115 }
 const IST = 'Asia/Kolkata'
@@ -89,8 +91,27 @@ export async function report(input = {}, { query = defaultQuery, money = true } 
     sent: t.sent + r.sent, delivered: t.delivered + r.delivered, read: t.read + r.read, replied: t.replied + r.replied,
     orders: t.orders + r.orders, revenue: money ? t.revenue + (r.revenue || 0) : null, cost: Math.round((t.cost + r.cost) * 100) / 100,
   }), { sent: 0, delivered: 0, read: 0, replied: 0, orders: 0, revenue: 0, cost: 0 })
+  // Marketing / utility / free split: our own count (delivered or read) and approx. cost, beside what Meta charged.
+  const { rows: cats } = await query(
+    `select coalesce(nullif(category, ''), 'other') as category, count(*)::int as sent,
+            count(*) filter (where status in ('delivered', 'read'))::int as delivered,
+            count(*) filter (where status in ('delivered', 'read') and coalesce(billable, true))::int as billable
+       from wa_messages where direction = 'out' and (created_at at time zone '${IST}')::date between $1::date and $2::date group by 1`, [p.from, p.to])
+  const from = new Date(p.from + 'T00:00:00+05:30')
+  const to = new Date(new Date(p.to + 'T00:00:00+05:30').getTime() + 864e5)
+  const meta = cloudEnabled() ? await metaCost(from, to) : null
+  const split = ['marketing', 'utility', 'authentication', 'service'].map((c) => {
+    const ours = cats.find((r) => r.category === c) || { sent: 0, delivered: 0, billable: 0 }
+    const m = meta?.byCategory?.[c]
+    return {
+      category: c, sent: ours.sent, delivered: ours.delivered,
+      approxCost: c === 'service' ? 0 : Math.round(ours.billable * (RATE[c] || 0) * 100) / 100,
+      meta: m ? { messages: m.volume, cost: Math.round(m.cost * 100) / 100 } : null,
+    }
+  })
   return {
     period: p, totals, inbound, bySource, byTemplate, bot,
+    split, metaCurrency: meta?.currency || null, metaError: meta?.error || null,
     team: team.map((t) => ({ name: t.full_name || t.email, messages: t.messages, chats: t.chats, answered: t.answered,
       medianMinutes: t.median_s == null ? null : Math.round(t.median_s / 6) / 10, avgMinutes: t.avg_s == null ? null : Math.round(t.avg_s / 6) / 10 })),
     note: 'Orders and revenue: orders from the same mobile number within 7 days after a message. Cost is approximate (Meta’s India rates).',

@@ -147,3 +147,18 @@
 .wa-profile-top img, .wa-profile-nophoto { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 1px solid var(--wa-line); display: grid; place-items: center; background: #f2f2f2; color: var(--wa-muted); font-size: 12px; }
 .wa-profile textarea { border: 1px solid var(--wa-line); border-radius: 12px; padding: 9px 12px; font: inherit; font-size: 14px; resize: vertical; }
 .wa-profile .wa-lbl small { float: right; }
+
+/* Reports: marketing / utility / free split with cost */
+.wa-split-cost { margin-bottom: 16px; }
+.wa-split-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; margin-bottom: 12px; }
+.wa-split-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.wa-split-card { display: flex; flex-direction: column; gap: 4px; padding: 16px; border-radius: 20px; border: 1px solid var(--wa-line); background: #fff; }
+.wa-split-card small { color: var(--wa-muted); font-size: 12px; }
+.wa-split-label { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.wa-split-card--marketing .wa-split-label { color: #9a5b00; }
+.wa-split-card--utility .wa-split-label { color: #1d5fa0; }
+.wa-split-card--service .wa-split-label { color: #1d7a3e; }
+.wa-split-num { font-size: 32px; font-weight: 400; }
+.wa-split-cost-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--wa-line); }
+.wa-split-cost-row b { font-size: 20px; font-weight: 500; }
+.wa-split-what { margin-top: 4px; font-style: italic; }

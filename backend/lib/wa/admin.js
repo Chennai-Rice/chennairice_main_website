@@ -24,7 +24,7 @@ function period(name) {
 async function metaCost(from, to, { fetchImpl } = {}) {
   try {
     const s = Math.floor(from.getTime() / 1000), e = Math.floor(Math.min(to.getTime(), Date.now()) / 1000)
-    const data = await graph(`/${WABA_ID()}`, { fetchImpl, query: { fields: `pricing_analytics.start(${s}).end(${e}).granularity(DAILY)` } })
+    const data = await graph(`/${WABA_ID()}`, { fetchImpl, query: { fields: `currency,pricing_analytics.start(${s}).end(${e}).granularity(DAILY).dimensions(["PRICING_CATEGORY","PRICING_TYPE"])` } })
     const points = (data.pricing_analytics?.data || []).flatMap((d) => d.data_points || [])
     const byCategory = {}
     let cost = 0
@@ -33,11 +33,13 @@ async function metaCost(from, to, { fetchImpl } = {}) {
       const c = String(p.pricing_category || 'other').toLowerCase()
       byCategory[c] = { volume: (byCategory[c]?.volume || 0) + (Number(p.volume) || 0), cost: (byCategory[c]?.cost || 0) + (Number(p.cost) || 0) }
     }
-    return { cost: Math.round(cost * 100) / 100, byCategory }
+    return { cost: Math.round(cost * 100) / 100, byCategory, currency: data.currency || null }
   } catch (err) {
     return { error: err.publicMessage || err.message }
   }
 }
+
+export { metaCost }
 
 export async function overview({ period: p = 'this_month' } = {}, { query = defaultQuery, fetchImpl } = {}) {
   const { from, to } = period(p)
