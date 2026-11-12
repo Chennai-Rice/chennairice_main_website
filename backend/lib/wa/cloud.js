@@ -138,6 +138,25 @@ export function templateMessage(to, name, { language = 'en', params = [], compon
 }
 
 /** Sends one message (any Cloud API message body) and returns Meta's message id. */
+/** Uploads a picture or PDF to send in a chat (Meta keeps it 30 days) and returns its media id. */
+export async function uploadMedia(buffer, mimeType, fileName = 'file', { fetchImpl } = {}) {
+  const form = new FormData()
+  form.append('messaging_product', 'whatsapp')
+  form.append('type', mimeType)
+  form.append('file', new Blob([buffer], { type: mimeType }), fileName)
+  const data = await graph(`/${PHONE_ID()}/media`, { method: 'POST', raw: form, fetchImpl, timeout: 60000 })
+  return data?.id || null
+}
+
+/** A chat picture or PDF (ours or the customer's) by its media id: { buffer, type }. */
+export async function downloadMedia(id, { fetchImpl = fetch } = {}) {
+  const info = await graph(`/${encodeURIComponent(id)}`, { fetchImpl })
+  if (!info?.url) throw httpError('No media', { status: 404, publicMessage: 'This file is no longer on WhatsApp.' })
+  const res = await fetchImpl(info.url, { headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}` }, signal: AbortSignal.timeout(30000) })
+  if (!res.ok) throw httpError('Media download failed', { status: 502, publicMessage: 'Could not load this file from WhatsApp.' })
+  return { buffer: Buffer.from(await res.arrayBuffer()), type: info.mime_type || res.headers.get('content-type') || 'application/octet-stream' }
+}
+
 export async function sendMessage(message, { fetchImpl } = {}) {
   const data = await graph(`/${PHONE_ID()}/messages`, { method: 'POST', body: message, fetchImpl })
   return data?.messages?.[0]?.id || null

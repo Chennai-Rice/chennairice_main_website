@@ -1,8 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { staffJson } from '../../services/staffAuth.js'
+import { staffJson, staffFetch } from '../../services/staffAuth.js'
 import { I, WaText, when } from './ui.jsx'
 
 const VIEWS = [['all', 'All'], ['unread', 'Unread'], ['mine', 'Mine'], ['unassigned', 'Unassigned']]
+// A picture or PDF in the chat, loaded through our server (WhatsApp files need the token).
+function ChatMedia({ id, kind }) {
+  const [url, setUrl] = useState(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    if (kind !== 'image' && kind !== 'sticker') return undefined
+    let u = null
+    staffFetch(`/api/admin/whatsapp/media/${id}`).then((r) => (r.ok ? r.blob() : Promise.reject())).then((b) => { u = URL.createObjectURL(b); setUrl(u) }).catch(() => setFailed(true))
+    return () => { if (u) URL.revokeObjectURL(u) }
+  }, [id, kind])
+  async function open() {
+    try {
+      const r = await staffFetch(`/api/admin/whatsapp/media/${id}`)
+      if (!r.ok) throw new Error()
+      window.open(URL.createObjectURL(await r.blob()), '_blank', 'noopener')
+    } catch { setFailed(true) }
+  }
+  if (failed) return <small className="wa-muted">File no longer available</small>
+  if (kind === 'image' || kind === 'sticker') return url ? <a href={url} target="_blank" rel="noopener noreferrer"><img className="wa-msg-img" src={url} alt="" /></a> : <span className="wa-msg-img wa-msg-img--loading" />
+  return <button type="button" className="wa-link" onClick={open}>Open file</button>
+}
+
 const TICKS = { sent: '✓', delivered: '✓✓', read: '✓✓', failed: '!' }
 const STATUS = { placed: 'Placed', confirmed: 'Confirmed', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled', returned: 'Returned' }
 const initials = (s) => String(s || '?').replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '#'
@@ -78,6 +100,8 @@ function Chat({ phone, onChanged }) {
   const [showQuick, setShowQuick] = useState(false)
   const [showTemplate, setShowTemplate] = useState(false)
   const [tagText, setTagText] = useState('')
+  const [file, setFile] = useState(null)
+  const fileInput = useRef(null)
   const end = useRef(null)
   const load = useCallback(() => staffJson(`/api/admin/whatsapp/chats/${encodeURIComponent(phone)}`).then((d) => { setC(d); setError('') }).catch((e) => setError(e.message)), [phone])
   useEffect(() => { setC(null); load() }, [load])
@@ -93,9 +117,27 @@ function Chat({ phone, onChanged }) {
   }
   const put = (body) => act(() => staffJson(`/api/admin/whatsapp/chats/${encodeURIComponent(phone)}`, { method: 'PUT', body: JSON.stringify(body) }))
   const send = () => act(async () => {
-    await staffJson(`/api/admin/whatsapp/chats/${encodeURIComponent(phone)}/reply`, { method: 'POST', body: JSON.stringify({ text }) })
+    if (file) {
+      const q = new URLSearchParams({ name: file.name, caption: text })
+      const res = await staffFetch(`/api/admin/whatsapp/chats/${encodeURIComponent(phone)}/media?${q}`, { method: 'POST', body: file, headers: { 'Content-Type': file.type } })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || d.message || 'Could not send the file.')
+      setFile(null)
+    } else {
+      await staffJson(`/api/admin/whatsapp/chats/${encodeURIComponent(phone)}/reply`, { method: 'POST', body: JSON.stringify({ text }) })
+    }
     setText('')
   })
+  function pick(e) {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    if (!['image/jpeg', 'image/png', 'application/pdf'].includes(f.type)) { setError('Choose a JPG or PNG picture, or a PDF.'); return }
+    if (f.type !== 'application/pdf' && f.size > 5 * 1024 * 1024) { setError('A picture can be 5 MB at most.'); return }
+    if (f.size > 16 * 1024 * 1024) { setError('A PDF can be 16 MB at most.'); return }
+    setError('')
+    setFile(f)
+  }
   if (!c) return <div className="wa-chat"><p className="wa-empty">{error || 'Loading…'}</p></div>
   const left = c.windowEndsAt ? Math.max(0, new Date(c.windowEndsAt) - Date.now()) : 0
   const leftText = left > 3600e3 ? `${Math.floor(left / 3600e3)} h left to reply` : `${Math.ceil(left / 60e3)} min left to reply`
@@ -124,6 +166,7 @@ function Chat({ phone, onChanged }) {
           <div key={m.id} className={'wa-msg wa-msg--' + m.direction}>
             <div className="wa-msg-bubble">
               {m.source && m.direction === 'out' && <span className="wa-msg-src">{m.source === 'bot' ? '🤖 Bot' : m.source === 'inbox' ? 'Team' : m.template || m.source}</span>}
+              {m.mediaId && <ChatMedia id={m.mediaId} kind={m.kind} />}
               <WaText text={m.body || `[${m.kind}]`} />
               <span className="wa-msg-meta">{hm(m.at)} {m.direction === 'out' && <b className={'wa-tick wa-tick--' + m.status}>{TICKS[m.status] || ''}</b>}</span>
               {m.error && <small className="wa-msg-err">{m.error}</small>}
@@ -143,10 +186,13 @@ function Chat({ phone, onChanged }) {
           )}
           <button type="button" className="wa-round wa-round--small" title="Quick replies" onClick={() => setShowQuick((x) => !x)}><I name="bolt" size={14} /></button>
           <button type="button" className="wa-round wa-round--small" title="Send a template" onClick={() => setShowTemplate(true)}><I name="template" size={14} /></button>
-          <textarea rows={2} value={text} placeholder="Type a reply… (Enter to send, Shift+Enter for a new line)" disabled={busy}
+          <button type="button" className="wa-round wa-round--small" title="Attach a picture or PDF" onClick={() => fileInput.current?.click()} disabled={busy}><I name="clip" size={14} /></button>
+          <input ref={fileInput} type="file" accept="image/jpeg,image/png,application/pdf" hidden onChange={pick} />
+          {file && <span className="wa-attach">{file.type === 'application/pdf' ? '📄' : '📷'} {file.name} <button type="button" onClick={() => setFile(null)} aria-label="Remove file">×</button></span>}
+          <textarea rows={2} value={text} placeholder={file ? 'Add a caption (optional)… Enter to send' : 'Type a reply… (Enter to send, Shift+Enter for a new line)'} disabled={busy}
             onChange={(e) => { setText(e.target.value); setShowQuick(e.target.value.startsWith('/')) }}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (text.trim()) send() } }} />
-          <button type="button" className="wa-btn wa-btn--lime" disabled={busy || !text.trim()} onClick={send}><I name="send" size={14} /> Send</button>
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (text.trim() || file) send() } }} />
+          <button type="button" className="wa-btn wa-btn--lime" disabled={busy || (!text.trim() && !file)} onClick={send}><I name="send" size={14} /> {busy && file ? 'Sending…' : 'Send'}</button>
         </div>
       ) : (
         <div className="wa-composer wa-composer--template">

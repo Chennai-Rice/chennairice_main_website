@@ -55,7 +55,7 @@ import { checkAskevaKey, recordAskevaWebhook } from '../askeva-inbound.js'
 import { verifyChallenge, signatureOk, handleWebhook } from '../wa/webhook.js'
 import { listTemplates, saveTemplate, duplicateTemplate, submitTemplate, deleteTemplate, syncTemplates, checkModel } from '../wa/templates.js'
 import { overview as waOverview, settings as waSettings, saveSettings as saveWaSettings, connectWebhook, sendTest as waSendTest, recentMessages, loadWabaId } from '../wa/admin.js'
-import { uploadHeaderSample } from '../wa/cloud.js'
+import { uploadHeaderSample, downloadMedia } from '../wa/cloud.js'
 import { getBot, saveBot, simulate as simulateBot } from '../wa/bot.js'
 import { getProfile as waProfile, saveProfile as saveWaProfile, setProfilePhoto as setWaPhoto } from '../wa/profile.js'
 import { rawAnalytics, behaviour as webBehaviour, heatmap as webHeatmap } from './web-analytics.js'
@@ -63,7 +63,7 @@ import { runWhatsAppAutomations, automationsAdmin, saveAutomations, testAutomati
 import { optIn as waOptIn, listContacts, contactsCsv, setTags, setPermission, importContacts } from '../wa/contacts.js'
 import { listBroadcasts, saveBroadcast, launchBroadcast, cancelBroadcast, deleteBroadcast, audience as broadcastAudience, FIELDS as BROADCAST_FIELDS } from '../wa/broadcasts.js'
 import { report as waReport, reportCsv as waReportCsv } from '../wa/reports.js'
-import { listChats, getChat, replyText, replyTemplate, updateChat, addNote as addChatNote, listQuickReplies, saveQuickReply, deleteQuickReply } from '../wa/inbox.js'
+import { listChats, getChat, replyText, replyMedia, replyTemplate, updateChat, addNote as addChatNote, listQuickReplies, saveQuickReply, deleteQuickReply } from '../wa/inbox.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { listDiscountCodes, createDiscountCode, setDiscountCodeActive } from './discounts.js'
@@ -826,6 +826,19 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/whatsapp/chats', wa, wrap(async (req, res) => { noStore(res); res.json(await listChats(req.query, req.staff)) }))
   admin.get('/whatsapp/chats/:phone', wa, wrap(async (req, res) => { noStore(res); res.json(await getChat(req.params.phone, req.staff, { money: can(req.staff, 'money.view') })) }))
   admin.post('/whatsapp/chats/:phone/reply', wa, wrap(async (req, res) => res.json(await replyText(req.params.phone, req.body?.text, req.staff))))
+  // A picture or PDF for the chat: the file itself as the body, the caption and file name in the query.
+  admin.post('/whatsapp/chats/:phone/media', wa, express.raw({ type: ['image/*', 'application/pdf'], limit: '16mb' }), wrap(async (req, res) => {
+    const buf = Buffer.isBuffer(req.body) && req.body.length ? req.body : req.rawBody
+    const mimeType = String(req.get('content-type') || '').split(';')[0]
+    res.json(await replyMedia(req.params.phone, { buffer: buf, mimeType, fileName: req.query.name, caption: req.query.caption }, req.staff))
+  }))
+  // A chat picture or PDF (ours or the customer's), fetched from WhatsApp for the Inbox.
+  admin.get('/whatsapp/media/:id', wa, wrap(async (req, res) => {
+    if (!/^\d{5,30}$/.test(req.params.id)) throw httpError('Bad id', { status: 400, publicMessage: 'Unknown file.' })
+    const { buffer, type } = await downloadMedia(req.params.id)
+    res.set('Content-Type', type).set('Cache-Control', 'private, max-age=86400').set('X-Content-Type-Options', 'nosniff')
+    res.send(buffer)
+  }))
   admin.post('/whatsapp/chats/:phone/template', wa, wrap(async (req, res) => res.json(await replyTemplate(req.params.phone, req.body || {}, req.staff))))
   admin.put('/whatsapp/chats/:phone', wa, wrap(async (req, res) => res.json(await updateChat(req.params.phone, req.body || {}, req.staff))))
   admin.post('/whatsapp/chats/:phone/notes', wa, wrap(async (req, res) => res.json(await addChatNote(req.params.phone, req.body?.body, req.staff))))

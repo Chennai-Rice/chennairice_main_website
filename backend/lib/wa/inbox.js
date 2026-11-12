@@ -6,7 +6,7 @@
 import { query as defaultQuery } from '../db.js'
 import { httpError, str, formatInr } from '../sales/util.js'
 import { whatsappNumber } from '../whatsapp.js'
-import { sendMessage, graph, PHONE_ID } from './cloud.js'
+import { sendMessage, uploadMedia, graph, PHONE_ID } from './cloud.js'
 import { getBot } from './bot.js'
 import { sendTemplate } from './admin.js'
 import { last10 } from './contacts.js'
@@ -59,7 +59,8 @@ export async function listChats(f = {}, staff, { query = defaultQuery } = {}) {
 export async function getChat(phone, staff, { query = defaultQuery, fetchImpl, money = true } = {}) {
   const p = str(phone)
   const [{ rows: messages }, { rows: notes }, { rows: [c] }, { rows: orders }, { rows: [spin] }, { rows: [ref] }, { rows: [bot] }, { rows: staffList }] = await Promise.all([
-    query(`select id, wamid, direction, kind, template_name, body, status, error, source, staff_id, created_at, payload->>'profileName' as profile_name
+    query(`select id, wamid, direction, kind, template_name, body, status, error, source, staff_id, created_at, payload->>'profileName' as profile_name,
+                  coalesce(payload->'image'->>'id', payload->'document'->>'id', payload->'sticker'->>'id') as media_id
              from wa_messages where phone = $1 order by created_at desc limit 300`, [p]),
     query(`select n.id, n.body, n.created_at, s.full_name from wa_notes n left join staff_users s on s.id = n.staff_id where n.phone = $1 order by n.created_at desc limit 50`, [p]),
     query(`select c.*, s.full_name as assigned_name from wa_contacts c left join staff_users s on s.id = c.assigned_to where c.phone = $1`, [p]),
@@ -87,7 +88,7 @@ export async function getChat(phone, staff, { query = defaultQuery, fetchImpl, m
     status: c?.status || 'open', assignedTo: c?.assigned_to || null, assignedName: c?.assigned_name || null,
     tags: c?.tags || [], optedInAt: c?.opted_in_at || null, optedOutAt: c?.opted_out_at || null,
     botPausedUntil: bot?.paused_until && new Date(bot.paused_until) > new Date() ? bot.paused_until : null,
-    messages: messages.reverse().map((m) => ({ id: m.id, direction: m.direction, kind: m.kind, template: m.template_name, body: m.body, status: m.status, error: m.error, source: m.source, at: m.created_at })),
+    messages: messages.reverse().map((m) => ({ id: m.id, direction: m.direction, kind: m.kind, mediaId: m.media_id, template: m.template_name, body: m.body, status: m.status, error: m.error, source: m.source, at: m.created_at })),
     notes: notes.map((n) => ({ id: n.id, body: n.body, at: n.created_at, by: n.full_name })),
     customer: {
       orders: orders.map((o) => ({ number: o.order_number, status: o.status, total: money ? formatInr(o.total_paise) : null, at: o.placed_at, city: o.city })),
@@ -122,6 +123,35 @@ export async function replyText(phone, text, staff, { query = defaultQuery, fetc
   await query(
     `insert into wa_messages (wamid, direction, phone, kind, body, payload, status, source, staff_id, category)
      values ($1, 'out', $2, 'text', $3, $4, 'sent', 'inbox', $5, 'service')`, [wamid, p, body, JSON.stringify(message), staff?.id || null])
+  await query(`insert into wa_contacts (phone, last_out_at, last_read_at) values ($1, now(), now())
+               on conflict (phone) do update set last_out_at = now(), last_read_at = now(), updated_at = now()`, [p])
+  await pauseBot(p, query)
+  return { ok: true, wamid }
+}
+
+const MEDIA_TYPES = { 'image/jpeg': 'image', 'image/png': 'image', 'application/pdf': 'document' }
+
+/** A picture (JPG / PNG, up to 5 MB) or a PDF (up to 16 MB) from the team, with an optional caption (inside the 24-hour window). */
+export async function replyMedia(phone, { buffer, mimeType, fileName, caption }, staff, { query = defaultQuery, fetchImpl } = {}) {
+  const kind = MEDIA_TYPES[mimeType]
+  if (!buffer?.length || !kind) throw httpError('Bad file', { publicMessage: 'Send a JPG or PNG picture, or a PDF.' })
+  if (kind === 'image' && buffer.length > 5 * 1024 * 1024) throw httpError('Too big', { publicMessage: 'A picture can be 5 MB at most.' })
+  const text = String(caption || '').trim().slice(0, 1024)
+  const p = str(phone)
+  const { rows: [lastIn] } = await query(`select created_at from wa_messages where phone = $1 and direction = 'in' order by created_at desc limit 1`, [p])
+  if (!lastIn || Date.now() - new Date(lastIn.created_at).getTime() >= WINDOW_MS) {
+    throw httpError('Window closed', { publicMessage: 'More than 24 hours since the customer last wrote: WhatsApp allows only an approved template now.' })
+  }
+  const name = String(fileName || (kind === 'image' ? 'picture' : 'document.pdf')).replace(/[^\w.\- ]+/g, '').slice(0, 120) || 'file'
+  const id = await uploadMedia(buffer, mimeType, name, { fetchImpl })
+  const to = whatsappNumber(p) || p.replace(/\D/g, '')
+  const media = kind === 'image' ? { id, ...(text ? { caption: text } : {}) } : { id, filename: name, ...(text ? { caption: text } : {}) }
+  const message = { messaging_product: 'whatsapp', recipient_type: 'individual', to, type: kind, [kind]: media }
+  const wamid = await sendMessage(message, { fetchImpl })
+  const body = kind === 'image' ? (text ? `📷 ${text}` : '📷 Photo') : `📄 ${name}${text ? ` · ${text}` : ''}`
+  await query(
+    `insert into wa_messages (wamid, direction, phone, kind, body, payload, status, source, staff_id, category)
+     values ($1, 'out', $2, $3, $4, $5, 'sent', 'inbox', $6, 'service')`, [wamid, p, kind, body, JSON.stringify(message), staff?.id || null])
   await query(`insert into wa_contacts (phone, last_out_at, last_read_at) values ($1, now(), now())
                on conflict (phone) do update set last_out_at = now(), last_read_at = now(), updated_at = now()`, [p])
   await pauseBot(p, query)
