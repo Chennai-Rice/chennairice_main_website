@@ -13,7 +13,7 @@ const good = () => ({
   header: { format: 'NONE' },
   body: { text: 'Hi {{1}}, your {{2}} is waiting.', samples: ['Ravi', '₹75 OFF'] },
   footer: 'Reply STOP to opt out',
-  buttons: [{ type: 'COPY_CODE', sample: 'SPIN-A1' }, { type: 'URL', text: 'Shop now', url: 'https://chennairiceindustries.com/w/{{1}}', sample: 'spin-A1' }],
+  buttons: [{ type: 'COPY_CODE', sample: 'SPINA1' }, { type: 'URL', text: 'Shop now', url: 'https://chennairiceindustries.com/w/{{1}}', sample: 'spin-A1' }],
 })
 
 test('all 14 ready-made templates pass Meta\'s rules', () => {
@@ -45,7 +45,7 @@ test('the dashboard model goes to Meta\'s components and back unchanged', () => 
   const back = fromComponents(c)
   assert.deepEqual(back.body, m.body)
   assert.equal(back.buttons[1].sample, 'spin-A1')
-  assert.equal(back.buttons[0].sample, 'SPIN-A1')
+  assert.equal(back.buttons[0].sample, 'SPINA1')
   assert.equal(back.footer, m.footer)
 })
 
