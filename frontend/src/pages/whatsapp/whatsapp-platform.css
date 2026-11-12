@@ -168,3 +168,5 @@
 .wa-msg-img--loading { width: 200px; height: 140px; background: rgba(0, 0, 0, 0.08); }
 .wa-attach { display: inline-flex; align-items: center; gap: 6px; max-width: 220px; padding: 4px 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.08); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wa-attach button { border: 0; background: none; cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
+.wa-newchat { margin-bottom: 8px; }
+.wa-newchat input { flex: 1; min-width: 0; }

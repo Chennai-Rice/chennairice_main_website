@@ -264,6 +264,17 @@ export default function Inbox() {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [sel, setSel] = useState(null)
+  const [num, setNum] = useState('')
+  const [numErr, setNumErr] = useState('')
+  // New chat: any Indian mobile number, stored as its last 10 digits like every chat.
+  function startChat(e) {
+    e.preventDefault()
+    const d = num.replace(/D/g, '').slice(-10)
+    if (!/^[6-9]d{9}$/.test(d)) { setNumErr('Enter a 10-digit mobile number.'); return }
+    setNumErr('')
+    setNum('')
+    setSel(d)
+  }
   const load = useCallback(() => {
     const p = new URLSearchParams({ view, status, q })
     return staffJson('/api/admin/whatsapp/chats?' + p).then((d) => { setData(d); setError('') }).catch((e) => setError(e.message))
@@ -294,6 +305,12 @@ export default function Inbox() {
         </div>
         <div className="wa-inbox">
           <div className="wa-inbox-list">
+            <form className="wa-search wa-search--dark wa-newchat" onSubmit={startChat}>
+              <I name="plus" size={16} />
+              <input value={num} inputMode="tel" placeholder="New chat: mobile number" aria-label="New chat mobile number" onChange={(e) => setNum(e.target.value)} />
+              <button type="submit" className="wa-btn wa-btn--small wa-btn--lime" disabled={!num.trim()}>Open</button>
+            </form>
+            {numErr && <p className="wa-alert">{numErr}</p>}
             <div className="wa-search wa-search--dark"><I name="search" size={16} /><input value={q} placeholder="Search name or number" onChange={(e) => setQ(e.target.value)} /></div>
             <ul className="wa-list">
               {!data && <li className="wa-empty">Loading…</li>}
