@@ -269,8 +269,8 @@ export default function Inbox() {
   // New chat: any Indian mobile number, stored as its last 10 digits like every chat.
   function startChat(e) {
     e.preventDefault()
-    const d = num.replace(/D/g, '').slice(-10)
-    if (!/^[6-9]d{9}$/.test(d)) { setNumErr('Enter a 10-digit mobile number.'); return }
+    const d = num.replace(/\D/g, '').slice(-10)
+    if (!/^[6-9]\d{9}$/.test(d)) { setNumErr('Enter a 10-digit mobile number.'); return }
     setNumErr('')
     setNum('')
     setSel(d)
