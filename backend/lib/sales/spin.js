@@ -221,7 +221,7 @@ export async function spinAdmin(db, staff) {
     recent: (await db.query(
       `select s.created_at, s.name, s.phone, s.email, s.prize_label, c.code, c.expires_at,
               (select o.order_number from orders o where o.discount_code_id = c.id and o.payment_status in ('paid', 'partially_refunded') limit 1) as used_on
-         from spins s left join discount_codes c on c.id = s.code_id order by s.created_at desc limit 200`)).rows.map((x) => ({
+         from spins s left join discount_codes c on c.id = s.code_id order by s.created_at desc limit 20000`)).rows.map((x) => ({
       at: x.created_at, name: x.name, phone: x.phone, email: x.email, prize: x.prize_label, code: x.code,
       expiresAt: x.expires_at, usedOn: x.used_on,
     })),

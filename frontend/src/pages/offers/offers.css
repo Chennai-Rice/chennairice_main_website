@@ -53,3 +53,7 @@
 .of-user-text strong { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .of-user-text span { font-size: 12px; color: var(--wh-muted, #7a6459); }
 @media (max-width: 900px) { .of-user-text { display: none; } }
+
+/* Who spun: custom dates (from – to) */
+.of-who-dates { display: inline-flex; align-items: center; gap: 6px; }
+.of-who-dates .wh-input { width: auto; padding: 8px 10px; }
