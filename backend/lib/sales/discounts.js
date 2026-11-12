@@ -58,7 +58,14 @@ async function findCode(db, typed, { lock = false } = {}) {
   const code = cleanCode(typed)
   if (!/^[A-Z0-9-]{3,24}$/.test(code)) return null
   const { rows: [c] } = await db.query(`select * from discount_codes where code = $1${lock ? ' for update' : ''}`, [code])
-  return c || null
+  if (c) return c
+  // The same code typed or copied without its hyphen (WhatsApp's Copy code button sends SPINA745B4
+  // for SPIN-A745B4, as Meta allows letters and numbers only there).
+  const bare = code.replace(/-/g, '')
+  if (bare.length < 3) return null
+  const { rows: [d] } = await db.query(
+    `select * from discount_codes where replace(code, '-', '') = $1 order by id limit 1${lock ? ' for update' : ''}`, [bare])
+  return d || null
 }
 
 /** Refer a friend is switched on (Warehouse → Settings → Refer a friend). */

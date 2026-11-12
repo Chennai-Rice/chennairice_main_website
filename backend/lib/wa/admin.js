@@ -196,7 +196,7 @@ export function sendComponents(model, values = {}) {
     if (b.type === 'URL' && /\{\{1\}\}$/.test(b.url || '')) {
       parts.push({ type: 'button', sub_type: 'url', index: String(i), parameters: [{ type: 'text', text: String(v) }] })
     } else if (b.type === 'COPY_CODE') {
-      parts.push({ type: 'button', sub_type: 'copy_code', index: String(i), parameters: [{ type: 'coupon_code', coupon_code: String(v) }] })
+      parts.push({ type: 'button', sub_type: 'copy_code', index: String(i), parameters: [{ type: 'coupon_code', coupon_code: String(v).replace(/[^A-Za-z0-9]/g, '').slice(0, 15) }] })
     }
   })
   return parts

@@ -52,7 +52,7 @@ test('the dashboard model goes to Meta\'s components and back unchanged', () => 
 test('send parameters fill the body, the link ending and the coupon code', () => {
   const parts = sendComponents(good(), { body: ['Meena', '₹50 OFF'], buttons: { 0: 'SPIN-ZZ', 1: 'spin-ZZ' } })
   assert.deepEqual(parts[0].parameters.map((p) => p.text), ['Meena', '₹50 OFF'])
-  assert.deepEqual(parts[1], { type: 'button', sub_type: 'copy_code', index: '0', parameters: [{ type: 'coupon_code', coupon_code: 'SPIN-ZZ' }] })
+  assert.deepEqual(parts[1], { type: 'button', sub_type: 'copy_code', index: '0', parameters: [{ type: 'coupon_code', coupon_code: 'SPINZZ' }] })
   assert.equal(parts[2].sub_type, 'url')
   assert.equal(parts[2].parameters[0].text, 'spin-ZZ')
   assert.equal(filledText(good(), { body: ['Meena', '₹50 OFF'] }), 'Hi Meena, your ₹50 OFF is waiting.')
