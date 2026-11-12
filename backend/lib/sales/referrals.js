@@ -140,7 +140,7 @@ export async function releaseReferralReward(db, order) {
   }
   let code
   for (let i = 0; i < 5 && !code; i++) {
-    const candidate = 'REF-' + crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 6)
+    const candidate = 'REF' + crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 6)
     const { rows: [c] } = await db.query(
       `insert into discount_codes (code, kind, amount_paise, locked_phone, locked_email, max_uses, uses_per_phone, expires_at, source, note)
        values ($1, 'amount', $2, $3, $4, 1, 1, now() + make_interval(days => $5), 'reward', $6)

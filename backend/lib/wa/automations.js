@@ -240,7 +240,7 @@ export async function enqueueDue({ query = defaultQuery, only = null } = {}) {
 }
 
 async function winbackVals(r, c, query) {
-  const code = 'BACK-' + randomCode(3)
+  const code = 'BACK' + randomCode(3)
   const until = new Date(Date.now() + c.validDays * 864e5)
   await query(
     `insert into discount_codes (code, kind, amount_paise, locked_phone, max_uses, uses_per_phone, expires_at, source, note)

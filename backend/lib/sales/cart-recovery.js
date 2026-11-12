@@ -106,7 +106,7 @@ export function reminderEmail({ step, name, lines, token, code = null }) {
 /** Email 2's code: single use, for this mobile, CODE_HOURS long. */
 async function offerCode(db, offer, phone, now) {
   if (offer === 'none' || !/^\d{10}$/.test(phone)) return null
-  const code = 'CART-' + crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 6)
+  const code = 'CART' + crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 6)
   const expires = new Date(now + CODE_HOURS * 3600 * 1000)
   const { rows: [c] } = await db.query(
     `insert into discount_codes (code, kind, amount_paise, locked_phone, max_uses, uses_per_phone, expires_at, source, note)

@@ -1314,7 +1314,7 @@ test('Spin & Win: off until switched on, one spin per mobile and browser, prize 
     const won = await spinApi({ name: 'Kavya', phone: '+91 98765 00001', deviceId: 'dev-1' })
     assert.equal(won.status, 200, JSON.stringify(won.body))
     assert.equal(won.body.already, false)
-    assert.match(won.body.code, /^SPIN-[0-9A-F]{6}$/)
+    assert.match(won.body.code, /^SPIN[0-9A-F]{6}$/)
     assert.ok(cfg.prizes.some((p) => p.key === won.body.prize.key))
     const { rows: [c] } = await db.query('select * from discount_codes where code = $1', [won.body.code])
     assert.equal(c.locked_phone, '9876500001')
@@ -3894,7 +3894,7 @@ test('cart reminder emails: email 1 after an hour, email 2 with a free-delivery 
   // A day later, still unpaid: email 2 with a free-delivery code for that mobile only.
   assert.deepEqual(await sendCartReminders(db, { now: noon + 25 * 3600000 }), { sent1: 0, sent2: 1 })
   const { rows: [m2] } = await db.query(`select * from email_outbox where dedupe_key = $1`, [`cart-reminder:${j}:2`])
-  const code = /CART-[A-Z0-9]{6}/.exec(m2.body_html)?.[0]
+  const code = /CART[A-Z0-9]{6}/.exec(m2.body_html)?.[0]
   assert.ok(code, 'email 2 has a code')
   assert.match(m2.subject, /free delivery/i)
   const { rows: [dc] } = await db.query('select kind, locked_phone, max_uses, source from discount_codes where code = $1', [code])

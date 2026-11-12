@@ -155,7 +155,7 @@ export async function spin(db, body = {}, { ip = '' } = {}) {
   const result = await tx(async (t) => {
     let code
     for (let i = 0; i < 5 && !code; i++) {
-      const candidate = 'SPIN-' + crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 6)
+      const candidate = 'SPIN' + crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 6)
       const { rows: [c] } = await t.query(
         `insert into discount_codes (code, kind, amount_paise, min_order_paise, region, locked_phone, max_uses, uses_per_phone,
                                      expires_at, source, note, percent_bp, max_off_paise, gift_label)
