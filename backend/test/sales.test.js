@@ -1573,7 +1573,7 @@ test('PIN code regions and the delivered-price sheets', async () => {
 })
 
 test('sales by source: ad links and referrers become a source, orders and visits roll up by campaign and ad', async () => {
-  const { classify } = await import('../lib/sales/attribution.js')
+  const { classify, channelKey } = await import('../lib/sales/attribution.js')
   const c = (a) => classify(a).source
   assert.equal(c(null), 'direct')
   assert.equal(c({ utm_source: 'ig', utm_medium: 'paid', utm_campaign: 'Kitchidi Offer' }), 'meta_ads_instagram')
@@ -1586,6 +1586,7 @@ test('sales by source: ad links and referrers become a source, orders and visits
   assert.equal(c({ utm_source: 'google', utm_medium: 'cpc' }), 'google_ads')
   assert.equal(c({ referrer: 'https://www.google.co.in/' }), 'google_search')
   assert.equal(c({ srsltid: true, referrer: 'https://www.google.com/' }), 'google_shopping') // Merchant Center listing
+  assert.equal(channelKey('google_shopping'), 'google_ads') // counted as Google Ads
   assert.equal(c({ utm_source: 'google', utm_medium: 'free_listing' }), 'google_shopping')
   assert.equal(c({ gclid: true, srsltid: true }), 'google_ads') // a paid Shopping ad stays Google Ads
   assert.equal(c({ referrer: 'https://web.whatsapp.com/' }), 'whatsapp')

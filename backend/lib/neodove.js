@@ -39,7 +39,7 @@ import { httpError, safeEqual } from './sales/util.js'
 
 /** What kind of lead it is, for the telecaller's lead details and the tag on the call result in Sales Daddy. */
 const SOURCE_TYPES = {
-  meta_ads_facebook: 'Meta Ads', meta_ads_instagram: 'Meta Ads', meta_ads: 'Meta Ads', google_ads: 'Google Ads', google_shopping: 'Google Shopping', whatsapp: 'WhatsApp',
+  meta_ads_facebook: 'Meta Ads', meta_ads_instagram: 'Meta Ads', meta_ads: 'Meta Ads', google_ads: 'Google Ads', google_shopping: 'Google Ads', whatsapp: 'WhatsApp',
   facebook: 'Social media', instagram: 'Social media', google_search: 'Google search', expo: 'Expo QR',
 }
 export function leadType(campaign, source) {
@@ -106,7 +106,7 @@ export function routeOf(campaign, source) {
   if (campaign === 'signup') {
     const s = String(source || '')
     if (/^meta_ads/.test(s) || ORGANIC.has(s)) return 'meta'
-    if (s === 'google_ads') return 'google_ads'
+    if (s === 'google_ads' || s === 'google_shopping') return 'google_ads'
     if (s === 'whatsapp') return 'whatsapp'
   }
   return 'enquiry'

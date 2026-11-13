@@ -135,24 +135,22 @@ const EFFECTIVE = `case when o.payment_status in ('paid', 'partially_refunded') 
 const CHANNEL_SQL = `(case
   when coalesce(o.traffic_source, '') <> '' then (case
     when o.traffic_source like 'meta_ads%' or (o.traffic_source in ('facebook', 'instagram') and coalesce(o.traffic_campaign, '') <> '') then 'meta'
-    when o.traffic_source = 'google_ads' then 'google_ads'
-    when o.traffic_source = 'google_shopping' then 'google_shopping'
+    when o.traffic_source in ('google_ads', 'google_shopping') then 'google_ads'
     when o.traffic_source = 'google_search' then 'google_search'
     when o.traffic_source = 'whatsapp' then 'whatsapp'
     when o.traffic_source = 'direct' then 'direct'
     else 'other' end)
   when lower(coalesce(j.traffic_source, '')) in ('', 'direct', '(direct)') then 'direct'
   when lower(j.traffic_source) ~ '^(meta|fb|facebook|ig|instagram|an|msg)' then 'meta'
-  when lower(j.traffic_source) ~ '(google_ads|adwords|gads)' then 'google_ads'
-  when lower(j.traffic_source) ~ '(google_shopping|merchant|gmc)' then 'google_shopping'
+  when lower(j.traffic_source) ~ '(google_ads|adwords|gads|google_shopping|merchant|gmc)' then 'google_ads'
   when lower(j.traffic_source) ~ '^google' then 'google_search'
   when lower(j.traffic_source) ~ '^(whatsapp|wa)' then 'whatsapp'
   else 'other' end)`
-const CHANNELS = ['meta', 'google_ads', 'google_shopping', 'google_search', 'whatsapp', 'direct', 'other']
+const CHANNELS = ['meta', 'google_ads', 'google_search', 'whatsapp', 'direct', 'other']
 const RAW_LABEL = { ig: 'Instagram', instagram: 'Instagram', fb: 'Facebook', facebook: 'Facebook', an: 'Audience Network', msg: 'Messenger', google: 'Google', whatsapp: 'WhatsApp', wa: 'WhatsApp' }
 const ORDER_LABEL = {
   meta_ads_facebook: 'Meta ad · Facebook', meta_ads_instagram: 'Meta ad · Instagram', meta_ads: 'Meta ad', google_ads: 'Google Ads',
-  google_shopping: 'Google Shopping', google_search: 'Google search', whatsapp: 'WhatsApp', facebook: 'Facebook', instagram: 'Instagram', other_website: 'Other website', direct: 'Direct',
+  google_shopping: 'Google Ads · Shopping', google_search: 'Google search', whatsapp: 'WhatsApp', facebook: 'Facebook', instagram: 'Instagram', other_website: 'Other website', direct: 'Direct',
 }
 
 export async function listJourneys(q = {}) {

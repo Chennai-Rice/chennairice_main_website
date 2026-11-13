@@ -6,7 +6,8 @@
 //
 //   meta_ads_facebook, meta_ads_instagram, meta_ads   paid Meta ad
 //   google_ads                                         paid Google ad
-//   google_shopping                                    Google Merchant Center listing (free listing / Shopping tab)
+//   google_shopping                                    Google Merchant Center listing (free listing / Shopping tab),
+//                                                      counted as Google Ads in every report (owner, 13 Nov 2026)
 //   facebook, instagram, google_search, whatsapp       unpaid visits
 //   other_website, direct
 //
@@ -23,7 +24,7 @@ export const SOURCES = {
   meta_ads_instagram: 'Meta ad · Instagram',
   meta_ads: 'Meta ad',
   google_ads: 'Google Ads',
-  google_shopping: 'Google Shopping (Merchant Center)',
+  google_shopping: 'Google Ads · Shopping (Merchant Center)',
   facebook: 'Facebook (not an ad)',
   instagram: 'Instagram (not an ad)',
   google_search: 'Google search',
@@ -41,6 +42,7 @@ export const AD_TAG = {
   meta_ads_facebook: 'Facebook ad',
   meta_ads: 'Meta ad',
   google_ads: 'Google ad',
+  google_shopping: 'Google ad',
 }
 
 const PAID = /^(paid|cpc|ppc|ads?|paid[_-]?social|paidsocial|paid[_-]?search|display|sponsored)$/i
@@ -90,7 +92,7 @@ export function classify(a) {
   // (utm_medium=shopping..., or utm_source=google_shopping / merchant_center). A paid Shopping ad has a gclid and
   // stays Google Ads above, where its cost is.
   if (a.srsltid || /^(shopping|free[_-]?listings?|organic[_-]?shopping|merchant[_-]?cent(er|re))$/.test(m) ||
-      /^(google[_-]?shopping|merchant[_-]?cent(er|re)|gmc)$/.test(s)) return { source: 'google_shopping', campaign, ad }
+      /^(google[_-]?shopping|merchant[_-]?cent(er|re)|gmc)$/.test(s)) return { source: 'google_shopping', campaign: campaign || 'Merchant Center', ad }
 
   const igSource = /^(ig|instagram)$/.test(s)
   const fbSource = /^(fb|facebook|meta)$/.test(s)
@@ -276,7 +278,7 @@ export function cleanMobile(raw) {
 }
 
 // Visitors shown the sign-up form: from a Meta or Google ad, or a WhatsApp link.
-const AD_SOURCES = ['meta_ads_facebook', 'meta_ads_instagram', 'meta_ads', 'google_ads', 'whatsapp']
+const AD_SOURCES = ['meta_ads_facebook', 'meta_ads_instagram', 'meta_ads', 'google_ads', 'google_shopping', 'whatsapp']
 
 /** Name, mobile and email checked and tidied, or a 400 saying which is wrong. */
 function leadFields(body) {
@@ -386,8 +388,8 @@ export async function contestLeads(db, { days, from, to } = {}) {
  * new leads (contest sign-ups, WhatsApp chats, expo QR; one per mobile per channel), how many converted (a paid
  * order on that mobile after they became a lead), the revenue from them, and the conversion rate.
  */
-export const CHANNEL_ORDER = ['meta', 'google_ads', 'google_shopping', 'google_search', 'whatsapp', 'direct', 'other']
-export const CHANNEL_LABEL = { meta: 'Meta ads', google_ads: 'Google Ads', google_shopping: 'Google Shopping', google_search: 'Google search', whatsapp: 'WhatsApp', direct: 'Direct', other: 'Other' }
+export const CHANNEL_ORDER = ['meta', 'google_ads', 'google_search', 'whatsapp', 'direct', 'other']
+export const CHANNEL_LABEL = { meta: 'Meta ads', google_ads: 'Google Ads', google_search: 'Google search', whatsapp: 'WhatsApp', direct: 'Direct', other: 'Other' }
 export function channelKey(source, campaign = '') {
   const s = String(source || 'direct')
   // A link whose placeholders were never filled in ({{campaign.name}}, <campaign-name>…) is a test or broken link,
@@ -395,8 +397,8 @@ export function channelKey(source, campaign = '') {
   if (/\{\{|<(campaign|ad)[-_ ]?(name|id)>/i.test(String(campaign || ''))) return 'other'
   // A facebook / instagram link that carries a campaign (its ID or its name) is a Meta ad, as in the Meta ads panel.
   if (s.startsWith('meta_ads') || ((s === 'facebook' || s === 'instagram') && String(campaign || '').trim() !== '')) return 'meta'
-  if (s === 'google_ads') return 'google_ads'
-  if (s === 'google_shopping') return 'google_shopping'
+  // A Google Merchant Center (Shopping) buyer counts as a Google Ads customer (owner, 13 Nov 2026).
+  if (s === 'google_ads' || s === 'google_shopping') return 'google_ads'
   if (s === 'google_search') return 'google_search'
   if (s === 'whatsapp' || s === 'whatsapp_chat') return 'whatsapp'
   if (s === 'direct') return 'direct'
