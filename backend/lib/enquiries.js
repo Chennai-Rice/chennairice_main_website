@@ -14,11 +14,9 @@ function str(value) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-/** Who is writing: the contact page's "Segment" dropdown. The page lists five (ContactPage.jsx: Distributor,
- * Wholesaler, Retailer, Consumer, HoReCa; owner 13 Nov 2026); the older segments stay accepted here so a page
- * cached in a browser before the change can still send its form. */
+/** Who is writing: the contact page's "Segment" dropdown (Nov 2026; includes every segment of the
+ * owner's lead list). The page lists the same keys and labels (ContactPage.jsx). */
 export const CONTACT_TOPICS = {
-  consumer: 'Consumer',
   customer: 'Customer',
   wholesaler: 'Wholesaler',
   retailer: 'Retailer',
