@@ -5,7 +5,7 @@ import { SegmentFilters, BLANK_SEGMENT } from './Contacts.jsx'
 
 const STATUS = { draft: ['Draft', 'draft'], scheduled: ['Scheduled', 'pending'], sending: ['Sending', 'pending'], done: ['Sent', 'ok'], cancelled: ['Cancelled', 'bad'] }
 
-function Editor({ fields, onDone }) {
+export function Editor({ fields, onDone, fileOnly = false }) {
   const [templates, setTemplates] = useState(null)
   const [tags, setTags] = useState([])
   const [name, setName] = useState('')
@@ -13,7 +13,7 @@ function Editor({ fields, onDone }) {
   const [seg, setSeg] = useState({ ...BLANK_SEGMENT, permission: 'in' })
   const [mapping, setMapping] = useState({ body: [], buttons: {} })
   // Who gets it: a group of contacts, or an uploaded CSV / Excel file (kept on a draft on the server).
-  const [mode, setMode] = useState('group')
+  const [mode, setMode] = useState(fileOnly ? 'file' : 'group')
   const [draftId, setDraftId] = useState(null)
   const [file, setFile] = useState(null)
   const [fileCols, setFileCols] = useState({ phoneColumn: '', nameColumn: '', optedIn: false })
@@ -98,23 +98,29 @@ function Editor({ fields, onDone }) {
   }
 
   if (!templates) return <p className="wa-muted">{err || 'Loading…'}</p>
+  const nameAndTemplate = (
+    <>
+      <label className="wa-lbl">{fileOnly ? 'Name of this send (only you see it)' : 'Name (only you see it)'}<input value={name} placeholder={fileOnly ? 'Diwali offer – dealer list' : 'Diwali offer – Chennai buyers'} onChange={(e) => setName(e.target.value)} /></label>
+      <label className="wa-lbl">Template
+        <select value={tname} onChange={(e) => pickTemplate(e.target.value)}>
+          <option value="">Choose an approved template…</option>
+          {templates.map((x) => <option key={x.id} value={x.name}>{x.name} ({x.category === 'UTILITY' ? 'utility' : 'marketing'})</option>)}
+        </select>
+      </label>
+      {templates.length === 0 && <p className="wa-muted">No approved templates yet: create one in Templates and wait for Meta.</p>}
+    </>
+  )
   return (
     <section className="wa-card wa-bc-editor">
       <div className="wa-bc-cols">
         <div className="wa-bc-main">
-          <label className="wa-lbl">Name (only you see it)<input value={name} placeholder="Diwali offer – Chennai buyers" onChange={(e) => setName(e.target.value)} /></label>
-          <label className="wa-lbl">Template
-            <select value={tname} onChange={(e) => pickTemplate(e.target.value)}>
-              <option value="">Choose an approved template…</option>
-              {templates.map((x) => <option key={x.id} value={x.name}>{x.name} ({x.category === 'UTILITY' ? 'utility' : 'marketing'})</option>)}
-            </select>
-          </label>
-          {templates.length === 0 && <p className="wa-muted">No approved templates yet: create one in Templates and wait for Meta.</p>}
-          <h3 className="wa-h3">Who gets it</h3>
-          <div className="wa-seg wa-seg--light">
-            <button type="button" className={mode === 'group' ? 'is-on' : ''} onClick={() => setMode('group')}>A group of contacts</button>
-            <button type="button" className={mode === 'file' ? 'is-on' : ''} onClick={() => setMode('file')}>Upload a file (CSV / Excel)</button>
-          </div>
+          {fileOnly ? <h3 className="wa-h3">1. Upload the numbers (CSV or Excel)</h3> : (
+            <>
+              {nameAndTemplate}
+              <h3 className="wa-h3">Who gets it</h3>
+              <p className="wa-muted">A group of your contacts. To send to numbers from a CSV or Excel file, use the Bulk message tab.</p>
+            </>
+          )}
           {mode === 'group' ? <SegmentFilters f={seg} set={setSeg} tags={tags} /> : (
             <div className="wa-bc-file">
               <label className="wa-btn">
@@ -165,9 +171,15 @@ function Editor({ fields, onDone }) {
               <div><b>{num(aud.excludedStop)}</b><span>left out: said STOP</span></div>
             </div>
           )}
+          {fileOnly && (
+            <>
+              <h3 className="wa-h3">2. Compose the message</h3>
+              {nameAndTemplate}
+            </>
+          )}
           {t && (
             <>
-              <h3 className="wa-h3">Fill in the message</h3>
+              <h3 className="wa-h3">{fileOnly ? 'Fill in each person’s message' : 'Fill in the message'}</h3>
               <div className="wa-map">
                 {mapping.body.map((m, i) => (
                   <div key={i} className="wa-map-row">
@@ -192,7 +204,7 @@ function Editor({ fields, onDone }) {
               </div>
             </>
           )}
-          <h3 className="wa-h3">When</h3>
+          <h3 className="wa-h3">{fileOnly ? '3. Send' : 'When'}</h3>
           <div className="wa-inline">
             <label className="wa-check"><input type="radio" checked={!when_} onChange={() => setWhen('')} /> Now</label>
             <label className="wa-check"><input type="radio" checked={!!when_} onChange={() => setWhen(new Date(Date.now() + 3600e3).toISOString().slice(0, 16))} /> Later:</label>
@@ -221,11 +233,15 @@ function Editor({ fields, onDone }) {
   )
 }
 
-export default function Broadcasts() {
-  const [d, setD] = useState(null)
+// Broadcasts (a group of contacts) and, with `bulk`, the Bulk message tab (numbers from a CSV / Excel file):
+// the same sending and results, each tab listing its own sends.
+export default function Broadcasts({ bulk = false }) {
+  const [raw, setD] = useState(null)
   const [error, setError] = useState('')
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(bulk)
+  const [round, setRound] = useState(0)
   const load = () => staffJson('/api/admin/whatsapp/broadcasts').then(setD).catch((e) => setError(e.message))
+  const d = raw && { ...raw, broadcasts: raw.broadcasts.filter((b) => Boolean(b.segment?.file) === bulk && (!bulk || b.template || b.status !== 'draft')) }
   useEffect(() => { load() }, [])
   const act = async (url, method = 'POST', confirmText) => {
     if (confirmText && !window.confirm(confirmText)) return
@@ -235,18 +251,19 @@ export default function Broadcasts() {
   return (
     <>
       <div className="wa-titlebar">
-        <h1>Broadcasts</h1>
+        <h1>{bulk ? 'Bulk message' : 'Broadcasts'}</h1>
         <div className="wa-actions">
           <button type="button" className="wa-round" title="Refresh" onClick={load}><I name="refresh" /></button>
-          {!editing && <button type="button" className="wa-btn" onClick={() => setEditing(true)}><I name="plus" size={16} /> New broadcast</button>}
+          {!editing && <button type="button" className="wa-btn" onClick={() => setEditing(true)}><I name="plus" size={16} /> {bulk ? 'New bulk message' : 'New broadcast'}</button>}
         </div>
       </div>
       {error && <p className="wa-alert">{error}</p>}
-      {editing && d && <Editor fields={d.fields} onDone={() => { setEditing(false); load() }} />}
+      {editing && d && <Editor key={round} fields={d.fields} fileOnly={bulk} onDone={() => { setRound((r) => r + 1); setEditing(bulk); load() }} />}
       <section className="wa-dark">
-        <div className="wa-dark-head"><h2>All broadcasts</h2></div>
+        <div className="wa-dark-head"><h2>{bulk ? 'Bulk messages sent' : 'All broadcasts'}</h2></div>
         {!d && <p className="wa-empty">Loading…</p>}
-        {d?.broadcasts.length === 0 && <p className="wa-empty">No broadcasts yet. A broadcast sends one approved template to a group of contacts, for example a festival offer to everyone who bought in the last 3 months.</p>}
+        {d?.broadcasts.length === 0 && bulk && <p className="wa-empty">Nothing sent from a file yet. Upload a CSV or Excel file above, choose a template and send.</p>}
+        {d?.broadcasts.length === 0 && !bulk && <p className="wa-empty">No broadcasts yet. A broadcast sends one approved template to a group of contacts, for example a festival offer to everyone who bought in the last 3 months.</p>}
         <div className="wa-table-wrap">
           {d?.broadcasts.length > 0 && (
             <table className="wa-table">

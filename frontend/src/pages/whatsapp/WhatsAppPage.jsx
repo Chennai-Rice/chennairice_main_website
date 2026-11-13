@@ -26,6 +26,7 @@ const TABS = [
   { id: 'inbox', label: 'Inbox', icon: 'chat' },
   { id: 'contacts', label: 'Contacts', icon: 'users' },
   { id: 'templates', label: 'Templates', icon: 'template' },
+  { id: 'bulk', label: 'Bulk message', icon: 'upload' },
   { id: 'broadcasts', label: 'Broadcasts', icon: 'megaphone' },
   { id: 'automations', label: 'Automations', icon: 'bolt' },
   { id: 'bot', label: 'Bot', icon: 'bot' },
@@ -90,7 +91,8 @@ function Shell() {
         {tab === 'inbox' && <Inbox />}
         {tab === 'contacts' && <Contacts />}
         {tab === 'automations' && <Automations />}
-        {tab === 'broadcasts' && <Broadcasts />}
+        {tab === 'bulk' && <Broadcasts key="bulk" bulk />}
+        {tab === 'broadcasts' && <Broadcasts key="broadcasts" />}
         {tab === 'reports' && <Reports />}
         {current?.phase && <Coming tab={current} />}
       </main>
