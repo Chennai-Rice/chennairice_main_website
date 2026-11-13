@@ -13,7 +13,11 @@
 //   bulk-order enquiry (website form)
 //        └▶ neodove_outbox, campaign 'bulk_enquiry'
 //
-//   THE TEAM'S THREE CAMPAIGNS: when NEODOVE_ENDPOINT_GAYATHRI / _RAMYA / _LAVANYA are set (one NeoDove campaign
+//   ONE CAMPAIGN PER SOURCE (13 Nov 2026, replaces the three below): when any of NEODOVE_ENDPOINT_META / _GOOGLE_ADS /
+//   _WHATSAPP / _CART / _ENQUIRY is set, every lead goes to its source's campaign (SOURCE_CAMPAIGNS, routeOf) and NeoDove
+//   shares each campaign between its telecallers. `agent` on the outbox row then holds the source campaign.
+//
+//   THE TEAM'S THREE CAMPAIGNS (no longer used once the source campaigns exist): when NEODOVE_ENDPOINT_GAYATHRI / _RAMYA / _LAVANYA are set (one NeoDove campaign
 //   each, with its own Custom Integration endpoint), every lead above - sign-up, checkout not paid, bulk enquiry -
 //   goes to the next telecaller in turn (round robin: Gayathri → Ramya → Lavanya → Gayathri…), whatever its source,
 //   so all three get an equal share (owner, 6 Nov 2026).
@@ -40,6 +44,7 @@ const SOURCE_TYPES = {
 }
 export function leadType(campaign, source) {
   if (campaign === 'bulk_enquiry') return 'Bulk enquiry'
+  if (campaign === 'contact') return 'Contact enquiry'
   if (campaign === 'spin_wheel') return 'Spin & Win'
   if (campaign === 'referral') return 'Referral'
   if (campaign === 'checkout_payment') return 'Checkout: payment not completed'
@@ -71,11 +76,43 @@ const usable = (url) => (/^https:\/\/\S+$/.test(url) && (url.match(/https?:\/\//
 export const badAgentEndpoints = () => Object.keys(NEODOVE_AGENTS).filter((a) => agentEndpoint(a) && !usable(agentEndpoint(a)))
 /** The telecallers whose campaign has a real endpoint. */
 export const poolAgents = () => Object.keys(NEODOVE_AGENTS).filter((a) => usable(agentEndpoint(a)))
-export const neodoveEnabled = (campaign = 'signup') => poolAgents().length > 0 || usable(endpoint(campaign))
-const enabledCampaigns = () => (poolAgents().length ? [...Object.keys(NEODOVE_CAMPAIGNS), ...TEAM_ONLY] : Object.keys(NEODOVE_CAMPAIGNS).filter((c) => usable(endpoint(c))))
+export const neodoveEnabled = (campaign = 'signup') => sourceMode() || poolAgents().length > 0 || usable(endpoint(campaign))
+const enabledCampaigns = () => (sourceMode() || poolAgents().length ? [...Object.keys(NEODOVE_CAMPAIGNS), ...TEAM_ONLY] : Object.keys(NEODOVE_CAMPAIGNS).filter((c) => usable(endpoint(c))))
 
 // Leads that go out only through the telecallers' campaigns (no campaign endpoint of their own).
-const TEAM_ONLY = ['bulk_enquiry', 'spin_wheel', 'referral']
+const TEAM_ONLY = ['bulk_enquiry', 'spin_wheel', 'referral', 'contact']
+
+// ---- NeoDove campaigns by where the lead came from (owner, 13 Nov 2026) ----------------------------------------------
+// Replaces the telecallers' three campaigns: every lead goes to the campaign of its source, and NeoDove shares each
+// campaign's leads between the telecallers added to it (its own lead distribution).
+//   Meta         Meta ad sign-ups, and Instagram / Facebook organic sign-ups (marked Traffic: Organic)
+//   Google Ads   Google Ads sign-ups
+//   WhatsApp     WhatsApp-link sign-ups
+//   Add to cart  checkouts not paid / left at the details step
+//   Enquiries    bulk-order and contact-form enquiries, Spin & Win, referrals and any other sign-up
+// A campaign whose link is not set yet (or set to a placeholder such as "pending") keeps its leads queued.
+export const SOURCE_CAMPAIGNS = {
+  meta: 'NEODOVE_ENDPOINT_META', google_ads: 'NEODOVE_ENDPOINT_GOOGLE_ADS', whatsapp: 'NEODOVE_ENDPOINT_WHATSAPP',
+  cart: 'NEODOVE_ENDPOINT_CART', enquiry: 'NEODOVE_ENDPOINT_ENQUIRY',
+}
+const ROUTE_NAMES = { meta: 'Meta', google_ads: 'Google Ads', whatsapp: 'WhatsApp', cart: 'Add to cart', enquiry: 'Enquiries' }
+const routeEndpoint = (route) => String(process.env[SOURCE_CAMPAIGNS[route]] || '').trim()
+const ORGANIC = new Set(['facebook', 'instagram'])
+/** Source mode is on once any of the five campaign secrets exists (a placeholder value counts: it holds the leads). */
+export const sourceMode = () => Object.values(SOURCE_CAMPAIGNS).some((k) => String(process.env[k] || '').trim() !== '')
+/** The source campaign for a lead: its kind (signup, checkout_…, bulk_enquiry…) and, for a sign-up, where it came from. */
+export function routeOf(campaign, source) {
+  if (campaign === 'checkout_payment' || campaign === 'checkout_details') return 'cart'
+  if (campaign === 'signup') {
+    const s = String(source || '')
+    if (/^meta_ads/.test(s) || ORGANIC.has(s)) return 'meta'
+    if (s === 'google_ads') return 'google_ads'
+    if (s === 'whatsapp') return 'whatsapp'
+  }
+  return 'enquiry'
+}
+/** Source campaigns whose secret looks like a link but is not one clean https link: nothing is sent until fixed. */
+export const badSourceEndpoints = () => Object.keys(SOURCE_CAMPAIGNS).filter((r) => /^https?:/i.test(routeEndpoint(r)) && !usable(routeEndpoint(r)))
 
 export function checkNeodoveKey(req) {
   const key = process.env.NEODOVE_WEBHOOK_KEY
@@ -272,6 +309,31 @@ export async function recordBulkEnquiry(db, { name, phone, email, company, buyer
 }
 
 /**
+ * A contact-form enquiry ("Contact us" page): queued for NeoDove's Enquiries campaign, at most once a week per mobile.
+ * Returns the outbox id to send now, or null. Never throws.
+ */
+export async function recordContactEnquiry(db, { name, phone, email, enquiry }) {
+  if (!hasDatabase()) return null
+  const mobile = crmMobile(phone)
+  if (!/^[6-9]\d{9}$/.test(mobile) || isBlockedMobile(mobile)) return null
+  try {
+    const { rows: [recent] } = await db.query(
+      `select 1 from neodove_outbox where mobile = $1 and campaign = 'contact' and created_at > now() - interval '7 days' limit 1`, [mobile])
+    if (recent) return null
+    const payload = {
+      name: name || 'Contact enquiry', mobile: Number(mobile), email: email || '',
+      'Lead type': leadType('contact'), tags: leadType('contact'), Source: 'Contact form', Message: String(enquiry || '').slice(0, 1000),
+      Enquired: fmt(new Date()),
+    }
+    const { rows: [o] } = await db.query(`insert into neodove_outbox (mobile, campaign, payload) values ($1, 'contact', $2) returning id`, [mobile, payload])
+    return o?.id || null
+  } catch (err) {
+    console.error('[neodove] could not record a contact enquiry:', err.message)
+    return null
+  }
+}
+
+/**
  * A Spin & Win spin or a referred friend: queued for NeoDove once per mobile and campaign, shared between the
  * telecallers. `fields` are shown on the lead (Prize, Code, Referred by…). Returns the outbox id to send now,
  * or null. Never throws.
@@ -335,7 +397,8 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
   if (!Number.isNaN(pausedUntil.getTime()) && now < pausedUntil) {
     return { sent: 0, failed: 0, skipped: 'paused until ' + pausedUntil.toISOString() }
   }
-  const bad = badAgentEndpoints()
+  const bySource = sourceMode()
+  const bad = bySource ? badSourceEndpoints() : badAgentEndpoints()
   if (bad.length) {
     console.error('[neodove] sending is paused: the endpoint of', bad.join(', '), 'is not one clean https link')
     return { sent: 0, failed: 0, skipped: 'bad endpoint: ' + bad.join(', ') }
@@ -344,8 +407,12 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
   if (!hasDatabase() || !campaigns.length) return { sent: 0, failed: 0, skipped: campaigns.length ? 'no database' : 'no NeoDove endpoint' }
   let sent = 0
   let failed = 0
+  // In source mode a lead goes to its source campaign; while that campaign's link is not set yet (they are set one by
+  // one, owner 13 Nov 2026) it still goes round robin to the telecallers' campaigns, so no lead waits in between.
   const pool = poolAgents()
   const byAgent = {}
+  const byCampaign = {}
+  let waiting = 0
   // Round robin: the telecaller after the one who got the last lead (in the order above), whatever the lead's source.
   let last
   const pickAgent = async () => {
@@ -364,7 +431,8 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
                       where status = 'queued' and next_try_at <= now() and ($1::uuid is null or id = $1)
                         and campaign = any($3::text[])
                       order by created_at limit $2 for update skip locked)
-        returning id, mobile, campaign, agent, payload, attempts, created_at`,
+        returning id, mobile, campaign, agent, payload, attempts, created_at,
+          (select l.source from lead_status l where l.mobile = neodove_outbox.mobile) as lead_source`,
       [id, limit, campaigns]
     )
     rows.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
@@ -376,7 +444,24 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
       }
       let result
       let agent = null
-      try {
+      let viaSource = false
+      const route = bySource ? routeOf(r.campaign, r.lead_source) : null
+      const url = route ? routeEndpoint(route) : ''
+      if (bySource && !usable(url) && !pool.length) {
+        // That campaign's link is not set yet and there is no telecaller campaign to fall back on: keep the lead
+        // queued, try again in 10 minutes (not a failure).
+        waiting++
+        await query(`update neodove_outbox set next_try_at = now() + interval '10 minutes', last_error = $2 where id = $1`,
+          [r.id, `waiting: ${ROUTE_NAMES[route]} campaign link not set`])
+        continue
+      }
+      if (bySource && usable(url)) {
+        viaSource = true
+        const extra = { Campaign: ROUTE_NAMES[route], ...(route === 'meta' && { Traffic: ORGANIC.has(r.lead_source) ? 'Organic' : 'Meta ad' }) }
+        try { result = await post({ ...r.payload, ...extra }, url) } catch (err) { result = { status: 0, text: err.message } }
+        agent = route
+        if (r.agent !== route) await query('update neodove_outbox set agent = $2 where id = $1', [r.id, route]).catch(() => {})
+      } else try {
         if (pool.length) {
           agent = pool.includes(r.agent) ? r.agent : await pickAgent()
           if (agent !== r.agent) await query('update neodove_outbox set agent = $2 where id = $1', [r.id, agent])
@@ -385,7 +470,8 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
       } catch (err) { result = { status: 0, text: err.message } }
       if (result.status >= 200 && result.status < 300) {
         sent++
-        if (agent) byAgent[agent] = (byAgent[agent] || 0) + 1
+        if (viaSource) byCampaign[ROUTE_NAMES[agent]] = (byCampaign[ROUTE_NAMES[agent]] || 0) + 1
+        else if (agent) byAgent[agent] = (byAgent[agent] || 0) + 1
         await query(`update neodove_outbox set status = 'sent', sent_at = now(), attempts = attempts + 1, last_error = null where id = $1`, [r.id])
         if (r.campaign === 'signup') await query(`update lead_status set neodove_sent_at = now(), updated_at = now() where mobile = $1`, [r.mobile])
         continue
@@ -402,7 +488,7 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
   } catch (err) {
     console.error('[neodove]', err.message)
   }
-  return { sent, failed, byAgent }
+  return bySource ? { sent, failed, waiting, byCampaign, byAgent } : { sent, failed, byAgent }
 }
 
 /**
