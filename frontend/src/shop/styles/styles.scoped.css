@@ -519,55 +519,6 @@
   animation: gold-pan 4s linear infinite;
 }
 
-/* Saved-items heart, pinned opposite the premium flag so the two never
-   collide on the premium pack. Styled to match .pdp-wishlist, because it is
-   the same control and should not read as a different one between the card
-   and the product page. */
-.shop-scope .card-wishlist {
-  position: absolute;
-  top: var(--s-3);
-  right: var(--s-3);
-  z-index: 2;
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border-radius: 50%;
-  border: 1.5px solid var(--cream-300);
-  background: var(--cream-50);
-  color: var(--maroon-600);
-  cursor: pointer;
-  box-shadow: var(--shadow-rest);
-  transition:
-    transform var(--transition-fast),
-    border-color var(--transition-fast),
-    background var(--transition-fast);
-}
-
-.shop-scope .card-wishlist:hover {
-  border-color: var(--maroon-600);
-  transform: scale(1.08);
-}
-
-.shop-scope .card-wishlist:focus-visible {
-  outline: 2px solid var(--maroon-600);
-  outline-offset: 2px;
-}
-
-/* Filled rather than only recoloured: on a tinted card ground a colour
-   change alone is easy to miss, and the state has to be readable at a
-   glance across a row of three. */
-.shop-scope .card-wishlist.is-active {
-  border-color: var(--maroon-600);
-  background: var(--cream-100);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .shop-scope .card-wishlist { transition: none; }
-  .shop-scope .card-wishlist:hover { transform: none; }
-}
-
 /* Packs are cut-outs on transparency: fix the height so all three sit on a
    common baseline despite slightly different pack widths, and ground them
    with a contact shadow. */
@@ -2704,8 +2655,6 @@
     font-size: 0.6rem;
     letter-spacing: 0.08em;
   }
-  .shop-scope .card-wishlist { top: 6px; right: 6px; width: 30px; height: 30px; }
-  .shop-scope .card-wishlist svg { width: 15px; height: 15px; }
 
   .shop-scope .card-body { padding: 10px 10px 12px; gap: 4px; }
   .shop-scope .card-tag { font-size: 0.6rem; letter-spacing: 0.1em; }

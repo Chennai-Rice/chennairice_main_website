@@ -2,7 +2,6 @@ import { MOVED_PAGES } from './seo.js'
 import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { CartProvider } from './shop/hooks/useCart.jsx'
-import { WishlistProvider } from './shop/hooks/useWishlist.jsx'
 import { CookieConsentProvider } from './hooks/useCookieConsent.jsx'
 import { useVisitorTracking } from './hooks/useVisitorTracking.jsx'
 import { useMetaPixel } from './hooks/useMetaPixel.js'
@@ -42,7 +41,6 @@ const CartPage = lazy(() => import('./shop/pages/CartPage.jsx'))
 const CheckoutPage = lazy(() => import('./shop/pages/CheckoutPage.jsx'))
 const ReferPage = lazy(() => import('./shop/pages/ReferPage.jsx'))
 const ReviewPage = lazy(() => import('./shop/pages/ReviewPage.jsx'))
-const WishlistPage = lazy(() => import('./shop/pages/WishlistPage.jsx'))
 const InfrastructurePage = lazy(() => import('./pages/infrastructure/InfrastructurePage.jsx'))
 
 /* Lazily loaded so the dashboard and the staff sign-in code it pulls in stay
@@ -136,7 +134,6 @@ export default function App() {
   return (
     <CookieConsentProvider>
     <CartProvider>
-      <WishlistProvider>
       <ScrollToTop />
       {isStorefront && <VisitorTracking />}
       {isStorefront && <MetaPixel />}
@@ -283,7 +280,6 @@ export default function App() {
             )
           }
         />
-        <Route path="/wishlist" element={<WishlistPage />} />
         {/* legacy deep links from the product-page repo */}
         <Route path="/index.html" element={<Navigate to="/rice-products" replace />} />
         <Route path="/about.html" element={<Navigate to="/about-us" replace />} />
@@ -300,7 +296,6 @@ export default function App() {
       {isStorefront && <ContestPopup />}
       {/* Only for visitors from the expo QR code: opens 2 seconds into the visit. */}
       {isStorefront && <ExpoPopup />}
-      </WishlistProvider>
     </CartProvider>
     </CookieConsentProvider>
   )

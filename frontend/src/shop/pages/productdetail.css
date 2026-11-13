@@ -580,6 +580,8 @@
   align-items: center;
   gap: 8px;
 }
+/* The round outline button beside Buy Now: now only the Share button (ShareButton.jsx), which kept
+   this class when the wishlist heart was removed (Nov 2026). */
 .pdp-wishlist {
   width: 44px;
   height: 44px;

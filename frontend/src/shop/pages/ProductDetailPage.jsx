@@ -16,7 +16,6 @@ import ShareButton from "../components/ShareButton.jsx";
 import { useProduct, useProducts } from "../data/products.js";
 import { getDetails, getCategoryLabel, GRAIN_JOURNEY } from "../data/productDetails.js";
 import { useCart } from "../hooks/useCart.jsx";
-import { useWishlist } from "../hooks/useWishlist.jsx";
 import { useRipple } from "../hooks/useRipple.js";
 import { formatRupees } from "../utils/format.js";
 import { showCardPrices } from "../../config.js";
@@ -32,7 +31,6 @@ export default function ProductDetailPage() {
   const id = productIdFromSlug(slug);
   const navigate = useNavigate();
   const { add, items, setQty: setCartQty } = useCart();
-  const wishlist = useWishlist();
   const spawnRipple = useRipple();
 
   const { product, loading } = useProduct(id);
@@ -45,9 +43,6 @@ export default function ProductDetailPage() {
   const defaultSize = buyable.find((s) => s.kg === 10) || buyable[0] || sizes.find((s) => s.kg === 10) || sizes[0];
   const [selectedKg, setSelectedKg] = useState(defaultSize?.kg);
   const [qty, setQty] = useState(1);
-  // Saved state lives in the shared store, so it persists and the header
-  // badge stays in step.
-  const wishlisted = wishlist.has(id);
 
   const seo = PRODUCT_SEO[id];
   usePageMeta(
@@ -318,22 +313,6 @@ export default function ProductDetailPage() {
                   Contact sales
                 </Link>
               )}
-              <button
-                type="button"
-                className={`pdp-wishlist${wishlisted ? " is-active" : ""}`}
-                aria-pressed={wishlisted}
-                aria-label={wishlisted ? "Remove from saved items" : "Save to wishlist"}
-                onClick={() => wishlist.toggle(id)}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill={wishlisted ? "currentColor" : "none"} aria-hidden="true">
-                  <path
-                    d="M12 20s-7-4.35-9.5-8.5C1 8 2.5 4.5 6 4c2-.3 3.8.8 6 3 2.2-2.2 4-3.3 6-3 3.5.5 5 4 3.5 7.5C19 15.65 12 20 12 20z"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
               <ShareButton title={`${product.name} | Chennai Rice`} text={`${product.name} from Chennai Rice`} />
             </div>
 

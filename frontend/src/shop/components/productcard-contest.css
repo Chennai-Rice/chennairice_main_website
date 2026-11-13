@@ -118,8 +118,7 @@
 .shop-scope .card--contest .card-media img {
   height: calc(clamp(13rem, 20vw, 16.5rem) + var(--s-6) - var(--rib) - var(--s-2));
 }
-.shop-scope .card--contest .premium-flag,
-.shop-scope .card--contest .card-wishlist {
+.shop-scope .card--contest .premium-flag {
   top: calc(var(--rib) + var(--s-3));
 }
 
@@ -161,7 +160,6 @@
   .shop-scope .card--contest .card-media { padding-top: calc(var(--rib) + 8px); }
   .shop-scope .card--contest .card-media img { height: calc(9.5rem + 34px - var(--rib) - 8px); }
   .shop-scope .card--contest .premium-flag { top: calc(var(--rib) + 8px); }
-  .shop-scope .card--contest .card-wishlist { top: calc(var(--rib) + 6px); }
   .shop-scope .card-contest-title { font-size: 0.86rem; white-space: nowrap; }
   .shop-scope .card-contest-sub { font-size: 0.52rem; letter-spacing: 0.14em; white-space: nowrap; }
   .shop-scope .card-contest-orn { display: none; }

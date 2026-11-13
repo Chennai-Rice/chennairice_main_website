@@ -6,7 +6,7 @@
 // to update a hand-written file.
 //
 // Deliberately NOT listed: /admin and /blog/studio (private tools), /cart,
-// /wishlist and /checkout (per-visitor state, nothing to index), the legacy
+// and /checkout (per-visitor state, nothing to index), the legacy
 // .html redirects, and the "coming soon" placeholder pages — submitting thin
 // placeholder pages to Google invites them to be indexed as low-value.
 import { writeFileSync, readFileSync, existsSync } from 'node:fs'
@@ -143,7 +143,6 @@ const robots =
   'Disallow: /blog/studio\n' +
   'Disallow: /cart\n' +
   'Disallow: /checkout\n' +
-  'Disallow: /wishlist\n' +
   'Disallow: /warehouse\n' +
   'Disallow: /cloud\n' +
   '\n' +
