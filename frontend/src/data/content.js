@@ -40,7 +40,7 @@ export const NAV_LINKS = [
   { label: 'About Us', to: '/about-us' },
   { label: 'Infrastructure', to: '/infrastructure' },
   { label: 'Blog', to: '/blog' },
-  { label: 'Contact', to: '/contact-us' },
+  // Contact is the button at the end of the bar (NAV_CTA), so it is not repeated here.
   { label: 'Track Order', to: '/track-order' },
   // Refer a friend: a customer's code and rewards (only useful while it is switched on in /offers).
   { label: 'Refer a Friend', to: '/refer' },
@@ -55,7 +55,9 @@ export const NAV_CONTEST = {
   fallback: '/assets/contest-nav-logo.png',
 }
 
-export const NAV_CTA = { label: 'Bulk Order', to: '/bulk-order' }
+// The button at the end of the bar (Nov 2026: Contact Us for everyone; was Bulk Order, which is still
+// reached from the home page, the footer and the contact page's Bulk / wholesale choice).
+export const NAV_CTA = { label: 'Contact Us', to: '/contact-us' }
 
 export const HERO = {
   // Curly quotes rather than the straight " character: this is display
@@ -63,7 +65,6 @@ export const HERO = {
   // Owner, 24 Oct 2026: the old display line is now a small styled line above the heading.
   tagline: 'South India’s No. 1 Non-Basmati Rice Manufacturer',
   h1: 'Premium Ponni & Idli Rice from Erode',
-  intro: 'For over 75 years, Chennai Rice Industries has combined generations of milling expertise with modern technology to bring quality Ponni rice, Idli rice, and premium rice varieties to tables across India.',
   ctas: [
     { label: 'Shop Chennai Rice', to: '/rice-products', primary: true },
     { label: 'Bulk & Distributor Enquiry', to: '/bulk-order' },
