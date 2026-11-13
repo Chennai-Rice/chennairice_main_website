@@ -46,7 +46,9 @@ export const api = onRequest(
     // messages (/api/askeva/webhook?key=…), backend/lib/askeva-inbound.js.
     // NEODOVE_ENDPOINT: the NeoDove campaign's Custom Integration URL; NEODOVE_WEBHOOK_KEY:
     // the secret NeoDove's webhook sends (backend/lib/neodove.js).
-    // NEODOVE_ENDPOINT_GAYATHRI / _RAMYA / _LAVANYA: the three telecallers' campaigns; leads are shared equally between them.
+    // NEODOVE_ENDPOINT_META / _GOOGLE_ADS / _WHATSAPP / _CART / _ENQUIRY: one NeoDove campaign per lead source (neodove.js);
+    // only META is set so far (13 Nov 2026): add each campaign's secret here as it is created; until then its leads go round robin to
+    // NEODOVE_ENDPOINT_GAYATHRI / _RAMYA / _LAVANYA, the telecallers' old campaigns.
     // META_CAPI_TOKEN: the Meta Conversions API access token for the server-side
     // Purchase (backend/lib/sales/meta-capi.js).
     // WHATSAPP_TOKEN / WHATSAPP_APP_SECRET / WHATSAPP_VERIFY_TOKEN: Meta's WhatsApp Cloud API for /whatsapp
@@ -56,7 +58,7 @@ export const api = onRequest(
     // (Marketing & ads), for Analyst → Campaigns → Google Ads (backend/lib/sales/google-ads.js).
     // CFF_TAP_WEBHOOK_KEY: the Chennai Fresh Foods backend's AskEva key; Diwali contest button taps
     // are handed to it (backend/lib/cff-contest.js).
-    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY', 'AUTOMATION_API_KEY', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'ASKEVA_WEBHOOK_KEY', 'NEODOVE_ENDPOINT', 'NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA', 'NEODOVE_WEBHOOK_KEY', 'META_CAPI_TOKEN', 'SALESDADDY_MCP_TOKEN', 'CFF_TAP_WEBHOOK_KEY', 'META_ADS_TOKEN', 'WHATSAPP_TOKEN', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN'],
+    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'MSG91_AUTH_KEY', 'AUTOMATION_API_KEY', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'ASKEVA_WEBHOOK_KEY', 'NEODOVE_ENDPOINT', 'NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA', 'NEODOVE_ENDPOINT_META', 'NEODOVE_WEBHOOK_KEY', 'META_CAPI_TOKEN', 'SALESDADDY_MCP_TOKEN', 'CFF_TAP_WEBHOOK_KEY', 'META_ADS_TOKEN', 'WHATSAPP_TOKEN', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN'],
     // Runs as the backend account that phase1-setup.ps1 allowed into Cloud SQL
     // (Cloud SQL client) and nothing else.
     serviceAccount: 'api-backend@chennai-rice-website.iam.gserviceaccount.com',
@@ -79,7 +81,7 @@ export const salesJobs = onSchedule(
     schedule: 'every 10 minutes', region: 'asia-south1', timeZone: 'Asia/Kolkata', memory: '256MiB', timeoutSeconds: 120,
     // NEODOVE_PAYMENT_ENDPOINT / NEODOVE_DETAILS_ENDPOINT: the two checkout NeoDove campaigns (journey-followup.js);
     // until one holds a real https URL its leads wait in the outbox.
-    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'NEODOVE_ENDPOINT', 'NEODOVE_PAYMENT_ENDPOINT', 'NEODOVE_DETAILS_ENDPOINT', 'NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA', 'META_CAPI_TOKEN', 'WHATSAPP_TOKEN'], // the database, queued emails, CRM, WhatsApp, NeoDove and Meta Purchase retries
+    secrets: ['SMTP_PASS', 'DB_PASSWORD', 'SALESDADDY_API_KEY', 'ASKEVA_TOKEN', 'NEODOVE_ENDPOINT', 'NEODOVE_PAYMENT_ENDPOINT', 'NEODOVE_DETAILS_ENDPOINT', 'NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA', 'NEODOVE_ENDPOINT_LAVANYA', 'NEODOVE_ENDPOINT_META', 'META_CAPI_TOKEN', 'WHATSAPP_TOKEN'], // the database, queued emails, CRM, WhatsApp, NeoDove and Meta Purchase retries
     serviceAccount: 'api-backend@chennai-rice-website.iam.gserviceaccount.com',
   },
   async () => {

@@ -22,7 +22,7 @@ import {
 } from '../lib/consent.js'
 import { buildContactRow, buildBulkOrderRow, insertEnquiry } from '../lib/enquiries.js'
 import { pushCrmLead } from '../lib/crm.js'
-import { recordBulkEnquiry, sendNeodoveLeads } from '../lib/neodove.js'
+import { recordBulkEnquiry, recordContactEnquiry, sendNeodoveLeads } from '../lib/neodove.js'
 import {
   buildSessionRow,
   insertSession,
@@ -109,6 +109,13 @@ app.post('/api/contact', async (req, res) => {
   if (error) return res.status(400).json({ error })
   // Into the Sales Daddy CRM as well (best effort; never fails the form).
   await pushCrmLead('contact', { name: row.name, phone: row.phone, email: row.email, note: 'Contact form enquiry:\n' + row.enquiry })
+  // And to NeoDove's Enquiries campaign (best effort).
+  try {
+    const id = await recordContactEnquiry({ query }, { name: row.name, phone: row.phone, email: row.email, enquiry: row.enquiry })
+    if (id) await sendNeodoveLeads({ id })
+  } catch (err) {
+    console.error('[neodove] contact enquiry:', err.message)
+  }
 
   try {
     const stored = await insertEnquiry('contact_enquiries', row)
