@@ -214,12 +214,12 @@
 }
 
 /* ------------------------------------------- one ambassador: spotlight
-   Wide card: portrait on its tint panel (left), name, quote and role on the
-   cream panel (right). Stacks on phones, portrait on top. */
+   Wide card: name, quote and role on the cream panel (left), portrait on its
+   tint panel (right). Stacks on phones, portrait on top. */
 .celeb-spot {
   position: relative;
   z-index: 1;
-  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.86fr);
   grid-template-rows: none;
   width: min(840px, 100%);
   margin-inline: auto;
@@ -228,6 +228,7 @@
 }
 
 .celeb-spot-photo {
+  order: 2;
   position: relative;
   min-height: 460px;
   background: var(--tint);
@@ -302,6 +303,7 @@
     width: min(420px, 100%);
   }
   .celeb-spot-photo {
+    order: 0;
     min-height: 0;
     aspect-ratio: 1 / 1;
   }

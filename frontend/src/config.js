@@ -43,3 +43,10 @@ export const showCardPrices = import.meta.env.VITE_SHOW_PRICES === 'true'
  * turning it back on is one variable rather than a rebuild of the component.
  */
 export const showAmbassadors = import.meta.env.VITE_SHOW_AMBASSADORS === 'true'
+
+/**
+ * Whether "Why Tamil Homes Trust Chennai Rice?" (FeatureStrip) appears on the homepage, above the
+ * products. Off unless VITE_SHOW_WHY is exactly "true" (Nov 2026: shown locally only for now; the
+ * live build, .env.production, leaves it off).
+ */
+export const showWhy = import.meta.env.VITE_SHOW_WHY === 'true'
