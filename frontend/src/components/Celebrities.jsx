@@ -61,8 +61,8 @@ export default function Celebrities() {
   )
 }
 
-/** A single ambassador: portrait on its tinted panel beside the name, quote
- *  and role. Stacks (portrait on top) on phones — see celebrities.css. */
+/** A single ambassador: name, quote and role beside the portrait on its tinted
+ *  panel (portrait on the right). Stacks (portrait on top) on phones — see celebrities.css. */
 function Spotlight({ c }) {
   return (
     <figure className={`celeb-card celeb-spot is-${c.tone}`}>
