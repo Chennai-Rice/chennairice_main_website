@@ -285,7 +285,7 @@ export default function Broadcasts({ bulk = false }) {
                       <td className="wa-row-actions">
                         {b.status === 'draft' && <button type="button" className="wa-btn wa-btn--small" onClick={() => act(`/api/admin/whatsapp/broadcasts/${b.id}/launch`, 'POST', `Send "${b.name}" now?`)}>Send</button>}
                         {['scheduled', 'sending'].includes(b.status) && <button type="button" className="wa-btn wa-btn--small" onClick={() => act(`/api/admin/whatsapp/broadcasts/${b.id}/cancel`, 'POST', 'Stop this broadcast? Messages already sent stay sent.')}>Stop</button>}
-                        {['draft', 'cancelled'].includes(b.status) && <button type="button" className="wa-round wa-round--small" title="Delete" onClick={() => act(`/api/admin/whatsapp/broadcasts/${b.id}`, 'DELETE', 'Delete this broadcast?')}><I name="trash" size={13} /></button>}
+                        {['draft', 'cancelled', 'done'].includes(b.status) && <button type="button" className="wa-round wa-round--small" title="Delete" onClick={() => act(`/api/admin/whatsapp/broadcasts/${b.id}`, 'DELETE', b.status === 'done' ? `Delete "${b.name}" from this list? The messages already sent stay in the chats; its numbers leave the reports.` : 'Delete this broadcast?')}><I name="trash" size={13} /></button>}
                       </td>
                     </tr>
                   )

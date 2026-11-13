@@ -237,7 +237,8 @@ export async function cancelBroadcast(id, { query = defaultQuery } = {}) {
 
 export async function deleteBroadcast(id, { query = defaultQuery } = {}) {
   const { rows: [b] } = await query(`select status from wa_broadcasts where id = $1`, [id])
-  if (b && b.status !== 'draft' && b.status !== 'cancelled') throw httpError('Sent', { publicMessage: 'Only drafts and cancelled broadcasts can be deleted (sent ones stay for the reports).' })
+  // One still sending or waiting for its time is stopped first; a sent one can go (its messages stay in the chats).
+  if (b && (b.status === 'sending' || b.status === 'scheduled')) throw httpError('Busy', { publicMessage: 'Stop this broadcast first, then delete it.' })
   await query(`delete from wa_broadcasts where id = $1`, [id])
   return { ok: true }
 }
