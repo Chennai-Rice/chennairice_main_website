@@ -236,3 +236,14 @@ test('queue: no offers without a yes, none after STOP, 1 a day; utility still go
   assert.equal(outcome[5], 'sent')
   assert.deepEqual(sent, ['919000000001', '919000000003'])
 })
+
+test('broadcast files: CSV with quotes and a BOM, mobile and name columns found, values from columns', async () => {
+  const { parseSheet, guessColumns } = await import('../lib/wa/sheet.js')
+  const { valuesFor } = await import('../lib/wa/broadcasts.js')
+  const { columns, rows } = await parseSheet(Buffer.from('\uFEFFCustomer Name;Phone;Offer\nRavi Kumar;+91 98765 00001;"₹75; OFF"\n'), 'a.csv')
+  assert.deepEqual(columns, ['Customer Name', 'Phone', 'Offer'])
+  assert.equal(rows[0].Offer, '₹75; OFF')
+  assert.deepEqual(guessColumns(columns, rows), { phone: 'Phone', name: 'Customer Name' })
+  const v = valuesFor({ name: 'Ravi Kumar', cols: rows[0] }, { body: [{ from: 'first_name' }, { from: 'col', col: 'Offer' }], buttons: { 0: { from: 'col', col: 'Missing', text: 'x' } } })
+  assert.deepEqual(v, { body: ['Ravi', '₹75; OFF'], buttons: { 0: 'x' } })
+})

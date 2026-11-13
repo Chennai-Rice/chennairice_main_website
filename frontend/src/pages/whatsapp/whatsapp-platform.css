@@ -170,3 +170,12 @@
 .wa-attach button { border: 0; background: none; cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
 .wa-newchat { margin-bottom: 8px; }
 .wa-newchat input { flex: 1; min-width: 0; }
+
+/* Broadcasts → Upload a file: the file, its columns, a few rows and the permission tick. */
+.wa-seg--light { margin-bottom: 12px; }
+.wa-bc-file { display: grid; gap: 10px; margin-bottom: 12px; }
+.wa-bc-file > .wa-btn { justify-self: start; cursor: pointer; }
+.wa-bc-sample { max-height: 220px; overflow: auto; }
+.wa-bc-sample td, .wa-bc-sample th { white-space: nowrap; font-size: 12px; }
+.wa-bc-permission { align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.45; }
+.wa-bc-permission input { margin-top: 3px; flex: none; }

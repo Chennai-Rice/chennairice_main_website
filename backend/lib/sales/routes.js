@@ -61,7 +61,7 @@ import { getProfile as waProfile, saveProfile as saveWaProfile, setProfilePhoto 
 import { rawAnalytics, behaviour as webBehaviour, heatmap as webHeatmap } from './web-analytics.js'
 import { runWhatsAppAutomations, automationsAdmin, saveAutomations, testAutomation } from '../wa/automations.js'
 import { optIn as waOptIn, listContacts, contactsCsv, setTags, setPermission, importContacts } from '../wa/contacts.js'
-import { listBroadcasts, saveBroadcast, launchBroadcast, cancelBroadcast, deleteBroadcast, audience as broadcastAudience, FIELDS as BROADCAST_FIELDS } from '../wa/broadcasts.js'
+import { listBroadcasts, saveBroadcast, uploadBroadcastFile, launchBroadcast, cancelBroadcast, deleteBroadcast, audience as broadcastAudience, FIELDS as BROADCAST_FIELDS } from '../wa/broadcasts.js'
 import { report as waReport, reportCsv as waReportCsv } from '../wa/reports.js'
 import { listChats, getChat, replyText, replyMedia, replyTemplate, updateChat, addNote as addChatNote, listQuickReplies, saveQuickReply, deleteQuickReply } from '../wa/inbox.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
@@ -861,6 +861,11 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   // Phase 4: Broadcasts
   admin.get('/whatsapp/broadcasts', wa, wrap(async (req, res) => { noStore(res); res.json({ broadcasts: await listBroadcasts({ money: can(req.staff, 'money.view') }), fields: BROADCAST_FIELDS }) }))
   admin.post('/whatsapp/broadcasts', wa, wrap(async (req, res) => res.json(await saveBroadcast(req.body || {}, req.staff))))
+  // Send to a file: the CSV / Excel file itself as the body (up to 10 MB); ?name= the file name, ?id= the draft.
+  admin.post('/whatsapp/broadcasts/file', wa, express.raw({ type: () => true, limit: '10mb' }), wrap(async (req, res) => {
+    const buf = Buffer.isBuffer(req.body) && req.body.length ? req.body : req.rawBody
+    res.json(await uploadBroadcastFile(buf, String(req.query.name || ''), { id: req.query.id ? String(req.query.id) : null }, req.staff))
+  }))
   admin.post('/whatsapp/broadcasts/audience', wa, wrap(async (req, res) => { const a = await broadcastAudience(req.body || {}); delete a.people; res.json(a) }))
   admin.post('/whatsapp/broadcasts/:id/launch', wa, wrap(async (req, res) => res.json(await launchBroadcast(req.params.id, req.body || {}))))
   admin.post('/whatsapp/broadcasts/:id/cancel', wa, wrap(async (req, res) => res.json(await cancelBroadcast(req.params.id))))

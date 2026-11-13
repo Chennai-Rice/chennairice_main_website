@@ -18,6 +18,7 @@ import crypto from 'node:crypto'
 import { httpError, str, phoneKey, toRupees, formatInr, getSettings } from './util.js'
 import { requirePermission, audit } from './staff.js'
 import { referralsOn } from './discounts.js'
+import { queueCrmLead } from '../crm.js'
 import { queueEmail } from './email.js'
 
 const SITE = (process.env.PUBLIC_SITE_URL || 'https://chennairiceindustries.com').replace(/\/$/, '')
@@ -66,7 +67,14 @@ export async function ensureReferrer(db, order, settings = null) {
       `insert into referrers (phone, email, name, code_id) values ($1, $2, $3, $4)
        on conflict (phone) do nothing returning *`,
       [phone, str(order.contact_email).toLowerCase(), str(order.contact_name).slice(0, 120) || 'Customer', c.id])
-    if (r) return { ...r, code: c.code }
+    if (r) {
+      // Sales Daddy: the customer's lead gets the Refer a friend tag and a note (sent by the 10-minute job).
+      await queueCrmLead('referral', {
+        name: r.name, phone, email: r.email || undefined, source: 'website',
+        note: `Refer a friend: referral code ${c.code} (a friend gets ₹${s.friend} off their first order, the customer gets ₹${s.reward} when it is delivered).`,
+      }, db).catch((err) => console.error('[crm] referral:', err.message))
+      return { ...r, code: c.code }
+    }
     // Made a moment ago by another request: keep that one.
     await db.query('delete from discount_codes where id = $1', [c.id])
     const { rows: [again] } = await db.query(
@@ -153,6 +161,10 @@ export async function releaseReferralReward(db, order) {
     [ref.id, order.id, code.id])
   const amount = formatInr(code.amount_paise).replace('.00', '')
   const till = new Date(code.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })
+  await queueCrmLead('referral', {
+    name: ref.name, phone: ref.phone, email: ref.email || undefined, source: 'website',
+    note: `Refer a friend: ${str(order.contact_name) || 'a friend'}'s order ${order.order_number} was delivered. Reward ${amount} (code ${code.code}, valid till ${till}).`,
+  }, db).catch((err) => console.error('[crm] referral reward:', err.message))
   await queueEmail(db, {
     to: ref.email,
     template: 'referral_reward',
