@@ -4053,3 +4053,29 @@ test('NeoDove: leads called from own phones - one NeoDove has gets its remark (u
     fakeNeo.close()
   }
 })
+
+test('order link: staff make a signed link with packs, details and a code locked to the customer; checkout gets them back; a changed link is refused', async () => {
+  const make = (body, token = OWNER) => api('POST', '/api/admin/discounts/order-link', { token, body })
+  const code = await api('POST', '/api/admin/discounts', { token: OWNER, body: { code: 'GEORGEFREE', kind: 'free_delivery', lockedPhone: '9944018809', maxUses: 1, usesPerPhone: 1 } })
+  assert.equal(code.status, 200, JSON.stringify(code.body))
+  const contact = { name: 'Brian George Fernandez', phone: '+91 99440 18809', email: 'george@example.com', city: 'Erode', state: 'Tamil Nadu', pincode: '638012' }
+  assert.equal((await api('POST', '/api/admin/discounts/order-link', { body: { items: [{ slug: 'alibaba', kg: 10, qty: 1 }], contact } })).status, 401)
+  assert.equal((await make({ items: [], contact })).status, 400)
+  assert.match((await make({ items: [{ slug: 'alibaba', kg: 7, qty: 1 }], contact })).body.error, /Not for sale/)
+  assert.match((await make({ items: [{ slug: 'alibaba', kg: 10, qty: 1 }], contact: { ...contact, phone: '9876500000' }, code: 'GEORGEFREE' })).body.error, /another mobile/)
+  const r = await make({ items: [{ slug: 'alibaba', kg: 10, qty: 2 }], contact, code: 'georgefree' })
+  assert.equal(r.status, 200, JSON.stringify(r.body))
+  assert.equal(r.body.code, 'GEORGEFREE')
+  const token = /resume=(.+)$/.exec(r.body.url)[1]
+  const back = await api('GET', `/api/cart/resume/${token}`)
+  assert.equal(back.status, 200, JSON.stringify(back.body))
+  assert.equal(back.body.items[0].id, 'alibaba-10kg')
+  assert.equal(back.body.items[0].qty, 2)
+  assert.equal(back.body.contact.phone, '9944018809')
+  assert.equal(back.body.contact.pincode, '638012')
+  assert.equal(back.body.code, 'GEORGEFREE')
+  // Someone changing the packs in the link: the signature no longer matches.
+  const [, data, sig] = token.split('.')
+  const forged = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(data, 'base64url')), i: [['alibaba', 10, 9]] })).toString('base64url')
+  assert.equal((await api('GET', `/api/cart/resume/o.${forged}.${sig}`)).status, 404)
+})

@@ -6,7 +6,7 @@ import { staffJson } from '../../services/staffAuth.js'
 // (settings.manage); the backend checks every value again. Spin & Win and referral codes show here too.
 const EMPTY = {
   code: '', kind: 'amount', amount: '50', percent: '10', maxOff: '', minOrder: '', region: '',
-  maxUses: '', usesPerPhone: '1', firstOrderOnly: false, startsAt: '', expiresAt: '', note: '',
+  maxUses: '', usesPerPhone: '1', lockedPhone: '', firstOrderOnly: false, startsAt: '', expiresAt: '', note: '',
 }
 const SOURCE = { manual: 'Made here', spin: 'Spin & Win', referral: 'Referral', reward: 'Referral reward' }
 const REGION = { '': 'All India', TN: 'Tamil Nadu', SOUTH: 'South India', NORTH: 'North India', NE: 'North East' }
@@ -19,6 +19,7 @@ export default function DiscountCodes({ say, onAuthError }) {
   const [adding, setAdding] = useState(false)
   const [busy, setBusy] = useState(false)
   const [source, setSource] = useState('')
+  const [linking, setLinking] = useState(false)
 
   const load = useCallback(() => {
     staffJson('/api/admin/discounts' + (source ? '?source=' + source : ''))
@@ -73,6 +74,7 @@ export default function DiscountCodes({ say, onAuthError }) {
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 10 }}>
         {!adding && <button type="button" className="wh-btn wh-btn--primary" onClick={() => setAdding(true)}>Add a code</button>}
+        <button type="button" className="wh-btn" onClick={() => setLinking((v) => !v)}>{linking ? 'Close order link' : 'Order link for a customer'}</button>
         <label className="wh-select" style={{ minWidth: 180 }}>
           <select value={source} onChange={(e) => setSource(e.target.value)} aria-label="Which codes">
             <option value="">All codes</option>
@@ -80,6 +82,8 @@ export default function DiscountCodes({ say, onAuthError }) {
           </select>
         </label>
       </div>
+
+      {linking && <OrderLink say={say} onAuthError={onAuthError} codes={data.codes.filter((c) => c.active)} />}
 
       {adding && (
         <form onSubmit={save} style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', margin: '12px 0 18px' }}>
@@ -121,6 +125,9 @@ export default function DiscountCodes({ say, onAuthError }) {
           </label>
           <label className="wh-field"><span>Uses per mobile number</span>
             <input className="wh-input" type="number" min="1" max="100" value={form.usesPerPhone} onChange={set('usesPerPhone')} required />
+          </label>
+          <label className="wh-field"><span>Only this mobile (optional)</span>
+            <input className="wh-input" inputMode="numeric" value={form.lockedPhone} onChange={set('lockedPhone')} placeholder="Anyone" maxLength={14} />
           </label>
           <label className="wh-field"><span>From (optional)</span>
             <input className="wh-input" type="date" value={form.startsAt} onChange={set('startsAt')} />
@@ -185,5 +192,91 @@ export default function DiscountCodes({ say, onAuthError }) {
         </table>
       </div>
     </section>
+  )
+}
+
+const NO_LINK = { name: '', phone: '', email: '', addressLine1: '', addressLine2: '', city: '', state: '', pincode: '', code: '' }
+
+/** One customer's order link: checkout opens with these packs, their details and the code; they only press Pay. */
+function OrderLink({ say, onAuthError, codes }) {
+  const [catalog, setCatalog] = useState([])
+  const [lines, setLines] = useState([{ pack: '', qty: 1 }])
+  const [f, setF] = useState(NO_LINK)
+  const [out, setOut] = useState(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    fetch('/api/catalog').then((r) => r.json()).then((d) => setCatalog(d.products || [])).catch(() => {})
+  }, [])
+  const packs = catalog.flatMap((p) => p.variants.filter((v) => v.price != null).map((v) => ({
+    key: p.slug + '|' + Number(v.packKg), label: `${p.name} (${Number(v.packKg)} kg) · ${rupees(v.price)}`,
+  })))
+  const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
+  const setLine = (n, k, v) => setLines((ls) => ls.map((l, i) => (i === n ? { ...l, [k]: v } : l)))
+
+  async function make(e) {
+    e.preventDefault()
+    setBusy(true)
+    try {
+      const items = lines.filter((l) => l.pack).map((l) => { const [slug, kg] = l.pack.split('|'); return { slug, kg: Number(kg), qty: Number(l.qty) } })
+      const { code, ...contact } = f
+      setOut(await staffJson('/api/admin/discounts/order-link', { method: 'POST', body: JSON.stringify({ items, contact, code }) }))
+    } catch (err) {
+      if (!onAuthError(err)) say(err.message, 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function copy() {
+    try { await navigator.clipboard.writeText(out.url); say('Link copied. Send it to the customer.') } catch { say('Select the link and copy it.', 'error') }
+  }
+
+  return (
+    <form onSubmit={make} style={{ border: '1px solid rgba(74,44,34,0.15)', borderRadius: 12, padding: 14, margin: '12px 0 18px' }}>
+      <h3 style={{ margin: '0 0 4px' }}>Order link for one customer</h3>
+      <p className="wh-muted wh-small" style={{ marginTop: 0 }}>
+        The link opens checkout with these packs, the customer's details and the code filled in, so they only check and press Pay.
+        Today's prices and delivery are used, and the code's rules are checked again. For a code only this customer can use, add it
+        first with "Only this mobile" and "Uses in all: 1". The link works for 30 days.
+      </p>
+      {lines.map((l, n) => (
+        <div key={n} style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+          <span className="wh-select" style={{ flex: '1 1 260px' }}><select value={l.pack} onChange={(e) => setLine(n, 'pack', e.target.value)} aria-label="Pack">
+            <option value="">Choose a pack…</option>
+            {packs.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+          </select></span>
+          <input className="wh-input" type="number" min="1" max="50" value={l.qty} onChange={(e) => setLine(n, 'qty', e.target.value)} style={{ width: 80 }} aria-label="How many" />
+          {lines.length > 1 && <button type="button" className="wh-btn wh-btn--small" onClick={() => setLines((ls) => ls.filter((_, i) => i !== n))}>Remove</button>}
+        </div>
+      ))}
+      <button type="button" className="wh-btn wh-btn--small" onClick={() => setLines((ls) => [...ls, { pack: '', qty: 1 }])}>+ Another pack</button>
+      <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginTop: 12 }}>
+        <label className="wh-field"><span>Name</span><input className="wh-input" value={f.name} onChange={set('name')} required /></label>
+        <label className="wh-field"><span>Mobile</span><input className="wh-input" inputMode="numeric" value={f.phone} onChange={set('phone')} required /></label>
+        <label className="wh-field"><span>Email</span><input className="wh-input" type="email" value={f.email} onChange={set('email')} /></label>
+        <label className="wh-field"><span>Address (door, street)</span><input className="wh-input" value={f.addressLine1} onChange={set('addressLine1')} /></label>
+        <label className="wh-field"><span>Area / landmark</span><input className="wh-input" value={f.addressLine2} onChange={set('addressLine2')} /></label>
+        <label className="wh-field"><span>City</span><input className="wh-input" value={f.city} onChange={set('city')} /></label>
+        <label className="wh-field"><span>State</span><input className="wh-input" value={f.state} onChange={set('state')} /></label>
+        <label className="wh-field"><span>PIN code</span><input className="wh-input" inputMode="numeric" maxLength={6} value={f.pincode} onChange={set('pincode')} /></label>
+        <label className="wh-field"><span>Code (optional)</span>
+          <span className="wh-select"><select value={f.code} onChange={set('code')}>
+            <option value="">No code</option>
+            {codes.map((c) => <option key={c.id} value={c.code}>{c.code} · {c.label}{c.lockedPhone ? ' · only ' + c.lockedPhone : ''}</option>)}
+          </select></span>
+        </label>
+      </div>
+      <div style={{ marginTop: 12 }}><button type="submit" className="wh-btn wh-btn--primary" disabled={busy}>{busy ? 'Making…' : 'Make the link'}</button></div>
+      {out && (
+        <div style={{ marginTop: 14 }}>
+          <p className="wh-small" style={{ margin: '0 0 6px' }}>
+            {out.items.map((i) => `${i.qty} × ${i.name}`).join(', ')} · rice {rupees(out.subtotal)} (before delivery){out.code ? ` · code ${out.code}` : ''}
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input className="wh-input" readOnly value={out.url} onFocus={(e) => e.target.select()} style={{ flex: 1 }} />
+            <button type="button" className="wh-btn wh-btn--primary" onClick={copy}>Copy</button>
+          </div>
+        </div>
+      )}
+    </form>
   )
 }

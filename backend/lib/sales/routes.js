@@ -23,7 +23,7 @@ import { handleRazorpayWebhook } from './webhooks.js'
 import { runJobs } from './jobs.js'
 import { sendQueued } from './email.js'
 import { pinInfo, searchAreas } from './places.js'
-import { resumeCart, unsubscribeCart, cartRemindersAdmin, saveCartReminderSettings } from './cart-recovery.js'
+import { resumeCart, makeOrderLink, unsubscribeCart, cartRemindersAdmin, saveCartReminderSettings } from './cart-recovery.js'
 import { reviewForm, submitReview, publicReviews, adminReviews, setReviewStatus } from './reviews.js'
 import { staffAuth, permissionsFor, requirePermission, listStaff, createStaff, updateStaff, can } from './staff.js'
 import {
@@ -721,6 +721,8 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/discounts', wrap(async (req, res) => res.json(await listDiscountCodes({ query }, req.staff, req.query))))
   admin.post('/discounts', wrap(async (req, res) => res.json({ code: await createDiscountCode({ query }, req.staff, req.body) })))
   admin.patch('/discounts/:id', wrap(async (req, res) => res.json({ code: await setDiscountCodeActive({ query }, req.staff, req.params.id, req.body?.active) })))
+  // An order link for one customer: checkout opens with the packs, their details and the code filled in.
+  admin.post('/discounts/order-link', wrap(async (req, res) => res.json(await makeOrderLink({ query }, req.staff, req.body))))
   // Warehouse → Settings → Spin & Win (owners and IT): prizes, chances, budget, on/off, and how it is doing.
   // Warehouse → Settings → Refer a friend (owners and IT): amounts, limit, on/off, top referrers, rewards.
   admin.get('/referrals', wrap(async (req, res) => res.json(await referralAdmin({ query }, req.staff))))

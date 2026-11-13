@@ -258,9 +258,78 @@ async function resumeRetry(db, t) {
   }
 }
 
+// ---------------------------------------------------------------- order links
+
+// An order link a staff member makes for one customer (Warehouse → Settings → Discount codes → Order link):
+// /checkout?resume=o.<data>.<signature> opens checkout with these packs, the customer's details and the code,
+// so they only check and press Pay. The data is signed, so nobody can change the packs or the code in it; the
+// price is always today's, and the code's own rules (only this mobile, one use) are checked again at checkout.
+const ORDER_LINK_DAYS = 30
+const linkSig = (data) => crypto.createHmac('sha256', retryKey()).update('order-link:' + data).digest('base64url').slice(0, 24)
+
+/** The packs (slug + pack kg) that can be ordered, with today's price and name. */
+async function orderablePacks(db, items) {
+  const { rows } = await db.query(
+    `select p.slug, p.name, p.image_url, v.pack_kg, v.price_paise from product_variants v join products p on p.id = v.product_id
+      where v.is_active and p.is_active and v.price_paise is not null and p.slug = any($1)`, [[...new Set(items.map((i) => i.slug))]])
+  return items.map((i) => {
+    const v = rows.find((r) => r.slug === i.slug && Number(r.pack_kg) === Number(i.kg))
+    return v ? { id: `${v.slug}-${Number(v.pack_kg)}kg`, name: `${v.name} (${Number(v.pack_kg)} kg)`, qty: i.qty, price: Number(v.price_paise) / 100, packKg: Number(v.pack_kg), image: v.image_url } : null
+  })
+}
+
+export async function makeOrderLink(db, staff, body = {}) {
+  requirePermission(staff, 'settings.manage')
+  const items = (Array.isArray(body.items) ? body.items : [])
+    .map((i) => ({ slug: str(i.slug), kg: Number(i.kg), qty: Math.floor(Number(i.qty)) }))
+    .filter((i) => i.slug && i.kg > 0 && i.qty > 0)
+  if (!items.length) throw httpError('Add at least one pack.')
+  if (items.length > 20 || items.some((i) => i.qty > 50)) throw httpError('At most 20 packs, 50 of each.')
+  const packs = await orderablePacks(db, items)
+  const missing = items.filter((_, n) => !packs[n])
+  if (missing.length) throw httpError(`Not for sale now: ${missing.map((i) => `${i.slug} ${i.kg} kg`).join(', ')}.`)
+  const c = body.contact || {}
+  const phone = str(c.phone).replace(/\D/g, '').slice(-10)
+  if (!/^[6-9]\d{9}$/.test(phone)) throw httpError('Enter the customer\'s 10-digit mobile number.')
+  const code = str(body.code).toUpperCase()
+  if (code) {
+    const { rows: [d] } = await db.query('select locked_phone, is_active from discount_codes where code = $1', [code])
+    if (!d) throw httpError(`There is no code ${code}.`)
+    if (!d.is_active) throw httpError(`${code} is switched off.`)
+    if (d.locked_phone && d.locked_phone !== phone) throw httpError(`${code} belongs to another mobile number.`)
+  }
+  const clip = (v, n) => str(v).slice(0, n)
+  const data = Buffer.from(JSON.stringify({
+    i: items.map((i) => [i.slug, i.kg, i.qty]),
+    c: { n: clip(c.name, 100), p: phone, e: clip(c.email, 200), a1: clip(c.addressLine1, 200), a2: clip(c.addressLine2, 200), ci: clip(c.city, 80), s: clip(c.state, 80), pin: clip(c.pincode, 6) },
+    d: code || null,
+    x: Date.now() + ORDER_LINK_DAYS * 86400000,
+  })).toString('base64url')
+  const token = `o.${data}.${linkSig(data)}`
+  const subtotal = packs.reduce((t, p) => t + Math.round(p.price * 100) * p.qty, 0)
+  return { url: `${SITE}/checkout?resume=${token}`, items: packs, subtotal: subtotal / 100, code: code || null, validDays: ORDER_LINK_DAYS }
+}
+
+async function resumeOrderLink(db, t) {
+  const [, data, sig] = /^o\.([A-Za-z0-9_-]{20,3000})\.([A-Za-z0-9_-]{24})$/.exec(t) || []
+  if (!data || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(linkSig(data)))) {
+    throw httpError('Bad link', { status: 404, publicMessage: 'This link is not valid.' })
+  }
+  const o = JSON.parse(Buffer.from(data, 'base64url').toString('utf8'))
+  if (!(o.x > Date.now())) throw httpError('Expired link', { status: 404, publicMessage: 'This link has expired. Please ask us for a new one.' })
+  const packs = (await orderablePacks(db, o.i.map(([slug, kg, qty]) => ({ slug, kg, qty })))).filter(Boolean)
+  const c = o.c || {}
+  return {
+    items: packs,
+    contact: { name: c.n || '', phone: c.p || '', email: c.e || '', addressLine1: c.a1 || '', addressLine2: c.a2 || '', city: c.ci || '', state: c.s || '', pincode: c.pin || '' },
+    code: o.d || null,
+  }
+}
+
 export async function resumeCart(db, token) {
   const t = str(token)
   if (t.startsWith('r.')) return resumeRetry(db, t)
+  if (t.startsWith('o.')) return resumeOrderLink(db, t)
   if (!/^[A-Za-z0-9_-]{16,40}$/.test(t)) throw httpError('Bad link', { status: 404, publicMessage: 'This link is not valid.' })
   const { rows: [r] } = await db.query(
     `select r.id, r.sent_at, r.clicked_at, j.items, j.contact_name, j.contact_phone, j.contact_email, j.city, j.state, j.pincode,
