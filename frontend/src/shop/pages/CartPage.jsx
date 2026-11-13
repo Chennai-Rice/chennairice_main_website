@@ -39,7 +39,7 @@ export default function CartPage() {
           <div className="cart-empty">
             <p className="cart-empty-title">Your cart is empty</p>
             <p>Pick a pack from the range and it will show up here.</p>
-            <Link className="checkout-btn checkout-btn--link" to="/">
+            <Link className="checkout-btn checkout-btn--link" to="/rice-products">
               Browse the packs
             </Link>
           </div>
