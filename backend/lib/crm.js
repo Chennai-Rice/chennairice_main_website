@@ -85,6 +85,9 @@ export const CRM_TAGS = {
   whatsapp_chat: 'whatsapp',
   // A NeoDove call, on any of the team's NeoDove campaigns (neodove.js).
   call_result: 'NeoDove call',
+  // Offers (Nov 2026): everyone who spun the Spin & Win wheel, and Refer a friend (code made, reward earned).
+  spin_wheel: 'Spin & Win',
+  referral: 'Refer a friend',
   // On an ad sign-up until that mobile pays for an order (taken off by the paid note).
   notConverted: 'Not converted',
 }
