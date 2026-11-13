@@ -99,7 +99,7 @@ export default function DiscountCodes({ say, onAuthError }) {
           </label>
           {form.kind === 'amount' && (
             <label className="wh-field"><span>Amount off (₹)</span>
-              <input className="wh-input" type="number" min="1" max="5000" value={form.amount} onChange={set('amount')} required />
+              <input className="wh-input" type="number" min="1" max="5000" step="0.01" value={form.amount} onChange={set('amount')} required />
             </label>
           )}
           {form.kind === 'percent' && (
