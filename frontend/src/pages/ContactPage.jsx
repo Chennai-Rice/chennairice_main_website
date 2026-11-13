@@ -8,25 +8,16 @@ import { PAGE_META } from '../seo.js'
 
 /*
   Contact (Nov 2026): one form for every kind of visitor. They choose their segment in the dropdown
-  (the same keys and labels the server knows, backend/lib/enquiries.js — every segment of the owner's
-  lead list) and the message hint follows. Segment, name, mobile and a message are needed; email and
+  (keys and labels the server knows, backend/lib/enquiries.js; five segments, owner 13 Nov 2026)
+  and the message hint follows. Segment, name, mobile and a message are needed; email and
   city are optional.
 */
-const TRADE = 'Varieties, quantities and your delivery location.'
 const TOPICS = [
-  { key: 'customer', label: 'Customer', hint: 'Buying rice, a question about an order, or feedback — tell us here.' },
-  { key: 'wholesaler', label: 'Wholesaler', hint: TRADE },
-  { key: 'retailer', label: 'Retailer', hint: 'Your shop, its area, and the rice and pack sizes you need.' },
   { key: 'distributor', label: 'Distributor', hint: 'Your area, your business and how you sell today.' },
-  { key: 'wholesale_distributors', label: 'Wholesale Distributors', hint: TRADE },
-  { key: 'sudehy', label: 'SuDeHy (Supermarket / Hypermarket / Departmental Stores)', hint: 'Your stores, their locations, and the rice and pack sizes you need.' },
+  { key: 'wholesaler', label: 'Wholesaler', hint: 'Varieties, quantities and your delivery location.' },
+  { key: 'retailer', label: 'Retailer', hint: 'Your shop, its area, and the rice and pack sizes you need.' },
+  { key: 'consumer', label: 'Consumer', hint: 'Buying rice, a question about an order, or feedback — tell us here.' },
   { key: 'horeca', label: 'HoReCa (Hotels, Restaurants, Caterers)', hint: 'Your business, the rice you use and how much each month.' },
-  { key: 'batter_making', label: 'Batter Making', hint: 'The rice you use for batter, and how much each month.' },
-  { key: 'exporters', label: 'Exporters', hint: 'Varieties, quantities, destination country and packing.' },
-  { key: 'rice_millers', label: 'Rice Millers', hint: 'What you are looking for, and quantities.' },
-  { key: 'retail_consumers', label: 'Retail Consumers', hint: 'Buying rice, a question about an order, or feedback — tell us here.' },
-  { key: 'b2c', label: 'B2C', hint: 'How can we help?' },
-  { key: 'na', label: 'NA', hint: 'How can we help?' },
 ]
 
 const EMPTY = { name: '', phone: '', email: '', city: '', enquiry: '' }
