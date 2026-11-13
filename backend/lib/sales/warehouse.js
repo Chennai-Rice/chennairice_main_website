@@ -355,7 +355,7 @@ export async function listWarehouseCustomers(f = {}, { maxLimit = 100 } = {}) {
     ), labeled as (
       select *, case
                when source ~ '^meta_ads' or source in ('facebook', 'instagram') then 'Meta'
-               when source = 'google_ads' then 'Google Ads'
+               when source in ('google_ads', 'google_shopping') then 'Google Ads'
                when source = 'google_search' then 'Google search'
                when source = 'whatsapp' then 'WhatsApp'
                when source = 'expo' then 'Expo QR'

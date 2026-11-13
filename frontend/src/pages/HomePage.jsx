@@ -14,8 +14,9 @@ export default function HomePage() {
   return (
     <main>
       <Hero />
-      <ProductsShowcase />
+      {/* Why Tamil Homes Trust Chennai Rice: above the products (Nov 2026). */}
       <FeatureStrip />
+      <ProductsShowcase />
       {/* Brand Ambassadors is behind a switch rather than deleted — the
           section, its copy and its portraits all stay in the repo, so putting
           it back is a change of one environment variable. */}

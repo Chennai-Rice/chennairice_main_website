@@ -1,15 +1,12 @@
 import { FEATURES, FEATURES_TITLE, PRODUCTS } from '../data/content.js'
-import { showAmbassadors } from '../config.js'
+import SectionHead from './SectionHead.jsx'
 import './featurestrip.css'
 
-/* Each cut is filled with the colour of the section it meets, so the band
-   reads as cut out of the page rather than laid on top of it. Both were
-   hardcoded, and both drifted: the showcase above now finishes on the last
-   pack's tint, and with Brand Ambassadors switched off the section below is
-   Testimonials, not the paler Brand Ambassadors ground. Derived here so they
-   follow the page as it actually renders. */
-const ABOVE = PRODUCTS[PRODUCTS.length - 1]?.tint || '#f8f3e9'
-const BELOW = showAmbassadors ? '#faf5e9' : '#f6efdc'
+/* "Why Tamil Homes Trust Chennai Rice?" (Nov 2026): moved up to sit between the hero and Our
+   Bestsellers, and made light to suit that place: after the dark film a second dark band felt
+   heavy. Its ground is the first pack's tint, the colour the hero's wave is filled with and the
+   showcase opens on, so the three read as one surface. Six cards, one per reason. */
+const GROUND = PRODUCTS[0]?.tint || '#f8f3e9'
 
 /* Thin-line gold icons traced to match the reference strip. */
 const ICONS = {
@@ -66,75 +63,34 @@ const ICONS = {
 
 export default function FeatureStrip() {
   return (
-    <section className="feat">
-      <div className="feat-band">
-        <svg className="feat-cut feat-cut-top" viewBox="0 0 1440 46" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M0,0 L1440,0 L1440,10 C1080,52 420,52 0,10 Z" fill={ABOVE} />
-          <path
-            d="M0,10 C420,52 1080,52 1440,10"
-            fill="none"
-            stroke="url(#featGoldRim)"
-            strokeWidth="3"
-            vectorEffect="non-scaling-stroke"
-          />
-          <defs>
-            <linearGradient id="featGoldRim" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stopColor="#8a6a25" />
-              <stop offset="0.35" stopColor="#e3c878" />
-              <stop offset="0.65" stopColor="#c69a3f" />
-              <stop offset="1" stopColor="#8a6a25" />
-            </linearGradient>
-          </defs>
-        </svg>
-
-        <h2 className="feat-title">{FEATURES_TITLE}</h2>
-
-        <div className="container feat-row">
-          {FEATURES.map(f => (
-            <div className="feat-cell" key={f.icon}>
-              <svg
-                className="feat-icon"
-                width="44"
-                height="44"
-                viewBox="0 0 44 44"
-                fill="none"
-                stroke="#dcb96e"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                {ICONS[f.icon]}
-              </svg>
-              <h3 className="feat-label">
-                {f.label.map((line, i) => (
-                  <span key={line}>{i > 0 && ' '}{line}</span>
-                ))}
-              </h3>
-              <p className="feat-text">{f.text}</p>
-            </div>
-          ))}
+    <section className="feat" style={{ backgroundColor: GROUND }} aria-labelledby="feat-title">
+      <div className="container">
+        <div className="feat-head" id="feat-title">
+          <SectionHead label="Why Chennai Rice" title={FEATURES_TITLE} />
         </div>
-
-        {/* Filled with the section that follows — see BELOW above. */}
-        <svg className="feat-cut feat-cut-bottom" viewBox="0 0 1440 46" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M0,46 L0,36 C420,-6 1080,-6 1440,36 L1440,46 Z" fill={BELOW} />
-          <path
-            d="M0,36 C420,-6 1080,-6 1440,36"
-            fill="none"
-            stroke="url(#featGoldRimB)"
-            strokeWidth="3"
-            vectorEffect="non-scaling-stroke"
-          />
-          <defs>
-            <linearGradient id="featGoldRimB" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stopColor="#8a6a25" />
-              <stop offset="0.35" stopColor="#e3c878" />
-              <stop offset="0.65" stopColor="#c69a3f" />
-              <stop offset="1" stopColor="#8a6a25" />
-            </linearGradient>
-          </defs>
-        </svg>
+        <ul className="feat-grid">
+          {FEATURES.map((f) => (
+            <li className="feat-card" key={f.icon}>
+              <span className="feat-badge" aria-hidden="true">
+                <svg
+                  className="feat-icon"
+                  width="30"
+                  height="30"
+                  viewBox="0 0 44 44"
+                  fill="none"
+                  stroke="#e6c67c"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  {ICONS[f.icon]}
+                </svg>
+              </span>
+              <h3 className="feat-label">{f.label.join(' ')}</h3>
+              <p className="feat-text">{f.text}</p>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   )

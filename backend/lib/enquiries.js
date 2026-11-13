@@ -14,22 +14,51 @@ function str(value) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+/** Who is writing: the contact page's "Segment" dropdown (Nov 2026; includes every segment of the
+ * owner's lead list). The page lists the same keys and labels (ContactPage.jsx). */
+export const CONTACT_TOPICS = {
+  customer: 'Customer',
+  wholesaler: 'Wholesaler',
+  retailer: 'Retailer',
+  distributor: 'Distributor',
+  wholesale_distributors: 'Wholesale Distributors',
+  sudehy: 'SuDeHy (Supermarket / Hypermarket / Departmental Stores)',
+  horeca: 'HoReCa (Hotels, Restaurants, Caterers)',
+  batter_making: 'Batter Making',
+  exporters: 'Exporters',
+  rice_millers: 'Rice Millers',
+  retail_consumers: 'Retail Consumers',
+  b2c: 'B2C',
+  na: 'NA',
+}
+
 /**
  * Validates a /contact submission and shapes it into a contact_enquiries row.
- * Returns { row } on success or { error } with a client-safe message.
+ * Returns { row, topic } on success or { error } with a client-safe message.
+ *
+ * Who they are, name, mobile and a message are needed; email is optional (many customers only use a
+ * phone) but checked when given. Who they are and the city/PIN go at the top of the saved message,
+ * so the team sees them in /admin and the CRM without a new column.
  */
 export function buildContactRow(body) {
   const name = str(body?.name)
   const email = str(body?.email)
   const phone = str(body?.phone)
-  const enquiry = str(body?.enquiry)
+  const message = str(body?.enquiry)
+  const topicKey = str(body?.topic)
+  // An older cached page sends no type: saved as "Not given" rather than refused.
+  const topic = Object.hasOwn(CONTACT_TOPICS, topicKey) ? CONTACT_TOPICS[topicKey] : topicKey ? '' : 'Not given'
+  const city = str(body?.city).slice(0, 80)
 
+  if (!topic) return { error: 'Please select a segment.' }
   if (!name) return { error: 'Please tell us your name.' }
-  if (!email || !EMAIL_PATTERN.test(email)) return { error: 'A valid email address is required.' }
   if (!phone || !PHONE_PATTERN.test(phone)) return { error: 'A valid phone number is required.' }
-  if (!enquiry) return { error: 'Please tell us what you need.' }
+  if (email && !EMAIL_PATTERN.test(email)) return { error: 'That email address does not look right.' }
+  if (!message) return { error: 'Please tell us what you need.' }
 
-  return { row: { name, email, phone, enquiry } }
+  const enquiry = ['Segment: ' + topic, city ? 'City / PIN: ' + city : ''].filter(Boolean).join('\n') + '\n\n' + message
+
+  return { row: { name, email, phone, enquiry }, topic }
 }
 
 /**

@@ -16,7 +16,7 @@ const RICE = { raw: 'Raw', idli: 'Idli', boiled: 'Boiled' }
 // Order sources as the Reports page names them (attribution.js SOURCES).
 const SOURCE = {
   meta_ads_facebook: 'Meta ad · Facebook', meta_ads_instagram: 'Meta ad · Instagram', meta_ads: 'Meta ad', google_ads: 'Google Ads',
-  facebook: 'Facebook (not an ad)', instagram: 'Instagram (not an ad)', google_search: 'Google search', whatsapp: 'WhatsApp',
+  google_shopping: 'Google Ads · Shopping (Merchant Center)', facebook: 'Facebook (not an ad)', instagram: 'Instagram (not an ad)', google_search: 'Google search', whatsapp: 'WhatsApp',
   expo: 'Expo QR', other_website: 'Other website', direct: 'Direct / typed the address',
 }
 const TABS = [
@@ -277,7 +277,7 @@ function leadChannel(l) {
   if (l.kind === 'whatsapp' || s === 'whatsapp') return 'whatsapp'
   if (l.kind === 'expo' || s === 'expo') return 'expo'
   if (s.startsWith('meta_ads') || ((s === 'facebook' || s === 'instagram') && String(l.campaign || '').trim())) return 'meta'
-  if (s === 'google_ads') return 'google_ads'
+  if (s === 'google_ads' || s === 'google_shopping') return 'google_ads'
   if (s === 'google_search') return 'google_search'
   if (!s || s === 'direct') return 'direct'
   return 'other'

@@ -105,11 +105,12 @@ app.post('/api/consent', async (req, res) => {
 /* Enquiry forms — mirror api/contact.js and api/bulk-order.js so they behave
    the same against the dev proxy as they do on Vercel. */
 app.post('/api/contact', async (req, res) => {
-  const { row, error } = buildContactRow(req.body)
+  const { row, topic, error } = buildContactRow(req.body)
   if (error) return res.status(400).json({ error })
-  // Into the Sales Daddy CRM as well (best effort; never fails the form).
-  await pushCrmLead('contact', { name: row.name, phone: row.phone, email: row.email, note: 'Contact form enquiry:\n' + row.enquiry })
-  // And to NeoDove's Enquiries campaign (best effort).
+  // Into the Sales Daddy CRM as well (best effort; never fails the form). The segment is also the first
+  // line of the message (buildContactRow); email is optional.
+  await pushCrmLead('contact', { name: row.name, phone: row.phone, email: row.email || undefined, note: 'Contact form enquiry (' + topic + '):\n' + row.enquiry })
+  // And to NeoDove's Enquiries campaign (best effort); the message starts with the segment line.
   try {
     const id = await recordContactEnquiry({ query }, { name: row.name, phone: row.phone, email: row.email, enquiry: row.enquiry })
     if (id) await sendNeodoveLeads({ id })

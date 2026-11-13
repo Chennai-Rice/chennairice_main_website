@@ -22,6 +22,7 @@ const ten = (col) => `right(regexp_replace(coalesce(${col}, ''), '\\D', '', 'g')
 const GROUP = {
   meta_ads_facebook: 'Meta Ads', meta_ads_instagram: 'Meta Ads', meta_ads: 'Meta Ads',
   google_ads: 'Google Ads',
+  google_shopping: 'Google Ads', // Merchant Center buyers count as Google Ads (owner, 13 Nov 2026)
   whatsapp: 'WhatsApp',
   facebook: 'Facebook / Instagram (not ads)', instagram: 'Facebook / Instagram (not ads)',
   google_search: 'Google search',

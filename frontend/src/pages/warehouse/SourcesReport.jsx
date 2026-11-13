@@ -29,7 +29,7 @@ const META_PARAMS = 'utm_source={{site_source_name}}&utm_medium=paid&utm_campaig
 const GOOGLE_SUFFIX = 'utm_source=google&utm_medium=cpc&utm_campaign={campaignid}&utm_content={creative}'
 
 const TONE = {
-  meta_ads_facebook: '#1877f2', meta_ads_instagram: '#d6249f', meta_ads: '#5b6cf0', google_ads: '#34a853',
+  meta_ads_facebook: '#1877f2', meta_ads_instagram: '#d6249f', meta_ads: '#5b6cf0', google_ads: '#34a853', google_shopping: '#fbbc04',
   facebook: '#7aa7f5', instagram: '#f08ac8', google_search: '#8bc79a', whatsapp: '#25d366', whatsapp_chat: '#128c7e', expo: '#c08a2d', other_website: '#b49a6a', direct: '#8a7766',
 }
 
@@ -37,7 +37,7 @@ const TONE = {
 const CHANNELS = [
   { key: '', label: 'All' },
   { key: 'meta', label: 'Meta ads', sources: ['meta_ads_instagram', 'meta_ads_facebook', 'meta_ads'] },
-  { key: 'google', label: 'Google', sources: ['google_ads', 'google_search'] },
+  { key: 'google', label: 'Google', sources: ['google_ads', 'google_shopping', 'google_search'] },
   { key: 'whatsapp', label: 'WhatsApp', sources: ['whatsapp', 'whatsapp_chat'] },
   { key: 'social', label: 'Instagram / Facebook (not ads)', sources: ['instagram', 'facebook'] },
   { key: 'direct', label: 'Direct', sources: ['direct'] },
@@ -419,7 +419,7 @@ function SourcePeople({ rq, product, channel, say, onAuthError }) {
 const LEAD_FILTERS = [
   { key: '', label: 'All' },
   { key: 'meta', label: 'Meta ads', sources: ['meta_ads_instagram', 'meta_ads_facebook', 'meta_ads'] },
-  { key: 'google', label: 'Google Ads', sources: ['google_ads'] },
+  { key: 'google', label: 'Google Ads', sources: ['google_ads', 'google_shopping'] },
   { key: 'whatsapp', label: 'WhatsApp form', sources: ['whatsapp'] },
   { key: 'chat', label: 'WhatsApp chats', sources: ['whatsapp_chat'] },
   { key: 'expo', label: 'Expo QR', sources: ['expo'] },

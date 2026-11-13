@@ -1,6 +1,7 @@
 // Where this visitor came from, for the "sales by source" report.
 //
-// On landing, the ad tags in the link (utm_*, Meta fbclid, Google gclid) and
+// On landing, the ad tags in the link (utm_*, Meta fbclid, Google gclid, Google
+// Merchant Center's srsltid) and
 // the referring site are noted. The latest non-direct landing is remembered
 // for 30 days in this browser and sent with the order, so a customer who
 // clicks an ad and orders the next day is still counted for that ad. A visit
@@ -25,7 +26,9 @@ const PAID = /^(paid|cpc|ppc|ads?|paid[_-]?social|paidsocial|paid[_-]?search|dis
 function isPaidAd(a) {
   const s = (a.utm_source || '').toLowerCase()
   const paid = PAID.test(a.utm_medium || '')
-  if (a.gclid) return true
+  // A Google Merchant Center (Shopping) visit counts as a Google ad (owner, 13 Nov 2026).
+  if (a.gclid || a.srsltid || /^(shopping|free[_-]?listings?|organic[_-]?shopping|merchant[_-]?cent(er|re))$/i.test(a.utm_medium || '') ||
+      /^(google[_-]?shopping|merchant[_-]?cent(er|re)|gmc)$/.test(s)) return true
   if (!paid) return false
   let host = ''
   try { host = a.referrer ? new URL(a.referrer).hostname : '' } catch { /* none */ }
@@ -124,6 +127,8 @@ export function captureAttribution() {
   }
   if (url.searchParams.get('fbclid')) a.fbclid = true
   if (url.searchParams.get('gclid') || url.searchParams.get('gbraid') || url.searchParams.get('wbraid')) a.gclid = true
+  // Google Merchant Center adds srsltid to its product links (Shopping tab, free listings): Google Shopping.
+  if (url.searchParams.get('srsltid')) a.srsltid = true
   keepGoogleClick(url)
   let ref = ''
   try {

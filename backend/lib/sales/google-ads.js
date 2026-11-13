@@ -77,12 +77,12 @@ export function daysUpToToday(from, now = Date.now()) {
 async function siteRecords(from, to, query) {
   const [visits, leads, orders] = await Promise.all([
     query(`select campaign, sum(visits)::int as n from traffic_visits
-            where day between $1::date and $2::date and source = 'google_ads' group by 1`, [from, to]),
+            where day between $1::date and $2::date and source in ('google_ads', 'google_shopping') group by 1`, [from, to]),
     query(`select coalesce(campaign, '') as campaign, count(*)::int as n from contest_leads
-            where source = 'google_ads' and (created_at at time zone 'Asia/Kolkata')::date between $1::date and $2::date group by 1`, [from, to]),
+            where source in ('google_ads', 'google_shopping') and (created_at at time zone 'Asia/Kolkata')::date between $1::date and $2::date group by 1`, [from, to]),
     query(`select coalesce(o.traffic_campaign, '') as campaign, count(*)::int as n, coalesce(sum(o.total_paise), 0)::bigint as paise
              from orders o
-            where o.traffic_source = 'google_ads' and o.placed_at is not null and o.payment_status in ('paid', 'partially_refunded')
+            where o.traffic_source in ('google_ads', 'google_shopping') and o.placed_at is not null and o.payment_status in ('paid', 'partially_refunded')
               and o.status not in ('cancelled', 'returned') and (o.placed_at at time zone 'Asia/Kolkata')::date between $1::date and $2::date
             group by 1`, [from, to]),
   ])
