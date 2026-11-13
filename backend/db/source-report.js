@@ -22,13 +22,14 @@ const ten = (col) => `right(regexp_replace(coalesce(${col}, ''), '\\D', '', 'g')
 const GROUP = {
   meta_ads_facebook: 'Meta Ads', meta_ads_instagram: 'Meta Ads', meta_ads: 'Meta Ads',
   google_ads: 'Google Ads',
+  google_shopping: 'Google Shopping',
   whatsapp: 'WhatsApp',
   facebook: 'Facebook / Instagram (not ads)', instagram: 'Facebook / Instagram (not ads)',
   google_search: 'Google search',
   expo: 'Expo QR',
   other_website: 'Other websites',
 }
-const ORDER = ['Meta Ads', 'Google Ads', 'WhatsApp', 'Facebook / Instagram (not ads)', 'Google search', 'Expo QR', 'Other websites', 'Direct']
+const ORDER = ['Meta Ads', 'Google Ads', 'Google Shopping', 'WhatsApp', 'Facebook / Instagram (not ads)', 'Google search', 'Expo QR', 'Other websites', 'Direct']
 const group = (s) => GROUP[s] || 'Direct'
 
 const pool = await getPool()

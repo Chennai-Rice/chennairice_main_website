@@ -1585,6 +1585,9 @@ test('sales by source: ad links and referrers become a source, orders and visits
   assert.equal(c({ gclid: true }), 'google_ads')
   assert.equal(c({ utm_source: 'google', utm_medium: 'cpc' }), 'google_ads')
   assert.equal(c({ referrer: 'https://www.google.co.in/' }), 'google_search')
+  assert.equal(c({ srsltid: true, referrer: 'https://www.google.com/' }), 'google_shopping') // Merchant Center listing
+  assert.equal(c({ utm_source: 'google', utm_medium: 'free_listing' }), 'google_shopping')
+  assert.equal(c({ gclid: true, srsltid: true }), 'google_ads') // a paid Shopping ad stays Google Ads
   assert.equal(c({ referrer: 'https://web.whatsapp.com/' }), 'whatsapp')
   assert.equal(c({ referrer: 'https://example.org/' }), 'other_website')
 
