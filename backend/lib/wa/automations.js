@@ -17,7 +17,7 @@ import { referralSettings } from '../sales/referrals.js'
 import { reviewToken } from '../sales/reviews.js'
 import { sendMessage } from './cloud.js'
 import { sendComponents, filledText } from './admin.js'
-import { fromComponents } from './templates.js'
+import { fromComponents, headerLinkFor } from './templates.js'
 
 export const AUTOMATIONS = {
   spin_code: { group: 'Spin & Win', title: 'Prize code right after the spin', template: 'spin_code', category: 'marketing', fields: {} },
@@ -300,6 +300,13 @@ export async function sendQueue({ query = defaultQuery, fetchImpl, limit = 150, 
     }
     const model = fromComponents(t.components)
     const components = sendComponents(model, r.vals || {})
+    // A picture header: the template's saved picture goes with every message (Meta needs it on each send).
+    if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(model.header?.format)) {
+      const link = await headerLinkFor(t.name, query)
+      if (!link) { await skip('template picture not saved (Templates: upload it again and save)'); continue }
+      const kind = model.header.format.toLowerCase()
+      components.unshift({ type: 'header', parameters: [{ type: kind, [kind]: { link } }] })
+    }
     const message = { messaging_product: 'whatsapp', recipient_type: 'individual', to: '91' + r.phone, type: 'template',
       template: { name: t.name, language: { code: t.language }, ...(components.length ? { components } : {}) } }
     try {

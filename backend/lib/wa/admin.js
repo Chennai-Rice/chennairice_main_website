@@ -4,7 +4,7 @@ import { query as defaultQuery } from '../db.js'
 import { httpError, str } from '../sales/util.js'
 import { whatsappNumber } from '../whatsapp.js'
 import { WABA_ID, PHONE_ID, cloudEnabled, accountInfo, webhookSubscribed, subscribeWebhook, sendMessage, graph, findWabaId, setWabaId } from './cloud.js'
-import { fromComponents } from './templates.js'
+import { fromComponents, headerLinkFor } from './templates.js'
 
 // Rough Meta rates for India in ₹ per delivered message (the dashboard says "approx."; Meta's own figure is shown beside it).
 const RATE = { marketing: 0.78, utility: 0.115, authentication: 0.115 }
@@ -213,13 +213,14 @@ export async function sendTemplate(phone, template, values = {}, { source = 'das
   const to = whatsappNumber(phone)
   if (!to) throw httpError('Bad number', { publicMessage: 'Enter a 10-digit Indian mobile number.' })
   const model = fromComponents(template.components)
-  if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(model.header?.format) && !values.headerLink) {
-    throw httpError('Header media', { publicMessage: 'This template has a picture/video/PDF header; sending those comes with Broadcasts.' })
+  const headerLink = values.headerLink || (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(model.header?.format) ? await headerLinkFor(template.name, query) : null)
+  if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(model.header?.format) && !headerLink) {
+    throw httpError('Header media', { publicMessage: 'This template has a picture header but no picture is saved for sending: open it in Templates, upload the picture again and save.' })
   }
   const components = sendComponents(model, values)
-  if (values.headerLink) {
+  if (headerLink) {
     const t = model.header.format.toLowerCase()
-    components.unshift({ type: 'header', parameters: [{ type: t, [t]: { link: values.headerLink } }] })
+    components.unshift({ type: 'header', parameters: [{ type: t, [t]: { link: headerLink } }] })
   }
   const message = {
     messaging_product: 'whatsapp', recipient_type: 'individual', to, type: 'template',

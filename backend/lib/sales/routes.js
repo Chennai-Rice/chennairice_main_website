@@ -814,7 +814,10 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     if (!buf?.length || !['image/jpeg', 'image/png', 'video/mp4', 'application/pdf'].includes(type)) {
       throw httpError('Bad file', { publicMessage: 'Use a JPG or PNG picture, an MP4 video or a PDF.' })
     }
-    res.json({ handle: await uploadHeaderSample(buf, type) })
+    // A picture is also kept on our site (public link), because every message must carry it, not only the sample.
+    const handle = await uploadHeaderSample(buf, type)
+    const link = type.startsWith('image/') ? 'https://chennairiceindustries.com' + (await saveImage(buf, type)).url : null
+    res.json({ handle, link })
   }))
   admin.post('/whatsapp/test', wa, wrap(async (req, res) => res.json(await waSendTest(req.body || {}, req.staff))))
   admin.get('/whatsapp/settings', wa, wrap(async (_req, res) => { noStore(res); res.json(await waSettings()) }))

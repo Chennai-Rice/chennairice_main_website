@@ -36,7 +36,8 @@ function Preview({ m }) {
       <div className="wa-phone-chat">
         <div className="wa-bubble">
           {h.format === 'TEXT' && <p className="wa-bubble-head">{fill(h.text, [h.sample])}</p>}
-          {['IMAGE', 'VIDEO', 'DOCUMENT'].includes(h.format) && <div className="wa-bubble-media">{h.format === 'IMAGE' ? '🖼 Picture' : h.format === 'VIDEO' ? '🎥 Video' : '📄 PDF'}</div>}
+          {h.format === 'IMAGE' && h.link ? <img className="wa-bubble-img" src={h.link} alt="" />
+            : ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(h.format) && <div className="wa-bubble-media">{h.format === 'IMAGE' ? '🖼 Picture' : h.format === 'VIDEO' ? '🎥 Video' : '📄 PDF'}</div>}
           <p className="wa-bubble-body"><WaText text={fill(m.body?.text, m.body?.samples)} /></p>
           {m.footer && <p className="wa-bubble-foot">{m.footer}</p>}
           <span className="wa-bubble-time">10:24</span>
@@ -123,8 +124,10 @@ function Editor({ t, onSaved, onDeleted, onDuplicated }) {
   })
   const upload = (file) => run('upload', async () => {
     const res = await staffFetch('/api/admin/whatsapp/templates/upload', { method: 'POST', body: file, headers: { 'Content-Type': file.type } })
-    const { handle } = await res.json()
-    set({ header: { ...m.header, handle, fileName: file.name } })
+    const d = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(d.error || d.message || 'Could not upload the file.')
+    // handle: the sample Meta reviews; link: the picture itself, sent with every message.
+    set({ header: { ...m.header, handle: d.handle, link: d.link || m.header.link || '', fileName: file.name } })
   })
 
   const vars = varsOf(m.body.text)

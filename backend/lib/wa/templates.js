@@ -214,7 +214,38 @@ export async function listTemplates({ query = defaultQuery } = {}) {
   const { rows } = await query(`select * from wa_templates order by (status = 'DRAFT') desc, updated_at desc`)
   const counts = {}
   for (const r of rows) counts[r.status] = (counts[r.status] || 0) + 1
-  return { templates: rows.map(shape), counts }
+  const links = await headerLinks(query)
+  return {
+    templates: rows.map((r) => {
+      const s = shape(r)
+      if (s.model.header?.format === 'IMAGE' && links[r.name]) s.model.header = { ...s.model.header, link: links[r.name] }
+      return s
+    }),
+    counts,
+  }
+}
+
+// ---- the picture sent in a template's header ----------------------------------------------------------------
+// Meta keeps only the sample it reviewed; every message must carry the picture itself. The editor's upload
+// also stores it on our site (the journal's picture bucket, public) and its link is kept per template name in
+// company_settings ('wa_header_link:<name>'), which a sync from Meta does not touch.
+const LINK_KEY = 'wa_header_link:'
+const okLink = (v) => /^https:\/\/chennairiceindustries\.com\/api\/blog\/images\/[0-9a-f-]{36}\.(jpg|png)$/.test(String(v || ''))
+
+export async function headerLinks(query = defaultQuery) {
+  const { rows } = await query(`select key, value from company_settings where key like 'wa_header_link:%'`).catch(() => ({ rows: [] }))
+  return Object.fromEntries(rows.map((r) => [r.key.slice(LINK_KEY.length), r.value]))
+}
+
+export async function headerLinkFor(name, query = defaultQuery) {
+  const { rows: [r] } = await query(`select value from company_settings where key = $1`, [LINK_KEY + name]).catch(() => ({ rows: [] }))
+  return r?.value || null
+}
+
+async function saveHeaderLink(name, link, query) {
+  if (!okLink(link)) return
+  await query(`insert into company_settings (key, value, updated_at) values ($1, $2, now())
+               on conflict (key) do update set value = excluded.value, updated_at = now()`, [LINK_KEY + name, link])
 }
 
 function cleanModel(input) {
@@ -247,6 +278,7 @@ export async function saveTemplate(input, staff, { query = defaultQuery } = {}) 
     const { rows: [r] } = await query(
       `update wa_templates set name = $2, language = $3, category = $4, kind = $5, components = $6, purpose = $7, updated_at = now()
        where id = $1 returning *`, [input.id, m.name, m.language, m.category, m.kind, components, m.purpose])
+    if (m.header?.format === 'IMAGE') await saveHeaderLink(m.name, input.header?.link, query)
     return shape(r)
   }
   const { rows: [r] } = await query(
@@ -254,6 +286,7 @@ export async function saveTemplate(input, staff, { query = defaultQuery } = {}) 
      on conflict (name, language) do nothing returning *`,
     [m.name, m.language, m.category, m.kind, components, m.purpose, staff?.id || null])
   if (!r) throw httpError('Duplicate', { status: 409, publicMessage: `There is already a template called ${m.name}.` })
+  if (m.header?.format === 'IMAGE') await saveHeaderLink(m.name, input.header?.link, query)
   return shape(r)
 }
 
@@ -266,7 +299,11 @@ export async function duplicateTemplate(id, staff, { query = defaultQuery } = {}
       `insert into wa_templates (name, language, category, kind, components, purpose, created_by) values ($1, $2, $3, $4, $5, $6, $7)
        on conflict (name, language) do nothing returning *`,
       [name, cur.language, cur.category, cur.kind, JSON.stringify(cur.components), cur.purpose, staff?.id || null])
-    if (r) return shape(r)
+    if (r) {
+      const link = await headerLinkFor(cur.name, query)
+      if (link) await saveHeaderLink(name, link, query)
+      return shape(r)
+    }
   }
   throw httpError('Too many copies', { publicMessage: 'Too many copies of this template.' })
 }
