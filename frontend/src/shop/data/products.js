@@ -5,7 +5,7 @@
 // e.g. in a route loader) instead of importing a static PRODUCTS array. The
 // shape returned per product is unchanged from the old static data, so every
 // existing component (ProductCard, PackSizeSelector, ProductGallery, the
-// cart store, etc.) keeps working without touching JSX or CSS.
+// cart/wishlist stores, etc.) keeps working without touching JSX or CSS.
 //
 // A few presentational facts have no home in the `products` table because
 // they aren't catalog data at all — they're facts about the *static assets*

@@ -63,11 +63,6 @@
     ],
     "redirects": [
       {
-        "source": "/wishlist",
-        "destination": "/rice-products",
-        "type": 301
-      },
-      {
         "source": "/ta",
         "destination": "/",
         "type": 301

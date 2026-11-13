@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, Link, useLocation } from 'react-router-dom'
 import Img from './Img.jsx'
 import { useCart } from '../shop/hooks/useCart.jsx'
+import { useWishlist } from '../shop/hooks/useWishlist.jsx'
 import { ASSETS, NAV_LINKS, NAV_CONTEST, NAV_CTA } from '../data/content.js'
 import './navbar.css'
 
@@ -21,6 +22,7 @@ export default function Navbar() {
   }, [])
   const links = NAV_LINKS.filter((l) => l.to !== '/refer' || referOn)
   const { count: cartCount } = useCart()
+  const { count: savedCount } = useWishlist()
 
   // Only the home page has a dark hero behind the bar. Every other route is
   // cream, where the light nav text would be unreadable while transparent.
@@ -60,6 +62,22 @@ export default function Navbar() {
         </nav>
 
         <div className="nav-actions">
+          <Link
+            className="nav-icon"
+            to="/wishlist"
+            aria-label={savedCount ? `Saved items, ${savedCount} saved` : 'Saved items'}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M12 20s-7-4.35-9.5-8.5C1 8 2.5 4.5 6 4c2-.3 3.8.8 6 3 2.2-2.2 4-3.3 6-3 3.5.5 5 4 3.5 7.5C19 15.65 12 20 12 20z"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {savedCount > 0 && <span className="nav-badge">{badge(savedCount)}</span>}
+          </Link>
+
           <Link
             className="nav-icon"
             to="/cart"
@@ -107,6 +125,9 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          <Link to="/wishlist" onClick={() => setOpen(false)}>
+            Saved Items{savedCount > 0 ? ` (${savedCount})` : ''}
+          </Link>
           <Link to="/cart" onClick={() => setOpen(false)}>
             Cart{cartCount > 0 ? ` (${cartCount})` : ''}
           </Link>
