@@ -19,6 +19,8 @@ import './warehouse-pages.css'
 import './warehouse-shell.css'
 
 const ALLOWED_ROLES = ['owner', 'admin', 'it', 'sales', 'dispatch', 'inventory', 'warehouse', 'accounts']
+// The main role or any extra role (Team) opens the page.
+const allowed = (me) => [me?.role, ...(me?.extraRoles || [])].some((r) => ALLOWED_ROLES.includes(r))
 
 // perm: the permission a section needs (see PERMISSIONS in backend staff.js);
 // the menu shows each role only what it can open.
@@ -59,7 +61,7 @@ function SignIn({ onSignedIn }) {
     setError('')
     try {
       const me = await signIn()
-      if (!ALLOWED_ROLES.includes(me.role)) {
+      if (!allowed(me)) {
         await signOutStaff()
         throw new Error('Your role does not include the warehouse page.')
       }
@@ -247,7 +249,7 @@ export default function WarehousePage() {
     let live = true
     hasStaffSession()
       .then((signedIn) => signedIn && staffJson('/api/admin/me')
-        .then((profile) => live && setMe(ALLOWED_ROLES.includes(profile.role) ? profile : null)))
+        .then((profile) => live && setMe(allowed(profile) ? profile : null)))
       .catch(() => signOutStaff())
       .finally(() => live && setChecking(false))
     return () => { live = false }

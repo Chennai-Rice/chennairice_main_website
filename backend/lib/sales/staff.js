@@ -81,12 +81,24 @@ const PERMISSIONS = {
   'web.analytics': ['owner', 'admin', 'it'],
 }
 
-export function can(staff, permission) {
-  return Boolean(staff && PERMISSIONS[permission]?.includes(staff.role))
+// Roles that can be given on top of the main one (Warehouse → Team): the panel roles, never owner.
+export const EXTRA_ROLES = STAFF.filter((r) => r !== 'owner')
+
+/** The main role and any extra roles. */
+export function rolesOf(staff) {
+  return [staff?.role, ...(Array.isArray(staff?.extra_roles) ? staff.extra_roles : [])].filter(Boolean)
 }
 
-export function permissionsFor(role) {
-  return Object.keys(PERMISSIONS).filter((p) => PERMISSIONS[p].includes(role))
+/** Whether any of the person's roles allows it. */
+export function can(staff, permission) {
+  const allowed = PERMISSIONS[permission]
+  return Boolean(staff && allowed && rolesOf(staff).some((r) => allowed.includes(r)))
+}
+
+/** Everything a role (or several: the main role and extra roles) allows. */
+export function permissionsFor(role, extra = []) {
+  const roles = [role, ...(extra || [])]
+  return Object.keys(PERMISSIONS).filter((p) => roles.some((r) => PERMISSIONS[p].includes(r)))
 }
 
 export function requirePermission(staff, permission) {
@@ -200,7 +212,7 @@ export async function audit(db, staff, action, entityType, entityId, details = n
 // ---- managing staff ---------------------------------------------------------
 
 export async function listStaff() {
-  const { rows } = await query('select id, email, full_name, role, is_active, created_at from staff_users order by role, full_name')
+  const { rows } = await query('select id, email, full_name, role, extra_roles, is_active, created_at from staff_users order by role, full_name')
   return rows
 }
 
@@ -237,11 +249,16 @@ export async function updateStaff(actor, id, body) {
   if (!ROLES.includes(role)) throw httpError('Unknown role.')
   const isActive = typeof body?.isActive === 'boolean' ? body.isActive : target.is_active
   const fullName = str(body?.fullName) || target.full_name
+  // Extra roles: given as a list; the main role is not repeated in it.
+  let extra = Array.isArray(body?.extraRoles) ? [...new Set(body.extraRoles.map(str))] : (target.extra_roles || [])
+  if (extra.some((r) => !EXTRA_ROLES.includes(r))) throw httpError('Extra roles must be panel roles (not owner).')
+  if (target.id === actor.id && Array.isArray(body?.extraRoles)) throw httpError('Ask another admin to change your own roles.', { status: 400 })
+  extra = extra.filter((r) => r !== role)
   const { rows: [row] } = await query(
-    `update staff_users set role = $2, is_active = $3, full_name = $4 where id = $1
-     returning id, email, full_name, role, is_active`,
-    [id, role, isActive, fullName]
+    `update staff_users set role = $2, is_active = $3, full_name = $4, extra_roles = $5 where id = $1
+     returning id, email, full_name, role, extra_roles, is_active`,
+    [id, role, isActive, fullName, extra]
   )
-  await audit({ query }, actor, 'staff.update', 'staff', id, { role, isActive })
+  await audit({ query }, actor, 'staff.update', 'staff', id, { role, extraRoles: extra, isActive })
   return row
 }

@@ -356,7 +356,8 @@ export function createSalesRouter({ verifyIdToken } = {}) {
 
   admin.get('/me', (req, res) => {
     const { id, email, full_name, role } = req.staff
-    res.json({ id, email, fullName: full_name, role, permissions: permissionsFor(role) })
+    const extraRoles = req.staff.extra_roles || []
+    res.json({ id, email, fullName: full_name, role, extraRoles, permissions: permissionsFor(role, extraRoles) })
   })
   admin.get('/dashboard', perm('dashboard.view'), wrap(async (_req, res) => res.json(await dashboard())))
 

@@ -20,6 +20,9 @@ const ROLES = [
   { key: 'owner', label: 'Owner', note: 'Everything. Only an owner can add another owner.' },
 ]
 const LABEL = Object.fromEntries(ROLES.map((r) => [r.key, r.label]))
+// Extra roles on top of the main one: the panel roles (never owner). The person may do whatever any of them allows.
+const PANEL = ['warehouse', 'dispatch', 'sales', 'inventory', 'plant', 'accounts', 'admin', 'it']
+const EXTRA = ROLES.filter((r) => PANEL.includes(r.key))
 
 export default function TeamView({ me, say, onAuthError }) {
   const [team, setTeam] = useState(null)
@@ -100,6 +103,23 @@ export default function TeamView({ me, say, onAuthError }) {
               <div>
                 <strong>{p.full_name}{p.id === me.id ? ' (you)' : ''}</strong>
                 <span className="wh-muted wh-small">{p.email}</span>
+                {canEdit(p) && PANEL.includes(p.role) ? (
+                  <div className="wh-team-extra" role="group" aria-label={`Extra roles for ${p.full_name}`}>
+                    <span className="wh-muted wh-small">Also:</span>
+                    {EXTRA.filter((r) => r.key !== p.role).map((r) => {
+                      const on = (p.extra_roles || []).includes(r.key)
+                      const next = on ? (p.extra_roles || []).filter((x) => x !== r.key) : [...(p.extra_roles || []), r.key]
+                      return (
+                        <button key={r.key} type="button" className={`wh-role-toggle${on ? ' is-on' : ''}`} aria-pressed={on} title={r.note}
+                          onClick={() => change(p, { extraRoles: next }, `${p.full_name}: ${[LABEL[p.role], ...next.map((x) => LABEL[x])].join(' + ')}.`)}>
+                          {on ? '✓ ' : '+ '}{r.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : (p.extra_roles || []).length > 0 && (
+                  <span className="wh-muted wh-small">Also: {p.extra_roles.map((x) => LABEL[x] || x).join(', ')}</span>
+                )}
               </div>
               {canEdit(p) ? (
                 <div className="wh-team-actions">

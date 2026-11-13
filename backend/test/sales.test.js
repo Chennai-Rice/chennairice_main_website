@@ -4079,3 +4079,28 @@ test('order link: staff make a signed link with packs, details and a code locked
   const forged = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(data, 'base64url')), i: [['alibaba', 10, 9]] })).toString('base64url')
   assert.equal((await api('GET', `/api/cart/resume/o.${forged}.${sig}`)).status, 404)
 })
+
+test('team: a person can have extra roles on top of the main one, and may do what any of them allows', async () => {
+  const add = await api('POST', '/api/admin/staff', { token: OWNER, body: { email: 'tamil@x.test', fullName: 'Tamil accounts', role: 'accounts' } })
+  assert.equal(add.status, 200, JSON.stringify(add.body))
+  const token = 'tamil@x.test|uid-tamil'
+  const v = await variantId('alibaba')
+  const adjust = () => api('POST', '/api/admin/inventory/adjust', { token, body: { variantId: v, delta: 1, reason: 'count' } })
+  assert.equal((await adjust()).status, 403)
+  // Not an owner, not a made-up role.
+  assert.equal((await api('PATCH', `/api/admin/staff/${add.body.staff.id}`, { token: OWNER, body: { extraRoles: ['owner'] } })).status, 400)
+  assert.equal((await api('PATCH', `/api/admin/staff/${add.body.staff.id}`, { token: OWNER, body: { extraRoles: ['boss'] } })).status, 400)
+  const up = await api('PATCH', `/api/admin/staff/${add.body.staff.id}`, { token: OWNER, body: { extraRoles: ['inventory', 'accounts'] } })
+  assert.equal(up.status, 200, JSON.stringify(up.body))
+  assert.deepEqual(up.body.staff.extra_roles, ['inventory']) // the main role is not repeated
+  const me = await api('GET', '/api/admin/me', { token })
+  assert.equal(me.body.role, 'accounts')
+  assert.deepEqual(me.body.extraRoles, ['inventory'])
+  assert.ok(me.body.permissions.includes('accounts.view') && me.body.permissions.includes('inventory.adjust'))
+  assert.equal((await adjust()).status, 200)
+  // Taken away again.
+  await api('PATCH', `/api/admin/staff/${add.body.staff.id}`, { token: OWNER, body: { extraRoles: [] } })
+  assert.equal((await adjust()).status, 403)
+  const list = await api('GET', '/api/admin/staff', { token: OWNER })
+  assert.deepEqual(list.body.staff.find((p) => p.email === 'tamil@x.test').extra_roles, [])
+})
