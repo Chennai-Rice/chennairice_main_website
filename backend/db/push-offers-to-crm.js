@@ -7,10 +7,12 @@
 //   node db/push-offers-to-crm.js                 says what it would send, sends nothing
 //   node db/push-offers-to-crm.js --apply         queues them and sends them (needs SALESDADDY_API_KEY;
 //                                                  without it the 10-minute job sends 20 every 10 minutes)
+//   node db/push-offers-to-crm.js --status        counts per kind and state, with the last error
+//   node db/push-offers-to-crm.js --retag-referrals  adds the "Refer a friend" tag again, no notes
 //   node db/push-offers-to-crm.js --send-queued   queues nothing: sends the Spin & Win / Refer a friend
 //                                                  leads still waiting (e.g. after Sales Daddy's limit)
 //
-// Sales Daddy allows 60 requests a minute and a lead takes up to 3, so leads go one every 3.5 seconds.
+// Sales Daddy allows 60 requests a minute and a lead takes up to 3, so leads go one every 5 seconds (one already in Sales Daddy takes 4).
 // Needs the database settings of db:migrate. Run --apply once: running it again adds the notes again.
 import { closePool, query } from '../lib/db.js'
 import { queueCrmLead, sendCrmLeads, crmEnabled, isBlockedMobile } from '../lib/crm.js'
@@ -21,7 +23,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const KINDS = `kind in ('spin_wheel', 'referral')`
 
 /** Sends what is queued, one lead at a time, slow enough for Sales Daddy's 60 requests a minute. */
-async function sendSlowly() {
+async function sendSlowly(pace = 5000) {
   // Waiting ones are due now (their retry was pushed back by the refusals).
   await query(`update crm_outbox set next_try_at = now() where status = 'queued' and ${KINDS}`)
   let sent = 0
@@ -40,10 +42,47 @@ async function sendSlowly() {
     refused += r.failed || 0
     process.stdout.write(`\rSent ${sent}, refused ${refused}…                          `)
     // Refused (usually Sales Daddy's limit): let the minute pass before the next one.
-    await sleep(r.failed ? 65000 : 3500)
+    await sleep(r.failed ? 65000 : pace)
   }
   const { rows: [f] } = await query(`select count(*)::int as n from crm_outbox where status = 'failed' and ${KINDS}`)
   console.log(`\nDone: sent ${sent} now. Refused for good: ${f.n} (for example a team member's own number).`)
+}
+
+if (process.argv.includes('--status')) {
+  // What happened to each Spin & Win / Refer a friend lead in the outbox (no names or numbers).
+  const { rows } = await query(
+    `select kind, status, count(*)::int as n, max(left(coalesce(last_error, ''), 120)) as error
+       from crm_outbox where ${KINDS} group by kind, status order by kind, status`)
+  console.table(rows)
+  await closePool()
+  process.exit(0)
+}
+
+if (process.argv.includes('--referral-ids')) {
+  // The Sales Daddy lead ids of the Refer a friend customers (ids only, no names or numbers).
+  const { rows } = await query(
+    `select distinct crm_lead_id from crm_outbox where kind = 'referral' and status = 'sent' and crm_lead_id is not null`)
+  console.log(rows.map((r) => r.crm_lead_id).join(' '))
+  await closePool()
+  process.exit(0)
+}
+
+if (process.argv.includes('--retag-referrals')) {
+  // The Refer a friend leads went to Sales Daddy, but on a lead it already had the tag is added with
+  // two more calls that Sales Daddy's limit could refuse unseen. Sends each one again without its note
+  // (so no note is repeated): Sales Daddy finds the lead by mobile and only the tag is added.
+  if (!crmEnabled()) console.log('Set SALESDADDY_API_KEY first.')
+  else {
+    const { rowCount } = await query(
+      `insert into crm_outbox (kind, payload)
+       select distinct on (payload->>'mobile') 'referral', payload - 'note'
+         from crm_outbox where kind = 'referral' and status = 'sent' and payload ? 'mobile'
+        order by payload->>'mobile', created_at desc`)
+    console.log(`Tagging ${rowCount} Refer a friend leads, one every 6 seconds…`)
+    await sendSlowly(6000)
+  }
+  await closePool()
+  process.exit(0)
 }
 
 if (sendQueued) {
