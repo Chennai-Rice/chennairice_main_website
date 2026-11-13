@@ -10,6 +10,7 @@ import { httpError, str, formatInr } from '../sales/util.js'
 import { segmentPeople } from './contacts.js'
 import { fromComponents } from './templates.js'
 import { sendQueue } from './automations.js'
+import { parseSheet, guessColumns } from './sheet.js'
 
 const FROM = {
   first_name: (p) => String(p.name || '').trim().split(/\s+/)[0] || 'there',
@@ -22,7 +23,8 @@ export const FIELDS = { first_name: 'First name', name: 'Full name', city: 'City
 
 /** One person's values for the template, from the broadcast's mapping. */
 export function valuesFor(person, mapping = {}) {
-  const pick = (m) => (m?.from && m.from !== 'fixed' && FROM[m.from] ? FROM[m.from](person) : str(m?.text))
+  const pick = (m) => (m?.from === 'col' ? str(person.cols?.[m.col]) || str(m.text)
+    : m?.from && m.from !== 'fixed' && FROM[m.from] ? FROM[m.from](person) : str(m?.text))
   return {
     body: (mapping.body || []).map(pick),
     ...(mapping.header ? { header: pick(mapping.header) } : {}),
@@ -35,13 +37,55 @@ async function template(name, query) {
   return t
 }
 
-/** Who the broadcast reaches: the segment, minus people the rules exclude. */
-export async function audience({ segment = {}, templateName }, { query = defaultQuery } = {}) {
+const clean10 = (v) => { const d = String(v ?? '').replace(/\D/g, '').slice(-10); return /^[6-9]\d{9}$/.test(d) ? d : '' }
+
+/**
+ * A broadcast to an uploaded file (Broadcasts → Send to a file): segment.file holds the rows, the mobile
+ * column, the name column and `optedIn` (the team confirms these people agreed to WhatsApp messages).
+ * The rows are stored on the draft when the file is uploaded; a save or preview sends only the choices.
+ */
+async function fileOf(segment, broadcastId, query) {
+  if (Array.isArray(segment.file?.rows)) return segment.file
+  if (!broadcastId) return null
+  const { rows: [b] } = await query('select segment from wa_broadcasts where id = $1', [broadcastId])
+  const f = b?.segment?.file
+  return f ? { ...f, ...pick(segment.file || {}, ['phoneColumn', 'nameColumn', 'optedIn']) } : null
+}
+const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o[k] !== undefined).map((k) => [k, o[k]]))
+
+async function filePeople(file, query) {
+  const seen = new Set()
+  const people = []
+  let invalid = 0
+  for (const r of file.rows || []) {
+    const phone = clean10(r[file.phoneColumn])
+    if (!phone) { invalid++; continue }
+    if (seen.has(phone)) continue
+    seen.add(phone)
+    people.push({ phone, name: str(r[file.nameColumn]) || null, cols: r })
+  }
+  const { rows: known } = people.length
+    ? await query('select phone, opted_in_at, opted_out_at from wa_contacts where phone = any($1)', [people.map((p) => p.phone)])
+    : { rows: [] }
+  const k = new Map(known.map((c) => [c.phone, c]))
+  for (const p of people) {
+    p.optedOutAt = k.get(p.phone)?.opted_out_at || null
+    p.optedInAt = k.get(p.phone)?.opted_in_at || (file.optedIn ? 'file' : null)
+  }
+  return { people, invalid, duplicates: (file.rows || []).length - invalid - people.length }
+}
+
+/** Who the broadcast reaches: the segment (or the uploaded file), minus people the rules exclude. */
+export async function audience({ segment = {}, templateName, broadcastId = null }, { query = defaultQuery } = {}) {
   const t = templateName ? await template(templateName, query) : null
   const marketing = !t || t.category === 'MARKETING'
-  const people = await segmentPeople(segment, { query })
+  const file = segment.file ? await fileOf(segment, broadcastId, query) : null
+  if (segment.file && !file) throw httpError('No file', { publicMessage: 'Upload the file again.' })
+  const fp = file ? await filePeople(file, query) : null
+  const people = fp ? fp.people : await segmentPeople(segment, { query })
   const eligible = people.filter((p) => !p.optedOutAt && (!marketing || p.optedInAt))
   return {
+    ...(fp ? { invalidPhones: fp.invalid, duplicates: fp.duplicates } : {}),
     inSegment: people.length,
     eligible: eligible.length,
     excludedStop: people.filter((p) => p.optedOutAt).length,
@@ -80,7 +124,9 @@ export async function listBroadcasts({ query = defaultQuery, money = true } = {}
     }
   }
   return rows.map((r) => ({
-    id: r.id, name: r.name, template: r.template_name, segment: r.segment, mapping: r.mapping, status: r.status,
+    id: r.id, name: r.name, template: r.template_name,
+    // An uploaded file shows as its name and size (the rows stay on the server).
+    segment: r.segment?.file ? { file: { name: r.segment.file.name, total: (r.segment.file.rows || []).length } } : r.segment, mapping: r.mapping, status: r.status,
     scheduledAt: r.scheduled_at, audience: r.audience, createdAt: r.created_at, createdBy: r.created_by_name,
     stats: { queued: r.queued, sent: r.sent, skipped: r.skipped, failed: r.failed, delivered: r.delivered, read: r.read, replied: r.replied,
       orders: ob[r.id]?.orders || 0, revenue: money ? formatInr(ob[r.id]?.revenue || 0) : null, firstSent: r.first_sent, lastSent: r.last_sent },
@@ -92,8 +138,15 @@ export async function saveBroadcast(input, staff, { query = defaultQuery } = {})
   if (!name) throw httpError('No name', { publicMessage: 'Give the broadcast a name.' })
   const t = await template(str(input.template), query)
   if (!t || t.status !== 'APPROVED') throw httpError('Not approved', { publicMessage: 'Choose an approved template.' })
-  const segment = input.segment && typeof input.segment === 'object' ? input.segment : {}
+  let segment = input.segment && typeof input.segment === 'object' ? input.segment : {}
   const mapping = input.mapping && typeof input.mapping === 'object' ? input.mapping : {}
+  if (segment.file) {
+    // The rows stay as uploaded; only the column choices and the permission tick change.
+    const file = await fileOf(segment, input.id, query)
+    if (!file) throw httpError('No file', { publicMessage: 'Upload the file again.' })
+    if (!file.columns?.includes(file.phoneColumn)) throw httpError('No phone column', { publicMessage: 'Choose the column with the mobile numbers.' })
+    segment = { file }
+  }
   if (input.id) {
     const { rows: [b] } = await query(`select status from wa_broadcasts where id = $1`, [input.id])
     if (!b) throw httpError('Gone', { status: 404, publicMessage: 'That broadcast is gone.' })
@@ -124,6 +177,17 @@ export async function launchBroadcast(id, { at = null } = {}, { query = defaultQ
   const nBody = Math.max(0, ...[...String(model.body.text).matchAll(/\{\{(\d+)\}\}/g)].map((m) => Number(m[1])))
   const mapping = b.mapping || {}
   if ((mapping.body || []).length < nBody) throw httpError('Mapping', { publicMessage: 'Fill in every {{ }} of the template.' })
+  // A file the team confirmed has permission: record each person's "yes" (source 'import'), so the
+  // queue's own permission check lets their messages through and STOP still works as usual.
+  if (b.segment?.file?.optedIn) {
+    for (const p of aud.people.filter((x) => x.optedInAt === 'file')) {
+      await query(
+        `insert into wa_contacts (phone, name, opted_in_at, opt_in_source) values ($1, $2, now(), 'import')
+         on conflict (phone) do update set opted_in_at = coalesce(wa_contacts.opted_in_at, now()),
+           opt_in_source = coalesce(wa_contacts.opt_in_source, 'import'), name = coalesce(wa_contacts.name, excluded.name), updated_at = now()`,
+        [p.phone, p.name])
+    }
+  }
   for (const p of aud.people) {
     await query(
       `insert into wa_queue (phone, template_name, language, category, vals, source, ref, broadcast_id, send_after)
@@ -136,6 +200,33 @@ export async function launchBroadcast(id, { at = null } = {}, { query = defaultQ
   // The first batch right away; the 10-minute job sends the rest.
   const first = now ? await sendQueue({ query, fetchImpl, broadcastId: b.id, limit: 60 }) : null
   return { ok: true, queued: aud.eligible, first }
+}
+
+/**
+ * Broadcasts → Send to a file: reads the CSV / Excel file and keeps its rows on a draft (a new one, or the
+ * draft being edited). Returns the draft id, the columns, the guessed mobile and name columns and a few rows.
+ */
+export async function uploadBroadcastFile(buffer, fileName, { id = null } = {}, staff, { query = defaultQuery } = {}) {
+  const { columns, rows } = await parseSheet(buffer, fileName)
+  const guess = guessColumns(columns, rows)
+  const file = { name: str(fileName).slice(0, 120) || 'file', columns, rows, phoneColumn: guess.phone, nameColumn: guess.name, optedIn: false }
+  let draftId = null
+  if (id) {
+    const { rows: [b] } = await query(`select status from wa_broadcasts where id = $1`, [id])
+    if (b && b.status !== 'draft') throw httpError('Sent', { publicMessage: 'A broadcast that has started cannot be changed.' })
+    if (b) {
+      await query(`update wa_broadcasts set segment = $2, updated_at = now() where id = $1`, [id, JSON.stringify({ file })])
+      draftId = id
+    }
+  }
+  if (!draftId) {
+    const { rows: [r] } = await query(
+      `insert into wa_broadcasts (name, template_name, segment, created_by) values ($1, '', $2, $3) returning id`,
+      [`File: ${file.name}`.slice(0, 80), JSON.stringify({ file }), staff?.id || null])
+    draftId = r.id
+  }
+  const valid = new Set(rows.map((r) => clean10(r[guess.phone])).filter(Boolean)).size
+  return { id: draftId, file: { name: file.name, columns, phoneColumn: guess.phone, nameColumn: guess.name, total: rows.length, valid, sample: rows.slice(0, 5) } }
 }
 
 export async function cancelBroadcast(id, { query = defaultQuery } = {}) {

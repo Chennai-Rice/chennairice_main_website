@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { staffJson } from '../../services/staffAuth.js'
+import { staffJson, staffFetch } from '../../services/staffAuth.js'
 import { I, WaText, num, pct, when } from './ui.jsx'
 import { SegmentFilters, BLANK_SEGMENT } from './Contacts.jsx'
 
@@ -12,6 +12,12 @@ function Editor({ fields, onDone }) {
   const [tname, setTname] = useState('')
   const [seg, setSeg] = useState({ ...BLANK_SEGMENT, permission: 'in' })
   const [mapping, setMapping] = useState({ body: [], buttons: {} })
+  // Who gets it: a group of contacts, or an uploaded CSV / Excel file (kept on a draft on the server).
+  const [mode, setMode] = useState('group')
+  const [draftId, setDraftId] = useState(null)
+  const [file, setFile] = useState(null)
+  const [fileCols, setFileCols] = useState({ phoneColumn: '', nameColumn: '', optedIn: false })
+  const [uploading, setUploading] = useState(false)
   const [aud, setAud] = useState(null)
   const [when_, setWhen] = useState('')
   const [busy, setBusy] = useState(false)
@@ -21,13 +27,43 @@ function Editor({ fields, onDone }) {
     staffJson('/api/admin/whatsapp/contacts?limit=1').then((d) => setTags(d.tags)).catch(() => {})
   }, [])
   const t = templates?.find((x) => x.name === tname)
+  const segment = mode === 'file' ? { file: fileCols } : seg
+  const segKey = JSON.stringify(segment)
   useEffect(() => {
-    if (!tname) return undefined
+    if (!tname || (mode === 'file' && (!draftId || !fileCols.phoneColumn))) { setAud(null); return undefined }
     const id = setTimeout(() => {
-      staffJson('/api/admin/whatsapp/broadcasts/audience', { method: 'POST', body: JSON.stringify({ segment: seg, templateName: tname }) }).then(setAud).catch((e) => setErr(e.message))
+      staffJson('/api/admin/whatsapp/broadcasts/audience', { method: 'POST', body: JSON.stringify({ segment: JSON.parse(segKey), templateName: tname, broadcastId: draftId }) })
+        .then(setAud).catch((e) => setErr(e.message))
     }, 400)
     return () => clearTimeout(id)
-  }, [seg, tname])
+  }, [segKey, tname, mode, draftId, fileCols.phoneColumn])
+
+  async function upload(f) {
+    if (!/\.(csv|xlsx)$/i.test(f.name)) { setErr('Choose a .csv or .xlsx file. (An old .xls: open it in Excel and Save as .xlsx.)'); return }
+    setUploading(true)
+    setErr('')
+    try {
+      const q = new URLSearchParams({ name: f.name, ...(draftId ? { id: draftId } : {}) })
+      const res = await staffFetch('/api/admin/whatsapp/broadcasts/file?' + q, { method: 'POST', body: f, headers: { 'Content-Type': f.type || 'application/octet-stream' } })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || d.message || 'Could not read the file.')
+      setDraftId(d.id)
+      setFile(d.file)
+      setFileCols({ phoneColumn: d.file.phoneColumn, nameColumn: d.file.nameColumn, optedIn: false })
+      if (!name) setName(f.name.replace(/\.(csv|xlsx)$/i, ''))
+    } catch (e) { setErr(e.message) } finally { setUploading(false) }
+  }
+  // A {{ }} or button value: a contact field, fixed text, or (for a file) one of its columns.
+  const mapValue = (m) => (m.from === 'col' ? 'col:' + m.col : m.from)
+  const fromValue = (v, m) => (v.startsWith('col:') ? { from: 'col', col: v.slice(4) } : { from: v, text: m.text || '' })
+  const sourceOptions = (withFields) => (
+    <>
+      {mode === 'file' && file && <optgroup label="From the file">{file.columns.map((c) => <option key={c} value={'col:' + c}>Column: {c}</option>)}</optgroup>}
+      {withFields
+        ? <optgroup label={mode === 'file' ? 'Other' : 'From the contact'}>{Object.entries(fields).filter(([k]) => mode !== 'file' || ['first_name', 'name', 'fixed'].includes(k)).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</optgroup>
+        : <option value="fixed">Fixed text</option>}
+    </>
+  )
 
   function pickTemplate(n) {
     setTname(n)
@@ -39,14 +75,20 @@ function Editor({ fields, onDone }) {
       buttons: Object.fromEntries(tt.model.buttons.map((b, i) => [i, b]).filter(([, b]) => (b.type === 'URL' && /\{\{1\}\}$/.test(b.url)) || b.type === 'COPY_CODE').map(([i, b]) => [i, { from: 'fixed', text: b.sample || '' }])),
     })
   }
-  const sampleOf = (m) => (m.from === 'fixed' ? m.text : { first_name: 'Ravi', name: 'Ravi Kumar', city: 'Chennai', last_product: 'Kitchidi Ponni Rice 5 kg', prize: '₹75 OFF' }[m.from])
+  const firstRow = file?.sample?.[0] || {}
+  const sampleOf = (m) => (m.from === 'fixed' ? m.text
+    : m.from === 'col' ? firstRow[m.col] || `[${m.col}]`
+    : mode === 'file' && (m.from === 'first_name' || m.from === 'name') && fileCols.nameColumn
+      ? (m.from === 'first_name' ? String(firstRow[fileCols.nameColumn] || '').split(/\s+/)[0] : firstRow[fileCols.nameColumn]) || 'there'
+      : { first_name: 'Ravi', name: 'Ravi Kumar', city: 'Chennai', last_product: 'Kitchidi Ponni Rice 5 kg', prize: '₹75 OFF' }[m.from])
   const preview = t ? t.model.body.text.replace(/\{\{(\d+)\}\}/g, (a, d) => sampleOf(mapping.body[Number(d) - 1] || {}) || a) : ''
 
   async function go(launch) {
     setBusy(true)
     setErr('')
     try {
-      const { id } = await staffJson('/api/admin/whatsapp/broadcasts', { method: 'POST', body: JSON.stringify({ name, template: tname, segment: seg, mapping }) })
+      if (mode === 'file' && !draftId) throw new Error('Upload the file first.')
+      const { id } = await staffJson('/api/admin/whatsapp/broadcasts', { method: 'POST', body: JSON.stringify({ ...(mode === 'file' ? { id: draftId } : {}), name, template: tname, segment, mapping }) })
       if (launch) {
         if (!window.confirm(`Send "${tname}" to ${num(aud?.eligible)} people${when_ ? ' at ' + new Date(when_).toLocaleString('en-IN') : ' now'}?`)) { onDone(); return }
         await staffJson(`/api/admin/whatsapp/broadcasts/${id}/launch`, { method: 'POST', body: JSON.stringify({ at: when_ ? new Date(when_).toISOString() : null }) })
@@ -69,11 +111,56 @@ function Editor({ fields, onDone }) {
           </label>
           {templates.length === 0 && <p className="wa-muted">No approved templates yet: create one in Templates and wait for Meta.</p>}
           <h3 className="wa-h3">Who gets it</h3>
-          <SegmentFilters f={seg} set={setSeg} tags={tags} />
+          <div className="wa-seg wa-seg--light">
+            <button type="button" className={mode === 'group' ? 'is-on' : ''} onClick={() => setMode('group')}>A group of contacts</button>
+            <button type="button" className={mode === 'file' ? 'is-on' : ''} onClick={() => setMode('file')}>Upload a file (CSV / Excel)</button>
+          </div>
+          {mode === 'group' ? <SegmentFilters f={seg} set={setSeg} tags={tags} /> : (
+            <div className="wa-bc-file">
+              <label className="wa-btn">
+                <I name="upload" size={14} /> {uploading ? 'Reading…' : file ? 'Upload another file' : 'Choose a CSV or Excel file'}
+                <input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden disabled={uploading}
+                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) upload(f) }} />
+              </label>
+              {!file && <p className="wa-muted">First row: column names, for example <b>Name, Mobile, Prize, Code</b>. One person per row, up to 20,000. Each column can fill a {'{{ }}'} of the template.</p>}
+              {file && (
+                <>
+                  <p className="wa-muted"><b>{file.name}</b> · {num(file.total)} rows · {num(file.valid)} valid mobile numbers</p>
+                  <div className="wa-map">
+                    <div className="wa-map-row"><span>Mobile</span>
+                      <select value={fileCols.phoneColumn} onChange={(e) => setFileCols({ ...fileCols, phoneColumn: e.target.value })}>
+                        <option value="">Choose the mobile number column…</option>
+                        {file.columns.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div className="wa-map-row"><span>Name</span>
+                      <select value={fileCols.nameColumn} onChange={(e) => setFileCols({ ...fileCols, nameColumn: e.target.value })}>
+                        <option value="">No name column</option>
+                        {file.columns.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="wa-table-wrap wa-bc-sample">
+                    <table className="wa-table wa-table--light">
+                      <thead><tr>{file.columns.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+                      <tbody>{file.sample.map((r, i) => <tr key={i}>{file.columns.map((c) => <td key={c}>{r[c]}</td>)}</tr>)}</tbody>
+                    </table>
+                  </div>
+                  {(!t || t.category === 'MARKETING') && (
+                    <label className="wa-check wa-bc-permission">
+                      <input type="checkbox" checked={fileCols.optedIn} onChange={(e) => setFileCols({ ...fileCols, optedIn: e.target.checked })} />
+                      <span>These people agreed to get WhatsApp offers from Chennai Rice. Needed for a marketing template: WhatsApp only allows offers to people who said yes, and numbers that report us lower the account's quality. Anyone who replied STOP is always left out.</span>
+                    </label>
+                  )}
+                </>
+              )}
+            </div>
+          )}
           {aud && (
             <div className="wa-stat-strip">
               <div className="is-lime"><b>{num(aud.eligible)}</b><span>will get it</span></div>
-              <div><b>{num(aud.inSegment)}</b><span>in this group</span></div>
+              <div><b>{num(aud.inSegment)}</b><span>{mode === 'file' ? 'different numbers in the file' : 'in this group'}</span></div>
+              {mode === 'file' && aud.invalidPhones > 0 && <div><b>{num(aud.invalidPhones)}</b><span>left out: not a mobile number</span></div>}
               {aud.marketing && <div><b>{num(aud.excludedNoPermission)}</b><span>left out: never said yes</span></div>}
               <div><b>{num(aud.excludedStop)}</b><span>left out: said STOP</span></div>
             </div>
@@ -85,8 +172,8 @@ function Editor({ fields, onDone }) {
                 {mapping.body.map((m, i) => (
                   <div key={i} className="wa-map-row">
                     <span>{`{{${i + 1}}}`}</span>
-                    <select value={m.from} onChange={(e) => { const body = [...mapping.body]; body[i] = { ...m, from: e.target.value }; setMapping({ ...mapping, body }) }}>
-                      {Object.entries(fields).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    <select value={mapValue(m)} onChange={(e) => { const body = [...mapping.body]; body[i] = fromValue(e.target.value, m); setMapping({ ...mapping, body }) }}>
+                      {sourceOptions(true)}
                     </select>
                     {m.from === 'fixed' && <input value={m.text || ''} onChange={(e) => { const body = [...mapping.body]; body[i] = { ...m, text: e.target.value }; setMapping({ ...mapping, body }) }} />}
                   </div>
@@ -94,7 +181,12 @@ function Editor({ fields, onDone }) {
                 {Object.entries(mapping.buttons).map(([i, m]) => (
                   <div key={'b' + i} className="wa-map-row">
                     <span>{t.model.buttons[i].type === 'COPY_CODE' ? 'Code' : 'Link end'}</span>
-                    <input value={m.text || ''} onChange={(e) => setMapping({ ...mapping, buttons: { ...mapping.buttons, [i]: { from: 'fixed', text: e.target.value } } })} />
+                    {mode === 'file' && file && (
+                      <select value={mapValue(m)} onChange={(e) => setMapping({ ...mapping, buttons: { ...mapping.buttons, [i]: fromValue(e.target.value, m) } })}>
+                        {sourceOptions(false)}
+                      </select>
+                    )}
+                    {m.from !== 'col' && <input value={m.text || ''} onChange={(e) => setMapping({ ...mapping, buttons: { ...mapping.buttons, [i]: { from: 'fixed', text: e.target.value } } })} />}
                   </div>
                 ))}
               </div>
