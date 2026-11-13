@@ -26,7 +26,9 @@ const PAID = /^(paid|cpc|ppc|ads?|paid[_-]?social|paidsocial|paid[_-]?search|dis
 function isPaidAd(a) {
   const s = (a.utm_source || '').toLowerCase()
   const paid = PAID.test(a.utm_medium || '')
-  if (a.gclid) return true
+  // A Google Merchant Center (Shopping) visit counts as a Google ad (owner, 13 Nov 2026).
+  if (a.gclid || a.srsltid || /^(shopping|free[_-]?listings?|organic[_-]?shopping|merchant[_-]?cent(er|re))$/i.test(a.utm_medium || '') ||
+      /^(google[_-]?shopping|merchant[_-]?cent(er|re)|gmc)$/.test(s)) return true
   if (!paid) return false
   let host = ''
   try { host = a.referrer ? new URL(a.referrer).hostname : '' } catch { /* none */ }

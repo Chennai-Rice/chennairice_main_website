@@ -419,7 +419,7 @@ function SourcePeople({ rq, product, channel, say, onAuthError }) {
 const LEAD_FILTERS = [
   { key: '', label: 'All' },
   { key: 'meta', label: 'Meta ads', sources: ['meta_ads_instagram', 'meta_ads_facebook', 'meta_ads'] },
-  { key: 'google', label: 'Google Ads', sources: ['google_ads'] },
+  { key: 'google', label: 'Google Ads', sources: ['google_ads', 'google_shopping'] },
   { key: 'whatsapp', label: 'WhatsApp form', sources: ['whatsapp'] },
   { key: 'chat', label: 'WhatsApp chats', sources: ['whatsapp_chat'] },
   { key: 'expo', label: 'Expo QR', sources: ['expo'] },

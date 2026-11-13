@@ -35,7 +35,7 @@ const OUTCOME = {
   checkout: { text: 'Left at checkout', tone: 'muted' },
   cart: { text: 'Left at cart', tone: 'muted' },
 }
-const SOURCE_CHIPS = [['', 'All sources'], ['meta', 'Meta ads'], ['google_ads', 'Google Ads'], ['google_shopping', 'Google Shopping'], ['google_search', 'Google search'], ['whatsapp', 'WhatsApp'], ['direct', 'Direct'], ['other', 'Other']]
+const SOURCE_CHIPS = [['', 'All sources'], ['meta', 'Meta ads'], ['google_ads', 'Google Ads'], ['google_search', 'Google search'], ['whatsapp', 'WhatsApp'], ['direct', 'Direct'], ['other', 'Other']]
 const FILTERS = ['', 'purchased', 'cancelled', 'failed', 'payment', 'details', 'checkout', 'cart']
 const PAGE = 50
 
