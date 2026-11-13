@@ -2,10 +2,11 @@
 //
 // The browser sends what it saw on landing: utm_source / utm_medium /
 // utm_campaign / utm_content from the ad link, Meta's fbclid, Google's
-// gclid, and the referring site. Here that becomes one source:
+// gclid, Merchant Center's srsltid, and the referring site. Here that becomes one source:
 //
 //   meta_ads_facebook, meta_ads_instagram, meta_ads   paid Meta ad
 //   google_ads                                         paid Google ad
+//   google_shopping                                    Google Merchant Center listing (free listing / Shopping tab)
 //   facebook, instagram, google_search, whatsapp       unpaid visits
 //   other_website, direct
 //
@@ -22,6 +23,7 @@ export const SOURCES = {
   meta_ads_instagram: 'Meta ad · Instagram',
   meta_ads: 'Meta ad',
   google_ads: 'Google Ads',
+  google_shopping: 'Google Shopping (Merchant Center)',
   facebook: 'Facebook (not an ad)',
   instagram: 'Instagram (not an ad)',
   google_search: 'Google search',
@@ -55,6 +57,7 @@ export function cleanAttribution(raw) {
     utm_term: clip(raw.utm_term),
     fbclid: raw.fbclid ? true : undefined,
     gclid: raw.gclid ? true : undefined,
+    srsltid: raw.srsltid ? true : undefined,
     referrer: clip(raw.referrer, 200),
     landing: clip(raw.landing, 200),
     at: clip(raw.at, 40),
@@ -83,6 +86,11 @@ export function classify(a) {
 
   const isGoogle = /^(google|adwords|googleads|google_ads)$/.test(s)
   if (a.gclid || (isGoogle && paid)) return { source: 'google_ads', campaign, ad }
+  // Google Merchant Center: its srsltid tag on the product link, or a link tagged as Shopping / free listing
+  // (utm_medium=shopping..., or utm_source=google_shopping / merchant_center). A paid Shopping ad has a gclid and
+  // stays Google Ads above, where its cost is.
+  if (a.srsltid || /^(shopping|free[_-]?listings?|organic[_-]?shopping|merchant[_-]?cent(er|re))$/.test(m) ||
+      /^(google[_-]?shopping|merchant[_-]?cent(er|re)|gmc)$/.test(s)) return { source: 'google_shopping', campaign, ad }
 
   const igSource = /^(ig|instagram)$/.test(s)
   const fbSource = /^(fb|facebook|meta)$/.test(s)
@@ -378,8 +386,8 @@ export async function contestLeads(db, { days, from, to } = {}) {
  * new leads (contest sign-ups, WhatsApp chats, expo QR; one per mobile per channel), how many converted (a paid
  * order on that mobile after they became a lead), the revenue from them, and the conversion rate.
  */
-export const CHANNEL_ORDER = ['meta', 'google_ads', 'google_search', 'whatsapp', 'direct', 'other']
-export const CHANNEL_LABEL = { meta: 'Meta ads', google_ads: 'Google Ads', google_search: 'Google search', whatsapp: 'WhatsApp', direct: 'Direct', other: 'Other' }
+export const CHANNEL_ORDER = ['meta', 'google_ads', 'google_shopping', 'google_search', 'whatsapp', 'direct', 'other']
+export const CHANNEL_LABEL = { meta: 'Meta ads', google_ads: 'Google Ads', google_shopping: 'Google Shopping', google_search: 'Google search', whatsapp: 'WhatsApp', direct: 'Direct', other: 'Other' }
 export function channelKey(source, campaign = '') {
   const s = String(source || 'direct')
   // A link whose placeholders were never filled in ({{campaign.name}}, <campaign-name>…) is a test or broken link,
@@ -388,6 +396,7 @@ export function channelKey(source, campaign = '') {
   // A facebook / instagram link that carries a campaign (its ID or its name) is a Meta ad, as in the Meta ads panel.
   if (s.startsWith('meta_ads') || ((s === 'facebook' || s === 'instagram') && String(campaign || '').trim() !== '')) return 'meta'
   if (s === 'google_ads') return 'google_ads'
+  if (s === 'google_shopping') return 'google_shopping'
   if (s === 'google_search') return 'google_search'
   if (s === 'whatsapp' || s === 'whatsapp_chat') return 'whatsapp'
   if (s === 'direct') return 'direct'

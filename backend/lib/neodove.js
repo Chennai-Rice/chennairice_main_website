@@ -39,7 +39,7 @@ import { httpError, safeEqual } from './sales/util.js'
 
 /** What kind of lead it is, for the telecaller's lead details and the tag on the call result in Sales Daddy. */
 const SOURCE_TYPES = {
-  meta_ads_facebook: 'Meta Ads', meta_ads_instagram: 'Meta Ads', meta_ads: 'Meta Ads', google_ads: 'Google Ads', whatsapp: 'WhatsApp',
+  meta_ads_facebook: 'Meta Ads', meta_ads_instagram: 'Meta Ads', meta_ads: 'Meta Ads', google_ads: 'Google Ads', google_shopping: 'Google Shopping', whatsapp: 'WhatsApp',
   facebook: 'Social media', instagram: 'Social media', google_search: 'Google search', expo: 'Expo QR',
 }
 export function leadType(campaign, source) {
