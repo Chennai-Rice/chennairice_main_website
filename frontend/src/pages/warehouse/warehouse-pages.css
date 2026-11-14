@@ -512,3 +512,16 @@
 .wh-role-toggle { border: 1px solid rgba(74, 44, 34, 0.25); background: transparent; color: inherit; border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; }
 .wh-role-toggle:hover { border-color: rgba(74, 44, 34, 0.5); }
 .wh-role-toggle.is-on { background: #6e1420; border-color: #6e1420; color: #fff; }
+
+/* Ad campaigns: one page per channel (All channels, Meta ads, Google, WhatsApp…) */
+.src-pages { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+.src-page { border: 1px solid rgba(74, 44, 34, 0.2); background: #fff; color: inherit; border-radius: 999px; padding: 8px 16px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.src-page:hover { border-color: rgba(74, 44, 34, 0.45); }
+.src-page.is-active { background: #6e1420; border-color: #6e1420; color: #fff; }
+.src-kpi { cursor: default; }
+.src-subhead { margin: 6px 0 10px; font-size: 15px; }
+.src-live { margin: 18px 0; }
+@media (max-width: 640px) {
+  .src-pages { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .src-page { flex: none; padding: 7px 13px; font-size: 13px; }
+}

@@ -140,7 +140,33 @@ function CopyLine({ label, text }) {
   )
 }
 
-export default function SourcesReport({ say, onAuthError }) {
+// Each channel's own page (Ad campaigns → Meta ads, Google…): the All-in-one report's column(s) for its leads.
+const LEAD_COLUMNS = { meta: ['meta'], google: ['google_ads', 'google_search'], whatsapp: ['whatsapp'], direct: ['direct'] }
+// On the Meta page: Facebook and Instagram apart.
+const PLATFORMS = {
+  meta: [
+    { label: 'Facebook', sources: ['meta_ads_facebook', 'facebook'] },
+    { label: 'Instagram', sources: ['meta_ads_instagram', 'instagram'] },
+    { label: 'Meta (placement not known)', sources: ['meta_ads'] },
+  ],
+  google: [
+    { label: 'Google Ads (search, video)', sources: ['google_ads'] },
+    { label: 'Google Shopping (Merchant Center)', sources: ['google_shopping'] },
+    { label: 'Google search (not an ad)', sources: ['google_search'] },
+  ],
+  whatsapp: [
+    { label: 'WhatsApp messages and links', sources: ['whatsapp'] },
+    { label: 'WhatsApp chats', sources: ['whatsapp_chat'] },
+  ],
+}
+export const CHANNEL_PAGES = CHANNELS.filter((c) => c.key)
+
+/**
+ * The Ad campaigns report. With `only` (a channel key) it is that channel's own page: its totals, its
+ * platforms, every campaign → ad set → ad open, its buyers and its leads; `live(range)` adds the channel's
+ * live panel from the ad platform (Meta Ads Manager, Google Ads) for the same dates.
+ */
+export default function SourcesReport({ say, onAuthError, only = '', live = null }) {
   const [period, setPeriod] = useState('month')
   const [custom, setCustom] = useState(() => ({ from: daysBack(30), to: istToday() }))
   const range = period === 'custom' ? custom : PERIODS.find((p) => p.key === period).range()
@@ -150,7 +176,9 @@ export default function SourcesReport({ say, onAuthError }) {
   const [data, setData] = useState(null)
   const [open, setOpen] = useState(null) // { key, orders }
   const [help, setHelp] = useState(false)
-  const [channel, setChannel] = useState('')
+  const [picked, setChannel] = useState('')
+  const channel = only || picked
+  const [leadCols, setLeadCols] = useState(null)
   const [find, setFind] = useState('')
   const [shut, setShut] = useState({}) // channel key -> collapsed
 
@@ -167,6 +195,17 @@ export default function SourcesReport({ say, onAuthError }) {
       .catch((err) => { if (!onAuthError(err)) say(err.message, 'error') })
     return () => { live = false }
   }, [rq, product, say, onAuthError])
+
+  // A channel page's leads (sign-ups, chats, expo): the All-in-one report's column for it.
+  useEffect(() => {
+    if (!LEAD_COLUMNS[only]) { setLeadCols(null); return undefined }
+    let live = true
+    setLeadCols(null)
+    staffJson(`/api/admin/warehouse/channels?${rq}`)
+      .then((d) => live && setLeadCols((d.columns || []).filter((c) => LEAD_COLUMNS[only].includes(c.key))))
+      .catch(() => {})
+    return () => { live = false }
+  }, [only, rq])
 
   async function showOrders(row) {
     if (open && open.key === rowKey(row)) return setOpen(null)
@@ -202,14 +241,23 @@ export default function SourcesReport({ say, onAuthError }) {
   const channelCards = CHANNELS.filter((c) => c.key).map((c) => ({ ...c, ...all.filter((r) => r.channel === c.key).reduce(add, zero) }))
     .filter((c) => c.visits || c.orders)
   const totalRevenue = channelCards.reduce((t, c) => t + c.revenue, 0)
+  // A channel page: its totals and its platforms (search aside).
+  const mineAll = only ? all.filter((r) => r.channel === only) : []
+  const mine = mineAll.reduce(add, zero)
+  const leadSum = (k) => (leadCols || []).reduce((t, c) => t + (c[k] || 0), 0)
+  const platforms = (PLATFORMS[only] || []).map((p) => ({ ...p, ...mineAll.filter((r) => p.sources.includes(r.source)).reduce(add, zero) }))
+    .filter((p) => p.visits || p.orders)
+  const onlyLabel = CHANNELS.find((c) => c.key === only)?.label
 
   return (
     <>
     <section className="wh-panel wh-src">
       <header className="wh-src-head">
         <div>
-          <h2 className="wh-panel-title">Where orders come from</h2>
-          <p className="wh-muted wh-small">Meta ads (Facebook / Instagram), Google Ads, other visits and direct — by campaign and ad.</p>
+          <h2 className="wh-panel-title">{only ? onlyLabel : 'Where orders come from'}</h2>
+          <p className="wh-muted wh-small">{only
+            ? `Everything the website recorded from ${onlyLabel}: sales, visits, every campaign and ad, buyers and leads.`
+            : 'Meta ads (Facebook / Instagram), Google Ads, other visits and direct — by campaign and ad.'}</p>
         </div>
         <div className="wh-src-filters">
           <label className="wh-filter"><span>Period</span>
@@ -249,16 +297,56 @@ export default function SourcesReport({ say, onAuthError }) {
         </div>
       )}
 
-      <ChannelTable rq={rq} range={range} say={say} onAuthError={onAuthError} />
+      {!only && <ChannelTable rq={rq} range={range} say={say} onAuthError={onAuthError} />}
+
+      {only && data && (
+        <>
+          <div className="src-cards src-kpis">
+            {[
+              ['Revenue', rupees(mine.revenue), `${mine.orders} paid order${mine.orders === 1 ? '' : 's'}`],
+              ['Website visits', mine.visits.toLocaleString('en-IN'), `${mine.checkouts} reached checkout`],
+              ['Visit → order', mine.visits ? pct(mine.orders, mine.visits) : '—', `checkout → order ${mine.checkouts ? pct(mine.orders, mine.checkouts) : '—'}`],
+              ['Average order', mine.orders ? rupees(mine.revenue / mine.orders) : '—', 'revenue ÷ orders'],
+              ...(leadCols ? [
+                ['Leads', leadSum('leads').toLocaleString('en-IN'), 'sign-ups, chats, expo (one per mobile)'],
+                ['Converted', String(leadSum('converted')), `${leadSum('leads') ? pct(leadSum('converted'), leadSum('leads')) : '—'} · ${rupees(leadSum('convertedRevenue'))}`],
+                ['Not converted', String(leadSum('notConverted')), 'leads who have not paid yet'],
+              ] : []),
+            ].map(([label, value, note]) => (
+              <div key={label} className="src-card src-kpi">
+                <span className="src-card-label">{label}</span>
+                <strong className="src-card-value">{value}</strong>
+                <span className="src-card-note">{note}</span>
+              </div>
+            ))}
+          </div>
+          {platforms.length > 0 && (
+            <>
+              <h3 className="src-subhead">By platform</h3>
+              <div className="src-cards">
+                {platforms.map((p) => (
+                  <div key={p.label} className="src-card src-kpi">
+                    <span className="src-card-label">{p.label}</span>
+                    <strong className="src-card-value">{rupees(p.revenue)}</strong>
+                    <span className="src-card-note">{p.orders} order{p.orders === 1 ? '' : 's'} · {p.visits.toLocaleString('en-IN')} visits · {p.visits ? pct(p.orders, p.visits) : '—'}</span>
+                    <span className="src-card-bar"><span style={{ width: mine.revenue ? `${(p.revenue / mine.revenue) * 100}%` : 0 }} /></span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          <h3 className="src-subhead">Campaigns, ad sets and ads</h3>
+        </>
+      )}
 
       <div className="wh-src-channels">
-        <span className="src-hint">{channel ? <>Showing <strong>{CHANNELS.find((c) => c.key === channel)?.label}</strong> · <button type="button" className="src-link" onClick={() => { setChannel(''); setOpen(null) }}>show all channels</button></> : 'Tap a channel card to see only that channel.'}</span>
+        {!only && <span className="src-hint">{channel ? <>Showing <strong>{CHANNELS.find((c) => c.key === channel)?.label}</strong> · <button type="button" className="src-link" onClick={() => { setChannel(''); setOpen(null) }}>show all channels</button></> : 'Tap a channel card to see only that channel.'}</span>}
         <input className="wh-src-find" type="search" placeholder="Search campaign or ad…" value={find} onChange={(e) => setFind(e.target.value)} aria-label="Search campaign or ad" />
       </div>
 
       {!data ? <p className="wh-empty">Loading…</p> : (
         <>
-          <div className="src-cards">
+          {!only && <div className="src-cards">
             {channelCards.map((c) => (
               <button key={c.key} type="button" className={`src-card${channel === c.key ? ' is-active' : ''}`} aria-pressed={channel === c.key}
                 onClick={() => { setChannel(channel === c.key ? '' : c.key); setOpen(null) }}>
@@ -269,11 +357,13 @@ export default function SourcesReport({ say, onAuthError }) {
               </button>
             ))}
             {!channelCards.length && <p className="wh-empty">No visits or orders in this period yet.</p>}
-          </div>
+          </div>}
+          {only && !groups.length && !needle && <p className="wh-empty">No visits or orders from {onlyLabel} in this period.</p>}
 
           {groups.map((g) => {
             const closed = shut[g.key] ?? (g.key === 'test' || (!channel && !g.orders && !needle))
-            const many = shut[g.key + ':all'] ? g.list : g.list.slice(0, 5)
+            // A channel page lists every campaign.
+            const many = only || shut[g.key + ':all'] ? g.list : g.list.slice(0, 5)
             return (
               <section key={g.key} className={`src-group${g.key === 'test' ? ' is-test' : ''}`}>
                 <button type="button" className="src-group-head" aria-expanded={!closed} onClick={() => setShut((x) => ({ ...x, [g.key]: !closed }))}>
@@ -336,7 +426,7 @@ export default function SourcesReport({ say, onAuthError }) {
                         })}
                       </tbody>
                     </table>
-                    {g.list.length > 5 && (
+                    {!only && g.list.length > 5 && (
                       <button type="button" className="src-more" onClick={() => setShut((x) => ({ ...x, [g.key + ':all']: !x[g.key + ':all'] }))}>
                         {shut[g.key + ':all'] ? 'Show fewer' : `Show all ${g.list.length} campaigns`}
                       </button>
@@ -350,6 +440,7 @@ export default function SourcesReport({ say, onAuthError }) {
         </>
       )}
     </section>
+    {live && <div className="src-live">{live(range)}</div>}
     <SourcePeople rq={rq} product={product} channel={channel} say={say} onAuthError={onAuthError} />
     <ContestLeads rq={rq} range={range} channel={channel} say={say} onAuthError={onAuthError} />
     </>

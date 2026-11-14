@@ -432,7 +432,7 @@ function LeadsTab({ data }) {
  * backend/lib/sales/meta-ads.js) beside the website's own visits, sign-ups and orders for it. A campaign
  * opens to its ads. Loaded on its own so the rest of the page never waits for Meta.
  */
-function MetaAdsPanel({ period }) {
+export function MetaAdsPanel({ period }) {
   const [state, setState] = useState({ data: null, error: '', loading: true })
   const [open, setOpen] = useState(() => new Set())
   const load = useCallback((refresh = false) => {
@@ -512,7 +512,7 @@ function MetaAdsPanel({ period }) {
  * Google Ads — live: each Google Ads campaign (through Sales Daddy, backend/lib/sales/google-ads.js) beside
  * the website's own visits, sign-ups and orders from it. Google's figures cover the last N days up to today.
  */
-function GoogleAdsPanel({ period }) {
+export function GoogleAdsPanel({ period }) {
   const [state, setState] = useState({ data: null, error: '', loading: true })
   const load = useCallback((refresh = false) => {
     setState((s) => ({ ...s, loading: true, error: '' }))
