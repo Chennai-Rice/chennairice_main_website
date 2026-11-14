@@ -130,7 +130,7 @@ export default function ProductCard({ product }) {
         <div className={`card-foot${showCardPrices ? "" : " card-foot--enquiry"}`}>
           {showCardPrices && soldOut && selected.price == null ? (
             <p className="price-enquiry">
-              <span className="price-enquiry-label price-soldout">Out of stock</span>
+              <span className="price-enquiry-label price-soldout">{product.offline ? "Price unavailable" : "Out of stock"}</span>
               <span className="price-unit">{selected.kg} kg pack</span>
             </p>
           ) : showCardPrices && soldOut ? (

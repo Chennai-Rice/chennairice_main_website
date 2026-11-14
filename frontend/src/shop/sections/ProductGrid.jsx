@@ -57,6 +57,13 @@ export default function ProductGrid({ search, activeFilter, onFilterChange }) {
         </div>
       </div>
 
+      {/* The live catalogue could not be reached: the packs are shown without prices and cannot be added. */}
+      {!loading && !error && products[0]?.offline && (
+        <p className="no-results" role="status">
+          We couldn&rsquo;t load today&rsquo;s prices. Please refresh the page in a minute.
+        </p>
+      )}
+
       {!loading && !error && (
         <ul className="product-grid">
           {visible.map((product) => (

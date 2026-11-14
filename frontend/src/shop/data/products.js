@@ -270,8 +270,12 @@ const FALLBACK_PRODUCTS = [
     flag: presentation.flag,
     name,
     description,
-    price: 0,
-    packSizes: [{ kg: packKg, price: 0 }],
+    // Only used when the live catalogue cannot be reached: no price (never "₹0") and nothing can be
+    // added to the cart, since the server could not price it either.
+    price: null,
+    packSizes: [{ kg: packKg, price: null, inStock: false }],
+    inStock: false,
+    offline: true,
     image,
     alt,
     width: presentation.width,

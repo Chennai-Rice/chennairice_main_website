@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import SiteLayout from "../layouts/SiteLayout.jsx";
 import { useCart } from "../hooks/useCart.jsx";
 import useCartQuote from "../hooks/useCartQuote.js";
+import useDeliveryPin from "../hooks/useDeliveryPin.js";
 import { currentAttribution } from "../../services/attribution.js";
 import { trackEvent } from "../../services/events.js";
 import { recordJourney, endJourney, journeyItems, journeyValue } from "../../services/journey.js";
@@ -117,7 +118,10 @@ export default function CheckoutPage() {
   const { items, count, clear, replace: replaceCart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
-  const [form, setForm] = useState(EMPTY_FORM);
+  // The PIN code already given on a product page or the cart starts the form (and its state and city).
+  const [savedPin, savePin] = useDeliveryPin();
+  const [form, setForm] = useState(() => ({ ...EMPTY_FORM, pincode: savedPin }));
+  useEffect(() => { savePin(form.pincode); }, [form.pincode, savePin]);
   // Courier, or Chennai Rice's own team where it delivers (offered once the PIN code is known, and only
   // when it costs less than the courier). Our team is the default: where it is not offered, the server's
   // quote answers with the courier, and that answer (deliveryMethod) is what is shown and paid. The
