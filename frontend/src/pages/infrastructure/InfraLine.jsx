@@ -57,12 +57,12 @@ const MACHINES = [
 
 // The home delivery scene, as fractions of the house picture: the delivery truck
 // parked in front of it (cab towards the door, as it drove in from the right) and
-// one bag delivered before the steps (Nov 2026: was two more on the steps as well). `span` above = how far the scene reaches past the
+// two bags already on the steps. `span` above = how far the scene reaches past the
 // house's right edge, for the magnifier.
 const TRUCK_RATIO = 482 / 360
 const HOME = {
   truck: { x: 0.66, bottom: 1.04, h: 0.64 }, // left edge, base and height (of the house's height)
-  bags: [], // [x, base] of any bags on the steps: none now, only the bag in front (owner, Nov 2026)
+  bags: [[0.505, 0.935], [0.565, 0.935]], // [x, base] of each bag on the steps
   bag: [0.05, 0.13], // a bag's size: of the house's width, of its height
   front: { file: 'kitchidi-ponni-rice', x: 0.565, base: 1.0, h: 0.2 }, // the red Kitchidi Ponni bag on the ground before the steps
 }
@@ -435,7 +435,7 @@ function DrivingTruck({ d, dur, begin, turn }) {
   )
 }
 
-/** The delivery truck parked before the house, with the delivered bag in front of the steps. */
+/** The delivery truck parked before the house, with bags left on the steps. */
 function HomeScene({ house }) {
   const tk = truckBox(house)
   const [bw, bh] = [HOME.bag[0] * house.w, HOME.bag[1] * house.h]

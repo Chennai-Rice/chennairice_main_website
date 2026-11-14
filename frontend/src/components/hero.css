@@ -136,17 +136,6 @@
   color: #f8f2e3;
   text-shadow: 0 2px 30px rgba(0, 0, 0, 0.55);
 }
-/* Wide enough for the intro to sit on two even lines on a laptop (owner, Oct 2026). */
-.home-hero-sub {
-  margin: 20px auto 0;
-  max-width: 900px;
-  text-wrap: balance;
-  font-size: 17px;
-  line-height: 1.65;
-  font-weight: 400;
-  color: #efe4cc;
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6);
-}
 .hero-ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 28px; }
 .hero-cta {
   display: inline-flex; align-items: center; justify-content: center;
@@ -163,106 +152,37 @@
 @media (max-width: 600px) {
   .hero-tagline { font-size: 17px; margin-bottom: 10px; }
   .home-hero-h1 { font-size: clamp(30px, 8.4vw, 38px); }
-  .home-hero-sub { font-size: 15px; line-height: 1.6; }
   .hero-ctas { flex-direction: column; align-items: stretch; max-width: 320px; margin: 22px auto 0; }
 }
 
-/* --- ESTD badge --- */
+/* --- ESTD 1950's: bold text on the right (Nov 2026: in place of the round gold badge) --- */
 .hero-estd {
   position: absolute;
   right: 7vw;
   bottom: 26vh;
   z-index: 2;
-  /* The float animates `transform`, so any `transform: scale()` set elsewhere
-     would simply be overwritten by the keyframes. Scale therefore travels as a
-     variable that the keyframes compose in. */
+  margin: 0;
+  /* Scale travels as a variable so the phone rules below can shrink it. */
   --estd-scale: 1;
-  animation: hero-float 8s ease-in-out infinite;
-}
-@keyframes hero-float {
-  0%,
-  100% {
-    transform: translateY(-6px) scale(var(--estd-scale));
-  }
-  50% {
-    transform: translateY(6px) scale(var(--estd-scale));
-  }
-}
-
-.hero-estd-ring {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(214, 178, 100, 0.95);
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 2px;
-  position: relative;
-  /* A thin gold ring alone disappears against the film, which changes
-     behind it every frame. A dark, slightly blurred disc gives the badge its
-     own ground so it reads over a bright mill shot as well as a dark one. */
-  background: radial-gradient(circle at 50% 42%, rgba(38, 16, 10, 0.62) 0%, rgba(30, 12, 8, 0.38) 62%, rgba(30, 12, 8, 0.12) 100%);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  /* The glow itself: outward halo plus an inner rim light. */
-  box-shadow:
-    0 0 22px rgba(214, 178, 100, 0.45),
-    0 0 44px rgba(214, 178, 100, 0.18),
-    inset 0 0 18px rgba(214, 178, 100, 0.22);
-  animation: hero-estd-glow 4.5s ease-in-out infinite;
-}
-
-/* Breathes rather than blinks — a slow swell in the halo, nothing that
-   flashes or draws the eye away from the headline. */
-@keyframes hero-estd-glow {
-  0%, 100% {
-    box-shadow:
-      0 0 22px rgba(214, 178, 100, 0.45),
-      0 0 44px rgba(214, 178, 100, 0.18),
-      inset 0 0 18px rgba(214, 178, 100, 0.22);
-  }
-  50% {
-    box-shadow:
-      0 0 30px rgba(214, 178, 100, 0.68),
-      0 0 62px rgba(214, 178, 100, 0.3),
-      inset 0 0 22px rgba(214, 178, 100, 0.34);
-  }
-}
-
-.hero-estd-ring::before {
-  content: '';
-  position: absolute;
-  inset: 6px;
-  border-radius: 50%;
-  border: 1px dashed rgba(214, 178, 100, 0.7);
-}
-
-.hero-estd-label {
-  font-size: 10px;
-  letter-spacing: 0.3em;
-  text-indent: 0.3em;
-  text-transform: uppercase;
-  color: #f0dcaa;
-  text-shadow: 0 0 10px rgba(214, 178, 100, 0.65), 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-.hero-estd-year {
-  font-family: var(--serif);
-  font-size: 26px;
-  color: #f6e6bd;
+  transform: scale(var(--estd-scale));
+  transform-origin: right bottom;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35em;
+  white-space: nowrap;
+  /* The site's label lettering (as "Finest Rice, Finest Life" above Our Bestsellers, .section-label):
+     Jost semi-bold, widely spaced; light grey-white with a soft shadow so it reads over the film. */
+  font-family: var(--sans);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  font-size: 19px;
   line-height: 1;
-  text-shadow: 0 0 14px rgba(214, 178, 100, 0.7), 0 1px 3px rgba(0, 0, 0, 0.55);
+  color: rgba(236, 236, 236, 0.92);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
-
-@media (prefers-reduced-motion: reduce) {
-  /* Killing the animation also drops the scale the keyframes were composing,
-     so it is restored statically here. */
-  .hero-estd {
-    animation: none;
-    transform: scale(var(--estd-scale));
-  }
-  .hero-estd-ring { animation: none; }
+/* ESTD in capitals; 1950's as written (capitals would make it 1950'S). */
+.hero-estd-label {
+  text-transform: uppercase;
 }
 
 /* --- bottom cream wave with gold rim --- */
@@ -294,6 +214,7 @@
     width: fit-content;
     margin-inline: auto;
     bottom: calc(var(--hero-curve-h) + 30px);
+    transform-origin: center bottom;
     --estd-scale: 0.8;
   }
   .hero-curve {
@@ -301,7 +222,7 @@
   }
 }
 
-/* On short phones the title block and ESTD badge don't fit with room to
+/* On short phones the title block and ESTD text don't fit with room to
    spare — compact each of them so nothing overlaps. */
 @media (max-width: 900px) and (max-height: 720px) {
   .hero-content {
@@ -311,21 +232,19 @@
     font-size: 42px;
     line-height: 1.05;
   }
-  .home-hero-sub {
-    margin-top: 14px;
-  }
   /* The badge used to be lifted to 234px here to clear the headline. Now that
      it sits down by the wave there is nothing above it to collide with, so it
      keeps the same offset as every other phone. */
 }
 
 /* A soft dark wash behind the centred text, so the intro reads over the bright silos. */
+/* One even dark veil over the whole film (Nov 2026, matched to the reference the owner sent): the
+   bright roofs and hazy sky come down to mid-grey, edges as dark as the middle. Was a dark patch
+   behind the text fading to nearly clear at the sides. */
 .hero-overlay {
-  background:
-    radial-gradient(60% 55% at 50% 45%, rgba(14, 8, 3, 0.55) 0%, rgba(14, 8, 3, 0.25) 60%, rgba(14, 8, 3, 0) 100%),
-    linear-gradient(180deg, rgba(18, 10, 4, 0.25) 0%, rgba(18, 10, 4, 0.1) 40%, rgba(24, 12, 6, 0.35) 100%);
+  background: rgba(0, 0, 0, 0.55);
 }
-/* Phones: the Estd badge would sit on the buttons, so it tucks into the corner, smaller. */
+/* Phones: the Estd text would sit on the buttons, so it tucks into the corner, smaller. */
 @media (max-width: 600px) {
-  .hero-estd { right: 14px; bottom: 76px; --estd-scale: 0.62; }
+  .hero-estd { left: auto; right: 14px; bottom: 76px; margin: 0; transform-origin: right bottom; --estd-scale: 0.62; }
 }

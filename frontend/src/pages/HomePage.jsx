@@ -5,7 +5,7 @@ import Celebrities from '../components/Celebrities.jsx'
 import Testimonials from '../components/Testimonials.jsx'
 import HomeFaq from '../components/HomeFaq.jsx'
 import { HomeBulk } from '../components/HomeIntro.jsx'
-import { showAmbassadors, showWhy } from '../config.js'
+import { showAmbassadors } from '../config.js'
 import usePageMeta from '../shop/hooks/usePageMeta.js'
 import { PAGE_META } from '../seo.js'
 
@@ -14,9 +14,9 @@ export default function HomePage() {
   return (
     <main>
       <Hero />
+      {/* Why Tamil Homes Trust Chennai Rice: above the products (Nov 2026). */}
+      <FeatureStrip />
       <ProductsShowcase />
-      {/* Why Tamil Homes Trust Chennai Rice: below the products again; still behind its switch (off on the live site). */}
-      {showWhy && <FeatureStrip />}
       {/* Brand Ambassadors is behind a switch rather than deleted — the
           section, its copy and its portraits all stay in the repo, so putting
           it back is a change of one environment variable. */}
