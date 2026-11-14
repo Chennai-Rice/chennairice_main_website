@@ -272,6 +272,15 @@
   line-height: 1.2;
 }
 
+/* The heading in two lines: the name, then the title kept on one line and sized to the text column. */
+.celeb-spot-body { container-type: inline-size; }
+.celeb-spot-line { display: block; }
+.celeb-spot-name.is-long .celeb-spot-line:first-child { font-size: 1.25em; }
+.celeb-spot-title {
+  white-space: nowrap;
+  font-size: clamp(1rem, 5.6cqi, 1.75rem);
+}
+
 .celeb-spot .celeb-mark {
   width: 34px;
   height: 24px;

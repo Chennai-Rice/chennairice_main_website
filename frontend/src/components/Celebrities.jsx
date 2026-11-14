@@ -61,6 +61,18 @@ export default function Celebrities() {
   )
 }
 
+/** "Actor Prabhu, Brand Ambassador of Chennai Rice" in two lines: the name, then the title on one line. */
+function SpotHeading({ text }) {
+  const cut = text.indexOf(', ')
+  if (cut < 0) return text
+  return (
+    <>
+      <span className="celeb-spot-line">{text.slice(0, cut + 1)}</span>
+      <span className="celeb-spot-line celeb-spot-title">{text.slice(cut + 2)}</span>
+    </>
+  )
+}
+
 /** A single ambassador: portrait on its tinted panel beside the name, quote
  *  and role. Stacks (portrait on top) on phones — see celebrities.css. */
 function Spotlight({ c }) {
@@ -70,7 +82,9 @@ function Spotlight({ c }) {
         <Img src={c.image} alt={c.name} loading="lazy" />
       </div>
       <figcaption className="celeb-spot-body">
-        <h3 className={`celeb-spot-name${c.heading ? ' is-long' : ''}`}>{c.heading || c.name}</h3>
+        <h3 className={`celeb-spot-name${c.heading ? ' is-long' : ''}`}>
+          <SpotHeading text={c.heading || c.name} />
+        </h3>
         <QuoteMark />
         <span className="celeb-rule" aria-hidden="true" />
         <blockquote className="celeb-spot-quote">{c.quote}</blockquote>
