@@ -335,7 +335,8 @@ export default function SourcesReport({ say, onAuthError, only = '', live = null
               </div>
             </>
           )}
-                <h3 className="src-subhead">{live ? 'What our website recorded: campaigns, ad sets and ads' : 'Campaigns, ad sets and ads'}</h3>
+          {live && <div className="src-live an-page">{live(range)}</div>}
+          <h3 className="src-subhead">{live ? 'What our website recorded: campaigns, ad sets and ads' : 'Campaigns, ad sets and ads'}</h3>
         </>
       )}
 
@@ -440,7 +441,6 @@ export default function SourcesReport({ say, onAuthError, only = '', live = null
         </>
       )}
     </section>
-    {live && <div className="src-live">{live(range)}</div>}
     <SourcePeople rq={rq} product={product} channel={channel} say={say} onAuthError={onAuthError} />
     <ContestLeads rq={rq} range={range} channel={channel} say={say} onAuthError={onAuthError} />
     </>
