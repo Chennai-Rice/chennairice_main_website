@@ -219,7 +219,8 @@
 .celeb-spot {
   position: relative;
   z-index: 1;
-  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1fr);
+  /* Text on the left, portrait on the right (owner, 14 Nov 2026). */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.86fr);
   grid-template-rows: none;
   width: min(840px, 100%);
   margin-inline: auto;
@@ -228,6 +229,7 @@
 }
 
 .celeb-spot-photo {
+  order: 2;
   position: relative;
   min-height: 460px;
   background: var(--tint);
@@ -302,6 +304,7 @@
     width: min(420px, 100%);
   }
   .celeb-spot-photo {
+    order: 0;
     min-height: 0;
     aspect-ratio: 1 / 1;
   }
