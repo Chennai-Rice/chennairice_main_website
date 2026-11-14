@@ -6,8 +6,7 @@ import useGsapContext from '../hooks/useGsapContext.js'
 import Img from './Img.jsx'
 import Ornament from './Ornament.jsx'
 import SectionHead from './SectionHead.jsx'
-import { PRODUCTS, SHOWCASE } from '../data/content.js'
-import { showAmbassadors } from '../config.js'
+import { ASSETS, PRODUCTS, SHOWCASE } from '../data/content.js'
 import './productsshowcase.css'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -309,6 +308,19 @@ export default function ProductsShowcase() {
       style={{ backgroundColor: PRODUCTS[0]?.tint }}
     >
       <div className="showcase-pin-container">
+        <Img
+          className="showcase-paddy showcase-paddy-a"
+          src={ASSETS.wheatRight}
+          alt=""
+          aria-hidden="true"
+        />
+        <Img
+          className="showcase-paddy showcase-paddy-b"
+          src={ASSETS.wheatLeft}
+          alt=""
+          aria-hidden="true"
+        />
+
         {/* Heading rides inside the pinned frame, so it stays above the
             products the whole way through the carousel. */}
         <div className="showcase-header">
@@ -360,10 +372,6 @@ export default function ProductsShowcase() {
           ))}
         </div>
       </div>
-      {/* Below the pinned frame, so it never covers a product: the last pack's tint fades into the
-          next section's cream (Brand Ambassadors, or Testimonials when that is switched off). The
-          "Why" band used to sit here and make that join. */}
-      <div className="showcase-fade" aria-hidden="true" style={{ '--showcase-next': showAmbassadors ? '#faf5e9' : '#f6efdc' }} />
     </section>
   )
 }

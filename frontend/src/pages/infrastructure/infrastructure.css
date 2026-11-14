@@ -129,6 +129,33 @@
   overflow: hidden;
 }
 
+/* ---- decorative wheat ---- */
+.ish-wheat {
+  position: absolute;
+  z-index: 0;
+  color: var(--infra-gold);
+  opacity: 0.5;
+  pointer-events: none;
+  user-select: none;
+}
+.ish-wheat--hero {
+  left: -26px;
+  top: 84px;
+  width: 132px;
+}
+.ish-wheat--left {
+  left: 10px;
+  top: 26px;
+  width: 76px;
+  transform: rotate(-8deg);
+}
+.ish-wheat--right {
+  right: 10px;
+  top: 26px;
+  width: 76px;
+  transform: rotate(8deg) scaleX(-1);
+}
+
 .ish-divider {
   color: var(--infra-gold);
   flex: 0 0 auto;
@@ -498,6 +525,7 @@
 
 /* ---- responsive ---- */
 @media (max-width: 1100px) {
+  .ish-wheat { display: none; }
   .ish-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ish-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ish-stat:nth-child(3) { border-right: none; }
