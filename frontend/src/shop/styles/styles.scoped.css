@@ -2876,3 +2876,36 @@
 .shop-scope .dlv-total strong { color: var(--ink-900); font-size: 1rem; }
 .shop-scope .dlv-muted { color: var(--ink-500); }
 .shop-scope .dlv-error { margin: var(--s-2) 0 0 !important; color: var(--pack-red); }
+
+/* Under a checkout message: "Place another order", "Check order …" (no second payment by mistake). */
+.shop-scope .checkout-failure-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-3);
+  margin-top: var(--s-2);
+}
+.shop-scope .checkout-failure-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 var(--s-4);
+  font: inherit;
+  font-weight: 700;
+  color: var(--cream-50);
+  background: var(--maroon-600);
+  border: 0;
+  border-radius: 999px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.shop-scope .checkout-failure-link {
+  min-height: 40px;
+  padding: 0;
+  font: inherit;
+  color: var(--maroon-600);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}

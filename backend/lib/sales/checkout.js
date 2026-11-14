@@ -100,7 +100,37 @@ export async function quoteCart(body) {
 }
 
 /** Create the order and hold its stock, all or nothing. */
-export async function placeOrder(customer, items, rawAttribution = null, metaSignal = null) {
+/**
+ * This buyer's order from the last few minutes for exactly this basket — same packs and quantities, address
+ * line and PIN code, delivery method and charge, discount code — either still open (unpaid, stock held) or
+ * paid. Locked, so two Pay presses at once cannot both create an order. Null when there is none.
+ */
+async function sameRecentOrder(db, customer, priced, shippingPaise, method, holdMinutes) {
+  const basket = priced.lines.map((l) => `${l.variantId}:${l.quantity}`).sort().join(',')
+  // One checkout at a time per email (until this transaction ends), so a double tap makes one order.
+  await db.query('select pg_advisory_xact_lock(hashtext($1))', ['checkout:' + customer.email])
+  const { rows: [match] } = await db.query(
+    `select o.* from orders o
+      where o.contact_email = $1
+        and o.created_at > now() - make_interval(mins => $2)
+        and o.delivery_method = $3
+        and coalesce(o.discount_code, '') = $4
+        and o.shipping_address->>'pincode' = $5
+        and lower(o.shipping_address->>'line1') = lower($6)
+        and o.subtotal_paise = $7 and o.shipping_paise = $8
+        and (o.payment_status = 'paid' or (o.status = 'pending_payment' and o.reservation_expires_at > now()))
+        and (select string_agg(i.variant_id::text || ':' || i.quantity, ',' order by i.variant_id::text)
+               from order_items i where i.order_id = o.id) = $9
+      order by (o.payment_status = 'paid') desc, o.created_at desc
+      limit 1
+      for update of o`,
+    [customer.email, holdMinutes, method, customer.discountCode || '', customer.pincode, customer.addressLine1,
+      priced.subtotalPaise, shippingPaise, basket]
+  )
+  return match || null
+}
+
+export async function placeOrder(customer, items, rawAttribution = null, metaSignal = null, options = {}) {
   return tx(async (db) => {
     const settings = await getSettings(db)
     const holdMinutes = Number(settings.reservation_minutes) || 30
@@ -117,6 +147,30 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
     const delivery = chooseDelivery(courier, customer.pincode, customer.deliveryMethod, settings,
       { largestPackKg: Math.max(0, ...priced.lines.map((l) => Number(l.packKg))), lines: priced.lines })
     const shipping = delivery.paise
+
+    // The same buyer pressing Pay again for the same basket (a cancelled or failed payment, a refresh, a
+    // second tab): their open order is used again instead of a new one holding more stock (audit CHK-02);
+    // and one already paid in the last few minutes is pointed out before they pay twice (CHK-03).
+    // "Place another order" (repeatOk): the customer asked for a new order, so none is reused.
+    const again = options.repeatOk ? null : await sameRecentOrder(db, customer, priced, shipping, delivery.method, holdMinutes)
+    if (again?.payment_status === 'paid') {
+      const err = httpError('Same order already paid.', {
+        status: 409,
+        publicMessage: `You paid for this same order a few minutes ago (order ${again.order_number}). Check your email or WhatsApp for it. If you want a second one, tap "Place another order".`,
+      })
+      err.publicDetail = { reason: 'already_paid', orderNumber: again.order_number }
+      throw err
+    }
+    if (again && again.payment_status !== 'paid') {
+      const { rows: [fresh] } = await db.query(
+        `update orders set reservation_expires_at = greatest(reservation_expires_at, now() + make_interval(mins => $2)),
+                payment_status = case when payment_status = 'failed' then 'pending' else payment_status end
+          where id = $1 returning *`,
+        [again.id, holdMinutes]
+      )
+      return fresh
+    }
+
     // The discount code, checked again inside this transaction (its row locked, so two orders cannot
     // both take the last use). A code that no longer applies stops the order with the reason.
     const discount = await applyDiscount(db, customer.discountCode, {
@@ -227,7 +281,7 @@ export async function createCheckoutSession(body, client = {}) {
   if (resumeId && invalidUuid(resumeId)) throw httpError('That order does not exist.', { status: 404 })
   const order = resumeId
     ? await loadResumable(resumeId, customer.email)
-    : await placeOrder(customer, body?.items, body?.attribution, cleanMetaSignal(body?.meta, client))
+    : await placeOrder(customer, body?.items, body?.attribution, cleanMetaSignal(body?.meta, client), { repeatOk: body?.repeatOk === true })
 
   const exclude = [].concat(body?.excludeGateway || []).map((g) => str(g).toLowerCase()).filter(Boolean)
   // If no gateway answers, the order stays pending with its stock held until
@@ -414,7 +468,9 @@ export async function confirmCheckout(body) {
     // 'superseded' too: an attempt the expiry job closed while the customer
     // was still on the payment screen. The signature check below still proves
     // the payment belongs to that attempt.
-    `select * from payments where order_id = $1 and status in ('created', 'superseded')
+    // And 'failed': Razorpay lets the customer try again in the same window after a declined card, and
+    // the failure webhook may already have marked that attempt failed (audit BE-01).
+    `select * from payments where order_id = $1 and status in ('created', 'superseded', 'failed')
       order by (status = 'created') desc, created_at desc limit 1`,
     [order.id]
   )

@@ -70,7 +70,12 @@ async function postJson(url, body) {
   // request never reached them — a dead API server behind the dev proxy, a
   // platform error page — so say which, rather than a bare "request failed"
   // that sends you looking in the wrong place.
-  if (data && data.error) throw new Error(data.error)
+  if (data && data.error) {
+    // The whole answer rides along (e.g. reason: 'already_paid' with the order number).
+    const err = new Error(data.error)
+    err.detail = data
+    throw err
+  }
   throw new Error(
     'Our server did not respond properly (HTTP ' + res.status + '). ' +
       'If you are running locally, check that the API server on port 8787 is up.'
@@ -135,6 +140,8 @@ export async function confirmPayment(input) {
 function openRazorpay({ client, orderNumber, amount, customer }) {
   return new Promise((resolve, reject) => {
     let settled = false
+    // A declined attempt inside the window (Razorpay offers another try there).
+    let lastFailure = ""
     const finish = (fn, value) => {
       if (settled) return
       settled = true
@@ -165,16 +172,18 @@ function openRazorpay({ client, orderNumber, amount, customer }) {
       modal: {
         // Closing the modal is a decision, not a fault — it must not be
         // mistaken for a gateway failure and trigger a failover.
-        ondismiss: () => finish(reject, new PaymentCancelledError()),
+        // After a declined attempt the customer closed the window: that decline is the reason, not a cancel.
+        ondismiss: () => finish(reject, lastFailure ? new Error(lastFailure) : new PaymentCancelledError()),
       },
     })
 
-    // Razorpay reports a failed attempt through an event rather than the
-    // handler, so without this the promise would hang on a declined card.
+    // Razorpay reports a failed attempt through an event, but keeps its window open so the customer can
+    // try another card or UPI there. So the failure is only remembered: a later success still arrives
+    // through the handler (audit BE-01), and closing the window reports the decline.
     if (typeof instance.on === 'function') {
-      instance.on('payment.failed', (event) =>
-        finish(reject, new Error(event?.error?.description || 'The payment was declined.'))
-      )
+      instance.on('payment.failed', (event) => {
+        lastFailure = event?.error?.description || 'The payment was declined.'
+      })
     }
 
     try {

@@ -147,6 +147,12 @@ export default function CheckoutPage() {
   const [waOptIn, setWaOptIn] = useState(false); // "Send me offers and updates on WhatsApp"
   const [failure, setFailure] = useState("");
   const failureRef = useRef(null);
+  // The same basket was paid for minutes ago (server answer "already_paid"): its order number, and the
+  // customer's "Place another order" choice for the next press of Pay.
+  const [alreadyPaid, setAlreadyPaid] = useState("");
+  const repeatOk = useRef(false);
+  // A payment the gateway took but this page could not confirm: Pay stays off so it is not paid twice.
+  const [unconfirmed, setUnconfirmed] = useState("");
   // A message from the server (a code that no longer applies, a payment not completed…) is brought into view.
   useEffect(() => {
     if (failure) failureRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -290,6 +296,8 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startedCheckout]);
   const busy = status === "paying";
+  // Pay is off while a taken payment is unconfirmed (until the customer says it failed).
+  const payBlocked = busy || Boolean(unconfirmed);
   const payLabel = busy ? "Opening payment…" : shipping == null ? "Continue to payment" : "Pay " + formatRupees(total);
   // Fields still wrong after Pay was pressed (each clears as it is edited), named beside the Pay button.
   const toFix = Object.keys(FIELD_LABELS).filter((k) => errors[k]).map((k) => FIELD_LABELS[k]);
@@ -320,6 +328,7 @@ export default function CheckoutPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (unconfirmed) return; // a taken payment is still being checked: never a second one from here
     setFailure("");
 
     const nextErrors = validate(form);
@@ -381,13 +390,18 @@ export default function CheckoutPage() {
           meta: metaCheckoutSignal(),
           ...(orderId ? { orderId } : {}),
           ...(excludeGateway.length ? { excludeGateway } : {}),
+          ...(repeatOk.current ? { repeatOk: true } : {}),
         });
+        repeatOk.current = false;
+        setAlreadyPaid("");
         orderId = session.orderId;
         // Checkout journey, step 4: continued to payment (the order exists now).
         recordJourney("payment", { orderId });
       } catch (error) {
         recordJourney("failed", { error: error.message || "Could not start the order" });
         setStatus("idle");
+        repeatOk.current = false;
+        setAlreadyPaid(error.detail?.reason === "already_paid" ? error.detail.orderNumber || "yes" : "");
         setFailure(error.message || "We could not start your order. Please try again.");
         return;
       }
@@ -469,6 +483,7 @@ export default function CheckoutPage() {
       // The money may well have left the customer's account here, so never
       // suggest they simply pay again — give them the reference instead.
       setStatus("idle");
+      setUnconfirmed(session.orderNumber);
       setFailure(
         (error.message || "We could not confirm your payment.") +
           " Please contact us quoting order " +
@@ -703,6 +718,25 @@ export default function CheckoutPage() {
               {(failure || quoteError) && (
                 <p className="field-error checkout-failure" role="alert" ref={failureRef}>
                   {failure || quoteError}
+                  {failure && alreadyPaid && (
+                    <span className="checkout-failure-actions">
+                      <button type="button" className="checkout-failure-btn" onClick={() => {
+                        repeatOk.current = true;
+                        setAlreadyPaid("");
+                        document.getElementById("checkout-form")?.requestSubmit();
+                      }}>
+                        Place another order
+                      </button>
+                    </span>
+                  )}
+                  {failure && unconfirmed && (
+                    <span className="checkout-failure-actions">
+                      <Link className="checkout-failure-btn" to="/track-order">Check order {unconfirmed}</Link>
+                      <button type="button" className="checkout-failure-link" onClick={() => { setUnconfirmed(""); setFailure(""); }}>
+                        No money was taken. Let me pay again
+                      </button>
+                    </span>
+                  )}
                 </p>
               )}
             </form>
@@ -759,7 +793,7 @@ export default function CheckoutPage() {
                 </p>
               )}
 
-              <button className="checkout-btn" type="submit" form="checkout-form" disabled={busy} ref={payButtonRef}>
+              <button className="checkout-btn" type="submit" form="checkout-form" disabled={payBlocked} ref={payButtonRef}>
                 <strong>{payLabel}</strong>
               </button>
 
@@ -787,7 +821,7 @@ export default function CheckoutPage() {
                   <small>Total</small>
                   <strong>{formatRupees(total)}</strong>
                 </span>
-                <button className="checkout-btn" type="submit" form="checkout-form" disabled={busy}>
+                <button className="checkout-btn" type="submit" form="checkout-form" disabled={payBlocked}>
                   <strong>{payLabel}</strong>
                 </button>
               </div>

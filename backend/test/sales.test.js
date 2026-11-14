@@ -26,7 +26,10 @@ async function api(method, path, { body, token, headers = {}, raw } = {}) {
 
 const buyer = (over = {}) => ({
   name: 'Lakshmi R', email: 'lakshmi@example.com', phone: '+91 98765 43210',
-  addressLine1: '12 Gandhi Road', city: 'Coimbatore', state: 'Tamil Nadu', pincode: '641001', ...over,
+  addressLine1: '12 Gandhi Road', city: 'Coimbatore', state: 'Tamil Nadu', pincode: '641001',
+  // Tests reuse this buyer and cart, each checkout a new order ("Place another order"); the retry test
+  // switches it off to see an open order reused.
+  repeatOk: true, ...over,
 })
 
 async function variantId(slug) {
@@ -266,6 +269,60 @@ test('GST follows the PIN code: a state that contradicts the PIN is refused, Pud
   assert.equal(pinStateMismatch('Pondicherry', '609602'), null)
   assert.equal(pinStateMismatch('Puducherry', '533464'), null) // Yanam, in the Andhra circle
   assert.equal(pinStateMismatch('', '560001'), null)
+})
+
+test('Pay again for the same basket: the open order is reused, a double tap makes one, a paid one is pointed out, a declined attempt can still be paid', async () => {
+  let ip = 0
+  const session = (over, items = [{ id: 'alibaba', qty: 1 }]) => api('POST', '/api/checkout/session', {
+    body: { ...buyer({ repeatOk: undefined, ...over }), items }, headers: { 'X-Forwarded-For': `10.9.0.${++ip}` },
+  })
+  const ordersOf = async (email) => (await db.query('select id, status, payment_status from orders where contact_email = $1', [email])).rows
+  // Enough Alibaba packed for the orders below (through the plant, so the stock ledger stays whole).
+  const packed = await api('POST', '/api/admin/production/batches', {
+    token: tokens.plant, body: { variantId: await variantId('alibaba'), quantity: 20, bestBefore: '2027-12-31' },
+  })
+  assert.equal(packed.status, 200, JSON.stringify(packed.body))
+
+  // Cancelled in Razorpay, Pay pressed again: the same order, one live payment attempt, stock held once.
+  const first = await session({ email: 'retry@example.com' })
+  assert.equal(first.status, 200, JSON.stringify(first.body))
+  const second = await session({ email: 'retry@example.com' })
+  assert.equal(second.status, 200, JSON.stringify(second.body))
+  assert.equal(second.body.orderId, first.body.orderId)
+  assert.equal((await ordersOf('retry@example.com')).length, 1)
+  const { rows: attempts } = await db.query('select status from payments where order_id = $1 order by created_at', [first.body.orderId])
+  assert.deepEqual(attempts.map((a) => a.status), ['superseded', 'created'])
+
+  // A different basket is a different order.
+  const bigger = await session({ email: 'retry@example.com' }, [{ id: 'alibaba', qty: 2 }])
+  assert.notEqual(bigger.body.orderId, first.body.orderId)
+
+  // Two presses at the same moment: one order.
+  const [a, b] = await Promise.all([session({ email: 'double@example.com' }), session({ email: 'double@example.com' })])
+  assert.equal(a.status, 200, JSON.stringify(a.body))
+  assert.equal(b.body.orderId, a.body.orderId)
+  assert.equal((await ordersOf('double@example.com')).length, 1)
+
+  // Paid, then Pay again (a refresh after paying): told, not charged; "Place another order" makes a new one.
+  const paid = rzp.pay(second.body.client.razorpayOrderId)
+  const ok = await api('POST', '/api/checkout/verify', { body: { orderId: second.body.orderId, paymentId: paid.paymentId, signature: paid.signature } })
+  assert.equal(ok.status, 200, JSON.stringify(ok.body))
+  const again = await session({ email: 'retry@example.com' })
+  assert.equal(again.status, 409)
+  assert.equal(again.body.reason, 'already_paid')
+  assert.equal(again.body.orderNumber, second.body.orderNumber)
+  const another = await session({ email: 'retry@example.com', repeatOk: true })
+  assert.equal(another.status, 200, JSON.stringify(another.body))
+  assert.notEqual(another.body.orderId, second.body.orderId)
+
+  // A declined card (the webhook marks the attempt failed), then a good payment in the same Razorpay window.
+  const declined = await session({ email: 'declined@example.com' })
+  await db.query(`update payments set status = 'failed' where order_id = $1`, [declined.body.orderId])
+  await db.query(`update orders set payment_status = 'failed' where id = $1`, [declined.body.orderId])
+  const retried = rzp.pay(declined.body.client.razorpayOrderId)
+  const confirmed = await api('POST', '/api/checkout/verify', { body: { orderId: declined.body.orderId, paymentId: retried.paymentId, signature: retried.signature } })
+  assert.equal(confirmed.status, 200, JSON.stringify(confirmed.body))
+  assert.equal(confirmed.body.status, 'paid')
 })
 
 test('cannot buy more than is in stock, and two buyers cannot both get the last packs', async () => {

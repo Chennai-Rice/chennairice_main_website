@@ -898,7 +898,11 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   router.use((err, req, res, _next) => {
     const status = err.status || (err.type === 'entity.parse.failed' ? 400 : 500)
     if (status >= 500) console.error('[sales]', req.method, req.path, err)
-    res.status(status).json({ error: err.publicMessage || (status >= 500 ? 'Something went wrong. Please try again.' : err.message) })
+    res.status(status).json({
+      error: err.publicMessage || (status >= 500 ? 'Something went wrong. Please try again.' : err.message),
+      // A reason the page acts on (e.g. 'already_paid' with its order number), only where a route set one.
+      ...(err.publicDetail ? err.publicDetail : {}),
+    })
   })
 
   return router
