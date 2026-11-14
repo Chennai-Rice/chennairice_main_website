@@ -21,6 +21,37 @@ export const REGIONS = {
 
 const PIN = /^[1-9]\d{5}$/
 
+/** A PIN code in the Tamil Nadu postal circle (60–64): Tamil Nadu, plus Puducherry's Pondicherry and Karaikal. */
+export function isTamilNaduCirclePin(pincode) {
+  const pin = String(pincode ?? '').replace(/\s+/g, '')
+  if (!PIN.test(pin)) return false
+  const two = Number(pin.slice(0, 2))
+  return two >= 60 && two <= 64
+}
+
+const stateKey = (s) => String(s ?? '').trim().toLowerCase().replace(/[^a-z]/g, '')
+const isTamilNadu = (s) => ['tamilnadu', 'tn'].includes(stateKey(s))
+const isPuducherry = (s) => ['puducherry', 'pondicherry', 'pondy'].includes(stateKey(s))
+
+/**
+ * GST depends on the state the order goes to (CGST+SGST inside Tamil Nadu, IGST outside). The PIN code
+ * fixes the postal circle, so a typed state that contradicts it is refused rather than trusted:
+ * a PIN outside 60–64 is never Tamil Nadu, and a PIN inside it is Tamil Nadu or Puducherry.
+ * Returns the message for the customer, or null when the two agree (or either is missing).
+ */
+export function pinStateMismatch(state, pincode) {
+  const pin = String(pincode ?? '').replace(/\s+/g, '')
+  if (!PIN.test(pin) || !stateKey(state)) return null
+  const inCircle = isTamilNaduCirclePin(pin)
+  if (!inCircle && isTamilNadu(state)) {
+    return `PIN code ${pin} is not in Tamil Nadu. Please check the PIN code, or choose the state it is in.`
+  }
+  if (inCircle && !isTamilNadu(state) && !isPuducherry(state)) {
+    return `PIN code ${pin} is in Tamil Nadu. Please check the PIN code, or set the state to Tamil Nadu.`
+  }
+  return null
+}
+
 /** The delivery region code for a PIN code, or null where we do not deliver. */
 export function regionForPincode(pincode) {
   const pin = String(pincode ?? '').replace(/\s+/g, '')

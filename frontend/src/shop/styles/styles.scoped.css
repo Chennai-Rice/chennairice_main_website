@@ -2078,6 +2078,46 @@
   border-radius: var(--radius-sm);
 }
 
+/* Beside the Pay button: the fields still to fix (on a phone the form is above, out of sight). */
+.shop-scope .checkout-fix-list {
+  margin: 0 0 var(--s-3);
+  padding: var(--s-3);
+  font-size: var(--fs-small);
+  color: var(--pack-red);
+  background: rgba(179, 24, 28, 0.08);
+  border-radius: var(--radius-sm);
+}
+
+/* Phones and tablets: total and Pay fixed to the bottom while the summary's own button is out of view. */
+.shop-scope .checkout-paybar { display: none; }
+@media (max-width: 899px) {
+  .shop-scope .checkout-paybar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 900;
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding: var(--s-3) var(--s-4) max(var(--s-3), env(safe-area-inset-bottom));
+    background: var(--cream-50);
+    border-top: 1px solid var(--cream-300);
+    box-shadow: 0 -8px 24px rgba(74, 16, 26, 0.12);
+  }
+  .shop-scope .checkout-paybar-total {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  .shop-scope .checkout-paybar-total small { font-size: 0.75rem; color: var(--ink-500); }
+  .shop-scope .checkout-paybar-total strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+  .shop-scope .checkout-paybar .checkout-btn { flex: 1; width: auto; }
+  /* Room at the end of the page so the bar never hides the last field. */
+  .shop-scope .cart-layout:has(.checkout-paybar) { padding-bottom: 5rem; }
+}
+
 /* Line items above the totals, so the buyer can see what they are paying for
    without going back to the cart. */
 .shop-scope .checkout-lines {

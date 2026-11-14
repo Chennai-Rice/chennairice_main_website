@@ -85,6 +85,7 @@ export function CartProvider({ children }) {
           tag: product.tag,
           price: product.price,
           image: product.image,
+          ...(product.packKg != null ? { packKg: product.packKg } : {}),
           qty: 1
         }
       ];

@@ -4,7 +4,7 @@
 // how many"; every paisa is looked up here from product_variants.
 import { httpError, str, isSameState, getSettings, toRupees } from './util.js'
 import { splitInclusive } from './tax.js'
-import { REGIONS, regionForPincode } from './regions.js'
+import { REGIONS, regionForPincode, isTamilNaduCirclePin } from './regions.js'
 
 export const MAX_QTY_PER_LINE = 50
 export const MAX_LINES = 20
@@ -118,7 +118,11 @@ export async function priceCart(db, items, { shipState, pincode } = {}) {
   }
 
   const settings = await getSettings(db)
-  const intraState = shipState ? isSameState(shipState, settings.seller_state || 'Tamil Nadu') : true
+  const sellerState = settings.seller_state || 'Tamil Nadu'
+  let intraState = shipState ? isSameState(shipState, sellerState) : true
+  // The PIN code wins over the typed state: a PIN outside the Tamil Nadu postal circle is never an
+  // intra-state sale for a Tamil Nadu seller (IGST, not CGST+SGST), whatever the State field says.
+  if (isSameState(sellerState, 'Tamil Nadu') && /^[1-9]\d{5}$/.test(str(pincode)) && !isTamilNaduCirclePin(pincode)) intraState = false
   const regional = await regionalPrices(db, [...lines.keys()], pincode)
 
   const priced = []

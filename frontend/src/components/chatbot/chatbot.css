@@ -768,3 +768,12 @@
 
 .sk-reorder-result { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #1f7a3f; font-weight: 600; line-height: 1.5; }
 .sk-reorder-result span { color: #8b5a12; font-weight: 500; }
+
+/* Phones and tablets: with the "Proceed to cart" bar or the checkout Pay bar on screen, the launcher
+   sits above it instead of covering its right-hand end. */
+@media (max-width: 800px) {
+  body:has(.checkout-bar) .sk-launcher,
+  body:has(.checkout-paybar) .sk-launcher {
+    bottom: 96px;
+  }
+}

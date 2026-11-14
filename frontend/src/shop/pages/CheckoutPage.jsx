@@ -67,7 +67,8 @@ const EMPTY_FORM = {
   addressLine1: "",
   addressLine2: "",
   city: "",
-  state: "Tamil Nadu",
+  // No default: the state comes from the PIN code (it decides CGST+SGST or IGST on the invoice).
+  state: "",
   pincode: "",
   landmark: "",
 };
@@ -75,6 +76,27 @@ const EMPTY_FORM = {
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_PATTERN = /^[+()\-\s\d]{8,16}$/;
 const PINCODE_PATTERN = /^[1-9][0-9]{5}$/;
+
+// The form's fields in page order, with the names the error summary uses.
+const FIELD_LABELS = {
+  name: "Full name", email: "Email", phone: "Phone", addressLine1: "Address",
+  city: "City / town", state: "State", pincode: "PIN code",
+};
+
+// Mirrors the server (regions.js pinStateMismatch): PIN codes 60–64 are Tamil Nadu or Puducherry,
+// and no other PIN code is Tamil Nadu.
+const stateKey = (s) => String(s || "").toLowerCase().replace(/[^a-z]/g, "");
+function pinStateMismatch(state, pincode) {
+  const pin = String(pincode || "").trim();
+  const key = stateKey(state);
+  if (!PINCODE_PATTERN.test(pin) || !key) return null;
+  const inCircle = /^6[0-4]/.test(pin);
+  const tn = key === "tamilnadu" || key === "tn";
+  const py = ["puducherry", "pondicherry", "pondy"].includes(key);
+  if (!inCircle && tn) return `PIN code ${pin} is not in Tamil Nadu. Please check the PIN code, or choose the state it is in.`;
+  if (inCircle && !tn && !py) return `PIN code ${pin} is in Tamil Nadu. Please check the PIN code, or set the state to Tamil Nadu.`;
+  return null;
+}
 
 /** Mirrors the server's checks so a typo is caught before an order row exists. */
 function validate(form) {
@@ -86,6 +108,8 @@ function validate(form) {
   if (!form.city.trim()) errors.city = "Please add your city or town.";
   if (!form.state.trim()) errors.state = "Please add your state.";
   if (!PINCODE_PATTERN.test(form.pincode.trim())) errors.pincode = "A valid 6-digit PIN code is required.";
+  const mismatch = !errors.state && !errors.pincode && pinStateMismatch(form.state, form.pincode);
+  if (mismatch) errors.state = mismatch;
   return errors;
 }
 
@@ -118,6 +142,21 @@ export default function CheckoutPage() {
   const [status, setStatus] = useState(fromHistory ? "done" : "idle"); // idle | paying | done
   const [waOptIn, setWaOptIn] = useState(false); // "Send me offers and updates on WhatsApp"
   const [failure, setFailure] = useState("");
+  const failureRef = useRef(null);
+  // A message from the server (a code that no longer applies, a payment not completed…) is brought into view.
+  useEffect(() => {
+    if (failure) failureRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [failure]);
+  // Phones: a Pay bar fixed to the bottom of the screen while the summary's own Pay button is out of view.
+  const [payInView, setPayInView] = useState(true);
+  const payWatch = useRef(null);
+  const payButtonRef = useCallback((button) => {
+    payWatch.current?.disconnect();
+    payWatch.current = null;
+    if (!button || typeof IntersectionObserver === "undefined") return;
+    payWatch.current = new IntersectionObserver(([entry]) => setPayInView(entry.isIntersecting));
+    payWatch.current.observe(button);
+  }, []);
   const [confirmed, setConfirmed] = useState(fromHistory);
 
   // Google Analytics / Google Ads and Meta: the sale, once, when the order-confirmed page opens (it only
@@ -198,7 +237,9 @@ export default function CheckoutPage() {
     fetch(`/api/places/pin/${pin}`).then((r) => (r.ok ? r.json() : null)).then((info) => {
       if (gone || !info?.pin) return;
       setPinInfo(info);
-      setForm((current) => ({ ...current, city: current.city || info.city, state: current.state || info.state }));
+      // The PIN code's state replaces whatever was typed: it is what the GST is worked out from.
+      setForm((current) => ({ ...current, city: current.city || info.city, state: info.state || current.state }));
+      if (info.state) setErrors((current) => (current.state ? { ...current, state: undefined } : current));
     }).catch(() => {});
     return () => { gone = true; };
   }, [form.pincode]);
@@ -245,6 +286,9 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startedCheckout]);
   const busy = status === "paying";
+  const payLabel = busy ? "Opening payment…" : shipping == null ? "Continue to payment" : "Pay " + formatRupees(total);
+  // Fields still wrong after Pay was pressed (each clears as it is edited), named beside the Pay button.
+  const toFix = Object.keys(FIELD_LABELS).filter((k) => errors[k]).map((k) => FIELD_LABELS[k]);
 
   // Checkout journey, step 3 as the form is filled: once there is a 10-digit
   // mobile number, the details are saved (and again after each change, a
@@ -277,6 +321,15 @@ export default function CheckoutPage() {
     const nextErrors = validate(form);
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
+      // On a phone the Pay button sits below the form, out of sight of the fields: take the customer to
+      // the first one to fix, and say beside the button what needs fixing.
+      const wrong = Object.keys(FIELD_LABELS).filter((k) => nextErrors[k]);
+      window.requestAnimationFrame(() => {
+        const field = document.getElementById("checkout-form")?.elements?.namedItem(wrong[0]);
+        if (!field) return;
+        field.scrollIntoView({ block: "center", behavior: "smooth" });
+        field.focus({ preventScroll: true });
+      });
       return;
     }
 
@@ -514,13 +567,15 @@ export default function CheckoutPage() {
                 <input
                   type="text"
                   value={form.name}
+                  name="name"
                   onChange={set("name")}
                   placeholder="Your full name"
                   autoComplete="name"
                   aria-invalid={!!errors.name}
+                  aria-describedby={errors.name ? "err-name" : undefined}
                   disabled={busy}
                 />
-                {errors.name && <span className="field-error">{errors.name}</span>}
+                {errors.name && <span className="field-error" id="err-name">{errors.name}</span>}
               </label>
 
               <div className="checkout-field-row">
@@ -529,13 +584,15 @@ export default function CheckoutPage() {
                   <input
                     type="email"
                     value={form.email}
-                    onChange={set("email")}
+                    name="email"
+                  onChange={set("email")}
                     placeholder="you@example.com"
                     autoComplete="email"
                     aria-invalid={!!errors.email}
+                  aria-describedby={errors.email ? "err-email" : undefined}
                     disabled={busy}
                   />
-                  {errors.email && <span className="field-error">{errors.email}</span>}
+                  {errors.email && <span className="field-error" id="err-email">{errors.email}</span>}
                 </label>
 
                 <label className="field">
@@ -543,13 +600,15 @@ export default function CheckoutPage() {
                   <input
                     type="tel"
                     value={form.phone}
-                    onChange={set("phone")}
+                    name="phone"
+                  onChange={set("phone")}
                     placeholder="+91 12345 67890"
                     autoComplete="tel"
                     aria-invalid={!!errors.phone}
+                  aria-describedby={errors.phone ? "err-phone" : undefined}
                     disabled={busy}
                   />
-                  {errors.phone && <span className="field-error">{errors.phone}</span>}
+                  {errors.phone && <span className="field-error" id="err-phone">{errors.phone}</span>}
                 </label>
               </div>
               {/* WhatsApp offers: unticked until the customer ticks it (their clear "yes"). Order updates come anyway. */}
@@ -563,13 +622,15 @@ export default function CheckoutPage() {
                 <input
                   type="text"
                   value={form.addressLine1}
+                  name="addressLine1"
                   onChange={set("addressLine1")}
                   placeholder="Flat / house no., street"
                   autoComplete="address-line1"
                   aria-invalid={!!errors.addressLine1}
+                  aria-describedby={errors.addressLine1 ? "err-addressLine1" : undefined}
                   disabled={busy}
                 />
-                {errors.addressLine1 && <span className="field-error">{errors.addressLine1}</span>}
+                {errors.addressLine1 && <span className="field-error" id="err-addressLine1">{errors.addressLine1}</span>}
               </label>
 
               <label className="field">
@@ -593,9 +654,9 @@ export default function CheckoutPage() {
                     onChange={set("city")}
                     items={citySuggestions}
                     onPick={(it) => fill({ city: it.city, state: it.state })}
-                    inputProps={{ placeholder: "Chennai", autoComplete: "off", "aria-invalid": !!errors.city, disabled: busy }}
+                    inputProps={{ placeholder: "Chennai", autoComplete: "off", name: "city", "aria-invalid": !!errors.city, "aria-describedby": errors.city ? "err-city" : undefined, disabled: busy }}
                   />
-                  {errors.city && <span className="field-error">{errors.city}</span>}
+                  {errors.city && <span className="field-error" id="err-city">{errors.city}</span>}
                 </label>
 
                 <label className="field">
@@ -603,13 +664,15 @@ export default function CheckoutPage() {
                   <input
                     type="text"
                     value={form.state}
-                    onChange={set("state")}
+                    name="state"
+                  onChange={set("state")}
                     placeholder="Tamil Nadu"
                     autoComplete="address-level1"
                     aria-invalid={!!errors.state}
+                  aria-describedby={errors.state ? "err-state" : undefined}
                     disabled={busy}
                   />
-                  {errors.state && <span className="field-error">{errors.state}</span>}
+                  {errors.state && <span className="field-error" id="err-state">{errors.state}</span>}
                 </label>
 
                 <label className="field">
@@ -618,13 +681,15 @@ export default function CheckoutPage() {
                     type="text"
                     inputMode="numeric"
                     value={form.pincode}
-                    onChange={set("pincode")}
+                    name="pincode"
+                  onChange={set("pincode")}
                     placeholder="600001"
                     autoComplete="postal-code"
                     aria-invalid={!!errors.pincode}
+                  aria-describedby={errors.pincode ? "err-pincode" : undefined}
                     disabled={busy}
                   />
-                  {errors.pincode && <span className="field-error">{errors.pincode}</span>}
+                  {errors.pincode && <span className="field-error" id="err-pincode">{errors.pincode}</span>}
                   {!errors.pincode && <span className="field-hint">The delivery charge is worked out from your PIN code.</span>}
                 </label>
               </div>
@@ -632,7 +697,7 @@ export default function CheckoutPage() {
               <DeliveryChoice options={deliveryOptions} value={deliveryMethod || deliveryChoice} onChange={setDeliveryChoice} disabled={busy} />
 
               {(failure || quoteError) && (
-                <p className="field-error checkout-failure" role="alert">
+                <p className="field-error checkout-failure" role="alert" ref={failureRef}>
                   {failure || quoteError}
                 </p>
               )}
@@ -684,8 +749,14 @@ export default function CheckoutPage() {
                 </div>
               </dl>
 
-              <button className="checkout-btn" type="submit" form="checkout-form" disabled={busy}>
-                <strong>{busy ? "Opening payment…" : shipping == null ? "Continue to payment" : "Pay " + formatRupees(total)}</strong>
+              {toFix.length > 0 && (
+                <p className="checkout-fix-list" role="alert">
+                  Please check {toFix.length === 1 ? "this detail" : "these details"} above: <strong>{toFix.join(", ")}</strong>
+                </p>
+              )}
+
+              <button className="checkout-btn" type="submit" form="checkout-form" disabled={busy} ref={payButtonRef}>
+                <strong>{payLabel}</strong>
               </button>
 
               {/* Which gateway handles the payment is the server's call, and
@@ -704,6 +775,19 @@ export default function CheckoutPage() {
                 Back to cart
               </button>
             </aside>
+
+            {/* Phones: the total and Pay stay on screen while the customer fills the form above. */}
+            {!payInView && (
+              <div className="checkout-paybar">
+                <span className="checkout-paybar-total">
+                  <small>Total</small>
+                  <strong>{formatRupees(total)}</strong>
+                </span>
+                <button className="checkout-btn" type="submit" form="checkout-form" disabled={busy}>
+                  <strong>{payLabel}</strong>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </section>

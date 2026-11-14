@@ -219,7 +219,7 @@ test('checkout: stock is held at session, order is placed when payment verifies'
 })
 
 test('a forged signature is rejected and nothing is marked paid', async () => {
-  const session = await api('POST', '/api/checkout/session', { body: { ...buyer({ state: 'Karnataka' }), items: [{ id: 'alibaba', qty: 1 }] } })
+  const session = await api('POST', '/api/checkout/session', { body: { ...buyer({ state: 'Karnataka', city: 'Bengaluru', pincode: '560001' }), items: [{ id: 'alibaba', qty: 1 }] } })
   const paid = rzp.pay(session.body.client.razorpayOrderId)
   const r = await api('POST', '/api/checkout/verify', { body: { orderId: session.body.orderId, paymentId: paid.paymentId, signature: 'f'.repeat(64) } })
   assert.equal(r.status, 400)
@@ -230,6 +230,42 @@ test('a forged signature is rejected and nothing is marked paid', async () => {
   const { rows: [i] } = await db.query('select * from order_items where order_id = $1', [session.body.orderId])
   assert.equal(i.cgst_paise + i.sgst_paise, 0)
   assert.ok(i.igst_paise > 0)
+})
+
+test('GST follows the PIN code: a state that contradicts the PIN is refused, Puducherry gets IGST', async () => {
+  const session = (over) => api('POST', '/api/checkout/session', { body: { ...buyer(over), items: [{ id: 'alibaba', qty: 1 }] } })
+  const items = async (orderId) => (await db.query('select * from order_items where order_id = $1', [orderId])).rows
+
+  // The old checkout default ("Tamil Nadu") left in place with a Bengaluru PIN: refused, no order.
+  const before = (await db.query('select count(*)::int as n from orders')).rows[0].n
+  const wrongTn = await session({ state: 'Tamil Nadu', city: 'Bengaluru', pincode: '560001' })
+  assert.equal(wrongTn.status, 400)
+  assert.match(wrongTn.body.error, /560001 is not in Tamil Nadu/)
+  const wrongOther = await session({ state: 'Karnataka', pincode: '641001' })
+  assert.equal(wrongOther.status, 400)
+  assert.match(wrongOther.body.error, /641001 is in Tamil Nadu/)
+  assert.equal((await db.query('select count(*)::int as n from orders')).rows[0].n, before)
+
+  // "TN" for a Coimbatore PIN: CGST + SGST.
+  const tn = await session({ state: 'TN', email: 'gst-tn@example.com' })
+  assert.equal(tn.status, 200, JSON.stringify(tn.body))
+  for (const i of await items(tn.body.orderId)) { assert.equal(i.igst_paise, 0); assert.ok(i.cgst_paise > 0) }
+
+  // Puducherry (PIN in the Tamil Nadu circle, another state for GST): IGST.
+  const py = await session({ state: 'Puducherry', city: 'Puducherry', pincode: '605001', email: 'gst-py@example.com' })
+  assert.equal(py.status, 200, JSON.stringify(py.body))
+  for (const i of await items(py.body.orderId)) { assert.equal(i.cgst_paise + i.sgst_paise, 0); assert.ok(i.igst_paise > 0) }
+
+  // Pricing on its own: a PIN outside Tamil Nadu is IGST even when the state says Tamil Nadu or is blank.
+  const { priceCart } = await import('../lib/sales/catalog.js')
+  const { pinStateMismatch } = await import('../lib/sales/regions.js')
+  assert.equal((await priceCart(db, [{ id: 'alibaba', qty: 1 }], { shipState: 'Tamil Nadu', pincode: '560001' })).intraState, false)
+  assert.equal((await priceCart(db, [{ id: 'alibaba', qty: 1 }], { pincode: '560001' })).intraState, false)
+  assert.equal((await priceCart(db, [{ id: 'alibaba', qty: 1 }], { pincode: '600001' })).intraState, true)
+  assert.equal(pinStateMismatch('tamil  nadu', '600001'), null)
+  assert.equal(pinStateMismatch('Pondicherry', '609602'), null)
+  assert.equal(pinStateMismatch('Puducherry', '533464'), null) // Yanam, in the Andhra circle
+  assert.equal(pinStateMismatch('', '560001'), null)
 })
 
 test('cannot buy more than is in stock, and two buyers cannot both get the last packs', async () => {
@@ -293,7 +329,7 @@ test('payment after the hold expired is accepted and the stock re-held', async (
 })
 
 test('dispatch flow: confirm → pack → ship → deliver, with roles, stock, invoice and tracking', async () => {
-  const { session } = await buy([{ id: 'rudra', qty: 3 }], buyer({ email: 'flow@example.com', phone: '9123456780', state: 'Kerala', city: 'Kochi' }))
+  const { session } = await buy([{ id: 'rudra', qty: 3 }], buyer({ email: 'flow@example.com', phone: '9123456780', state: 'Kerala', city: 'Kochi', pincode: '682001' }))
   const id = session.orderId
   const stockBefore = await stockOf('rudra')
 
@@ -649,7 +685,7 @@ test('order IDs: every checkout gets its own ID, claimed once in the register, n
 test('warehouse panel phase 1: dashboard, packing, dispatch with details, deliveries, pick list, issues, money only for owner', async () => {
   const wh = 'store@x.test|uid-store'
   const { session: a } = await buy([{ id: 'rudra', qty: 2 }], buyer({ name: 'Panel One', email: 'panel1@example.com', city: 'Erode' }))
-  const { session: b } = await buy([{ id: 'rudra', qty: 1 }], buyer({ name: 'Panel Two', email: 'panel2@example.com', state: 'Kerala', city: 'Kochi' }))
+  const { session: b } = await buy([{ id: 'rudra', qty: 1 }], buyer({ name: 'Panel Two', email: 'panel2@example.com', state: 'Kerala', city: 'Kochi', pincode: '682001' }))
 
   // Dashboard: counts for everyone; amounts only for the owner.
   const dw = await api('GET', '/api/admin/warehouse/dashboard', { token: wh })

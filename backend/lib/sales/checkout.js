@@ -16,6 +16,7 @@ import { createSessionWithFailover, getGateway } from '../gateways.js'
 import { priceCart, quoteShipping } from './catalog.js'
 import { deliveryTaxRateBp } from './tax.js'
 import { deliveryOptions, chooseDelivery } from './delivery.js'
+import { pinStateMismatch } from './regions.js'
 import { quoteDiscount, applyDiscount, cleanCode } from './discounts.js'
 import { ensureReferrer } from './referrals.js'
 import { pushCrmLead } from '../crm.js'
@@ -48,6 +49,9 @@ export function buildGuestCustomer(body) {
   if (!c.city) return { error: 'Please add your city or town.' }
   if (!c.state) return { error: 'Please add your state.' }
   if (!PINCODE_PATTERN.test(c.pincode)) return { error: 'A valid 6-digit PIN code is required.' }
+  // The state decides the GST (CGST+SGST or IGST) on the invoice, so it must agree with the PIN code.
+  const mismatch = pinStateMismatch(c.state, c.pincode)
+  if (mismatch) return { error: mismatch }
   for (const k of ['addressLine1', 'addressLine2', 'city', 'state', 'landmark']) {
     if (c[k].length > 300) return { error: 'One of the address fields is too long.' }
   }

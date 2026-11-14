@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import SiteLayout from "../layouts/SiteLayout.jsx";
 import { useProducts } from "../data/products.js";
@@ -63,40 +63,7 @@ export default function WishlistPage() {
             <>
               <ul className="wl-grid">
                 {saved.map((product) => (
-                  <li className="wl-card" key={product.id}>
-                    <Link className="wl-card-media" to={productPath(product.id)}>
-                      <img
-                        src={product.image}
-                        alt={product.alt || product.name}
-                        width={product.width}
-                        height={product.height}
-                        loading="lazy"
-                      />
-                    </Link>
-
-                    <div className="wl-card-body">
-                      <span className="wl-card-tag">{product.tag}</span>
-                      <Link className="wl-card-name" to={productPath(product.id)}>
-                        {product.name}
-                      </Link>
-                      <p className="wl-card-desc">{product.description}</p>
-                      <div className="wl-card-price">{product.price == null ? "Out of stock" : inr.format(product.price)}</div>
-
-                      <div className="wl-card-actions">
-                        <button type="button" className="btn-maroon wl-add" onClick={() => add(product)}>
-                          Add to Cart
-                        </button>
-                        <button
-                          type="button"
-                          className="wl-remove"
-                          onClick={() => remove(product.id)}
-                          aria-label={`Remove ${product.name} from saved items`}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  </li>
+                  <WishlistCard key={product.id} product={product} onAdd={add} onRemove={remove} />
                 ))}
               </ul>
 
@@ -113,5 +80,85 @@ export default function WishlistPage() {
         </div>
       </main>
     </SiteLayout>
+  );
+}
+
+/**
+ * One saved product. The cart needs a pack size (the server prices "slug-5kg", not the bare product), so
+ * the card offers the packs that can be bought now: the 10 kg pack first if it can, else the smallest.
+ * A product with no pack in stock (or no price) cannot be added.
+ */
+function WishlistCard({ product, onAdd, onRemove }) {
+  const buyable = (product.packSizes || []).filter((s) => s.inStock && s.price != null && s.price > 0);
+  const [kg, setKg] = useState(() => (buyable.find((s) => s.kg === 10) || buyable[0])?.kg ?? null);
+  const [added, setAdded] = useState(false);
+  const pack = buyable.find((s) => s.kg === kg) || buyable[0] || null;
+
+  const addPack = () => {
+    if (!pack) return;
+    onAdd({
+      ...product,
+      id: `${product.id}-${pack.kg}kg`,
+      name: `${product.name} (${pack.kg} kg)`,
+      price: pack.price,
+      packKg: pack.kg,
+    });
+    setAdded(true);
+    window.setTimeout(() => setAdded(false), 1600);
+  };
+
+  return (
+    <li className="wl-card">
+      <Link className="wl-card-media" to={productPath(product.id)}>
+        <img
+          src={product.image}
+          alt={product.alt || product.name}
+          width={product.width}
+          height={product.height}
+          loading="lazy"
+        />
+      </Link>
+
+      <div className="wl-card-body">
+        <span className="wl-card-tag">{product.tag}</span>
+        <Link className="wl-card-name" to={productPath(product.id)}>
+          {product.name}
+        </Link>
+        <p className="wl-card-desc">{product.description}</p>
+        <div className="wl-card-price">
+          {pack ? <>{inr.format(pack.price)} <small>/ {pack.kg} kg</small></> : "Out of stock"}
+        </div>
+
+        {buyable.length > 1 && (
+          <div className="wl-packs" role="group" aria-label={`Pack size for ${product.name}`}>
+            {buyable.map((s) => (
+              <button
+                key={s.kg}
+                type="button"
+                className={`wl-pack${s.kg === pack?.kg ? " is-active" : ""}`}
+                aria-pressed={s.kg === pack?.kg}
+                onClick={() => setKg(s.kg)}
+              >
+                {s.kg} kg
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="wl-card-actions">
+          <button type="button" className="btn-maroon wl-add" onClick={addPack} disabled={!pack}>
+            {!pack ? "Out of stock" : added ? "Added ✓" : "Add to Cart"}
+          </button>
+          <button
+            type="button"
+            className="wl-remove"
+            onClick={() => onRemove(product.id)}
+            aria-label={`Remove ${product.name} from saved items`}
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+    </li>
   );
 }
