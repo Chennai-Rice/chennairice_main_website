@@ -427,6 +427,152 @@ function LeadsTab({ data }) {
   )
 }
 
+/**
+ * Meta ads — live: each Meta campaign for the period with Ads Manager's figures (from the Marketing API,
+ * backend/lib/sales/meta-ads.js) beside the website's own visits, sign-ups and orders for it. A campaign
+ * opens to its ads. Loaded on its own so the rest of the page never waits for Meta.
+ */
+export function MetaAdsPanel({ period }) {
+  const [state, setState] = useState({ data: null, error: '', loading: true })
+  const [open, setOpen] = useState(() => new Set())
+  const load = useCallback((refresh = false) => {
+    setState((s) => ({ ...s, loading: true, error: '' }))
+    staffJson(`/api/admin/analyst/meta-ads?from=${period.from}&to=${period.to}${refresh ? '&refresh=1' : ''}`)
+      .then((data) => setState({ data, error: '', loading: false }))
+      .catch((err) => setState((s) => ({ ...s, error: err.message || 'Could not reach Meta.', loading: false })))
+  }, [period.from, period.to])
+  useEffect(() => { load() }, [load])
+  const d = state.data
+  const toggle = (id) => setOpen((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const money2 = (n) => inr(n, 2)
+  const pctOf = (n) => (n == null ? '—' : `${Number(n).toFixed(2)}%`)
+  const head = ['Campaign', 'Goal', 'Status', 'Spent', 'Impressions', 'Reach', 'Link clicks', 'Landing page views', 'Cost / LPV',
+    'CTR', 'CPC', 'CPM', 'Website visits', 'Sign-ups', 'Orders', 'Revenue', 'Cost / order', 'ROAS']
+  const cells = (r) => [
+    r.goal ?? '', r.status, money2(r.spend), count(r.impressions), count(r.reach), count(r.linkClicks), count(r.landingPageViews),
+    money2(r.costPerLandingPageView), pctOf(r.ctr), money2(r.cpc), money2(r.cpm),
+    count(r.site.visits), count(r.site.leads), count(r.site.orders), inr(r.site.revenue), r.costPerOrder == null ? '—' : money2(r.costPerOrder),
+    r.roas == null ? '—' : `${r.roas}×`,
+  ]
+  return (
+    <Panel title="Meta ads — live" wide
+      note="Straight from Meta Ads Manager for this period, next to what the website recorded from the same campaign. Click a campaign to see its ads.">
+      {!d && state.loading && <p className="wh-empty">Loading from Meta…</p>}
+      {state.error && <p className="wh-error">{state.error}</p>}
+      {d && !d.connected && (
+        <p className="wh-empty">Not connected to Meta yet. Add a Meta system user token with <strong>ads_read</strong> on ad account {d.account} as the secret <code>META_ADS_TOKEN</code>.</p>
+      )}
+      {d?.connected && (
+        <>
+          <section className="an-stats an-meta-stats">
+            <Tile hero label="Spent on Meta" value={inr(d.totals.spend)} note={`${count(d.campaigns.length)} campaigns`} icon="print" />
+            <Tile label="Landing page views" value={count(d.totals.landingPageViews)} note={`${money2(d.totals.costPerLandingPageView)} each`} icon="users" />
+            <Tile label="Website visits" value={count(d.totals.visits)} note="Counted by the website from the ad links" icon="reports" />
+            <Tile label="Orders" value={count(d.totals.orders)} note={d.totals.costPerOrder == null ? 'No orders from these ads yet' : `${money2(d.totals.costPerOrder)} per order`} icon="orders" />
+            <Tile label="ROAS" value={d.totals.roas == null ? '—' : `${d.totals.roas}×`} note={`${inr(d.totals.revenue)} revenue ÷ spend`} icon="reports" />
+          </section>
+          {d.campaigns.length ? (
+            <ScrollX className="an-table-wrap">
+              <table className="an-table an-meta-table">
+                <thead><tr>{head.map((h, i) => <th key={h} className={i > 2 ? 'is-num' : ''}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {d.campaigns.map((c) => (
+                    <Fragment key={c.id}>
+                      <tr className="an-meta-campaign" onClick={() => toggle(c.id)}>
+                        <td data-label="Campaign">
+                          <button type="button" className="an-meta-toggle" aria-expanded={open.has(c.id)}>{open.has(c.id) ? '▾' : '▸'}</button>
+                          <strong>{c.name}</strong>
+                          <span className="an-meta-id">ID {c.id}{c.budget ? ` · budget ${inr(c.budget.amount)}/${c.budget.per}` : ''}</span>
+                        </td>
+                        {cells(c).map((v, i) => <td key={head[i + 1]} className={i > 1 ? 'is-num' : ''} data-label={head[i + 1]}>{v}</td>)}
+                      </tr>
+                      {open.has(c.id) && c.ads.map((a) => (
+                        <tr key={a.id} className="an-meta-ad">
+                          <td data-label="Ad"><span className="an-meta-adname">{a.name}</span><span className="an-meta-id">{a.adSet} · ID {a.id}</span></td>
+                          {cells(a).map((v, i) => <td key={head[i + 1]} className={i > 1 ? 'is-num' : ''} data-label={head[i + 1]}>{v}</td>)}
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </ScrollX>
+          ) : <p className="wh-empty">No Meta campaigns ran in this period.</p>}
+          <p className="wh-muted wh-small an-meta-foot">
+            Updated {new Date(d.fetchedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} · Meta's figures can change for up to 3 days.
+            {' '}<button type="button" className="wh-btn wh-btn--outline wh-btn--small" disabled={state.loading} onClick={() => load(true)}>{state.loading ? 'Refreshing…' : 'Refresh from Meta'}</button>
+          </p>
+        </>
+      )}
+    </Panel>
+  )
+}
+
+/**
+ * Google Ads — live: each Google Ads campaign (through Sales Daddy, backend/lib/sales/google-ads.js) beside
+ * the website's own visits, sign-ups and orders from it. Google's figures cover the last N days up to today.
+ */
+export function GoogleAdsPanel({ period }) {
+  const [state, setState] = useState({ data: null, error: '', loading: true })
+  const load = useCallback((refresh = false) => {
+    setState((s) => ({ ...s, loading: true, error: '' }))
+    staffJson(`/api/admin/analyst/google-ads?from=${period.from}&to=${period.to}${refresh ? '&refresh=1' : ''}`)
+      .then((data) => setState({ data, error: '', loading: false }))
+      .catch((err) => setState((s) => ({ ...s, error: err.message || 'Could not reach Google Ads.', loading: false })))
+  }, [period.from, period.to])
+  useEffect(() => { load() }, [load])
+  const d = state.data
+  const money2 = (n) => inr(n, 2)
+  const site = [
+    { label: 'Website visits', value: (r) => count(r.site.visits), num: true },
+    { label: 'Sign-ups', value: (r) => count(r.site.leads), num: true },
+    { label: 'Orders', value: (r) => count(r.site.orders), num: true },
+    { label: 'Revenue', value: (r) => inr(r.site.revenue), num: true },
+  ]
+  const cols = [
+    { label: 'Campaign', value: (r) => (r.untagged
+      ? <span className="an-meta-adname">{r.name}</span>
+      : <><strong>{r.name}</strong><span className="an-meta-id">ID {r.id}{r.dailyBudget ? ` · budget ${inr(r.dailyBudget)}/day` : ''}</span></>) },
+    { label: 'Type', value: (r) => r.type ?? '' },
+    { label: 'Status', value: (r) => r.status ?? '' },
+    { label: 'Spent', value: (r) => (r.untagged ? '' : money2(r.spend)), num: true },
+    { label: 'Impressions', value: (r) => (r.untagged ? '' : count(r.impressions)), num: true },
+    { label: 'Clicks', value: (r) => (r.untagged ? '' : count(r.clicks)), num: true },
+    { label: 'CTR', value: (r) => (r.ctr == null ? (r.untagged ? '' : '—') : `${Number(r.ctr).toFixed(2)}%`), num: true },
+    { label: 'CPC', value: (r) => (r.untagged ? '' : money2(r.cpc)), num: true },
+    { label: 'Google conversions', value: (r) => (r.untagged ? '' : count(r.conversions)), num: true },
+    ...site,
+    { label: 'Cost / order', value: (r) => (r.costPerOrder == null ? (r.untagged ? '' : '—') : money2(r.costPerOrder)), num: true },
+    { label: 'ROAS', value: (r) => (r.roas == null ? (r.untagged ? '' : '—') : `${r.roas}×`), num: true },
+  ]
+  return (
+    <Panel title="Google Ads — live" wide
+      note={d?.connected ? `Google's figures are for the last ${d.days} day${d.days === 1 ? '' : 's'} up to today; the website's are for the period chosen above. Google's own conversion count appears once the Purchase conversion tag reports.` : 'Straight from Google Ads, next to what the website recorded from the same campaign.'}>
+      {!d && state.loading && <p className="wh-empty">Loading from Google Ads…</p>}
+      {state.error && <p className="wh-error">{state.error}</p>}
+      {d && !d.connected && (
+        <p className="wh-empty">Not connected yet. In Sales Daddy → Settings → Integrations → AI Assistants, create a read-only token with Marketing &amp; ads and save it as the secret <code>SALESDADDY_MCP_TOKEN</code>.</p>
+      )}
+      {d?.connected && (
+        <>
+          <section className="an-stats an-meta-stats">
+            <Tile hero label="Spent on Google" value={inr(d.totals.spend)} note={`${count(d.campaigns.length)} campaign${d.campaigns.length === 1 ? '' : 's'} · last ${d.days} days`} icon="print" />
+            <Tile label="Clicks" value={count(d.totals.clicks)} note={`${money2(d.totals.cpc)} each`} icon="users" />
+            <Tile label="Website visits" value={count(d.totals.visits)} note="Google Ads visits the website counted" icon="reports" />
+            <Tile label="Orders" value={count(d.totals.orders)} note={d.totals.costPerOrder == null ? 'No orders from Google Ads yet' : `${money2(d.totals.costPerOrder)} per order`} icon="orders" />
+            <Tile label="ROAS" value={d.totals.roas == null ? '—' : `${d.totals.roas}×`} note={`${inr(d.totals.revenue)} revenue ÷ spend`} icon="reports" />
+          </section>
+          <Table cols={cols} rows={d.untagged ? [...d.campaigns, d.untagged] : d.campaigns} rowClass={(r) => (r.untagged ? 'an-meta-ad' : 'an-meta-campaign')}
+            empty="No Google Ads campaigns ran in this period." />
+          <p className="wh-muted wh-small an-meta-foot">
+            {d.account ? `Account ${String(d.account).replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')} · ` : ''}Updated {new Date(d.fetchedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}.
+            {' '}<button type="button" className="wh-btn wh-btn--outline wh-btn--small" disabled={state.loading} onClick={() => load(true)}>{state.loading ? 'Refreshing…' : 'Refresh from Google'}</button>
+          </p>
+        </>
+      )}
+    </Panel>
+  )
+}
 /* ------------------------------------------------- ads in plain words (Meta ads, Google Ads pages) */
 
 // How the money came back: ROAS in words and colour. 2× and up earns well, 1–2× covers the ads, below 1× loses.
@@ -537,12 +683,12 @@ function DetailToggle({ full, setFull }) {
 }
 
 /**
- * Meta ads — live: each Meta campaign for the period with Ads Manager's figures (from the Marketing API,
+ * Meta ads — plain words (the Performance team's Ad campaigns → Meta ads page): each Meta campaign for the period with Ads Manager's figures (from the Marketing API,
  * backend/lib/sales/meta-ads.js) beside the website's own visits, sign-ups and orders for it. A plain-words
  * summary, the best campaign and the ones spending without orders come first; the table is simple by
  * default (All details shows every Ads Manager figure). A campaign opens to its ads.
  */
-export function MetaAdsPanel({ period }) {
+export function MetaAdsPanelFriendly({ period }) {
   const [state, setState] = useState({ data: null, error: '', loading: true })
   const [open, setOpen] = useState(() => new Set())
   const [full, setFull] = useState(false)
@@ -642,7 +788,7 @@ export function MetaAdsPanel({ period }) {
  * Google Ads — live: each Google Ads campaign (through Sales Daddy, backend/lib/sales/google-ads.js) beside
  * the website's own visits, sign-ups and orders from it. Google's figures cover the last N days up to today.
  */
-export function GoogleAdsPanel({ period }) {
+export function GoogleAdsPanelFriendly({ period }) {
   const [state, setState] = useState({ data: null, error: '', loading: true })
   const [full, setFull] = useState(false)
   const load = useCallback((refresh = false) => {

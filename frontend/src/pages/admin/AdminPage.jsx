@@ -376,7 +376,7 @@ function PerformanceDashboard() {
         <main className="ad-main" id="ad-main">
           {view === 'analyst' ? <AnalystPanel />
             : view === 'advisor' ? <AdvisorPanel />
-            : view === 'campaigns' ? <CampaignsPanel />
+            : view === 'campaigns' ? <CampaignsPanel perChannel />
             : view === 'customers' ? <CustomersPanel />
             : view === 'checkout' ? <CheckoutJourneysPanel />
             : <ReportsPanel />}
