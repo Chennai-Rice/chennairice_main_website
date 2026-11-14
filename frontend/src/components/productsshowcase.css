@@ -10,10 +10,29 @@
   overflow: hidden;
 }
 
-/* ---------- join with the next section ---------- */
-.showcase-fade {
-  height: 72px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, var(--showcase-next, #faf5e9) 100%);
+/* ---------- decor ---------- */
+/* Full paddy spray down the right edge, sitting entirely inside the frame.
+   Uses the cutout (not the generated photo) so the edges stay naturally
+   soft — a full-frame photo would show straight crop lines. */
+.showcase-paddy {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+}
+/* The Golden Rice Stalks picture (Nov 2026) has its grains right up to its top edge, so it sits a
+   little below the section's top: above it, the section's overflow cut the tips off flat. */
+.showcase-paddy-a {
+  right: 0;
+  top: 18px;
+  width: 255px;
+  opacity: 0.95;
+}
+.showcase-paddy-b {
+  left: 0;
+  bottom: -10px;
+  width: 255px;
+  opacity: 0.95;
 }
 
 /* ---------- persistent header + controls ---------- */
@@ -244,6 +263,12 @@
   bottom: 0;
   height: 2px;
   background: var(--maroon);
+}
+
+@media (max-width: 1100px) {
+  .showcase-paddy {
+    display: none;
+  }
 }
 
 /* ---------- mobile: same pinned scrub carousel, compacted to fit one screen ---------- */

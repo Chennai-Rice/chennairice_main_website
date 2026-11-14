@@ -117,53 +117,6 @@
   border: none;
 }
 
-/* The "I am a" dropdown, styled like the other boxes, with its own arrow. */
-.field select {
-  font-family: var(--sans);
-  font-size: 14px;
-  color: var(--ink);
-  background: var(--cream-soft)
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23a8842e' stroke-width='1.6'/%3E%3C/svg%3E")
-    no-repeat right 14px center;
-  border: 1px solid rgba(74, 44, 34, 0.18);
-  border-radius: 6px;
-  padding: 12px 40px 12px 14px;
-  width: 100%;
-  appearance: none;
-  -webkit-appearance: none;
-  cursor: pointer;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
-}
-.field select:focus {
-  outline: none;
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(198, 154, 63, 0.18);
-}
-.field select[aria-invalid='true'] {
-  border-color: #a84230;
-}
-.contact-two {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-}
-.field-optional {
-  font-style: normal;
-  letter-spacing: 0.04em;
-  text-transform: none;
-  color: #9a8670;
-}
-.contact-aside-note {
-  margin: -6px 0 0;
-  font-size: 14px;
-  color: #6b5b4b;
-}
-@media (max-width: 600px) {
-  .contact-two {
-    grid-template-columns: 1fr;
-  }
-}
-
 .contact-aside {
   display: grid;
   align-content: start;

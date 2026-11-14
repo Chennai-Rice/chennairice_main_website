@@ -46,6 +46,19 @@ const STAT_ICONS = {
   ),
 }
 
+/* Decorative wheat stalk — drawn so it scales and recolours with the palette. */
+const WheatStalk = ({ className, style }) => (
+  <svg className={className} style={style} viewBox="0 0 120 300" fill="none" aria-hidden="true">
+    <path d="M60 300V60" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    <g stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" fill="none">
+      <path d="M60 78c-15-6-24-19-24-34 15 2 24 13 24 28zM60 78c15-6 24-19 24-34-15 2-24 13-24 28z" />
+      <path d="M60 118c-15-6-24-19-24-34 15 2 24 13 24 28zM60 118c15-6 24-19 24-34-15 2-24 13-24 28z" />
+      <path d="M60 158c-15-6-24-19-24-34 15 2 24 13 24 28zM60 158c15-6 24-19 24-34-15 2-24 13-24 28z" />
+      <path d="M60 198c-15-6-24-19-24-34 15 2 24 13 24 28zM60 198c15-6 24-19 24-34-15 2-24 13-24 28z" />
+    </g>
+  </svg>
+)
+
 const Divider = () => (
   <svg className="ish-divider" width="60" height="10" viewBox="0 0 60 10" fill="none" aria-hidden="true">
     <path d="M0 5h22" stroke="currentColor" strokeWidth="1" />
@@ -85,6 +98,8 @@ export default function InfraShowcase() {
 
   return (
     <section className="ish" aria-label="Infrastructure overview">
+      <WheatStalk className="ish-wheat ish-wheat--hero" />
+
       {/* ---------------- hero ---------------- */}
       <div className="infra-wrap">
         <div

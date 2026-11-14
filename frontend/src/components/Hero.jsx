@@ -85,9 +85,10 @@ export default function Hero() {
       <div className="hero-overlay" />
 
       <div className={`hero-content${outro ? ' is-outro' : ''}`}>
-        {/* A small styled line, then the page heading (H1) and the two ways in (the intro line was removed, Nov 2026). */}
+        {/* A small styled line, then the page heading (H1), the brand intro and the two ways in. */}
         <p className="hero-tagline">{HERO.tagline}</p>
         <h1 className="home-hero-h1">{HERO.h1}</h1>
+        <p className="home-hero-sub">{HERO.intro}</p>
         <div className="hero-ctas">
           {HERO.ctas.map((c) => (
             <Link key={c.to} to={c.to} className={`hero-cta${c.primary ? ' is-primary' : ''}`}>{c.label}</Link>
@@ -95,10 +96,12 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* "ESTD 1950's" as bold text on the right (Nov 2026: in place of the round gold badge). */}
-      <p className="hero-estd">
-        <span className="hero-estd-label">Estd</span> <span className="hero-estd-year">{HERO.estd}</span>
-      </p>
+      <div className="hero-estd">
+        <div className="hero-estd-ring">
+          <span className="hero-estd-label">Estd</span>
+          <span className="hero-estd-year">{HERO.estd}</span>
+        </div>
+      </div>
 
       <svg className="hero-curve" viewBox="0 0 1440 150" preserveAspectRatio="none" aria-hidden="true">
         {/* Filled with the first showcase product's tint, which is the colour

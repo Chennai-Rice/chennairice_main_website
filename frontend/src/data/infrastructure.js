@@ -8,8 +8,6 @@
 
 export const INFRA_ASSETS = {
   heroImage: '/assets/infrastructure/hero-aerial.webp',
-  siloPanorama: '/assets/infrastructure/silo-panorama.webp', // Sunlit Grain Silo Complex Panorama (Nov 2026)
-  siloComplexAerial: '/assets/infrastructure/silo-complex-aerial.webp', // Aerial Grain Silo Industrial Complex (Nov 2026)
   facilityAerial: '/assets/infrastructure/facility-aerial.webp',
   paddyMacro: '/assets/infrastructure/paddy-macro.webp',
   paddySelection: '/assets/infrastructure/paddy-selection.webp',
@@ -225,22 +223,27 @@ export const INFRA_FINAL_CTA = {
    reported numbers used elsewhere in this file — no plant count, machine
    count or "% tested" claim is included, because none is recorded. */
 
-/** The banner at the top of the page: two slides (Nov 2026: the new silo photographs; the quality
- * inspection slide was dropped). */
 export const SHOWCASE_SLIDES = [
   {
     id: 'facility',
-    image: 'siloPanorama',
-    alt: 'The Chennai Rice silo complex and mill buildings in sunlight',
+    image: 'heroImage',
+    alt: 'Aerial view of the Chennai Rice processing facility and silo farm',
     titleLines: ['Built on Strength.', 'Driven by Excellence.'],
     text: 'Integrated infrastructure — controlled procurement, modern processing and monitored storage that protect purity and consistency in every grain.',
   },
   {
     id: 'storage',
-    image: 'siloComplexAerial',
-    alt: 'Aerial view of the Chennai Rice silo yard and industrial complex',
+    image: 'facilityAerial',
+    alt: 'Paddy storage silos at the Chennai Rice facility',
     titleLines: ['Stored with Care.', 'Milled with Precision.'],
     text: '31 silos across Nasiyanur and SIPCOT hold 61,500 MT of paddy under monitored conditions before it enters the milling line.',
+  },
+  {
+    id: 'quality',
+    image: 'qualityInspection',
+    alt: 'Quality inspection of incoming paddy',
+    titleLines: ['Checked at Intake.', 'Checked Before Dispatch.'],
+    text: 'Moisture, purity and grain condition are assessed as paddy arrives, as it moves through processing, and before any batch leaves the facility.',
   },
 ]
 
