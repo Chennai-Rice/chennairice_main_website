@@ -427,14 +427,125 @@ function LeadsTab({ data }) {
   )
 }
 
+/* ------------------------------------------------- ads in plain words (Meta ads, Google Ads pages) */
+
+// How the money came back: ROAS in words and colour. 2× and up earns well, 1–2× covers the ads, below 1× loses.
+function roasTone(roas, orders) {
+  if (!orders) return { tone: 'none', word: 'No orders yet' }
+  if (roas == null) return { tone: 'none', word: '—' }
+  if (roas >= 2) return { tone: 'good', word: 'Earning well' }
+  if (roas >= 1) return { tone: 'ok', word: 'Covering its cost' }
+  return { tone: 'bad', word: 'Losing money' }
+}
+function Return({ roas, orders, spend }) {
+  if (!spend) return <span className="an-muted">—</span>
+  const t = roasTone(roas, orders)
+  return (
+    <span className={`an-roas is-${t.tone}`} title="Revenue from these orders ÷ money spent on the ads">
+      {orders ? `${roas}×` : '0×'}<small>{t.word}</small>
+    </span>
+  )
+}
+function StatusChip({ status, active }) {
+  return <span className={`an-status${active ? ' is-on' : ''}`}>{status || '—'}</span>
+}
+
+/** One or two sentences anyone can read: spent, got back, per order, verdict. */
+function AdsVerdict({ platform, totals }) {
+  const { spend, orders, revenue, roas } = totals
+  if (!spend) return <p className="an-verdict is-none">Nothing was spent on {platform} in this period.</p>
+  const t = roasTone(roas, orders)
+  const per = orders ? inr(spend / orders) : null
+  return (
+    <div className={`an-verdict is-${t.tone}`}>
+      <strong>{t.word}.</strong>{' '}
+      You spent <b>{inr(spend)}</b> on {platform}.{' '}
+      {orders
+        ? <>It brought <b>{count(orders)} paid order{orders === 1 ? '' : 's'}</b> worth <b>{inr(revenue)}</b> — about <b>{per} per order</b>, and <b>₹{Number(roas).toFixed(2)} back for every ₹1</b> spent.</>
+        : <>No paid orders came from these ads yet. People clicked and visited, but nobody bought — check the offer, the price shown in the ad and the page the ad opens.</>}
+    </div>
+  )
+}
+
+/** The best campaign, and campaigns spending without a single order. */
+function AdsHighlights({ rows, nameOf = (r) => r.name }) {
+  const withOrders = rows.filter((r) => r.site?.orders > 0 && r.spend > 0)
+  const best = withOrders.slice().sort((a, b) => (b.roas ?? 0) - (a.roas ?? 0))[0]
+  const wasted = rows.filter((r) => r.spend >= 300 && !(r.site?.orders > 0)).sort((a, b) => b.spend - a.spend).slice(0, 3)
+  if (!best && !wasted.length) return null
+  return (
+    <div className="an-ads-hl">
+      {best && (
+        <div className="an-ads-hl-card is-good">
+          <span className="an-ads-hl-label">👍 Best campaign</span>
+          <strong>{nameOf(best)}</strong>
+          <span>{count(best.site.orders)} order{best.site.orders === 1 ? '' : 's'} · {inr(best.site.revenue)} from {inr(best.spend)} · {best.roas}× back</span>
+        </div>
+      )}
+      {wasted.length > 0 && (
+        <div className="an-ads-hl-card is-bad">
+          <span className="an-ads-hl-label">⚠️ Spending, no orders yet</span>
+          {wasted.map((r) => <span key={r.id || nameOf(r)}><strong>{nameOf(r)}</strong> · {inr(r.spend)} spent</span>)}
+          <span className="an-muted">Look at these first: change the ad or the offer, or pause them.</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const GLOSSARY = {
+  meta: [
+    ['Spent', 'Money Meta charged for the ads in these dates.'],
+    ['Reach', 'How many different people saw the ad at least once.'],
+    ['Impressions', 'How many times the ad was shown (one person can see it many times).'],
+    ['Link clicks', 'Taps on the ad that open the website.'],
+    ['Landing page views', 'Clicks where the website actually finished opening — the better number to watch.'],
+    ['CTR', 'Out of 100 people shown the ad, how many clicked it. Above 1% is good for rice ads.'],
+    ['CPC', 'What one click cost.'],
+    ['CPM', 'What 1,000 views of the ad cost.'],
+    ['Website visits / Orders / Revenue', 'Counted by our own website from the ad links — real paid orders.'],
+    ['Cost per order', 'Money spent ÷ paid orders. Lower is better.'],
+    ['ROAS (return)', 'Revenue ÷ money spent. 2× means ₹2 of sales for every ₹1 on ads. Below 1× loses money.'],
+  ],
+  google: [
+    ['Spent', 'Money Google charged for the ads.'],
+    ['Impressions', 'How many times the ad was shown.'],
+    ['Clicks', 'Taps on the ad that open the website.'],
+    ['CTR', 'Out of 100 people shown the ad, how many clicked it.'],
+    ['CPC', 'What one click cost.'],
+    ['Google conversions', 'Orders Google itself counted (from its tag on the website).'],
+    ['Website visits / Orders / Revenue', 'Counted by our own website from the ad links — real paid orders.'],
+    ['Cost per order', 'Money spent ÷ paid orders. Lower is better.'],
+    ['ROAS (return)', 'Revenue ÷ money spent. 2× means ₹2 of sales for every ₹1 on ads. Below 1× loses money.'],
+  ],
+}
+function Glossary({ which }) {
+  return (
+    <details className="an-glossary">
+      <summary>What do these words mean?</summary>
+      <dl>{GLOSSARY[which].map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+    </details>
+  )
+}
+function DetailToggle({ full, setFull }) {
+  return (
+    <div className="an-detail-toggle" role="group" aria-label="How much detail">
+      <button type="button" className={!full ? 'is-on' : ''} aria-pressed={!full} onClick={() => setFull(false)}>Simple</button>
+      <button type="button" className={full ? 'is-on' : ''} aria-pressed={full} onClick={() => setFull(true)}>All details</button>
+    </div>
+  )
+}
+
 /**
  * Meta ads — live: each Meta campaign for the period with Ads Manager's figures (from the Marketing API,
- * backend/lib/sales/meta-ads.js) beside the website's own visits, sign-ups and orders for it. A campaign
- * opens to its ads. Loaded on its own so the rest of the page never waits for Meta.
+ * backend/lib/sales/meta-ads.js) beside the website's own visits, sign-ups and orders for it. A plain-words
+ * summary, the best campaign and the ones spending without orders come first; the table is simple by
+ * default (All details shows every Ads Manager figure). A campaign opens to its ads.
  */
 export function MetaAdsPanel({ period }) {
   const [state, setState] = useState({ data: null, error: '', loading: true })
   const [open, setOpen] = useState(() => new Set())
+  const [full, setFull] = useState(false)
   const load = useCallback((refresh = false) => {
     setState((s) => ({ ...s, loading: true, error: '' }))
     staffJson(`/api/admin/analyst/meta-ads?from=${period.from}&to=${period.to}${refresh ? '&refresh=1' : ''}`)
@@ -446,17 +557,30 @@ export function MetaAdsPanel({ period }) {
   const toggle = (id) => setOpen((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const money2 = (n) => inr(n, 2)
   const pctOf = (n) => (n == null ? '—' : `${Number(n).toFixed(2)}%`)
-  const head = ['Campaign', 'Goal', 'Status', 'Spent', 'Impressions', 'Reach', 'Link clicks', 'Landing page views', 'Cost / LPV',
-    'CTR', 'CPC', 'CPM', 'Website visits', 'Sign-ups', 'Orders', 'Revenue', 'Cost / order', 'ROAS']
-  const cells = (r) => [
-    r.goal ?? '', r.status, money2(r.spend), count(r.impressions), count(r.reach), count(r.linkClicks), count(r.landingPageViews),
-    money2(r.costPerLandingPageView), pctOf(r.ctr), money2(r.cpc), money2(r.cpm),
-    count(r.site.visits), count(r.site.leads), count(r.site.orders), inr(r.site.revenue), r.costPerOrder == null ? '—' : money2(r.costPerOrder),
-    r.roas == null ? '—' : `${r.roas}×`,
+  // Columns: `simple` ones show by default; All details shows every one.
+  const COLS = [
+    { label: 'Status', simple: true, v: (r) => <StatusChip status={r.status} active={r.active ?? r.status === 'Active'} /> },
+    { label: 'Goal', v: (r) => r.goal ?? '' },
+    { label: 'Spent', simple: true, num: true, v: (r) => money2(r.spend) },
+    { label: 'Reach', simple: true, num: true, v: (r) => count(r.reach), tip: 'Different people who saw the ad' },
+    { label: 'Impressions', num: true, v: (r) => count(r.impressions) },
+    { label: 'Link clicks', num: true, v: (r) => count(r.linkClicks) },
+    { label: 'Opened the website', simple: true, num: true, v: (r) => count(r.landingPageViews), tip: 'Landing page views: clicks where the site finished opening' },
+    { label: 'Cost / page view', num: true, v: (r) => money2(r.costPerLandingPageView) },
+    { label: 'CTR', num: true, v: (r) => pctOf(r.ctr) },
+    { label: 'CPC', num: true, v: (r) => money2(r.cpc) },
+    { label: 'CPM', num: true, v: (r) => money2(r.cpm) },
+    { label: 'Website visits', num: true, v: (r) => count(r.site.visits) },
+    { label: 'Sign-ups', simple: true, num: true, v: (r) => count(r.site.leads) },
+    { label: 'Orders', simple: true, num: true, v: (r) => <strong>{count(r.site.orders)}</strong> },
+    { label: 'Revenue', simple: true, num: true, v: (r) => inr(r.site.revenue) },
+    { label: 'Cost / order', simple: true, num: true, v: (r) => (r.costPerOrder == null ? '—' : money2(r.costPerOrder)) },
+    { label: 'Return', simple: true, num: true, v: (r) => <Return roas={r.roas} orders={r.site.orders} spend={r.spend} />, tip: 'ROAS: revenue ÷ money spent' },
   ]
+  const cols = COLS.filter((c) => full || c.simple)
   return (
-    <Panel title="Meta ads — live" wide
-      note="Straight from Meta Ads Manager for this period, next to what the website recorded from the same campaign. Click a campaign to see its ads.">
+    <Panel title="Meta ads — live from Ads Manager" wide
+      note="Meta's own figures for these dates, next to the real paid orders our website got from the same ads. Tap a campaign to see its ads.">
       {!d && state.loading && <p className="wh-empty">Loading from Meta…</p>}
       {state.error && <p className="wh-error">{state.error}</p>}
       {d && !d.connected && (
@@ -464,17 +588,23 @@ export function MetaAdsPanel({ period }) {
       )}
       {d?.connected && (
         <>
+          <AdsVerdict platform="Meta ads" totals={{ spend: d.totals.spend, orders: d.totals.orders, revenue: d.totals.revenue, roas: d.totals.roas }} />
           <section className="an-stats an-meta-stats">
-            <Tile hero label="Spent on Meta" value={inr(d.totals.spend)} note={`${count(d.campaigns.length)} campaigns`} icon="print" />
-            <Tile label="Landing page views" value={count(d.totals.landingPageViews)} note={`${money2(d.totals.costPerLandingPageView)} each`} icon="users" />
-            <Tile label="Website visits" value={count(d.totals.visits)} note="Counted by the website from the ad links" icon="reports" />
-            <Tile label="Orders" value={count(d.totals.orders)} note={d.totals.costPerOrder == null ? 'No orders from these ads yet' : `${money2(d.totals.costPerOrder)} per order`} icon="orders" />
-            <Tile label="ROAS" value={d.totals.roas == null ? '—' : `${d.totals.roas}×`} note={`${inr(d.totals.revenue)} revenue ÷ spend`} icon="reports" />
+            <Tile hero label="Spent on Meta" value={inr(d.totals.spend)} note={`${count(d.campaigns.length)} campaign${d.campaigns.length === 1 ? '' : 's'}`} icon="print" />
+            <Tile label="Opened the website" value={count(d.totals.landingPageViews)} note={`${money2(d.totals.costPerLandingPageView)} each`} icon="users" />
+            <Tile label="Paid orders" value={count(d.totals.orders)} note={d.totals.costPerOrder == null ? 'No orders from these ads yet' : `${money2(d.totals.costPerOrder)} per order`} icon="orders" />
+            <Tile label="Sales from the ads" value={inr(d.totals.revenue)} note="Real paid orders on the website" icon="reports" />
+            <Tile label="Return" value={d.totals.roas == null ? '—' : `${d.totals.roas}×`} note={roasTone(d.totals.roas, d.totals.orders).word} icon="reports" alert={d.totals.spend > 0 && (d.totals.roas ?? 0) < 1} />
           </section>
+          <AdsHighlights rows={d.campaigns} />
+          <div className="an-ads-bar">
+            <DetailToggle full={full} setFull={setFull} />
+            <Glossary which="meta" />
+          </div>
           {d.campaigns.length ? (
             <ScrollX className="an-table-wrap">
               <table className="an-table an-meta-table">
-                <thead><tr>{head.map((h, i) => <th key={h} className={i > 2 ? 'is-num' : ''}>{h}</th>)}</tr></thead>
+                <thead><tr><th>Campaign</th>{cols.map((c) => <th key={c.label} className={c.num ? 'is-num' : ''} title={c.tip}>{c.label}</th>)}</tr></thead>
                 <tbody>
                   {d.campaigns.map((c) => (
                     <Fragment key={c.id}>
@@ -482,14 +612,14 @@ export function MetaAdsPanel({ period }) {
                         <td data-label="Campaign">
                           <button type="button" className="an-meta-toggle" aria-expanded={open.has(c.id)}>{open.has(c.id) ? '▾' : '▸'}</button>
                           <strong>{c.name}</strong>
-                          <span className="an-meta-id">ID {c.id}{c.budget ? ` · budget ${inr(c.budget.amount)}/${c.budget.per}` : ''}</span>
+                          <span className="an-meta-id">{c.ads.length} ad{c.ads.length === 1 ? '' : 's'}{c.budget ? ` · budget ${inr(c.budget.amount)}/${c.budget.per}` : ''}{full ? ` · ID ${c.id}` : ''}</span>
                         </td>
-                        {cells(c).map((v, i) => <td key={head[i + 1]} className={i > 1 ? 'is-num' : ''} data-label={head[i + 1]}>{v}</td>)}
+                        {cols.map((col) => <td key={col.label} className={col.num ? 'is-num' : ''} data-label={col.label}>{col.v(c)}</td>)}
                       </tr>
                       {open.has(c.id) && c.ads.map((a) => (
                         <tr key={a.id} className="an-meta-ad">
-                          <td data-label="Ad"><span className="an-meta-adname">{a.name}</span><span className="an-meta-id">{a.adSet} · ID {a.id}</span></td>
-                          {cells(a).map((v, i) => <td key={head[i + 1]} className={i > 1 ? 'is-num' : ''} data-label={head[i + 1]}>{v}</td>)}
+                          <td data-label="Ad"><span className="an-meta-adname">{a.name}</span><span className="an-meta-id">{a.adSet}{full ? ` · ID ${a.id}` : ''}</span></td>
+                          {cols.map((col) => <td key={col.label} className={col.num ? 'is-num' : ''} data-label={col.label}>{col.v(a)}</td>)}
                         </tr>
                       ))}
                     </Fragment>
@@ -514,6 +644,7 @@ export function MetaAdsPanel({ period }) {
  */
 export function GoogleAdsPanel({ period }) {
   const [state, setState] = useState({ data: null, error: '', loading: true })
+  const [full, setFull] = useState(false)
   const load = useCallback((refresh = false) => {
     setState((s) => ({ ...s, loading: true, error: '' }))
     staffJson(`/api/admin/analyst/google-ads?from=${period.from}&to=${period.to}${refresh ? '&refresh=1' : ''}`)
@@ -525,28 +656,30 @@ export function GoogleAdsPanel({ period }) {
   const money2 = (n) => inr(n, 2)
   const site = [
     { label: 'Website visits', value: (r) => count(r.site.visits), num: true },
-    { label: 'Sign-ups', value: (r) => count(r.site.leads), num: true },
-    { label: 'Orders', value: (r) => count(r.site.orders), num: true },
-    { label: 'Revenue', value: (r) => inr(r.site.revenue), num: true },
+    { label: 'Sign-ups', simple: true, value: (r) => count(r.site.leads), num: true },
+    { label: 'Orders', simple: true, value: (r) => <strong>{count(r.site.orders)}</strong>, num: true },
+    { label: 'Revenue', simple: true, value: (r) => inr(r.site.revenue), num: true },
   ]
-  const cols = [
+  // `simple` columns show by default; All details shows every one.
+  const all = [
     { label: 'Campaign', value: (r) => (r.untagged
       ? <span className="an-meta-adname">{r.name}</span>
-      : <><strong>{r.name}</strong><span className="an-meta-id">ID {r.id}{r.dailyBudget ? ` · budget ${inr(r.dailyBudget)}/day` : ''}</span></>) },
+      : <><strong>{r.name}</strong><span className="an-meta-id">{r.type ? r.type : ''}{r.dailyBudget ? ` · budget ${inr(r.dailyBudget)}/day` : ''}{full ? ` · ID ${r.id}` : ''}</span></>), simple: true },
     { label: 'Type', value: (r) => r.type ?? '' },
-    { label: 'Status', value: (r) => r.status ?? '' },
-    { label: 'Spent', value: (r) => (r.untagged ? '' : money2(r.spend)), num: true },
+    { label: 'Status', simple: true, value: (r) => (r.untagged ? '' : <StatusChip status={r.status} active={/^(active|enabled|eligible)/i.test(r.status || '')} />) },
+    { label: 'Spent', simple: true, value: (r) => (r.untagged ? '' : money2(r.spend)), num: true },
     { label: 'Impressions', value: (r) => (r.untagged ? '' : count(r.impressions)), num: true },
-    { label: 'Clicks', value: (r) => (r.untagged ? '' : count(r.clicks)), num: true },
+    { label: 'Clicks', simple: true, value: (r) => (r.untagged ? '' : count(r.clicks)), num: true },
     { label: 'CTR', value: (r) => (r.ctr == null ? (r.untagged ? '' : '—') : `${Number(r.ctr).toFixed(2)}%`), num: true },
     { label: 'CPC', value: (r) => (r.untagged ? '' : money2(r.cpc)), num: true },
     { label: 'Google conversions', value: (r) => (r.untagged ? '' : count(r.conversions)), num: true },
     ...site,
-    { label: 'Cost / order', value: (r) => (r.costPerOrder == null ? (r.untagged ? '' : '—') : money2(r.costPerOrder)), num: true },
-    { label: 'ROAS', value: (r) => (r.roas == null ? (r.untagged ? '' : '—') : `${r.roas}×`), num: true },
+    { label: 'Cost / order', simple: true, value: (r) => (r.costPerOrder == null ? (r.untagged ? '' : '—') : money2(r.costPerOrder)), num: true },
+    { label: 'Return', simple: true, value: (r) => (r.untagged ? '' : <Return roas={r.roas} orders={r.site.orders} spend={r.spend} />), num: true },
   ]
+  const cols = all.filter((c) => full || c.simple)
   return (
-    <Panel title="Google Ads — live" wide
+    <Panel title="Google Ads — live from Google" wide
       note={d?.connected ? `Google's figures are for the last ${d.days} day${d.days === 1 ? '' : 's'} up to today; the website's are for the period chosen above. Google's own conversion count appears once the Purchase conversion tag reports.` : 'Straight from Google Ads, next to what the website recorded from the same campaign.'}>
       {!d && state.loading && <p className="wh-empty">Loading from Google Ads…</p>}
       {state.error && <p className="wh-error">{state.error}</p>}
@@ -555,13 +688,19 @@ export function GoogleAdsPanel({ period }) {
       )}
       {d?.connected && (
         <>
+          <AdsVerdict platform={`Google Ads (last ${d.days} days)`} totals={{ spend: d.totals.spend, orders: d.totals.orders, revenue: d.totals.revenue, roas: d.totals.roas }} />
           <section className="an-stats an-meta-stats">
             <Tile hero label="Spent on Google" value={inr(d.totals.spend)} note={`${count(d.campaigns.length)} campaign${d.campaigns.length === 1 ? '' : 's'} · last ${d.days} days`} icon="print" />
             <Tile label="Clicks" value={count(d.totals.clicks)} note={`${money2(d.totals.cpc)} each`} icon="users" />
             <Tile label="Website visits" value={count(d.totals.visits)} note="Google Ads visits the website counted" icon="reports" />
-            <Tile label="Orders" value={count(d.totals.orders)} note={d.totals.costPerOrder == null ? 'No orders from Google Ads yet' : `${money2(d.totals.costPerOrder)} per order`} icon="orders" />
-            <Tile label="ROAS" value={d.totals.roas == null ? '—' : `${d.totals.roas}×`} note={`${inr(d.totals.revenue)} revenue ÷ spend`} icon="reports" />
+            <Tile label="Paid orders" value={count(d.totals.orders)} note={d.totals.costPerOrder == null ? 'No orders from Google Ads yet' : `${money2(d.totals.costPerOrder)} per order`} icon="orders" />
+            <Tile label="Return" value={d.totals.roas == null ? '—' : `${d.totals.roas}×`} note={`${roasTone(d.totals.roas, d.totals.orders).word} · ${inr(d.totals.revenue)} sales`} icon="reports" alert={d.totals.spend > 0 && (d.totals.roas ?? 0) < 1} />
           </section>
+          <AdsHighlights rows={d.campaigns} />
+          <div className="an-ads-bar">
+            <DetailToggle full={full} setFull={setFull} />
+            <Glossary which="google" />
+          </div>
           <Table cols={cols} rows={d.untagged ? [...d.campaigns, d.untagged] : d.campaigns} rowClass={(r) => (r.untagged ? 'an-meta-ad' : 'an-meta-campaign')}
             empty="No Google Ads campaigns ran in this period." />
           <p className="wh-muted wh-small an-meta-foot">

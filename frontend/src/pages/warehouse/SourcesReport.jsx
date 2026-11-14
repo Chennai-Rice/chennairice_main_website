@@ -335,7 +335,7 @@ export default function SourcesReport({ say, onAuthError, only = '', live = null
               </div>
             </>
           )}
-          <h3 className="src-subhead">Campaigns, ad sets and ads</h3>
+                <h3 className="src-subhead">{live ? 'What our website recorded: campaigns, ad sets and ads' : 'Campaigns, ad sets and ads'}</h3>
         </>
       )}
 
