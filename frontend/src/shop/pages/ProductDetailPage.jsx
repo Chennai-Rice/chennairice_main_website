@@ -26,13 +26,6 @@ import { PRODUCT_SEO, productIdFromSlug, productName, productPath } from "../../
 import { FOOTER } from "../../data/content.js";
 import { flyToCart } from "../utils/flyToCart.js";
 import "./productdetail.css";
-import DeliveryCheck from "../components/DeliveryCheck.jsx";
-
-/** The lowest delivery charge for a pack across the regions we deliver to (rupees), or null. */
-function lowestDelivery(size) {
-  const charges = Object.values(size?.delivery || {}).map(Number).filter((n) => Number.isFinite(n));
-  return charges.length ? Math.min(...charges) : null;
-}
 
 export default function ProductDetailPage() {
   const { id: slug } = useParams();
@@ -353,14 +346,6 @@ export default function ProductDetailPage() {
               </button>
               <ShareButton title={`${product.name} | Chennai Rice`} text={`${product.name} from Chennai Rice`} />
             </div>
-
-            {/* The delivery charge for this pack and quantity to the customer's PIN code, before the cart. */}
-            {showCardPrices && !soldOut && (
-              <DeliveryCheck
-                items={[{ id: `${product.id}-${selected.kg}kg`, qty: inCart ? inCart.qty : qty }]}
-                fromCharge={lowestDelivery(selected)}
-              />
-            )}
 
             <Link className="pdp-bulk-link" to="/contact-us">
               Bulk Order Enquiry &rarr;

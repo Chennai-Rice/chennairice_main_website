@@ -302,12 +302,51 @@ function toLineup(products) {
 // database checkout charges from, so the price on the card is the price paid.
 // Where that backend is not running (it answers 404 until a database is
 // configured), this returns null and the bundled packs are used.
-async function fetchSalesCatalog() {
+//
+// Speed: one request per page (the product page used to ask twice), shared for a minute, and the
+// last catalog kept in this browser so a repeat visit shows the packs at once while it refreshes.
+const SNAPSHOT_KEY = "cr.catalog.v1";
+const SNAPSHOT_MAX_MS = 30 * 60 * 1000;
+let inflight = null;
+
+function readSnapshot() {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(SNAPSHOT_KEY) || "null");
+    if (!raw || !Array.isArray(raw.rows) || Date.now() - raw.at > SNAPSHOT_MAX_MS) return null;
+    return mapSalesRows(raw.rows);
+  } catch {
+    return null;
+  }
+}
+
+/** The catalog from this browser's last visit (under 30 minutes old), or null. */
+export function cachedProducts() {
+  return typeof window === "undefined" ? null : readSnapshot();
+}
+
+function fetchSalesCatalog() {
+  if (inflight && Date.now() - inflight.at < 60 * 1000) return inflight.promise;
+  const promise = loadSalesCatalog();
+  inflight = { at: Date.now(), promise };
+  promise.then((r) => { if (!r) inflight = null; });
+  return promise;
+}
+
+async function loadSalesCatalog() {
   try {
     const res = await fetch("/api/catalog", { headers: { Accept: "application/json" } });
     if (!res.ok || !(res.headers.get("content-type") || "").includes("json")) return null;
     const { products } = await res.json();
     if (!Array.isArray(products) || !products.length) return null;
+    try { window.localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({ at: Date.now(), rows: products })); } catch { /* storage off */ }
+    return mapSalesRows(products);
+  } catch {
+    return null;
+  }
+}
+
+function mapSalesRows(products) {
+  {
     return products.map((row) => {
       const presentation = PRESENTATION[row.slug] || { ...FALLBACK_PRESENTATION };
       const fallback = FALLBACK_PRODUCTS.find((p) => p.id === row.slug);
@@ -347,8 +386,6 @@ async function fetchSalesCatalog() {
     })
       // Stable sort: packs that can be bought first, catalog order otherwise.
       .sort((a, b) => Number(b.inStock) - Number(a.inStock));
-  } catch {
-    return null;
   }
 }
 
@@ -378,17 +415,21 @@ export async function fetchProductBySlug(slug) {
  * static catalog (4 products) fetched once per page visit.
  */
 export function useProducts() {
-  const [state, setState] = useState({ products: [], lineup: [], loading: true, error: null });
+  const [state, setState] = useState(() => {
+    const cached = cachedProducts();
+    return cached
+      ? { products: cached, lineup: toLineup(cached), loading: false, error: null }
+      : { products: [], lineup: [], loading: true, error: null };
+  });
 
   useEffect(() => {
     let cancelled = false;
-    setState((s) => ({ ...s, loading: true, error: null }));
     fetchProducts()
       .then(({ products, lineup }) => {
         if (!cancelled) setState({ products, lineup, loading: false, error: null });
       })
       .catch((error) => {
-        if (!cancelled) setState({ products: [], lineup: [], loading: false, error });
+        if (!cancelled) setState((s) => (s.products.length ? { ...s, loading: false } : { products: [], lineup: [], loading: false, error }));
       });
     return () => {
       cancelled = true;
@@ -404,7 +445,11 @@ export function useProducts() {
  * isn't (nothing to fetch).
  */
 export function useProduct(slug) {
-  const [state, setState] = useState({ product: null, loading: Boolean(slug), error: null });
+  const fromCache = (s) => (s && cachedProducts()?.find((p) => p.id === s)) || null;
+  const [state, setState] = useState(() => {
+    const product = fromCache(slug);
+    return { product, loading: Boolean(slug) && !product, error: null };
+  });
 
   useEffect(() => {
     if (!slug) {
@@ -412,13 +457,14 @@ export function useProduct(slug) {
       return undefined;
     }
     let cancelled = false;
-    setState({ product: null, loading: true, error: null });
+    const cached = fromCache(slug);
+    setState((s) => (cached ? (s.product?.id === slug ? s : { product: cached, loading: false, error: null }) : { product: null, loading: true, error: null }));
     fetchProductBySlug(slug)
       .then((product) => {
         if (!cancelled) setState({ product, loading: false, error: null });
       })
       .catch((error) => {
-        if (!cancelled) setState({ product: null, loading: false, error });
+        if (!cancelled) setState((s) => (s.product ? { ...s, loading: false } : { product: null, loading: false, error }));
       });
     return () => {
       cancelled = true;

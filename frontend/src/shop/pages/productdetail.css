@@ -1555,6 +1555,7 @@ ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
 @media (max-width: 720px) {
   .pdp-top .pdp-back { display: none; }
   .pdp-hero { gap: var(--s-3); padding-bottom: var(--s-10); }
+  .pdp-gallery { display: flex; justify-content: center; }
   .pdp-gallery-main {
     width: min(100%, 24vh);
     min-width: 170px;
