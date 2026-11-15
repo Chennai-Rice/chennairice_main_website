@@ -773,7 +773,8 @@
    sits above it instead of covering its right-hand end. */
 @media (max-width: 800px) {
   body:has(.checkout-bar) .sk-launcher,
-  body:has(.checkout-paybar) .sk-launcher {
+  body:has(.checkout-paybar) .sk-launcher,
+  body:has(.pdp-buybar.is-shown) .sk-launcher {
     bottom: 96px;
   }
 }

@@ -342,7 +342,8 @@
 /* Phones and tablets: above the "Proceed to cart" bar or the checkout Pay bar, not hidden under it. */
 @media (max-width: 800px) {
   body:has(.checkout-bar) .spin-fab,
-  body:has(.checkout-paybar) .spin-fab {
+  body:has(.checkout-paybar) .spin-fab,
+  body:has(.pdp-buybar.is-shown) .spin-fab {
     bottom: 96px;
   }
 }

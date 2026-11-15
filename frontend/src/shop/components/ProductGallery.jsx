@@ -80,7 +80,7 @@ export default function ProductGallery({ images, alt, peek = false }) {
             aria-label="Kitchidi Ponni pack: coupon code inside"
             onClick={() => setPeeking((p) => !p)}
           >
-            <img src={current.src} alt={current.alt || alt} loading="eager" />
+            <img src={current.src} alt={current.alt || alt} loading="eager" fetchpriority="high" />
           </button>
         ) : (
           <img
@@ -88,6 +88,7 @@ export default function ProductGallery({ images, alt, peek = false }) {
             src={current.src}
             alt={current.alt || alt}
             loading="eager"
+            fetchpriority="high"
           />
         )}
       </figure>

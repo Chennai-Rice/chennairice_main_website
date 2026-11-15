@@ -1546,3 +1546,101 @@ ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
   display: block;
 }
 .pdp-fssai strong { letter-spacing: 0.02em; color: var(--ink-900, #2b1a14); }
+
+/* ============================================================
+   Phones: buy on the first screen (visitors from Meta / Google ads)
+   The pack photo is smaller, the buying block (title, price, pack, buttons)
+   comes straight after it, and the contest banner and description move below.
+   ============================================================ */
+@media (max-width: 720px) {
+  .pdp-top .pdp-back { display: none; }
+  .pdp-hero { gap: var(--s-3); padding-bottom: var(--s-10); }
+  .pdp-gallery-main {
+    width: min(100%, 24vh);
+    min-width: 170px;
+    margin: 0 auto;
+  }
+  .pdp-gallery-main img { max-width: 88%; max-height: 92%; }
+  .pdp-info > * { order: 5; }
+  .pdp-info > .pdp-title { order: 1; margin-top: 0; }
+  .pdp-info > .pdp-price-hero { order: 2; }
+  .pdp-info > .pdp-options { order: 3; }
+  .pdp-info > .pdp-cta-row { order: 4; }
+  .pdp-info > .dlv-check { order: 4; }
+  .pdp-info > .pdp-contest { order: 6; margin-top: var(--s-6); }
+  .pdp-info > .pdp-badge,
+  .pdp-info > .pdp-subtitle,
+  .pdp-info > .pdp-divider { display: none; }
+  .pdp-info > .pdp-desc { order: 7; }
+  .pdp-info > .pdp-bulk-link,
+  .pdp-info > .pdp-fssai { order: 8; }
+  /* Compact buying block: shorter title, old price beside the price, pack and quantity on one row. */
+  .pdp-info > .pdp-title,
+  .pdp-info > .pdp-title.pdp-title--long { font-size: 1.55rem; line-height: 1.2; margin-bottom: var(--s-2); }
+  .pdp-info > .pdp-price-hero { display: flex; align-items: baseline; flex-direction: row-reverse; justify-content: flex-end; gap: 10px; margin-bottom: var(--s-3); }
+  .pdp-price-hero .pdp-price-mrp { display: inline; font-size: 1rem; }
+  .pdp-info > .pdp-options { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-3) var(--s-5, 1.25rem); margin-bottom: var(--s-4); }
+  .pdp-options .pdp-pack-sizes,
+  .pdp-options .pdp-qty-row { margin-bottom: 0; }
+  .pdp-options .pdp-qty-row { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .pdp-options .pdp-section-label { margin-bottom: 6px; }
+  .pdp-options .pdp-qty-row .pdp-section-label { margin-bottom: 0; }
+}
+
+/* The buy bar fixed to the bottom on phones, shown while the page's own buttons are off screen. */
+.pdp-buybar { display: none; }
+@media (max-width: 899px) {
+  .pdp-buybar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 950;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+    background: var(--cream-50, #fffaf2);
+    border-top: 1px solid var(--cream-300, #eadcc6);
+    box-shadow: 0 -8px 24px rgba(74, 16, 26, 0.14);
+    transform: translateY(110%);
+    visibility: hidden;
+    transition: transform 0.25s ease, visibility 0s linear 0.25s;
+  }
+  .pdp-buybar.is-shown {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.25s ease;
+  }
+  .pdp-buybar-pack {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+    min-width: 0;
+  }
+  .pdp-buybar-pack select {
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--ink-500, #6b5a4e);
+    background: transparent;
+    border: 0;
+    padding: 0 2px 0 0;
+  }
+  .pdp-buybar-pack strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; color: var(--maroon-700, #6e1423); white-space: nowrap; }
+  .pdp-buybar .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .pdp-buybar-add,
+  .pdp-buybar-buy {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 12px 8px;
+    justify-content: center;
+    white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+  }
+  .pdp-buybar .ripple { position: absolute; border-radius: 50%; background: rgba(255, 255, 255, 0.35); transform: scale(0); animation: pdp-ripple 480ms ease-out forwards; pointer-events: none; }
+  /* One bar at a time: the cart pill waits while the buy bar is up, and the page ends with room for it. */
+  body:has(.pdp-buybar.is-shown) .checkout-bar { display: none; }
+  main.pdp { padding-bottom: 72px; }
+}
+@media (prefers-reduced-motion: reduce) { .pdp-buybar { transition: none; } }

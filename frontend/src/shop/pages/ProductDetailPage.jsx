@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import SiteLayout from "../layouts/SiteLayout.jsx";
 import Breadcrumb from "../components/Breadcrumb.jsx";
@@ -55,6 +55,16 @@ export default function ProductDetailPage() {
   // Saved state lives in the shared store, so it persists and the header
   // badge stays in step.
   const wishlisted = wishlist.has(id);
+  // Phones: a buy bar fixed to the bottom whenever the page's own Add to cart / Buy now
+  // row is off screen (people arriving from an ad can buy without scrolling).
+  const [ctaInView, setCtaInView] = useState(true);
+  const ctaObserver = useRef(null);
+  const ctaRef = useCallback((el) => {
+    ctaObserver.current?.disconnect();
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    ctaObserver.current = new IntersectionObserver(([e]) => setCtaInView(e.isIntersecting), { rootMargin: "0px 0px -40px 0px" });
+    ctaObserver.current.observe(el);
+  }, []);
 
   const seo = PRODUCT_SEO[id];
   usePageMeta(
@@ -293,7 +303,7 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            <div className="pdp-cta-row">
+            <div className="pdp-cta-row" ref={ctaRef}>
               {/* Buying needs a price. While there isn't one, the only honest
                   call to action is a route to the people who can quote it. */}
               {showCardPrices ? (
@@ -404,6 +414,33 @@ export default function ProductDetailPage() {
         </section>
       </main>
       {showCardPrices && <CheckoutBar />}
+      {showCardPrices && (
+        <div className={`pdp-buybar${ctaInView ? "" : " is-shown"}`} aria-hidden={ctaInView}>
+          <label className="pdp-buybar-pack">
+            <span className="sr-only">Pack size</span>
+            <select value={selected.kg} onChange={(e) => setSelectedKg(Number(e.target.value))} tabIndex={ctaInView ? -1 : 0}>
+              {sizes.map((s) => (
+                <option key={s.kg} value={s.kg} disabled={s.inStock === false}>
+                  {Number(s.kg)} kg{s.inStock === false ? " (sold out)" : ""}
+                </option>
+              ))}
+            </select>
+            <strong>{selected.price != null ? formatRupees(selected.price * (inCart ? inCart.qty : qty)) : "—"}</strong>
+          </label>
+          <button
+            type="button"
+            className={`btn-outline pdp-buybar-add${inCart ? " is-added" : ""}`}
+            onClick={inCart ? () => navigate("/cart") : handleAddToCart}
+            disabled={soldOut}
+            tabIndex={ctaInView ? -1 : 0}
+          >
+            {soldOut ? "Sold out" : inCart ? "Added ✓" : "Add to cart"}
+          </button>
+          <button type="button" className="btn-maroon pdp-buybar-buy" onClick={handleBuyNow} disabled={soldOut} tabIndex={ctaInView ? -1 : 0}>
+            Buy now
+          </button>
+        </div>
+      )}
     </SiteLayout>
   );
 }
