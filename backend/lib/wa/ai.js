@@ -15,6 +15,8 @@ const VISION_MODELS = () => [...new Set([process.env.WA_AI_VISION_MODEL, 'qwen/q
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024
 
 const MODEL = () => process.env.WA_AI_MODEL || process.env.GROQ_MODEL || 'openai/gpt-oss-120b'
+// When the main model's per-minute token allowance is used up (429), this one answers instead.
+const FALLBACK_MODEL = () => process.env.WA_AI_FALLBACK_MODEL || 'openai/gpt-oss-20b'
 const SITE = 'https://chennairiceindustries.com'
 const last10 = (p) => String(p || '').replace(/\D/g, '').slice(-10)
 const day = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' }) : '')
@@ -160,30 +162,57 @@ ANSWER WITH JSON ONLY:
  * Ask the model. Returns { reply, handoff, reason, order } or throws. `fetchImpl` for tests.
  * Without a GROQ_API_KEY it throws (the bot then sends the menu as before).
  */
+/** The model's answer: the JSON object (also when wrapped in text or ```json fences), else the text as the reply. */
+export function parseAnswer(raw) {
+  const text = String(raw || '').trim()
+  try { return JSON.parse(text) } catch { /* not bare JSON */ }
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start >= 0 && end > start) {
+    try {
+      const j = JSON.parse(text.slice(start, end + 1))
+      if (j && typeof j.reply === 'string') return j
+    } catch { /* not JSON inside either */ }
+  }
+  return { reply: text.replace(/^```(?:json)?|```$/g, '').trim() }
+}
+
 export async function askModel({ system, history, text }, { fetchImpl = fetch, apiKey = process.env.GROQ_API_KEY } = {}) {
   if (!apiKey) throw new Error('GROQ_API_KEY is not set')
   const messages = [{ role: 'system', content: system }, ...history]
   // The message being answered is the last turn (it may already be in the history from the webhook).
   const lastUser = [...history].reverse().find((m) => m.role === 'user')
   if (!lastUser || lastUser.content !== text) messages.push({ role: 'user', content: String(text).slice(0, 1500) })
-  const res = await fetchImpl('https://api.groq.com/openai/v1/chat/completions', {
+  // A reminder as the last word: earlier plain-text turns in the chat can tempt the model to answer in plain text.
+  messages.push({ role: 'system', content: 'Answer with the JSON object only: {"reply": ..., "handoff": ..., "reason": ..., "order": ...}' })
+  const call = (strict, model = MODEL()) => fetchImpl('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model: MODEL(),
+      model,
       messages,
       temperature: 0.5,
       max_tokens: 700,
       reasoning_effort: 'low',
-      response_format: { type: 'json_object' },
+      ...(strict ? { response_format: { type: 'json_object' } } : {}),
     }),
     signal: AbortSignal.timeout ? AbortSignal.timeout(20000) : undefined,
   })
+  let res = await call(true)
+  // Groq's per-minute token limit for the model reached (429): the smaller model has its own allowance.
+  if (res.status === 429) res = await call(true, FALLBACK_MODEL())
+  // Groq refuses a reply that is not valid JSON (json_validate_failed): ask once more without strict JSON
+  // and take the JSON out of the answer, or the plain text as the reply.
+  if (res.status === 400) {
+    const why = await res.text()
+    if (!/json_validate_failed|Failed to generate JSON/i.test(why)) throw new Error(`Groq 400: ${why.slice(0, 200)}`)
+    res = await call(false)
+    if (res.status === 429) res = await call(false, FALLBACK_MODEL())
+  }
   if (!res.ok) throw new Error(`Groq ${res.status}: ${(await res.text()).slice(0, 200)}`)
   const data = await res.json()
   const raw = data?.choices?.[0]?.message?.content?.trim() || ''
-  let out
-  try { out = JSON.parse(raw) } catch { out = { reply: raw } }
+  const out = parseAnswer(raw)
   const reply = String(out.reply || '').trim()
   if (!reply) throw new Error('Empty AI reply')
   return {

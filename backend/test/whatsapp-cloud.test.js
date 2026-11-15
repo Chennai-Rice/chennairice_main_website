@@ -184,7 +184,7 @@ test('bot with AI: sentences go to the AI, short words still get the menu; Groq 
   const down = await render(bot, { kind: 'ai', text: 'hello there friend' }, {}, { ...deps, ai: async () => { throw new Error('Groq 503') } })
   assert.equal(down.messages[0].interactive.type, 'list')
   const quiet = await render(bot, { kind: 'ai', text: 'any update?', handedOver: true }, {}, { ...deps, ai: async () => { throw new Error('Groq 503') } })
-  assert.equal(quiet.messages.length, 0)
+  assert.match(quiet.messages[0].text.body, /Our team will get back to you here soon/) // never silence after a handover
 })
 
 test('AI reply: built from the customer\x27s own orders, a late order is always handed over and flagged', async () => {
@@ -257,7 +257,7 @@ test('AI photos: a payment screenshot is matched to their order; unmatched payme
     try {
       const out = await aiReply({ phone: '9940303259', name: 'C', text: '', image: { id: 'm1', caption: '' } },
         { query, deps: { prices: async () => [], offers: async () => [], downloadMedia: async () => ({ buffer: Buffer.from('jpeg'), type: 'image/jpeg' }) }, fetchImpl })
-      return { out, vision: calls[0], system: calls[1].messages[0].content, user: calls[1].messages.at(-1).content }
+      return { out, vision: calls[0], system: calls[1].messages[0].content, user: calls[1].messages.findLast((m) => m.role === 'user').content }
     } finally {
       if (prev === undefined) delete process.env.GROQ_API_KEY
       else process.env.GROQ_API_KEY = prev
@@ -368,4 +368,22 @@ test('broadcast files: CSV with quotes and a BOM, mobile and name columns found,
   assert.deepEqual(guessColumns(columns, rows), { phone: 'Phone', name: 'Customer Name' })
   const v = valuesFor({ name: 'Ravi Kumar', cols: rows[0] }, { body: [{ from: 'first_name' }, { from: 'col', col: 'Offer' }], buttons: { 0: { from: 'col', col: 'Missing', text: 'x' } } })
   assert.deepEqual(v, { body: ['Ravi', '₹75; OFF'], buttons: { 0: 'x' } })
+})
+
+test('AI model call: a reply Groq refuses as invalid JSON is asked again; the token limit falls back to the smaller model; text around JSON is fine', async () => {
+  const { askModel, parseAnswer } = await import('../lib/wa/ai.js')
+  const res = (status, body) => ({ status, ok: status < 300, text: async () => (typeof body === 'string' ? body : JSON.stringify(body)), json: async () => body })
+  const answer = (content) => res(200, { choices: [{ message: { content } }] })
+  const seen = []
+  const replies = [
+    res(400, '{"error":{"code":"json_validate_failed","message":"Failed to generate JSON."}}'),
+    res(429, '{"error":{"message":"Rate limit reached"}}'),
+    answer('Sure! {"reply": "Nayara Super Aged suits biryani.", "handoff": false, "reason": "", "order": ""}'),
+  ]
+  const fetchImpl = async (url, init) => { seen.push(JSON.parse(init.body)); return replies.shift() }
+  const out = await askModel({ system: 'x', history: [{ role: 'assistant', content: 'menu' }], text: 'which rice for biryani' }, { fetchImpl, apiKey: 'k' })
+  assert.equal(out.reply, 'Nayara Super Aged suits biryani.')
+  assert.deepEqual(seen.map((b) => [b.model, Boolean(b.response_format)]), [['openai/gpt-oss-120b', true], ['openai/gpt-oss-120b', false], ['openai/gpt-oss-20b', false]])
+  assert.equal(seen[0].messages.at(-1).role, 'system') // the JSON reminder is the last word
+  assert.deepEqual(parseAnswer('Plain words only'), { reply: 'Plain words only' })
 })

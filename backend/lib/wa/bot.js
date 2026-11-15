@@ -177,7 +177,11 @@ export async function render(bot, decision, { phone = '', name = '' } = {}, deps
       })
       : null
     if (!r) {
-      if (!decision.handedOver) out.messages.push(menuMsg(bot, bot.fallback)) // with a person on it: say nothing
+      // Never silence: with the team on it, a short "we'll get back to you"; otherwise the menu.
+      if (decision.handedOver) {
+        out.messages.push(textMsg('Sorry for the wait 🙏 Our team will get back to you here soon.'))
+        out.state = { awaiting: null, pausedHours: bot.handoffHours }
+      } else out.messages.push(menuMsg(bot, bot.fallback))
       return out
     }
     out.messages.push(textMsg(r.reply))
@@ -412,6 +416,8 @@ export async function answer({ to, phone, name, text, replyId, image = null }, {
          day = $4::date, updated_at = now()`,
       [phone, res.state.awaiting || null, res.state.pausedHours || null, today])
     if (res.state.ai?.handoff) await aiHandoff({ phone, name, text, ai: res.state.ai }, { query })
+    // One line per answered message in the server log (no message text), to see what the bot did.
+    console.log('[wa-bot]', String(phone).slice(-4), decision.kind, `${res.messages.length} sent`, res.state.ai ? `ai handoff=${res.state.ai.handoff}` : '', handedOver ? 'after handover' : '')
     return { replied: res.messages.length, decision: decision.kind, ...(res.state.ai ? { handoff: res.state.ai.handoff } : {}) }
   } catch (err) {
     console.error('[wa-bot]', err.publicMessage || err.message)
