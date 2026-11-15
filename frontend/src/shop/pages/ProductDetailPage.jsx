@@ -319,7 +319,7 @@ export default function ProductDetailPage() {
                     </svg>
                     {soldOut ? "Out of stock" : inCart ? "Added ✓" : "Add to Cart"}
                   </button>
-                  <button type="button" className="btn-outline" onClick={handleBuyNow} disabled={soldOut}>
+                  <button type="button" className="btn-outline pdp-buy-btn" onClick={handleBuyNow} disabled={soldOut}>
                     Buy Now
                   </button>
                 </>
@@ -421,7 +421,7 @@ export default function ProductDetailPage() {
           >
             {soldOut ? "Sold out" : inCart ? "Added ✓" : "Add to cart"}
           </button>
-          <button type="button" className="btn-maroon pdp-buybar-buy" onClick={handleBuyNow} disabled={soldOut} tabIndex={ctaInView ? -1 : 0}>
+          <button type="button" className="btn-maroon pdp-buybar-buy pdp-buy-btn" onClick={handleBuyNow} disabled={soldOut} tabIndex={ctaInView ? -1 : 0}>
             Buy now
           </button>
         </div>

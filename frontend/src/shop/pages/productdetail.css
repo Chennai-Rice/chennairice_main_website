@@ -1659,3 +1659,55 @@ ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
   .pdp-info > .pdp-title,
   .pdp-info > .pdp-title.pdp-title--long { font-size: 1.4rem; }
 }
+
+/* Buy now, highlighted (Nov 2026): bright gold with bold maroon text, a soft glow and a slow shine
+   passing over it, so it is the first thing the eye lands on. Add to cart stays maroon beside it. */
+.pdp-cta-row .pdp-buy-btn,
+.pdp-buybar .pdp-buy-btn {
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  color: #5a0f1a;
+  font-weight: 800;
+  background: linear-gradient(180deg, #ffd96a 0%, #f2b632 55%, #e09a1c 100%);
+  box-shadow: 0 6px 16px rgba(224, 154, 28, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  animation: pdp-buy-glow 2.4s ease-in-out infinite;
+}
+.pdp-cta-row .pdp-buy-btn:hover,
+.pdp-buybar .pdp-buy-btn:hover {
+  color: #4a0c15;
+  background: linear-gradient(180deg, #ffe07f 0%, #f5bf45 55%, #e6a42a 100%);
+}
+.pdp-cta-row .pdp-buy-btn::after,
+.pdp-buybar .pdp-buy-btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  transform: skewX(-20deg);
+  animation: pdp-buy-shine 3.2s ease-in-out 1s infinite;
+  pointer-events: none;
+}
+.pdp-cta-row .pdp-buy-btn:disabled,
+.pdp-buybar .pdp-buy-btn:disabled { animation: none; opacity: 0.55; }
+.pdp-cta-row .pdp-buy-btn:disabled::after,
+.pdp-buybar .pdp-buy-btn:disabled::after { display: none; }
+.pdp-cta-row .pdp-buy-btn:focus-visible,
+.pdp-buybar .pdp-buy-btn:focus-visible { outline: 3px solid #6e1423; outline-offset: 2px; }
+@keyframes pdp-buy-glow {
+  0%, 100% { box-shadow: 0 6px 16px rgba(224, 154, 28, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+  50% { box-shadow: 0 6px 22px rgba(224, 154, 28, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+}
+@keyframes pdp-buy-shine {
+  0% { left: -60%; }
+  45%, 100% { left: 130%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pdp-cta-row .pdp-buy-btn,
+  .pdp-buybar .pdp-buy-btn { animation: none; }
+  .pdp-cta-row .pdp-buy-btn::after,
+  .pdp-buybar .pdp-buy-btn::after { display: none; }
+}
