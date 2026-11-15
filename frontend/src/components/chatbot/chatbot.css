@@ -769,12 +769,26 @@
 .sk-reorder-result { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #1f7a3f; font-weight: 600; line-height: 1.5; }
 .sk-reorder-result span { color: #8b5a12; font-weight: 500; }
 
-/* Phones and tablets: with the "Proceed to cart" bar or the checkout Pay bar on screen, the launcher
-   sits above it instead of covering its right-hand end. */
+/* Phones and tablets (Nov 2026): Soru Kutty is a small tab tucked into the right edge, at the same height
+   as the Spin & Win tab on the left, so neither covers the page or the buy / cart / Pay bars. */
 @media (max-width: 800px) {
-  body:has(.checkout-bar) .sk-launcher,
-  body:has(.checkout-paybar) .sk-launcher,
-  body:has(.pdp-buybar.is-shown) .sk-launcher {
-    bottom: 96px;
+  .sk-launcher {
+    right: 0;
+    left: auto;
+    top: 58%;
+    bottom: auto;
   }
+  .sk-launcher-btn,
+  .sk-launcher-btn:hover,
+  .sk-launcher-btn:focus-visible {
+    width: 50px;
+    height: 44px;
+    padding: 4px 0 4px 6px;
+    border-radius: 999px 0 0 999px;
+    background: rgba(255, 250, 242, 0.92);
+    box-shadow: 0 4px 12px rgba(74, 16, 26, 0.22);
+    transform: translateX(6px);
+  }
+  .sk-launcher-btn::before { display: none; }
+  .sk-launcher-avatar { filter: none; }
 }

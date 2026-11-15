@@ -339,11 +339,24 @@
 .spin-wa { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #5a1a20; text-align: left; cursor: pointer; margin: 2px 0; }
 .spin-wa input { width: 17px; height: 17px; accent-color: #25d366; flex: none; }
 
-/* Phones and tablets: above the "Proceed to cart" bar or the checkout Pay bar, not hidden under it. */
+/* Phones and tablets (Nov 2026): a small tab tucked into the left edge, half out of view, so it never
+   covers the page or the buy / cart / Pay bars. Tapping it opens the Spin & Win pop-up as before. */
 @media (max-width: 800px) {
-  body:has(.checkout-bar) .spin-fab,
-  body:has(.checkout-paybar) .spin-fab,
-  body:has(.pdp-buybar.is-shown) .spin-fab {
-    bottom: 96px;
+  .spin-fab {
+    left: 0;
+    right: auto;
+    top: 58%;
+    bottom: auto;
+    width: 46px;
+    padding: 5px 3px 5px 0;
+    border-radius: 0 999px 999px 0;
+    background: rgba(255, 250, 242, 0.92);
+    box-shadow: 0 4px 12px rgba(74, 16, 26, 0.22);
+    filter: none;
+    transform: translateX(-6px);
+    animation: none;
   }
+  .spin-fab-img { width: 100%; }
+  .spin-fab:hover .spin-fab-img, .spin-fab:focus-visible .spin-fab-img { transform: none; }
+  .spin-fab-badge { top: -8px; right: -18px; padding: 2px 6px; font-size: 9px; }
 }
