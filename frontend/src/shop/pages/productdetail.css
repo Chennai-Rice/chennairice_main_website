@@ -1552,9 +1552,9 @@ ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
    The pack photo is smaller, the buying block (title, price, pack, buttons)
    comes straight after it, and the contest banner and description move below.
    ============================================================ */
-@media (max-width: 720px) {
+@media (max-width: 899px) {
   .pdp-top .pdp-back { display: none; }
-  .pdp-hero { gap: var(--s-3); padding-bottom: var(--s-10); }
+  .pdp-hero { grid-template-columns: minmax(0, 1fr); gap: var(--s-3); padding-bottom: var(--s-10); }
   .pdp-gallery { display: flex; justify-content: center; }
   .pdp-gallery-main {
     width: min(100%, 24vh);
@@ -1645,3 +1645,17 @@ ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
   main.pdp { padding-bottom: 72px; }
 }
 @media (prefers-reduced-motion: reduce) { .pdp-buybar { transition: none; } }
+
+/* The narrowest phones (Galaxy Fold cover screen, 344 px; small Androids, 360 px): the buttons row
+   and the pack / quantity row shrink instead of pushing the page wider than the screen. */
+@media (max-width: 380px) {
+  .pdp-hero { padding-left: var(--s-4, 16px); padding-right: var(--s-4, 16px); }
+  .pdp-cta-row .pdp-wishlist,
+  .pdp-cta-row .pdp-share-btn,
+  .pdp-cta-row > .pdp-share > button { width: 40px; height: 40px; flex: none; }
+  .pdp-cta-row .btn-maroon,
+  .pdp-cta-row .btn-outline { font-size: 0.72rem; letter-spacing: 0.06em; }
+  .pdp-add-btn svg { display: none; }
+  .pdp-info > .pdp-title,
+  .pdp-info > .pdp-title.pdp-title--long { font-size: 1.4rem; }
+}

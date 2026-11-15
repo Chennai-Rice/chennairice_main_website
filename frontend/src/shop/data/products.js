@@ -287,6 +287,14 @@ const FALLBACK_PRODUCTS = [
 
 const FALLBACK_IMAGES = Object.fromEntries(FALLBACK_PRODUCTS.map((p) => [p.id, p.image]));
 
+// Speed: every pack photo has a WebP copy beside the PNG (about a quarter of the size; Nov 2026).
+// Only these names are swapped, so a new PNG uploaded later still shows until its WebP is made.
+const PACK_WEBP = new Set(["a1-special-ponni-v3", "a1-special-ponni", "alibaba-v2", "alibaba-v3", "alibaba", "chennai-bullets-v2", "chennai-bullets-v3", "chennai-bullets", "kitchidi-ponni-rice-v3", "kitchidi-ponni-rice", "kitchidi-premium", "nayara-super-aged-v2", "nayara-super-aged-v3", "nayara-super-aged", "rudra", "special-idly-rice-v2", "special-idly-rice-v3", "special-idly-rice", "special-rajabhogam-v2", "special-rajabhogam", "thaaram", "united-10kg", "united-5kg-v2", "united-5kg", "united-v3", "vijaya-nagaram-v2", "vijaya-nagaram-v3", "vijaya-nagaram", "vintage-v2", "vintage-v3", "vintage", "viruchagam-v2", "viruchagam-v3", "viruchagam", ]);
+export function packImage(src) {
+  const m = /^\/assets\/shop\/packs\/([\w-]+)\.png$/.exec(src || "");
+  return m && PACK_WEBP.has(m[1]) ? `/assets/shop/packs/${m[1]}.webp` : src;
+}
+
 /** LINEUP rows (the closing 3D-stage strip) derived from a mapped product list. */
 function toLineup(products) {
   return products.map((p) => ({
@@ -375,7 +383,7 @@ function mapSalesRows(products) {
         description: row.description || "",
         price: tenKg ? tenKg.price : 0,
         packSizes,
-        image: row.image || FALLBACK_IMAGES[row.slug] || null,
+        image: packImage(row.image || FALLBACK_IMAGES[row.slug]) || null,
         alt: fallback?.alt || row.name,
         width: presentation.width,
         height: presentation.height,

@@ -203,8 +203,8 @@ export default function ProductDetailPage() {
             corners: one artwork, the left copy mirrored in CSS. */}
         {festive && (
           <>
-            <img className="pdp-garland pdp-garland-right" src="/image.png" alt="" aria-hidden="true" />
-            <img className="pdp-garland pdp-garland-left" src="/image.png" alt="" aria-hidden="true" />
+            <img className="pdp-garland pdp-garland-right" src="/image.webp" alt="" aria-hidden="true" />
+            <img className="pdp-garland pdp-garland-left" src="/image.webp" alt="" aria-hidden="true" />
           </>
         )}
         <div className="pdp-top">
