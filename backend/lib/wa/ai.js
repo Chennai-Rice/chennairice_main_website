@@ -8,6 +8,11 @@
 // One call per message (no tool loop): the facts are fetched first and given to the model, which answers
 // in JSON { reply, handoff, reason, order }.
 import { query as defaultQuery } from '../db.js'
+import { downloadMedia as cloudDownload } from './cloud.js'
+
+// Groq's model that can see pictures; it only reads the photo into facts, the reply is written as usual.
+const VISION_MODELS = () => [...new Set([process.env.WA_AI_VISION_MODEL, 'qwen/qwen3.8-27b', 'meta-llama/llama-4-scout-17b-16e-instruct'].filter(Boolean))]
+const MAX_PHOTO_BYTES = 4 * 1024 * 1024
 
 const MODEL = () => process.env.WA_AI_MODEL || process.env.GROQ_MODEL || 'openai/gpt-oss-120b'
 const SITE = 'https://chennairiceindustries.com'
@@ -57,6 +62,7 @@ export async function customerOrders(query, phone) {
       meaning: STATUS[o.status] || o.status,
       paid: o.payment_status === 'paid',
       total: rupees(o.total_paise),
+      totalPaise: Number(o.total_paise),
       items: o.items || '',
       city: o.city || '',
       delivery: o.delivery_method === 'in_house' ? 'our own delivery team' : 'courier',
@@ -90,7 +96,22 @@ export function teamHours(now = new Date()) {
   return { open, when, weekday: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dow] }
 }
 
-export function systemPrompt({ name, orders, prices, offers, hours, handedOver }) {
+/** What the vision model saw, plus the order a payment screenshot matches (worked out here, not by the model). */
+function photoFacts(photo) {
+  if (!photo) return ''
+  if (photo.unreadable) return 'PHOTO: the customer sent a photo that could not be opened. Ask them to type in a line what it is about, and hand over if it may be a complaint.\n'
+  const lines = [`PHOTO the customer just sent (read by our system): ${photo.kind}: ${photo.summary || 'no description'}`]
+  if (photo.kind === 'payment') {
+    lines.push(`Payment shown: ${photo.amount ? '₹' + photo.amount : 'amount unclear'}${photo.date ? ', ' + photo.date : ''}${photo.status ? ', status ' + photo.status : ''}${photo.app ? ', via ' + photo.app : ''}.`)
+    if (photo.match?.paid) lines.push(`It matches their order ${photo.match.orderNumber}, which our system ALREADY shows as PAID. Thank them, confirm we have their payment for that order, and give that order's status (and if it is LATE, follow the late-order rule).`)
+    else if (photo.match) lines.push(`It matches the amount of their order ${photo.match.orderNumber}, but our system does NOT show that order as paid. Do not confirm the payment: say the team will check it and update them, and hand over.`)
+    else lines.push('It does not match any order of theirs. Do not confirm anything: thank them, say the team will check the payment and update them, and hand over.')
+  }
+  if (photo.kind === 'damaged_or_wrong') lines.push('Say sorry sincerely, say the team will sort it out, and hand over. Do not promise a refund or replacement.')
+  return lines.join('\n') + '\n'
+}
+
+export function systemPrompt({ name, orders, prices, offers, hours, handedOver, photo = null }) {
   const orderLines = orders.length
     ? orders.map((o) => `- ${o.orderNumber}: placed ${o.placed} (${o.daysAgo} days ago), ${o.items || 'items not listed'}, total ${o.total}, to ${o.city || 'their address'} by ${o.delivery}. Status: ${o.meaning}.`
       + (o.tracking ? ` Courier${o.courier ? ` (${o.courier})` : ''} tracking: ${o.tracking}.` : '') + (o.expected ? ` Expected by ${o.expected}.` : '')
@@ -120,14 +141,14 @@ Their offers / codes:
 ${offerLines}
 
 Now: ${hours.weekday} ${hours.when} (India). The team works Mon–Sat, 9 am – 7 pm; it is ${hours.open ? 'working hours now' : 'outside working hours now, so a person replies next working morning'}.
-${handedOver ? 'This chat has already been passed to the team and no one has replied yet: apologise for the wait and reassure them the team has been reminded.\n' : ''}
+${photoFacts(photo)}${handedOver ? 'This chat has already been passed to the team and no one has replied yet: apologise for the wait and reassure them the team has been reminded.\n' : ''}
 RULES
 - Order status: say what the status means in plain words, with the courier link or details page if there is one. Never promise a delivery date unless "Expected by" is given.
 - A LATE order (paid, not dispatched for 2+ days): apologise, say you have flagged it to the dispatch team right now and someone will update them today (or next working morning), and hand over.
 - Prices: only from the list above. To buy: ${SITE}/w/shop-bot (pay by UPI, card or net banking). Rice choice: Kitchadi Ponni / Ponni packs suit daily meals; for idli/dosa suggest our idly rice if it is in the list.
 - Never promise refunds, replacements, discounts, free delivery or call-backs at a set time — the team decides those (hand over).
 - Hand over to the team (handoff: true) for: complaints, late or missing orders, damaged or wrong items, refunds or cancellations, payment taken but no order, bulk/wholesale/dealer enquiries, anything you cannot answer from the facts, or when they ask for a person. When you hand over, tell them a team member will reply here${hours.open ? ' shortly' : ' next working morning (Mon–Sat 9 am – 7 pm)'}.
-- Photos, voice notes or files: you cannot see or hear them — ask them to type the problem in a line, and hand over if it sounds like a complaint.
+- Photos: if a PHOTO line is given above, answer from it (never claim to see more than it says). Voice notes or files: you cannot hear or open them — ask them to type the problem in a line, and hand over if it sounds like a complaint.
 - Never share another customer's details. Never ask for card numbers, OTPs or passwords.
 - Off-topic chat: answer kindly in one line and bring it back to how you can help.
 
@@ -174,18 +195,99 @@ export async function askModel({ system, history, text }, { fetchImpl = fetch, a
 }
 
 /** Everything for one AI reply: the facts, the chat so far, the model. */
-export async function aiReply({ phone, name, text, handedOver = false }, { query = defaultQuery, deps, fetchImpl } = {}) {
-  const [orders, prices, offers, history] = await Promise.all([
+/**
+ * Read a customer's photo into facts with Groq's vision model: { kind, summary, amount, date, status, app }.
+ * kind: payment (a UPI / bank payment screenshot), damaged_or_wrong (a torn, wet, wrong or short pack),
+ * product (a pack or rice), other. Returns { unreadable: true } if it cannot be fetched or read.
+ */
+export async function readPhoto(image, { fetchImpl = fetch, download = cloudDownload, apiKey = process.env.GROQ_API_KEY } = {}) {
+  try {
+    if (!apiKey) throw new Error('GROQ_API_KEY is not set')
+    const { buffer, type } = await download(image.id)
+    if (!/^image\//.test(type) || buffer.length > MAX_PHOTO_BYTES) return { unreadable: true }
+    const ask = 'A customer of Chennai Rice Industries (a rice company) sent this photo on WhatsApp'
+      + (image.caption ? ` with the caption "${image.caption.slice(0, 200)}"` : '')
+      + '. Describe only what is clearly visible. Answer JSON only: {"kind": "payment" | "damaged_or_wrong" | "product" | "other", "summary": "<one short English line>", "amount": <rupees as a number, or null>, "date": "<payment date as shown, or empty>", "status": "<e.g. Completed / Failed / Pending, or empty>", "app": "<e.g. Google Pay, PhonePe, Paytm, bank, or empty>", "payee": "<who was paid, or empty>"}. "payment" only for a payment receipt or screenshot. Never include card, account or UPI ID numbers.'
+    // Groq renames and retires its picture models: the first one this account has wins.
+    let res
+    for (const model of VISION_MODELS()) {
+      res = await fetchImpl('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model,
+          temperature: 0,
+          max_tokens: 400,
+          response_format: { type: 'json_object' },
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: ask },
+              { type: 'image_url', image_url: { url: `data:${type};base64,${buffer.toString('base64')}` } },
+            ],
+          }],
+        }),
+        signal: AbortSignal.timeout ? AbortSignal.timeout(25000) : undefined,
+      })
+      if (res.status !== 404 && res.status !== 400) break
+      const why = await res.clone().text().catch(() => '')
+      if (!/model_not_found|does not exist|decommissioned/i.test(why)) break
+    }
+    if (!res.ok) throw new Error(`Groq vision ${res.status}: ${(await res.text()).slice(0, 200)}`)
+    const data = await res.json()
+    const raw = data?.choices?.[0]?.message?.content?.trim() || ''
+    let j
+    try { j = JSON.parse(raw) } catch { j = { kind: 'other', summary: raw.slice(0, 200) } }
+    const kinds = ['payment', 'damaged_or_wrong', 'product', 'other']
+    const amount = Number(String(j.amount ?? '').replace(/[^\d.]/g, ''))
+    return {
+      kind: kinds.includes(j.kind) ? j.kind : 'other',
+      summary: String(j.summary || '').slice(0, 300),
+      amount: Number.isFinite(amount) && amount > 0 ? amount : null,
+      date: String(j.date || '').slice(0, 40),
+      status: String(j.status || '').slice(0, 40),
+      app: String(j.app || '').slice(0, 40),
+      payee: String(j.payee || '').slice(0, 120),
+    }
+  } catch (err) {
+    console.error('[wa-ai] photo', err.message)
+    return { unreadable: true }
+  }
+}
+
+/** The customer's order a payment screenshot is for: same amount (to the rupee), the most recent first. */
+export function matchPayment(photo, orders) {
+  if (photo?.kind !== 'payment' || !photo.amount) return null
+  const o = orders.find((x) => Math.abs(x.totalPaise / 100 - photo.amount) < 1)
+  return o ? { orderNumber: o.orderNumber, paid: o.paid } : null
+}
+
+export async function aiReply({ phone, name, text, image = null, handedOver = false }, { query = defaultQuery, deps, fetchImpl } = {}) {
+  const [orders, prices, offers, history, photo] = await Promise.all([
     customerOrders(query, phone).catch(() => []),
     deps?.prices ? deps.prices().catch(() => []) : [],
     deps?.offers ? deps.offers(phone).catch(() => []) : [],
     chatHistory(query, phone).catch(() => []),
+    image ? readPhoto(image, { fetchImpl, ...(deps?.downloadMedia ? { download: deps.downloadMedia } : {}) }) : null,
   ])
-  const system = systemPrompt({ name, orders, prices, offers, hours: teamHours(), handedOver })
-  const out = await askModel({ system, history, text }, { fetchImpl })
+  if (photo && photo.kind === 'payment') photo.match = matchPayment(photo, orders)
+  const said = image ? (text ? `📷 Photo: ${text}` : '📷 Photo') : text
+  const system = systemPrompt({ name, orders, prices, offers, hours: teamHours(), handedOver, photo })
+  const out = await askModel({ system, history, text: said }, { fetchImpl })
+  // A payment we cannot match to a paid order, and a damaged / wrong pack, are always the team's.
+  if (photo?.kind === 'payment' && !photo.match?.paid) {
+    out.handoff = true
+    out.reason = out.reason || `Payment screenshot ${photo.amount ? '₹' + photo.amount : ''} ${photo.match ? 'for unpaid order ' + photo.match.orderNumber : 'matches no order'}`.trim()
+  }
+  if (photo?.kind === 'payment' && photo.match) out.order = out.order || photo.match.orderNumber
+  if (photo?.kind === 'damaged_or_wrong') {
+    out.handoff = true
+    out.reason = out.reason || `Photo: ${photo.summary || 'damaged or wrong item'}`
+  }
+  if (photo) out.photo = photo
   // A late order is always the team's, whatever the model decided.
   const late = orders.find((o) => o.late && (!out.order || o.orderNumber === out.order))
-  if (late && /deliver|order|late|not|received|where|still|enna|eppo|varala/i.test(text)) {
+  if (late && (photo?.kind === 'payment' || /deliver|order|late|not|received|where|still|enna|eppo|varala/i.test(text))) {
     out.handoff = true
     out.order = out.order || late.orderNumber
     out.reason = out.reason || `Order ${late.orderNumber} paid ${late.daysAgo} days ago, not dispatched`

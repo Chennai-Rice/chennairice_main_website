@@ -98,7 +98,9 @@ async function onMessage(m, contacts, query, bot) {
   // The bot answers each message once (Meta may deliver a call twice), and not old ones replayed after an outage.
   const ageMin = (Date.now() / 1000 - (Number(m.timestamp) || Date.now() / 1000)) / 60
   if (!bot || ageMin > 15 || m.type === 'reaction') return
-  await bot({ to: String(m.from), phone, name, text, replyId: m.button ? '' : replyId }, { query })
+  // A photo (a payment screenshot, a damaged pack…) goes to the bot too, for the AI to look at.
+  const image = m.type === 'image' && m.image?.id ? { id: m.image.id, caption: m.image.caption || '', mime: m.image.mime_type || '' } : null
+  await bot({ to: String(m.from), phone, name, text: text || image?.caption || '', replyId: m.button ? '' : replyId, ...(image ? { image } : {}) }, { query })
 }
 
 const STOP_WORDS = ['stop', 'unsubscribe', 'stop all', 'stop promotions', 'opt out', 'optout']

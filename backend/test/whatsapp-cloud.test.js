@@ -229,6 +229,62 @@ test('AI reply: built from the customer\x27s own orders, a late order is always 
   assert.match(systemPrompt({ name: '', orders: [], prices: [], offers: [], hours: teamHours(), handedOver: true }), /already been passed to the team/)
 })
 
+test('AI photos: a payment screenshot is matched to their order; unmatched payments and damaged packs go to the team', async () => {
+  const { aiReply } = await import('../lib/wa/ai.js')
+  assert.equal(decide(bot, { text: '', image: { id: 'm1' } }).kind, 'ai')
+  assert.equal(decide(cleanBot({ ...DEFAULT_BOT, ai: { enabled: false } }), { image: { id: 'm1' } }).kind, 'fallback')
+
+  const placed = new Date(Date.now() - 5 * 86400e3)
+  const query = async (sql) => {
+    if (sql.includes('from orders o')) {
+      return { rows: [{ id: 'o1', order_number: 'CR-20261110-5YWU3', status: 'placed', payment_status: 'paid', total_paise: 116000, created_at: placed,
+        delivery_method: 'courier', city: 'Chennai', items: '1 × Kitchidi Ponni Rice (5 kg)' }] }
+    }
+    return { rows: [] }
+  }
+  const run = async (seen) => {
+    const calls = []
+    const fetchImpl = async (url, init) => {
+      const body = JSON.parse(init.body)
+      calls.push(body)
+      const content = Array.isArray(body.messages[0].content)
+        ? JSON.stringify(seen)
+        : JSON.stringify({ reply: 'Thank you! We have your payment.', handoff: false, reason: '', order: '' })
+      return { ok: true, json: async () => ({ choices: [{ message: { content } }] }) }
+    }
+    const prev = process.env.GROQ_API_KEY
+    process.env.GROQ_API_KEY = 'test-key'
+    try {
+      const out = await aiReply({ phone: '9940303259', name: 'C', text: '', image: { id: 'm1', caption: '' } },
+        { query, deps: { prices: async () => [], offers: async () => [], downloadMedia: async () => ({ buffer: Buffer.from('jpeg'), type: 'image/jpeg' }) }, fetchImpl })
+      return { out, vision: calls[0], system: calls[1].messages[0].content, user: calls[1].messages.at(-1).content }
+    } finally {
+      if (prev === undefined) delete process.env.GROQ_API_KEY
+      else process.env.GROQ_API_KEY = prev
+    }
+  }
+
+  // GPay ₹1,160 completed: their paid order of ₹1,160 — confirmed, and (late) handed over with that order.
+  const paid = await run({ kind: 'payment', summary: 'Google Pay payment to Chennai Rice', amount: 1160, date: '10 Nov 2026', status: 'Completed', app: 'Google Pay' })
+  assert.equal(paid.vision.messages[0].content[1].image_url.url, 'data:image/jpeg;base64,' + Buffer.from('jpeg').toString('base64'))
+  assert.match(paid.system, /matches their order CR-20261110-5YWU3, which our system ALREADY shows as PAID/)
+  assert.equal(paid.user, '📷 Photo')
+  assert.equal(paid.out.order, 'CR-20261110-5YWU3')
+  assert.equal(paid.out.handoff, true) // the order is late
+  assert.equal(paid.out.photo.amount, 1160)
+
+  // A payment that matches nothing: never confirmed, the team checks it.
+  const other = await run({ kind: 'payment', summary: 'PhonePe payment', amount: 999, status: 'Completed' })
+  assert.match(other.system, /does not match any order of theirs/)
+  assert.equal(other.out.handoff, true)
+  assert.match(other.out.reason, /matches no order/)
+
+  // A torn pack: the team's.
+  const torn = await run({ kind: 'damaged_or_wrong', summary: 'A torn 5 kg rice pack with rice spilled' })
+  assert.equal(torn.out.handoff, true)
+  assert.match(torn.out.reason, /torn 5 kg/)
+})
+
 test('webhook: a new customer message is answered by the bot once', async () => {
   const asked = []
   let seen = false

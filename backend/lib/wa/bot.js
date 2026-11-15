@@ -90,8 +90,10 @@ export function cleanBot(input = {}) {
 }
 
 /** What to do with one incoming message. Pure: no database, no network. */
-export function decide(bot, { text = '', replyId = '' } = {}, state = {}) {
+export function decide(bot, { text = '', replyId = '', image = null } = {}, state = {}) {
   const items = bot.items || []
+  // A photo: the AI looks at it (a payment screenshot, a damaged pack…). Without AI, the menu as before.
+  if (image) return bot.ai?.enabled ? { kind: 'ai', text: text || '', image } : { kind: 'fallback' }
   if (replyId) {
     const item = items.find((it) => it.id === replyId)
     if (item) return { kind: 'item', item }
@@ -165,7 +167,7 @@ export async function render(bot, decision, { phone = '', name = '' } = {}, deps
   if (decision.kind === 'ai') {
     // The AI's reply; if it cannot answer (Groq down, no key), the menu as before.
     const r = deps.ai
-      ? await deps.ai({ phone, name, text: decision.text, handedOver: Boolean(decision.handedOver) }).catch((err) => {
+      ? await deps.ai({ phone, name, text: decision.text, image: decision.image || null, handedOver: Boolean(decision.handedOver) }).catch((err) => {
         console.error('[wa-ai]', err.message)
         return null
       })
@@ -288,8 +290,11 @@ export function liveDeps(query = defaultQuery, { fetchImpl } = {}) {
 export async function aiHandoff({ phone, name, text, ai }, { query = defaultQuery } = {}) {
   const why = ai.reason || 'The customer needs a person'
   const about = ai.order ? ` (order ${ai.order})` : ''
+  // What their photo showed (a payment screenshot's amount and status, a torn pack…), for the team.
+  const p = ai.photo && !ai.photo.unreadable ? ai.photo : null
+  const seen = p ? `Their photo: ${p.summary || p.kind}${p.amount ? `, ₹${p.amount}` : ''}${p.status ? `, ${p.status}` : ''}${p.date ? `, ${p.date}` : ''}` : ''
   await query('insert into wa_notes (phone, staff_id, body) values ($1, null, $2)',
-    [phone, `🤖 AI passed this chat to the team: ${why}${about}`]).catch(() => {})
+    [phone, `🤖 AI passed this chat to the team: ${why}${about}${seen ? `. ${seen}` : ''}`]).catch(() => {})
   await query(`update wa_contacts set status = 'open', updated_at = now() where phone = $1`, [phone]).catch(() => {})
   if (ai.order) {
     await query(
@@ -306,6 +311,7 @@ export async function aiHandoff({ phone, name, text, ai }, { query = defaultQuer
     '',
     `Why: ${why}`,
     ai.order ? `Order: ${ai.order}` : null,
+    seen || null,
     '',
     `They wrote: "${String(text).slice(0, 500)}"`,
     `The AI replied: "${ai.reply.slice(0, 500)}"`,
@@ -358,7 +364,7 @@ export function logText(m) {
  * A customer's message arrived (webhook): answer it if the bot is on and nobody has taken the chat over.
  * `to` is the customer's WhatsApp id (e.g. 919876543210). Never throws.
  */
-export async function answer({ to, phone, name, text, replyId }, { query = defaultQuery, fetchImpl, aiFetch } = {}) {
+export async function answer({ to, phone, name, text, replyId, image = null }, { query = defaultQuery, fetchImpl, aiFetch } = {}) {
   try {
     const bot = await getBot(query)
     if (!bot.enabled) return { skipped: 'off' }
@@ -381,7 +387,7 @@ export async function answer({ to, phone, name, text, replyId }, { query = defau
     const { rows: [c] } = await query(
       `select coalesce((select replies_today from wa_bot_state where phone = $1 and day = $2::date), 0)::int as n`, [phone, today])
     if (c.n >= MAX_REPLIES_A_DAY) return { skipped: 'daily limit for this chat' }
-    const decision = handedOver ? { kind: 'ai', text, handedOver: true } : decide(bot, { text, replyId }, st || {})
+    const decision = handedOver ? { kind: 'ai', text, image, handedOver: true } : decide(bot, { text, replyId, image }, st || {})
     const res = await render(bot, decision, { phone, name }, liveDeps(query, { fetchImpl: aiFetch }))
     const source = res.state.ai ? 'ai' : 'bot'
     for (const m of res.messages) {
