@@ -23,6 +23,10 @@ import { aiReply } from './ai.js'
 import { queueEmail, staffRecipients } from '../sales/email.js'
 
 const SITE = 'https://chennairiceindustries.com'
+// No days or hours promised to customers (owner, 15 Nov 2026): saved replies still carrying them are updated.
+const noHours = (text) => String(text || '')
+  .replace(/\s*\(Mon[–-]Sat,?\s*9\s*am\s*[–-]\s*7\s*pm\)/gi, '')
+  .replace(/Our team will reply to you here shortly\./g, 'Our team will get back to you here soon.')
 // Links go through the short /w/ links (ShortLink.jsx adds utm_source=whatsapp): tidy in a chat and credited to WhatsApp.
 const rupees = (n) => '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: Number(n) % 1 ? 2 : 0, maximumFractionDigits: 2 })
 export const ACTIONS = ['reply', 'track_order', 'offers', 'prices', 'delivery', 'handoff']
@@ -48,7 +52,7 @@ export const DEFAULT_BOT = {
     { id: 'delivery', label: '🚚 Delivery to my area', description: 'Check your PIN code', keywords: ['deliver', 'pincode', 'pin code', 'shipping', 'courier'], action: 'delivery',
       reply: 'Please send your 6-digit PIN code and we will tell you if we deliver there and the delivery charge.' },
     { id: 'human', label: '👤 Talk to our team', description: 'A person will reply', keywords: ['agent', 'human', 'person', 'call me', 'talk', 'help', 'complaint'], action: 'handoff',
-      reply: 'Thank you! 🙏 Our team will reply to you here shortly (Mon–Sat, 9 am – 7 pm).' },
+      reply: 'Thank you! 🙏 Our team will get back to you here soon.' },
   ],
   fallback: 'Sorry, I did not get that. 🙏 Please choose from the menu, or type *menu* any time.',
   handoffHours: 12,
@@ -70,7 +74,7 @@ export function cleanBot(input = {}) {
     description: str(it.description).slice(0, 72),
     keywords: (Array.isArray(it.keywords) ? it.keywords : String(it.keywords || '').split(',')).map((k) => str(k).toLowerCase()).filter(Boolean).slice(0, 30),
     action: ACTIONS.includes(it.action) ? it.action : 'reply',
-    reply: String(it.reply || '').slice(0, 1024),
+    reply: noHours(it.reply).slice(0, 1024),
   })).filter((it) => it.label)
   const ids = new Set()
   for (const it of items) { while (ids.has(it.id)) it.id += 'x'; ids.add(it.id) }
