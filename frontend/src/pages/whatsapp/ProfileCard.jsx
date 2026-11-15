@@ -59,8 +59,8 @@ export default function ProfileCard() {
       ))}
       <label className="wa-lbl">Category
         <select value={f.vertical || 'GROCERY'} onChange={set('vertical')}>
-          <option value="GROCERY">Grocery</option><option value="RETAIL">Retail / shopping</option>
-          <option value="RESTAURANT">Food</option><option value="OTHER">Other</option>
+          <option value="GROCERY">Food &amp; grocery (rice)</option><option value="RETAIL">Retail / shopping</option>
+          <option value="RESTAURANT">Restaurant</option><option value="OTHER">Other</option>
         </select>
       </label>
       {note && <p className={note.bad ? 'wa-alert' : 'wa-ok'}>{note.text}</p>}
