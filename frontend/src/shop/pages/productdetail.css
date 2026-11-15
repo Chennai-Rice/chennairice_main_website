@@ -1711,3 +1711,17 @@ ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
   .pdp-cta-row .pdp-buy-btn::after,
   .pdp-buybar .pdp-buy-btn::after { display: none; }
 }
+
+/* Phones: quantity stays on the same row, to the right of the pack sizes, on every width (344 px up). */
+@media (max-width: 899px) {
+  .pdp-info > .pdp-options { flex-wrap: nowrap; justify-content: flex-start; gap: 14px; }
+  .pdp-options .pdp-option-size { min-width: 0; }
+  .pdp-options .pdp-pack-sizes { flex-wrap: nowrap; gap: 8px; }
+  .pdp-options .pdp-pack-pill { min-width: 0; padding: 10px 12px; white-space: nowrap; }
+  .pdp-options .pdp-qty-row { flex: none; }
+  .pdp-options .pdp-qty-btn { width: 34px; height: 40px; }
+  .pdp-options .pdp-qty-value { width: 30px; }
+}
+@media (max-width: 420px) {
+  .pdp-hero { padding-left: 18px; padding-right: 18px; }
+}
