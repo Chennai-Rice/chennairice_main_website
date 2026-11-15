@@ -775,8 +775,8 @@
   .sk-launcher {
     right: 0;
     left: auto;
-    top: 58%;
-    bottom: auto;
+    top: auto;
+    bottom: 28px;
   }
   .sk-launcher-btn,
   .sk-launcher-btn:hover,
@@ -791,4 +791,10 @@
   }
   .sk-launcher-btn::before { display: none; }
   .sk-launcher-avatar { filter: none; }
+}
+/* Just above the "Proceed to cart" pill, the product page's buy bar or the checkout Pay bar. */
+@media (max-width: 800px) {
+  body:has(.checkout-bar) .sk-launcher,
+  body:has(.checkout-paybar) .sk-launcher,
+  body:has(.pdp-buybar.is-shown) .sk-launcher { bottom: 100px; }
 }

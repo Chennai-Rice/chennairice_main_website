@@ -345,8 +345,8 @@
   .spin-fab {
     left: 0;
     right: auto;
-    top: 58%;
-    bottom: auto;
+    top: auto;
+    bottom: 28px;
     width: 46px;
     padding: 5px 3px 5px 0;
     border-radius: 0 999px 999px 0;
@@ -359,4 +359,10 @@
   .spin-fab-img { width: 100%; }
   .spin-fab:hover .spin-fab-img, .spin-fab:focus-visible .spin-fab-img { transform: none; }
   .spin-fab-badge { top: -8px; right: -18px; padding: 2px 6px; font-size: 9px; }
+}
+/* Just above the "Proceed to cart" pill, the product page's buy bar or the checkout Pay bar. */
+@media (max-width: 800px) {
+  body:has(.checkout-bar) .spin-fab,
+  body:has(.checkout-paybar) .spin-fab,
+  body:has(.pdp-buybar.is-shown) .spin-fab { bottom: 100px; }
 }
