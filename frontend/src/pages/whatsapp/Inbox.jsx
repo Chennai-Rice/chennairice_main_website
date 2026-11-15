@@ -165,7 +165,7 @@ function Chat({ phone, onChanged }) {
         {c.messages.map((m) => (
           <div key={m.id} className={'wa-msg wa-msg--' + m.direction}>
             <div className="wa-msg-bubble">
-              {m.source && m.direction === 'out' && <span className="wa-msg-src">{m.source === 'bot' ? '🤖 Bot' : m.source === 'inbox' ? 'Team' : m.template || m.source}</span>}
+              {m.source && m.direction === 'out' && <span className="wa-msg-src">{m.source === 'bot' ? '🤖 Bot' : m.source === 'ai' ? '✨ AI' : m.source === 'inbox' ? 'Team' : m.template || m.source}</span>}
               {m.mediaId && <ChatMedia id={m.mediaId} kind={m.kind} />}
               <WaText text={m.body || `[${m.kind}]`} />
               <span className="wa-msg-meta">{hm(m.at)} {m.direction === 'out' && <b className={'wa-tick wa-tick--' + m.status}>{TICKS[m.status] || ''}</b>}</span>

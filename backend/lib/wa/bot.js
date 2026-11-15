@@ -4,7 +4,9 @@
 //   tapping a menu item, or its keywords    → that item's reply or action
 //   an order number (CR-20261111-AB12C)     → its status, if the order was placed from this WhatsApp number
 //   a 6-digit PIN code                      → whether we deliver there and the delivery charge
-//   anything else                           → the fallback message and the menu
+//   anything else                           → an AI reply (Groq, ai.js): short, warm, in their language, from
+//                                             their own orders, prices and offers; complaints go to the team.
+//                                             Without AI (switched off, or no GROQ_API_KEY): the fallback + menu
 //
 // Actions an item can have: reply (its text), track_order, offers (this number's spin / referral codes),
 // prices (live from the catalog), delivery (asks for a PIN), handoff (a person takes over; the bot is
@@ -17,6 +19,8 @@ import { query as defaultQuery } from '../db.js'
 import { httpError, str, parseTrackingRef, formatInr } from '../sales/util.js'
 import { listCatalog, checkDelivery } from '../sales/catalog.js'
 import { sendMessage } from './cloud.js'
+import { aiReply } from './ai.js'
+import { queueEmail, staffRecipients } from '../sales/email.js'
 
 const SITE = 'https://chennairiceindustries.com'
 // Links go through the short /w/ links (ShortLink.jsx adds utm_source=whatsapp): tidy in a chat and credited to WhatsApp.
@@ -48,6 +52,8 @@ export const DEFAULT_BOT = {
   ],
   fallback: 'Sorry, I did not get that. 🙏 Please choose from the menu, or type *menu* any time.',
   handoffHours: 12,
+  // AI replies (Groq) for anything the menu does not cover.
+  ai: { enabled: true },
 }
 
 const norm = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim()
@@ -79,6 +85,7 @@ export function cleanBot(input = {}) {
     items,
     fallback: String(input.fallback || DEFAULT_BOT.fallback).slice(0, 1024),
     handoffHours: Math.min(72, Math.max(1, Number(input.handoffHours) || 12)),
+    ai: { enabled: input.ai?.enabled !== false },
   }
 }
 
@@ -97,11 +104,16 @@ export function decide(bot, { text = '', replyId = '' } = {}, state = {}) {
   const fresh = state.awaiting_at && Date.now() - new Date(state.awaiting_at).getTime() < 30 * 60e3
   if (pin && (fresh && state.awaiting === 'pincode' || t === pin[0])) return { kind: 'pincode', pin: pin[0] }
   if (fresh && state.awaiting === 'order_number' && t) return { kind: 'track', ref: null, text }
-  if (!t) return { kind: 'fallback' }
-  if ((bot.greetings || []).some((g) => t === norm(g) || t.startsWith(norm(g) + ' '))) return { kind: 'welcome' }
-  const item = items.find((it) => (it.keywords || []).some((k) => hasWord(t, k)) || norm(it.label) === t)
+  if (!t) return bot.ai?.enabled && text ? { kind: 'ai', text } : { kind: 'fallback' }
+  // With AI on, a sentence ("hi, I ordered on 10th and it has not come") is answered by the AI rather
+  // than matched on one of its words; short messages ("hi", "price", "track") still get the menu.
+  const short = !bot.ai?.enabled || t.split(' ').length <= 3
+  if (short && (bot.greetings || []).some((g) => t === norm(g) || t.startsWith(norm(g) + ' '))) return { kind: 'welcome' }
+  const exact = items.find((it) => norm(it.label) === t)
+  if (exact) return { kind: 'item', item: exact }
+  const item = short && items.find((it) => (it.keywords || []).some((k) => hasWord(t, k)))
   if (item) return { kind: 'item', item }
-  return { kind: 'fallback' }
+  return bot.ai?.enabled ? { kind: 'ai', text } : { kind: 'fallback' }
 }
 
 // ---- WhatsApp message bodies (without "to") ----
@@ -150,6 +162,22 @@ export async function render(bot, decision, { phone = '', name = '' } = {}, deps
   const out = { messages: [], state: { awaiting: null } }
   if (decision.kind === 'welcome') { out.messages.push(welcome()); return out }
   if (decision.kind === 'fallback') { out.messages.push(menuMsg(bot, bot.fallback)); return out }
+  if (decision.kind === 'ai') {
+    // The AI's reply; if it cannot answer (Groq down, no key), the menu as before.
+    const r = deps.ai
+      ? await deps.ai({ phone, name, text: decision.text, handedOver: Boolean(decision.handedOver) }).catch((err) => {
+        console.error('[wa-ai]', err.message)
+        return null
+      })
+      : null
+    if (!r) {
+      if (!decision.handedOver) out.messages.push(menuMsg(bot, bot.fallback)) // with a person on it: say nothing
+      return out
+    }
+    out.messages.push(textMsg(r.reply))
+    out.state = { awaiting: null, ai: r, ...(r.handoff ? { pausedHours: bot.handoffHours } : {}) }
+    return out
+  }
 
   if (decision.kind === 'track') {
     const ref = decision.ref || parseTrackingRef(decision.text)
@@ -211,8 +239,11 @@ export async function render(bot, decision, { phone = '', name = '' } = {}, deps
 // ---- the real lookups -------------------------------------------------------------------------------------------
 const dateIn = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' }) : null)
 
-export function liveDeps(query = defaultQuery) {
-  return {
+export function liveDeps(query = defaultQuery, { fetchImpl } = {}) {
+  const deps = {
+    async ai(args) {
+      return aiReply(args, { query, deps, fetchImpl: fetchImpl || fetch })
+    },
     async findOrder(ref, phone) {
       const { rows: [o] } = ref.orderNumber
         ? await query(`select id, order_number, status, contact_phone from orders where order_number = $1 and status <> 'pending_payment'`, [ref.orderNumber])
@@ -247,6 +278,47 @@ export function liveDeps(query = defaultQuery) {
       return checkDelivery({ query }, pin).catch(() => ({ delivers: false }))
     },
   }
+  return deps
+}
+
+/**
+ * The AI passed a chat to the team: a note on the chat (what and why), the order flagged for attention,
+ * the chat reopened, and an email to the staff list (at most one per chat every 3 hours). Best effort.
+ */
+export async function aiHandoff({ phone, name, text, ai }, { query = defaultQuery } = {}) {
+  const why = ai.reason || 'The customer needs a person'
+  const about = ai.order ? ` (order ${ai.order})` : ''
+  await query('insert into wa_notes (phone, staff_id, body) values ($1, null, $2)',
+    [phone, `🤖 AI passed this chat to the team: ${why}${about}`]).catch(() => {})
+  await query(`update wa_contacts set status = 'open', updated_at = now() where phone = $1`, [phone]).catch(() => {})
+  if (ai.order) {
+    await query(
+      `update orders set needs_attention = $2
+        where order_number = $1 and needs_attention is null
+          and right(regexp_replace(contact_phone, '\\D', '', 'g'), 10) = $3`,
+      [ai.order, ('WhatsApp: ' + why).slice(0, 500), String(phone).replace(/\D/g, '').slice(-10)]).catch(() => {})
+  }
+  const to = await staffRecipients({ query }).catch(() => [])
+  if (!to.length) return
+  const bucket = Math.floor(Date.now() / (3 * 3600e3))
+  const lines = [
+    `${name || 'A customer'} (${phone}) on WhatsApp needs a person.`,
+    '',
+    `Why: ${why}`,
+    ai.order ? `Order: ${ai.order}` : null,
+    '',
+    `They wrote: "${String(text).slice(0, 500)}"`,
+    `The AI replied: "${ai.reply.slice(0, 500)}"`,
+    '',
+    `Reply here: ${SITE}/whatsappbot`,
+  ].filter((l) => l !== null)
+  await queueEmail({ query }, {
+    to,
+    subject: `WhatsApp: ${name || phone} needs a reply${about}`,
+    text: lines.join('\n'),
+    template: 'wa_handoff',
+    dedupeKey: `wa-handoff:${phone}:${bucket}`,
+  }).catch((err) => console.error('[wa-ai] handoff email', err.message))
 }
 
 // ---- settings ------------------------------------------------------------------------------------------------------
@@ -286,28 +358,39 @@ export function logText(m) {
  * A customer's message arrived (webhook): answer it if the bot is on and nobody has taken the chat over.
  * `to` is the customer's WhatsApp id (e.g. 919876543210). Never throws.
  */
-export async function answer({ to, phone, name, text, replyId }, { query = defaultQuery, fetchImpl } = {}) {
+export async function answer({ to, phone, name, text, replyId }, { query = defaultQuery, fetchImpl, aiFetch } = {}) {
   try {
     const bot = await getBot(query)
     if (!bot.enabled) return { skipped: 'off' }
     const { rows: [st] } = await query('select * from wa_bot_state where phone = $1', [phone])
+    let handedOver = false
     if (st?.paused_until && new Date(st.paused_until) > new Date()) {
-      // "menu" brings the bot back before the pause ends.
-      if (!(text && norm(text) === 'menu')) return { skipped: 'a person is handling this chat' }
+      // "menu" brings the bot back before the pause ends. Otherwise the bot is quiet while a person has the
+      // chat; but if nobody from the team has replied since it was handed over, the AI keeps answering
+      // (sorry for the wait, the team has been reminded) instead of leaving the customer unanswered.
+      if (!(text && norm(text) === 'menu')) {
+        if (!bot.ai?.enabled) return { skipped: 'a person is handling this chat' }
+        const since = new Date(new Date(st.paused_until).getTime() - bot.handoffHours * 3600e3)
+        const { rows: [team] } = await query(
+          `select 1 from wa_messages where phone = $1 and direction = 'out' and source = 'inbox' and created_at >= $2 limit 1`, [phone, since])
+        if (team) return { skipped: 'a person is handling this chat' }
+        handedOver = true
+      }
     }
     const today = new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10)
     const { rows: [c] } = await query(
       `select coalesce((select replies_today from wa_bot_state where phone = $1 and day = $2::date), 0)::int as n`, [phone, today])
     if (c.n >= MAX_REPLIES_A_DAY) return { skipped: 'daily limit for this chat' }
-    const decision = decide(bot, { text, replyId }, st || {})
-    const res = await render(bot, decision, { phone, name }, liveDeps(query))
+    const decision = handedOver ? { kind: 'ai', text, handedOver: true } : decide(bot, { text, replyId }, st || {})
+    const res = await render(bot, decision, { phone, name }, liveDeps(query, { fetchImpl: aiFetch }))
+    const source = res.state.ai ? 'ai' : 'bot'
     for (const m of res.messages) {
       const message = { messaging_product: 'whatsapp', recipient_type: 'individual', to, ...m }
       const wamid = await sendMessage(message, { fetchImpl })
       await query(
         `insert into wa_messages (wamid, direction, phone, kind, body, payload, status, source, category)
-         values ($1, 'out', $2, $3, $4, $5, 'sent', 'bot', 'service') on conflict (wamid) do nothing`,
-        [wamid, phone, m.type, logText(m).slice(0, 4000), JSON.stringify(message)])
+         values ($1, 'out', $2, $3, $4, $5, 'sent', $6, 'service') on conflict (wamid) do nothing`,
+        [wamid, phone, m.type, logText(m).slice(0, 4000), JSON.stringify(message), source])
     }
     await query(
       `insert into wa_bot_state (phone, awaiting, awaiting_at, paused_until, last_reply_at, replies_today, day, updated_at)
@@ -318,7 +401,8 @@ export async function answer({ to, phone, name, text, replyId }, { query = defau
          last_reply_at = now(), replies_today = case when wa_bot_state.day = $4::date then wa_bot_state.replies_today + 1 else 1 end,
          day = $4::date, updated_at = now()`,
       [phone, res.state.awaiting || null, res.state.pausedHours || null, today])
-    return { replied: res.messages.length, decision: decision.kind }
+    if (res.state.ai?.handoff) await aiHandoff({ phone, name, text, ai: res.state.ai }, { query })
+    return { replied: res.messages.length, decision: decision.kind, ...(res.state.ai ? { handoff: res.state.ai.handoff } : {}) }
   } catch (err) {
     console.error('[wa-bot]', err.publicMessage || err.message)
     return { error: err.message }

@@ -135,6 +135,8 @@ test('bot: three items or fewer can be buttons', () => {
 })
 
 test('bot: menu taps, keywords, order numbers, PIN codes and the fallback', async () => {
+  // Without AI: keywords inside sentences, and the fallback menu.
+  const bot = cleanBot({ ...DEFAULT_BOT, ai: { enabled: false } })
   assert.equal(decide(bot, { replyId: 'prices' }).item.id, 'prices')
   assert.equal(decide(bot, { text: 'what is the rate for 26 kg' }).item.id, 'prices')
   assert.equal(decide(bot, { text: 'I want to talk to a person' }).item.id, 'human')
@@ -161,6 +163,70 @@ test('bot: menu taps, keywords, order numbers, PIN codes and the fallback', asyn
   assert.equal(hand.state.pausedHours, 12)
   const fb = await render(bot, decide(bot, { text: 'zzz' }), {}, deps)
   assert.equal(fb.messages[0].interactive.type, 'list')
+})
+
+test('bot with AI: sentences go to the AI, short words still get the menu; Groq down → the menu', async () => {
+  assert.equal(bot.ai.enabled, true)
+  assert.equal(decide(bot, { text: 'I ORDERED ON 10TH NOVEMBER I AM IN CHENNAI STIL NOT DELIVERED' }).kind, 'ai')
+  assert.equal(decide(bot, { text: 'hi I need to talk to someone about my order' }).kind, 'ai')
+  assert.equal(decide(bot, { text: 'WHY NO ONE IS CHATTING' }).kind, 'ai')
+  assert.equal(decide(bot, { text: 'price' }).item.id, 'prices')
+  assert.equal(decide(bot, { text: 'hi' }).kind, 'welcome')
+  assert.equal(decide(bot, { text: 'CR-20261111-AB12C is my order number' }).kind, 'track')
+
+  const said = await render(bot, { kind: 'ai', text: 'which rice for biryani?' }, { phone: '9876543210', name: 'Ravi' },
+    { ...deps, ai: async () => ({ reply: 'For biryani, Nayara Super Aged stays separate and fluffy 🍚', handoff: false, reason: '', order: '' }) })
+  assert.equal(said.messages[0].text.body, 'For biryani, Nayara Super Aged stays separate and fluffy 🍚')
+  assert.equal(said.state.ai.handoff, false)
+  const passed = await render(bot, { kind: 'ai', text: 'still not delivered' }, {},
+    { ...deps, ai: async () => ({ reply: 'So sorry, I have flagged it to our team.', handoff: true, reason: 'late', order: '' }) })
+  assert.equal(passed.state.pausedHours, 12)
+  const down = await render(bot, { kind: 'ai', text: 'hello there friend' }, {}, { ...deps, ai: async () => { throw new Error('Groq 503') } })
+  assert.equal(down.messages[0].interactive.type, 'list')
+  const quiet = await render(bot, { kind: 'ai', text: 'any update?', handedOver: true }, {}, { ...deps, ai: async () => { throw new Error('Groq 503') } })
+  assert.equal(quiet.messages.length, 0)
+})
+
+test('AI reply: built from the customer\x27s own orders, a late order is always handed over and flagged', async () => {
+  const { aiReply, systemPrompt, teamHours } = await import('../lib/wa/ai.js')
+  const placed = new Date(Date.now() - 5 * 86400e3)
+  const query = async (sql) => {
+    if (sql.includes('from orders o')) {
+      return { rows: [{ id: 'o1', order_number: 'CR-20261110-5YWU3', status: 'placed', payment_status: 'paid', total_paise: 116000, created_at: placed,
+        delivery_method: 'courier', city: 'Chennai', items: '1 × Kitchadi Ponni Rice (5 kg)', tracking_url: null, expected_delivery: null, carrier_name: null }] }
+    }
+    if (sql.includes('from wa_messages')) return { rows: [{ direction: 'in', body: 'I ORDERED ON 10TH NOVEMBER STILL NOT DELIVERED', source: null }] }
+    return { rows: [] }
+  }
+  let sent
+  const fetchImpl = async (url, init) => {
+    sent = JSON.parse(init.body)
+    return { ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify({ reply: 'Very sorry for the delay! Your order is with our dispatch team now.', handoff: false, reason: '', order: '' }) } }] }) }
+  }
+  const prev = process.env.GROQ_API_KEY
+  process.env.GROQ_API_KEY = 'test-key'
+  try {
+    const out = await aiReply({ phone: '9940303259', name: 'Chidambaranathan B', text: 'I ORDERED ON 10TH NOVEMBER STILL NOT DELIVERED' },
+      { query, deps: { prices: async () => [{ name: 'Kitchadi Ponni Rice', packKg: 5, price: 1160 }], offers: async () => [] }, fetchImpl })
+    // The model saw the order, as late, and today's price; the message is not sent twice.
+    const system = sent.messages[0].content
+    assert.match(system, /CR-20261110-5YWU3: placed .*(5 days ago)/)
+    assert.match(system, /LATE: paid but not dispatched/)
+    assert.match(system, /Kitchadi Ponni Rice, 5 kg pack: ₹1160 for the whole 5 kg pack/)
+    assert.equal(sent.messages.filter((m) => m.role === 'user').length, 1)
+    assert.deepEqual(sent.response_format, { type: 'json_object' })
+    // The model did not hand over, but a late order always is, and it is the order flagged.
+    assert.equal(out.handoff, true)
+    assert.equal(out.order, 'CR-20261110-5YWU3')
+    assert.match(out.reply, /sorry/i)
+  } finally {
+    if (prev === undefined) delete process.env.GROQ_API_KEY
+    else process.env.GROQ_API_KEY = prev
+  }
+  // Another customer's order number from the model is never flagged; working hours are India time.
+  assert.equal(teamHours(new Date('2026-11-16T05:00:00Z')).open, true) // Monday 10:30 IST
+  assert.equal(teamHours(new Date('2026-11-15T05:00:00Z')).open, false) // Sunday
+  assert.match(systemPrompt({ name: '', orders: [], prices: [], offers: [], hours: teamHours(), handedOver: true }), /already been passed to the team/)
 })
 
 test('webhook: a new customer message is answered by the bot once', async () => {

@@ -307,3 +307,7 @@ button.wa-bubble-btn { border: 0; cursor: pointer; font: inherit; width: 92%; }
 .wa-sim-clear { color: #cfd3d8; font-size: 12px; padding: 6px; }
 @media (max-width: 1100px) { .wa-bot { grid-template-columns: 1fr; } .wa-sim { position: static; max-width: 340px; margin: 0 auto; } }
 .wa-link-text { color: #027eb5; overflow-wrap: anywhere; }
+/* AI replies switch on the Bot tab. */
+.wa-bot-ai { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 18px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.22); color: #fff; font-size: 13px; line-height: 1.5; cursor: pointer; }
+.wa-bot-ai input { width: 20px !important; height: 20px; margin-top: 2px; flex: none; accent-color: #d4f06b; }
+.wa-bot-ai strong { font-weight: 600; }

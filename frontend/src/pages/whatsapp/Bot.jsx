@@ -205,7 +205,20 @@ export default function Bot() {
               )}
             </div>
 
-            <label className="wa-field"><span>When the bot does not understand</span>
+            {/* AI replies (Groq): anything the menu does not cover gets a short, human reply from the customer's own
+                orders, prices and offers; complaints and late orders go to the team (a note on the chat and an email). */}
+            <div className="wa-field">
+              <span>Anything else the customer types</span>
+              <label className="wa-bot-ai">
+                <input type="checkbox" checked={bot.ai?.enabled !== false} onChange={(e) => set({ ai: { enabled: e.target.checked } })} />
+                <span>
+                  <strong>AI replies like a person</strong> (Groq), in the customer's language: order status from their own orders,
+                  prices, offers, rice advice. Complaints, late orders, refunds and anything it is unsure of go to the team, with an
+                  email and a note on the chat. If nobody from the team has replied after a handover, the AI keeps the customer updated.
+                </span>
+              </label>
+            </div>
+            <label className="wa-field"><span>{bot.ai?.enabled !== false ? "If the AI cannot answer (it is unreachable)" : "When the bot does not understand"}</span>
               <textarea rows={2} value={bot.fallback} onChange={(e) => set({ fallback: e.target.value })} />
             </label>
             <label className="wa-field wa-field--inline"><span>After "talk to our team", the bot stays quiet in that chat for</span>
