@@ -59,7 +59,7 @@ async function sales(p, rice, detail = true) {
    where ${WON} and o.placed_at >= $1 and o.placed_at < $2 and ($3::text is null or pr.rice_type = $3)`
   const totals = (await query(
     `select count(distinct o.id)::int as orders,
-            count(distinct o.customer_id)::int as customers,
+            count(distinct ${key10('o.contact_phone')})::int as customers,
             coalesce(sum(i.pack_kg * i.quantity), 0)::float as kg,
             coalesce(sum(i.line_total_paise), 0)::bigint as item_paise,
             (select coalesce(sum(o2.total_paise), 0) from orders o2 where o2.id in (select distinct o.id ${items}))::bigint as order_paise
@@ -107,28 +107,39 @@ async function sales(p, rice, detail = true) {
   return out
 }
 
-/** Of the customers who bought in the period, how many have 2 or more Won orders in all. */
+/** Of the customers (one per mobile) who bought in the period, how many have 2 or more Won orders in all. */
 async function repeatCustomers(items, args) {
   const { rows: [r] } = await query(
     `select count(*)::int as customers,
-            count(*) filter (where (select count(*) from orders o where o.customer_id = c.customer_id and ${WON}) >= 2)::int as repeat
-       from (select distinct o.customer_id ${items}) c`, args)
+            count(*) filter (where (select count(*) from orders o where ${key10('o.contact_phone')} = c.m and ${WON}) >= 2)::int as repeat
+       from (select distinct ${key10('o.contact_phone')} as m ${items}) c`, args)
   return { customers: r.customers, repeat: r.repeat, percent: pct(r.repeat, r.customers) }
 }
 
 /** Leads in the period: website sign-ups by source, expo QR leads, new WhatsApp chats. */
+// One lead per mobile number in the period (Nov 2026): someone who signed up and also messaged on WhatsApp (or
+// left an expo QR lead) is one lead, kept as the sign-up (which carries the ad), then expo, then the chat.
+const LEAD_RANK = `case kind when 'signup' then 1 when 'expo' then 2 else 3 end`
+
 async function newLeads(p) {
-  const [signups, expo, whatsapp] = await Promise.all([
-    query(`select ${BUCKET} as bucket, count(*)::int as n from contest_leads c
-            where c.created_at >= $1 and c.created_at < $2 group by 1`, [p.fromTs, p.toTs]),
-    query(`select count(*)::int as n from expo_leads where created_at >= $1 and created_at < $2`, [p.fromTs, p.toTs]),
-    query(`select count(*)::int as n from whatsapp_contacts
-            where source = 'webhook' and coalesce(first_message_at, created_at) >= $1 and coalesce(first_message_at, created_at) < $2`, [p.fromTs, p.toTs]),
-  ])
+  const { rows } = await query(
+    `with l as (
+       select 'signup' as kind, ${key10('c.phone')} as m, ${BUCKET} as bucket, c.created_at from contest_leads c
+        where c.created_at >= $1 and c.created_at < $2
+       union all
+       select 'expo', ${key10('e.phone')}, 'Events', e.created_at from expo_leads e
+        where e.created_at >= $1 and e.created_at < $2
+       union all
+       select 'whatsapp', ${key10('w.phone')}, 'Chat', coalesce(w.first_message_at, w.created_at) from whatsapp_contacts w
+        where w.source = 'webhook' and coalesce(w.first_message_at, w.created_at) >= $1 and coalesce(w.first_message_at, w.created_at) < $2)
+     select bucket, count(*)::int as n
+       from (select distinct on (m) * from l order by m, ${LEAD_RANK}, created_at) d group by 1`, [p.fromTs, p.toTs])
   const bySource = { Facebook: 0, Instagram: 0, WhatsApp: 0, Website: 0, Events: 0 }
-  for (const r of signups.rows) bySource[r.bucket] += r.n
-  bySource.Events += expo.rows[0].n
-  const chats = whatsapp.rows[0].n
+  let chats = 0
+  for (const r of rows) {
+    if (r.bucket === 'Chat') chats += r.n
+    else bySource[r.bucket] += r.n
+  }
   const total = Object.values(bySource).reduce((a, b) => a + b, 0) + chats
   return { total, bySource, whatsappChats: chats }
 }
@@ -136,12 +147,13 @@ async function newLeads(p) {
 /** Website sign-ups and expo leads of the period, each with how far it got. */
 async function leadJourneys(p) {
   const { rows } = await query(
-    `with leads as (
-       select c.created_at, ${key10('c.phone')} as m, ${BUCKET} as bucket from contest_leads c
+    `with all_leads as (
+       select 'signup' as kind, c.created_at, ${key10('c.phone')} as m, ${BUCKET} as bucket from contest_leads c
         where c.created_at >= $1 and c.created_at < $2
        union all
-       select e.created_at, ${key10('e.phone')}, 'Events' from expo_leads e
-        where e.created_at >= $1 and e.created_at < $2)
+       select 'expo', e.created_at, ${key10('e.phone')}, 'Events' from expo_leads e
+        where e.created_at >= $1 and e.created_at < $2),
+     leads as (select distinct on (m) * from all_leads order by m, ${LEAD_RANK}, created_at)
      select l.bucket, l.created_at,
             coalesce(s.calls, 0) > 0 as called,
             s.status = 'qualified' as qualified,
@@ -204,7 +216,7 @@ async function recentOrders(p) {
  */
 async function leadList(p) {
   const { rows } = await query(
-    `with l as (
+    `with all_l as (
        select 'signup' as kind, c.name, c.phone, c.email, c.source, nullif(c.campaign, '') as campaign, nullif(c.ad, '') as ad,
               null::text as detail, c.created_at
          from contest_leads c where c.created_at >= $1 and c.created_at < $2
@@ -215,7 +227,8 @@ async function leadList(p) {
        union all
        select 'whatsapp', w.name, w.phone, null, 'whatsapp', null, null, left(w.first_message, 160), coalesce(w.first_message_at, w.created_at)
          from whatsapp_contacts w where w.source = 'webhook'
-          and coalesce(w.first_message_at, w.created_at) >= $1 and coalesce(w.first_message_at, w.created_at) < $2)
+          and coalesce(w.first_message_at, w.created_at) >= $1 and coalesce(w.first_message_at, w.created_at) < $2),
+     l as (select distinct on (${key10('phone')}) * from all_l order by ${key10('phone')}, ${LEAD_RANK}, created_at)
      select l.*, s.calls, s.status as lead_status, s.last_disposition, s.last_agent, s.last_remark, s.last_called_at,
             (select min(o.placed_at) from orders o where ${key10('o.contact_phone')} = ${key10('l.phone')} and ${WON}
                 and o.placed_at >= l.created_at - interval '1 day') as bought_at

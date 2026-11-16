@@ -365,21 +365,25 @@ export async function saveContestLead(db, body) {
 export async function contestLeads(db, { days, from, to } = {}) {
   const range = reportRange({ days, from, to })
   const { rows } = await db.query(
+    // One row per mobile number (Nov 2026): a sign-up who also messaged on WhatsApp or left an expo QR lead is one
+    // lead, kept as the sign-up (it carries the ad), then the expo lead, then the chat — as the Analyst dashboard.
     `select * from (
-       select name, phone, email, source, campaign, ad, landing, submissions, phone_verified, created_at, updated_at, null::text as message
-         from contest_leads where ${inRange('created_at', 1, 2)}
-       union all
-       select name, phone, coalesce(email, ''), 'expo', campaign, null, null, submissions, false, created_at, updated_at, location || ' · ' || array_to_string(requirements, ', ')
-         from expo_leads where ${inRange('created_at', 1, 2)}
-       union all
-       select coalesce(nullif(name, ''), 'WhatsApp contact'), phone, '', 'whatsapp_chat', null, null, null, messages, false,
-              coalesce(first_message_at, created_at), coalesce(last_message_at, updated_at), first_message
-         from whatsapp_contacts where source = 'webhook' and ${inRange('coalesce(first_message_at, created_at)', 1, 2)}
+       select distinct on (right(regexp_replace(phone, '\\D', '', 'g'), 10)) * from (
+         select 1 as rank, name, phone, email, source, campaign, ad, landing, submissions, phone_verified, created_at, updated_at, null::text as message
+           from contest_leads where ${inRange('created_at', 1, 2)}
+         union all
+         select 2, name, phone, coalesce(email, ''), 'expo', campaign, null, null, submissions, false, created_at, updated_at, location || ' · ' || array_to_string(requirements, ', ')
+           from expo_leads where ${inRange('created_at', 1, 2)}
+         union all
+         select 3, coalesce(nullif(name, ''), 'WhatsApp contact'), phone, '', 'whatsapp_chat', null, null, null, messages, false,
+                coalesce(first_message_at, created_at), coalesce(last_message_at, updated_at), first_message
+           from whatsapp_contacts where source = 'webhook' and ${inRange('coalesce(first_message_at, created_at)', 1, 2)}
+       ) a order by right(regexp_replace(phone, '\\D', '', 'g'), 10), rank, created_at
      ) l order by created_at desc limit 10000`,
     [range.from, range.to]
   )
   const label = { ...SOURCES, expo: 'Expo QR', whatsapp_chat: 'WhatsApp chat' }
-  return rows.map((r) => ({ ...r, sourceLabel: label[r.source] || r.source }))
+  return rows.map(({ rank, ...r }) => ({ ...r, sourceLabel: label[r.source] || r.source }))
 }
 
 /**

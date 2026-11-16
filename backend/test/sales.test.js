@@ -3945,6 +3945,33 @@ test('Ad campaigns: reports and sign-ups take a From-To date range (India dates,
   assert.deepEqual([r.from, r.to], [today, today])
 })
 
+test('duplicates: one person is one lead and one customer, whatever lists they are in or emails they type', async () => {
+  const { contestLeads } = await import('../lib/sales/attribution.js')
+  const today = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)
+  // The same mobile signs up from a Meta ad, messages on WhatsApp and leaves an expo QR lead.
+  await db.query(`insert into contest_leads (name, phone, email, source) values ('Dup Devi', '9755500001', 'd@b.co', 'meta_ads_facebook')`)
+  await db.query(`insert into whatsapp_contacts (phone, name, source, first_message_at) values ('9755500001', 'Dup Devi', 'webhook', now())`)
+  await db.query(`insert into expo_leads (name, phone, location, buyer_type, requirements) values ('Dup Devi', '+91 97555 00001', 'Erode', 'consumer', '{raw}')`)
+  const mine = (await contestLeads({ query: db.query }, { from: today, to: today })).filter((l) => l.phone.replace(/\D/g, '').endsWith('9755500001'))
+  assert.equal(mine.length, 1, JSON.stringify(mine))
+  assert.equal(mine[0].source, 'meta_ads_facebook') // kept as the sign-up, which carries the ad
+  const a = (await api('GET', `/api/admin/analyst?from=${today}&to=${today}`, { token: OWNER })).body
+  assert.equal(a.leads.list.filter((l) => l.phone.replace(/\D/g, '').endsWith('9755500001')).length, 1)
+
+  // Two checkouts from one mobile with two emails: one customer, listed once with both orders.
+  for (const email of ['dup1@example.com', 'dup2@example.com']) {
+    const s = await api('POST', '/api/checkout/session', { body: { ...buyer({ name: 'Dup Buyer', email, phone: '97555 00002' }), items: [{ id: 'alibaba', qty: 1 }] } })
+    assert.equal(s.status, 200, JSON.stringify(s.body))
+  }
+  const mobile = `right(regexp_replace(contact_phone, '\\D', '', 'g'), 10) = '9755500002'`
+  await db.query(`update orders set status = 'placed', payment_status = 'paid', placed_at = now() where ${mobile}`)
+  const { rows } = await db.query(`select count(distinct customer_id)::int as n from orders where ${mobile}`)
+  assert.equal(rows[0].n, 1)
+  const list = (await api('GET', '/api/admin/warehouse/customers?q=97555', { token: OWNER })).body.customers
+  const dup = list.filter((c) => c.phone.replace(/\D/g, '').endsWith('9755500002'))
+  assert.equal(dup.length, 1, JSON.stringify(list))
+})
+
 test('cart reminder emails: email 1 after an hour, email 2 with a free-delivery code, resume link, unsubscribe, never after paying, results', async () => {
   const { sendCartReminders } = await import('../lib/sales/cart-recovery.js')
   const { randomUUID } = await import('node:crypto')

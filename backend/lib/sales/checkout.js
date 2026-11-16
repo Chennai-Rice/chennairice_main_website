@@ -180,12 +180,23 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
     // GST inside the delivery charge, kept with the order for its invoice.
     const shippingTaxRateBp = deliveryTaxRateBp(settings)
 
-    const { rows: [cust] } = await db.query(
-      `insert into customers (email, name, phone) values ($1, $2, $3)
-       on conflict (email) do update set name = excluded.name, phone = excluded.phone
-       returning id`,
-      [customer.email, customer.name, customer.phone]
-    )
+    // One customer per mobile number (Nov 2026): a returning buyer who types a different email is the same customer,
+    // not a second one. A new mobile is saved by email as before.
+    const mobile10 = String(customer.phone || '').replace(/\D/g, '').slice(-10)
+    let { rows: [cust] } = mobile10.length === 10
+      ? await db.query(
+        `update customers set name = $2 where id = (
+           select id from customers where right(regexp_replace(phone, '\\D', '', 'g'), 10) = $1 order by created_at, id limit 1)
+         returning id`, [mobile10, customer.name])
+      : { rows: [] }
+    if (!cust) {
+      ({ rows: [cust] } = await db.query(
+        `insert into customers (email, name, phone) values ($1, $2, $3)
+         on conflict (email) do update set name = excluded.name, phone = excluded.phone
+         returning id`,
+        [customer.email, customer.name, customer.phone]
+      ))
+    }
 
     const address = {
       line1: customer.addressLine1, line2: customer.addressLine2 || null, landmark: customer.landmark || null,
