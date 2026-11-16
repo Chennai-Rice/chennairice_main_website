@@ -221,22 +221,85 @@
   }
 }
 
-@media (max-width: 560px) {
+.cookie-text-short { display: none; }
+
+/* Phones (Nov 2026): a slim floating bar, about 130px tall, not a sheet covering
+   half the screen. One short line with "Learn more" inline, the two buttons side by
+   side, kept above the product page's buy bar and the Proceed-to-cart pill. */
+@media (max-width: 860px) {
   .cookie-card-wrap {
-    bottom: 0;
-    padding: 0;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: 0 10px;
+    z-index: 960;
   }
+  body:has(.pdp-buybar.is-shown) .cookie-card-wrap { bottom: 76px; }
+  body:has(.checkout-bar) .cookie-card-wrap,
+  body:has(.checkout-paybar) .cookie-card-wrap { bottom: 84px; }
+  /* The Spin Wheel and Soru Kutty tabs come back once the visitor answers. */
+  body:has(.cookie-card-wrap) .spin-fab,
+  body:has(.cookie-card-wrap) .sk-launcher { display: none; }
+
   .cookie-card {
-    border-radius: 16px 16px 0 0;
-    padding: 20px clamp(16px, 5vw, 24px) calc(18px + env(safe-area-inset-bottom, 0px));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(40, 8, 14, 0.22), 0 2px 8px rgba(40, 8, 14, 0.1);
   }
-  .cookie-card-brand {
+  .cookie-card-brand,
+  .cookie-card-icon,
+  .cookie-card-link--block,
+  .cookie-text-long {
     display: none;
   }
-  .cookie-card-icon svg {
-    width: 32px;
-    height: 32px;
+  .cookie-text-short { display: inline; }
+  .cookie-card-copy {
+    gap: 2px;
+    padding-right: 30px; /* room for the close button */
   }
+  .cookie-card-title {
+    font-size: 16px;
+    line-height: 1.3;
+  }
+  .cookie-card-text {
+    font-size: 12.5px;
+    line-height: 1.45;
+    opacity: 0.9;
+  }
+  .cookie-card-link--inline {
+    display: inline;
+    margin: 0;
+    font-size: inherit;
+    white-space: nowrap;
+  }
+  .cookie-card-close {
+    top: 8px;
+    right: 8px;
+    width: 36px;
+    height: 36px;
+  }
+  .cookie-card-actions {
+    gap: 8px;
+  }
+  .cookie-btn {
+    padding: 10px 12px;
+    min-height: 42px;
+    font-size: 13px;
+  }
+  .cookie-btn:hover { transform: none; }
+}
+@media (min-width: 561px) and (max-width: 860px) {
+  .cookie-card-wrap { padding: 0 16px; }
+  .cookie-card {
+    grid-template-columns: minmax(0, 1fr) 260px;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 18px;
+  }
+  .cookie-card-copy { padding-right: 0; }
+  .cookie-card-close { top: 6px; right: 6px; width: 30px; height: 30px; }
+  .cookie-card-actions { padding-right: 24px; box-sizing: border-box; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -246,4 +309,40 @@
   .cookie-btn:hover {
     transform: none;
   }
+}
+
+/* Owner, 16 Nov 2026: a small, quiet close (X) and Reject as a text link beside the
+   Accept button, on every screen size. */
+.cookie-card-close {
+  width: 28px;
+  height: 28px;
+  color: rgba(74, 44, 34, 0.45);
+}
+.cookie-card-close svg { width: 11px; height: 11px; }
+.cookie-card-close:hover { color: var(--maroon); background: transparent; }
+
+.cookie-btn.cookie-btn-reject {
+  background: transparent;
+  border: 0;
+  padding: 10px 8px;
+  min-height: 0;
+  color: rgba(42, 26, 20, 0.7);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cookie-btn.cookie-btn-reject:hover {
+  background: transparent;
+  color: var(--maroon);
+  transform: none;
+}
+.cookie-card-actions { gap: 14px; }
+
+@media (max-width: 860px) {
+  .cookie-card-close { top: 6px; right: 6px; width: 28px; height: 28px; }
+  .cookie-card-actions { grid-template-columns: auto minmax(0, 1fr); }
+  .cookie-card-copy { padding-right: 22px; }
+}
+@media (min-width: 561px) and (max-width: 860px) {
+  .cookie-card { grid-template-columns: minmax(0, 1fr) 230px; }
 }

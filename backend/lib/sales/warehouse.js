@@ -307,28 +307,38 @@ export async function listWarehouseCustomers(f = {}, { maxLimit = 100 } = {}) {
   // People who ordered (or tried to), plus contest sign-ups that have not ordered. A sign-up whose mobile
   // number has an order is shown once, as the customer.
   const base = `
-    with buyers as (
-      select c.id::text as id, c.name, c.phone, c.email::text as email,
-             (array_agg(o.shipping_address->>'city' order by o.placed_at desc nulls last))[1] as city,
-             (array_agg(o.ship_state order by o.placed_at desc nulls last))[1] as state,
-             count(distinct o.id)::int as orders,
-             coalesce(sum(i.quantity), 0)::int as packs,
-             max(o.placed_at) as last_order_at,
-             min(o.placed_at) as first_order_at,
+    with bo as (
+      -- Each order with its customer; one buyer per mobile number (Nov 2026), so a person saved twice (two emails)
+      -- is listed once.
+      select c.id, c.created_at as c_created, c.name, c.phone, c.email::text as email, o.id as order_id,
+             o.placed_at, o.created_at, o.shipping_address->>'city' as city, o.ship_state, o.traffic_source, o.payment_status,
+             coalesce(nullif(right(regexp_replace(c.phone, '[^0-9]', '', 'g'), 10), ''), 'id:' || c.id::text) as pkey,
+             (select sum(i.quantity) from order_items i where i.order_id = o.id) as packs
+        from customers c
+        join orders o on o.customer_id = c.id
+       where o.status <> 'pending_payment' and exists (select 1 from order_items i where i.order_id = o.id)
+    ), buyers as (
+      select (array_agg(id::text order by c_created, id))[1] as id,
+             (array_agg(name order by placed_at desc nulls last, created_at desc))[1] as name,
+             (array_agg(phone order by placed_at desc nulls last, created_at desc))[1] as phone,
+             (array_agg(email order by placed_at desc nulls last, created_at desc))[1] as email,
+             (array_agg(city order by placed_at desc nulls last))[1] as city,
+             (array_agg(ship_state order by placed_at desc nulls last))[1] as state,
+             count(distinct order_id)::int as orders,
+             coalesce(sum(packs), 0)::int as packs,
+             max(placed_at) as last_order_at,
+             min(placed_at) as first_order_at,
              -- Where they first came from: the contest sign-up if they made one, else their earliest tagged order.
              coalesce(
                nullif((select l.source from contest_leads l
-                        where right(regexp_replace(l.phone, '[^0-9]', '', 'g'), 10) = right(regexp_replace(c.phone, '[^0-9]', '', 'g'), 10) limit 1), 'direct'),
-               (array_agg(o.traffic_source order by (o.traffic_source is not null and o.traffic_source <> 'direct') desc, o.placed_at asc nulls last))[1]
+                        where right(regexp_replace(l.phone, '[^0-9]', '', 'g'), 10) = bo.pkey limit 1), 'direct'),
+               (array_agg(traffic_source order by (traffic_source is not null and traffic_source <> 'direct') desc, placed_at asc nulls last))[1]
              ) as source,
-             bool_or(o.payment_status in ('paid', 'partially_refunded', 'refunded')) as converted,
-             right(regexp_replace(c.phone, '[^0-9]', '', 'g'), 10) as pkey,
-             max(coalesce(o.placed_at, o.created_at)) as recent
-        from customers c
-        join orders o on o.customer_id = c.id
-        join order_items i on i.order_id = o.id
-       where o.status <> 'pending_payment'
-       group by c.id
+             bool_or(payment_status in ('paid', 'partially_refunded', 'refunded')) as converted,
+             pkey,
+             max(coalesce(placed_at, created_at)) as recent
+        from bo
+       group by pkey
     ), signups_all as (
       select l.id::text as id, l.name, l.phone, l.email, null::text as city, null::text as state,
              0 as orders, 0 as packs, null::timestamptz as last_order_at, null::timestamptz as first_order_at,

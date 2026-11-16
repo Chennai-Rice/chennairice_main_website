@@ -68,10 +68,17 @@ export default function CookieBanner() {
         <div className="cookie-card-copy">
           <p id="cookie-card-title" className="cookie-card-title">We value your privacy</p>
           <p className="cookie-card-text">
-            We use cookies to enhance your browsing experience, keep your cart working, and
-            understand site traffic. You can choose to accept or reject non-essential cookies.
+            <span className="cookie-text-long">
+              We use cookies to enhance your browsing experience, keep your cart working, and
+              understand site traffic. You can choose to accept or reject non-essential cookies.
+            </span>
+            {/* Phones: one short line, so the notice stays a slim bar over the page. */}
+            <span className="cookie-text-short">
+              We use cookies to keep your cart working and improve the site.{' '}
+              <Link to="/privacy" className="cookie-card-link cookie-card-link--inline">Learn more</Link>
+            </span>
           </p>
-          <Link to="/privacy" className="cookie-card-link">
+          <Link to="/privacy" className="cookie-card-link cookie-card-link--block">
             Learn more
             <svg width="13" height="10" viewBox="0 0 13 10" fill="none" aria-hidden="true">
               <path d="M1 5h10.5M7.5 1l4.5 4-4.5 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
