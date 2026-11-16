@@ -48,6 +48,8 @@ function hideFor(ms) {
 export default function ContestPopup() {
   // Visitors from the expo QR code get the expo form (ExpoPopup) instead.
   if (isExpoVisit()) return null
+  // The contest poster is retired: only ad visitors still get the sign-up form.
+  if (!isAdVisit()) return null
   return <ContestPopupInner />
 }
 
@@ -115,51 +117,7 @@ function ContestPopupInner() {
 
   if (!open) return null
 
-  if (fromAd) return <AdSignup closeRef={closeRef} close={close} />
-
-  return (
-    <div className="contest-pop-backdrop" onClick={() => close()}>
-      <div
-        className="contest-pop contest-pop--poster"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Chennai Rice Super Slogan Contest"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          ref={closeRef}
-          data-focus
-          type="button"
-          className="contest-pop-close"
-          aria-label="Close"
-          onClick={() => close()}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-          </svg>
-        </button>
-
-        <Link className="contest-poster-art" to={BUY_PATH} tabIndex={-1} onClick={() => close(HIDE_AFTER_JOIN_MS)}>
-          <picture>
-            <source srcSet="/assets/contest-poster-v3.webp" type="image/webp" />
-            <img
-              src="/assets/contest-poster-v3.jpg"
-              width="800"
-              height="1200"
-              alt="Chennai Rice Super Slogan Contest: craft the best slogan and bring home the grand prize. Buy a Kitchidi Ponni Rice 5 kg or 26 kg bag, find the coupon, scan and register, and collect your gift. Prizes include a car, a scooter, gold jewellery, a TV, a fridge, a phone, silk sarees and kitchenware. T&C apply."
-            />
-          </picture>
-        </Link>
-
-        <Link data-focus className="contest-poster-cta contest-poster-cta--on-art" to={BUY_PATH} onClick={() => close(HIDE_AFTER_JOIN_MS)}>
-          Buy Kitchidi Ponni Rice
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Link>
-      </div>
-    </div>
-  )
+  return <AdSignup closeRef={closeRef} close={close} />
 }
 
 /**
