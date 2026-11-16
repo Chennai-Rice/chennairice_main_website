@@ -36,7 +36,7 @@ function useInterval(fn, ms) {
   useEffect(() => { const id = setInterval(() => { if (!document.hidden) saved.current() }, ms); return () => clearInterval(id) }, [ms])
 }
 
-function TemplateSender({ phone, onSent }) {
+function TemplateSender({ phone, name = '', onSent }) {
   const [list, setList] = useState(null)
   const [id, setId] = useState('')
   const [vals, setVals] = useState({ body: [], buttons: {} })
@@ -49,8 +49,12 @@ function TemplateSender({ phone, onSent }) {
   function pick(nextId) {
     setId(nextId)
     const tt = list.find((x) => x.id === nextId)
-    setVals({ body: tt ? [...tt.model.body.samples] : [], buttons: tt ? Object.fromEntries(tt.model.buttons.map((b, i) => [i, b.sample || ''])) : {} })
+    // Never the template's example values (Meta's samples, e.g. "Lakshmi"): {{1}} is the customer's name when we
+    // know it, everything else starts empty with the example shown as a hint (Nov 2026).
+    const samples = tt?.model.body.samples || []
+    setVals({ body: samples.map((s, i) => (i === 0 && name ? name : '')), buttons: {} })
   }
+  const missing = vars.some((v) => !String(vals.body[v - 1] || '').trim()) || dyn.some(([, i]) => !String(vals.buttons[i] || '').trim())
   async function send() {
     setBusy(true)
     setErr('')
@@ -73,16 +77,19 @@ function TemplateSender({ phone, onSent }) {
           <div className="wa-samples">
             {vars.map((v) => (
               <label key={v}><span>{`{{${v}}}`}</span>
-                <input value={vals.body[v - 1] || ''} onChange={(e) => { const body = [...vals.body]; body[v - 1] = e.target.value; setVals({ ...vals, body }) }} />
+                <input value={vals.body[v - 1] || ''} placeholder={t.model.body.samples?.[v - 1] ? `e.g. ${t.model.body.samples[v - 1]}` : ''}
+                  onChange={(e) => { const body = [...vals.body]; body[v - 1] = e.target.value; setVals({ ...vals, body }) }} />
               </label>
             ))}
             {dyn.map(([b, i]) => (
               <label key={'b' + i}><span>{b.type === 'COPY_CODE' ? 'code' : 'link end'}</span>
-                <input value={vals.buttons[i] || ''} onChange={(e) => setVals({ ...vals, buttons: { ...vals.buttons, [i]: e.target.value } })} />
+                <input value={vals.buttons[i] || ''} placeholder={b.sample ? `e.g. ${b.sample}` : ''}
+                  onChange={(e) => setVals({ ...vals, buttons: { ...vals.buttons, [i]: e.target.value } })} />
               </label>
             ))}
           </div>
-          <button type="button" className="wa-btn wa-btn--lime" disabled={busy} onClick={send}><I name="send" size={14} /> {busy ? 'Sending…' : 'Send template'}</button>
+          {missing && <small className="wa-muted">Fill in every blank above (the customer's name, etc.) before sending.</small>}
+          <button type="button" className="wa-btn wa-btn--lime" disabled={busy || missing} onClick={send}><I name="send" size={14} /> {busy ? 'Sending…' : 'Send template'}</button>
         </>
       )}
       {err && <p className="wa-alert">{err}</p>}
@@ -209,7 +216,7 @@ function Chat({ phone, onChanged }) {
               as soon as they reply, the message box opens here and you can chat with them.
             </p>
           )}
-          <TemplateSender phone={c.phone} onSent={() => { setShowTemplate(false); load(); onChanged() }} />
+          <TemplateSender phone={c.phone} name={c.name || ''} onSent={() => { setShowTemplate(false); load(); onChanged() }} />
           {c.windowOpen && <button type="button" className="wa-link" onClick={() => setShowTemplate(false)}>Back to a normal reply</button>}
         </div>
       )}
