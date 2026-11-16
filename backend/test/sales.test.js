@@ -3113,15 +3113,19 @@ test('checkout journeys follow-up: stopped journeys go to their own NeoDove camp
     assert.equal(state[again], 'payment')
     assert.equal(state[againDetails], 'details (already called this week)')
 
-    // NeoDove: each journey to its own campaign's endpoint.
+    // NeoDove: each journey to its own campaign's endpoint, but one lead per customer: 9600011111 goes once, to
+    // "Payment not completed" (its older journey), with the newer "Left at details" journey added to that lead.
     await sendNeodoveLeads({ query: db.query })
     const byPath = (p) => neo.filter((n) => n.path === p).map((n) => n.body)
-    assert.equal(byPath('/details').length, 1)
+    assert.equal(byPath('/details').length, 0)
     assert.equal(byPath('/payment').length, 2)
-    const d = byPath('/details')[0]
-    assert.deepEqual({ name: d.name, mobile: d.mobile, Stopped: d.Stopped, Basket: d.Basket, Value: d.Value, Place: d.Place },
-      { name: 'Kavya S', mobile: 9600011111, Stopped: 'Filled in details, did not press Pay', Basket: '2 x Kitchidi Ponni Rice 26 kg', Value: '₹1,218', Place: 'Erode, Tamil Nadu, 638102' })
+    const d = byPath('/payment').find((p) => p.mobile === 9600011111)
+    assert.deepEqual({ name: d.name, mobile: d.mobile, Stopped: d.Stopped, Basket: d.Basket, Value: d.Value, Place: d.Place, 'Lead type': d['Lead type'] },
+      { name: 'Kavya S', mobile: 9600011111, Stopped: 'Filled in details, did not press Pay', Basket: '2 x Kitchidi Ponni Rice 26 kg', Value: '₹1,218', Place: 'Erode, Tamil Nadu, 638102', 'Lead type': 'Checkout: payment not completed' })
+    assert.match(d['Latest action'], /^Checkout: left at details, /)
     assert.equal(byPath('/payment').find((p) => p.mobile === 9600055555).Stopped, 'Cancelled the payment')
+    const { rows: [dup] } = await db.query(`select status, last_error from neodove_outbox where mobile = '9600011111' and campaign = 'checkout_details'`)
+    assert.deepEqual(dup, { status: 'sent', last_error: 'merged: added to the earlier lead, not sent again' })
 
     // Sales Daddy: the left-at-details journey as a lead, tagged, with the note.
     Object.assign(process.env, { SALESDADDY_API_KEY: 'sd_live_test', SALESDADDY_BASE_URL: `http://127.0.0.1:${fakeSd.address().port}` })
@@ -3850,6 +3854,53 @@ test('NeoDove: a telecaller endpoint pasted twice pauses sending instead of fail
     assert.match(r.skipped, /bad endpoint: gayathri/)
   } finally {
     for (const k of ['NEODOVE_ENDPOINT_GAYATHRI', 'NEODOVE_ENDPOINT_RAMYA']) delete process.env[k]
+  }
+})
+
+test('NeoDove: one lead per customer - a Meta sign-up who later leaves at checkout stays in Meta; the cart is added to that lead', async () => {
+  const http = await import('node:http')
+  const got = []
+  const fakeNeo = http.createServer((req, res) => {
+    let body = ''
+    req.on('data', (c) => (body += c)).on('end', () => { got.push({ url: req.url, body: JSON.parse(body) }); res.end('OK') })
+  })
+  await new Promise((r) => fakeNeo.listen(0, r))
+  const { recordSignup, sendNeodoveLeads } = await import('../lib/neodove.js')
+  const url = `http://127.0.0.1:${fakeNeo.address().port}`
+  const keys = ['NEODOVE_ENDPOINT_META', 'NEODOVE_ENDPOINT_CART', 'NEODOVE_ENDPOINT_ENQUIRY', 'NEODOVE_UPDATE_ENDPOINT_META']
+  Object.assign(process.env, { NEODOVE_ENDPOINT_META: url + '/meta', NEODOVE_ENDPOINT_CART: url + '/cart', NEODOVE_ENDPOINT_ENQUIRY: url + '/enquiry' })
+  const cart = (mobile) => db.query(`insert into neodove_outbox (mobile, campaign, payload) values ($1, 'checkout_payment', $2)`,
+    [mobile, { name: 'Website shopper', mobile: Number(mobile), email: '', Stopped: 'Payment failed', 'Cart value': 850, Basket: '2 x Ponni 5 kg', 'Lead type': 'Checkout: payment not completed', Source: 'meta_ads' }])
+  try {
+    await db.query(`update neodove_outbox set status = 'failed' where status = 'queued'`)
+    // Sent to Meta first; the cart comes later.
+    await recordSignup(db, { name: 'Meta First', phone: '9733300001', source: 'meta_ads_facebook' })
+    assert.equal((await sendNeodoveLeads({ query: db.query })).sent, 1)
+    await cart('9733300001')
+    // No update link for Meta yet: waits, never created in Add to cart.
+    const r1 = await sendNeodoveLeads({ query: db.query })
+    assert.deepEqual([r1.sent, r1.waiting], [0, 1], JSON.stringify(r1))
+    process.env.NEODOVE_UPDATE_ENDPOINT_META = url + '/meta-update'
+    await db.query(`update neodove_outbox set next_try_at = now() where mobile = '9733300001'`)
+    const r2 = await sendNeodoveLeads({ query: db.query })
+    assert.equal(r2.updated, 1, JSON.stringify(r2))
+    assert.deepEqual(got.map((g) => g.url), ['/meta', '/meta-update'])
+    const upd = got[1].body
+    assert.deepEqual([upd.name, upd.mobile, upd['Cart value'], upd.Stopped, upd['Lead type'], upd.Source], ['Meta First', 9733300001, 850, 'Payment failed', undefined, undefined])
+    assert.match(upd['Latest action'], /^Checkout: payment not completed, /)
+
+    // Both still waiting to go: one lead, with the cart added to it.
+    got.length = 0
+    await recordSignup(db, { name: 'Both Queued', phone: '9733300002', source: 'meta_ads_instagram' })
+    await cart('9733300002')
+    const r3 = await sendNeodoveLeads({ query: db.query })
+    assert.deepEqual([r3.sent, r3.merged], [1, 1], JSON.stringify(r3))
+    assert.equal(got.length, 1)
+    assert.equal(got[0].url, '/meta')
+    assert.deepEqual([got[0].body.name, got[0].body['Cart value'], got[0].body['Lead type']], ['Both Queued', 850, 'Meta Ads'])
+  } finally {
+    for (const k of keys) delete process.env[k]
+    fakeNeo.close()
   }
 })
 

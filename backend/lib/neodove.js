@@ -407,6 +407,8 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
   if (!hasDatabase() || !campaigns.length) return { sent: 0, failed: 0, skipped: campaigns.length ? 'no database' : 'no NeoDove endpoint' }
   let sent = 0
   let failed = 0
+  let updated = 0
+  let merged = 0
   // In source mode a lead goes to its source campaign; while that campaign's link is not set yet (they are set one by
   // one, owner 13 Nov 2026) it still goes round robin to the telecallers' campaigns, so no lead waits in between.
   const pool = poolAgents()
@@ -436,11 +438,88 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
       [id, limit, campaigns]
     )
     rows.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    const failedTry = async (r, result) => {
+      failed++
+      const attempts = r.attempts + 1
+      const error = `${result.status} ${String(result.text).slice(0, 200)}`.trim()
+      const refused = result.status >= 400 && result.status < 500 && ![401, 408, 429].includes(result.status)
+      await query(
+        `update neodove_outbox set attempts = $2, last_error = $3, status = $4, next_try_at = now() + make_interval(mins => $5) where id = $1`,
+        [r.id, attempts, error, refused || attempts >= MAX_ATTEMPTS ? 'failed' : 'queued', BACKOFF[Math.min(attempts - 1, BACKOFF.length - 1)]])
+      console.error('[neodove] NeoDove did not take a lead:', error)
+    }
+    const done = new Set() // merged into another lead in this run
     for (const r of rows) {
+      if (done.has(r.id)) continue
       // Queued before the number was blocked: dropped, never sent.
       if (isBlockedMobile(r.mobile)) {
         await query(`update neodove_outbox set status = 'failed', last_error = 'blocked: company number' where id = $1`, [r.id])
         continue
+      }
+      // ONE LEAD PER CUSTOMER (owner, 16 Nov 2026): a mobile NeoDove already has, or that is already waiting to go, is
+      // not created again in another campaign. It stays in the campaign that got it first; what the customer did since
+      // (cart, payment failed, Spin & Win, an enquiry…) is added to that lead instead.
+      const { rows: [first] } = await query(
+        `select id, status, agent, campaign, payload, created_at from neodove_outbox
+          where mobile = $1 and id <> $2 and (status = 'sent' or (status = 'queued' and created_at < $3))
+          order by (status = 'sent') desc, created_at limit 1`, [r.mobile, r.id, r.created_at])
+      // A sign-up beats a checkout (owner, 16 Nov 2026: a Meta sign-up who adds to cart is a Meta sign-up, not Add to
+      // cart): a checkout still waiting to go is folded into this sign-up, which goes to its own campaign.
+      if (first?.status === 'queued' && r.campaign === 'signup' && /^checkout_/.test(first.campaign)) {
+        r.payload = { ...r.payload, ...laterAction({ ...first, lead_source: r.lead_source }) }
+        await query('update neodove_outbox set payload = $2 where id = $1', [r.id, r.payload])
+        await query(`update neodove_outbox set status = 'sent', sent_at = now(), last_error = 'merged: added to the sign-up lead, not sent again' where id = $1`, [first.id])
+        done.add(first.id)
+        merged++
+      } else if (first) {
+        const extra = laterAction(r)
+        if (first.status === 'queued') {
+          // Not sent yet: goes out once, as one lead, with this added.
+          await query('update neodove_outbox set payload = payload || $2::jsonb where id = $1', [first.id, extra])
+          await query(`update neodove_outbox set status = 'sent', sent_at = now(), last_error = 'merged: added to the earlier lead, not sent again' where id = $1`, [r.id])
+          merged++
+          continue
+        }
+        const name = ROUTE_NAMES[first.agent] || AGENT_NAMES[first.agent]
+        if (!name) {
+          // Sent before the campaigns had names (no update link to use): not created again.
+          await query(`update neodove_outbox set status = 'sent', sent_at = now(), last_error = 'not sent again: already in NeoDove' where id = $1`, [r.id])
+          merged++
+          continue
+        }
+        const key = `NEODOVE_UPDATE_ENDPOINT_${first.agent.toUpperCase()}`
+        const link = String(process.env[key] || '').trim()
+        if (!usable(link)) {
+          waiting++
+          await query(`update neodove_outbox set next_try_at = now() + interval '10 minutes', last_error = $2 where id = $1`,
+            [r.id, `waiting: already in ${name}; its "Endpoint (Update only)" link (${key}) is not set`])
+          continue
+        }
+        const body = { name: first.payload?.name || r.payload?.name || `Lead ${r.mobile}`, mobile: Number(r.mobile),
+          ...(!first.payload?.email && r.payload?.email && { email: r.payload.email }), ...extra }
+        let result
+        try { result = await post(body, link) } catch (err) { result = { status: 0, text: err.message } }
+        if (result.status >= 200 && result.status < 300) {
+          updated++
+          await query(`update neodove_outbox set status = 'sent', sent_at = now(), attempts = attempts + 1, last_error = $2 where id = $1`,
+            [r.id, `update: added to the lead in ${name}`])
+        } else await failedTry(r, result)
+        continue
+      }
+      // A checkout whose customer also has a sign-up waiting: the sign-up goes out as the lead and takes this checkout in.
+      if (/^checkout_/.test(r.campaign)) {
+        const { rows: [signup] } = await query(`select 1 from neodove_outbox where mobile = $1 and campaign = 'signup' and status = 'queued' limit 1`, [r.mobile])
+        if (signup) continue
+      }
+      // A new lead: what the same customer did after it, still waiting to go, goes with it as one lead.
+      const { rows: later } = await query(
+        `select id, campaign, payload, created_at from neodove_outbox where mobile = $1 and id <> $2 and status = 'queued' order by created_at`, [r.mobile, r.id])
+      if (later.length) {
+        r.payload = later.reduce((p, x) => ({ ...p, ...laterAction({ ...x, lead_source: r.lead_source }) }), r.payload)
+        await query('update neodove_outbox set payload = $2 where id = $1', [r.id, r.payload])
+        await query(`update neodove_outbox set status = 'sent', sent_at = now(), last_error = 'merged: added to the earlier lead, not sent again' where id = any($1::uuid[])`, [later.map((x) => x.id)])
+        for (const x of later) done.add(x.id)
+        merged += later.length
       }
       let result
       let agent = null
@@ -476,19 +555,20 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
         if (r.campaign === 'signup') await query(`update lead_status set neodove_sent_at = now(), updated_at = now() where mobile = $1`, [r.mobile])
         continue
       }
-      failed++
-      const attempts = r.attempts + 1
-      const error = `${result.status} ${String(result.text).slice(0, 200)}`.trim()
-      const refused = result.status >= 400 && result.status < 500 && ![401, 408, 429].includes(result.status)
-      await query(
-        `update neodove_outbox set attempts = $2, last_error = $3, status = $4, next_try_at = now() + make_interval(mins => $5) where id = $1`,
-        [r.id, attempts, error, refused || attempts >= MAX_ATTEMPTS ? 'failed' : 'queued', BACKOFF[Math.min(attempts - 1, BACKOFF.length - 1)]])
-      console.error('[neodove] NeoDove did not take a lead:', error)
+      await failedTry(r, result)
     }
   } catch (err) {
     console.error('[neodove]', err.message)
   }
-  return bySource ? { sent, failed, waiting, byCampaign, byAgent } : { sent, failed, byAgent }
+  return bySource ? { sent, failed, waiting, updated, merged, byCampaign, byAgent } : { sent, failed, updated, merged, byAgent }
+}
+
+// The lead's own fields that a later action does not change (who they are, where they first came from).
+const FIRST_ONLY = new Set(['name', 'mobile', 'email', 'Lead type', 'tags', 'Source', 'Campaign', 'Ad', 'Page', 'Signed up', 'Telecaller', 'Traffic'])
+/** What a later action adds to the customer's one NeoDove lead: its details (blanks left out) and "Latest action". */
+export function laterAction(r) {
+  const fields = Object.fromEntries(Object.entries(r.payload || {}).filter(([k, v]) => !FIRST_ONLY.has(k) && v !== '' && v != null))
+  return { ...fields, 'Latest action': `${leadType(r.campaign, r.lead_source)}, ${fmt(r.created_at || new Date())}` }
 }
 
 /**
