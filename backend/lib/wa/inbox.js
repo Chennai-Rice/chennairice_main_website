@@ -96,6 +96,7 @@ export async function getChat(phone, staff, { query = defaultQuery, fetchImpl, m
       referralCode: ref?.code || null,
     },
     staff: staffList.map((s) => ({ id: s.id, name: s.full_name || s.email })),
+    me: staff?.id || null,
   }
 }
 
@@ -177,6 +178,12 @@ export async function updateChat(phone, input, staff, { query = defaultQuery } =
   if (input.name !== undefined) await query(`update wa_contacts set name = $2, updated_at = now() where phone = $1`, [p, str(input.name).slice(0, 80) || null])
   if (input.bot === 'resume') await query(`update wa_bot_state set paused_until = null where phone = $1`, [p]).catch(() => {})
   if (input.bot === 'pause') await pauseBot(p, query)
+  // Intervene (Nov 2026): the person takes the chat over — assigned to them, open, and the bot paused so it does
+  // not answer while they chat with the customer.
+  if (input.intervene === true) {
+    await query(`update wa_contacts set assigned_to = $2, status = 'open', updated_at = now() where phone = $1`, [p, staff?.id || null])
+    await pauseBot(p, query)
+  }
   return { ok: true }
 }
 

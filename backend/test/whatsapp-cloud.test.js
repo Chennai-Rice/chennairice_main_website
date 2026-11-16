@@ -387,3 +387,18 @@ test('AI model call: a reply Groq refuses as invalid JSON is asked again; the to
   assert.equal(seen[0].messages.at(-1).role, 'system') // the JSON reminder is the last word
   assert.deepEqual(parseAnswer('Plain words only'), { reply: 'Plain words only' })
 })
+
+import { updateChat } from '../lib/wa/inbox.js'
+
+test('Inbox: Intervene assigns the chat to the person, opens it and pauses the bot there', async () => {
+  const calls = []
+  const query = async (sql, params) => { calls.push({ sql: sql.replace(/\s+/g, ' '), params }); return { rows: [] } }
+  await updateChat('9840000001', { intervene: true }, { id: 'staff-1' }, { query })
+  const assign = calls.find((c) => /set assigned_to = \$2, status = 'open'/.test(c.sql))
+  assert.deepEqual(assign?.params, ['9840000001', 'staff-1'])
+  assert.ok(calls.some((c) => /insert into wa_bot_state/.test(c.sql) && c.params[0] === '9840000001'), 'bot paused')
+  // Without intervene, nothing is assigned or paused.
+  calls.length = 0
+  await updateChat('9840000001', {}, { id: 'staff-1' }, { query })
+  assert.ok(!calls.some((c) => /assigned_to|wa_bot_state/.test(c.sql)))
+})

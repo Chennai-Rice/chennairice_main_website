@@ -150,6 +150,10 @@ function Chat({ phone, onChanged }) {
           <b>{c.name || c.phone}</b>
           <small>{c.phone} · {c.windowOpen ? <span className="wa-window">⏱ {leftText}</span> : <span className="wa-window wa-window--closed">24-hour window closed: template only</span>}</small>
         </div>
+        {!(c.botPausedUntil && c.me && c.assignedTo === c.me) && (
+          <button type="button" className="wa-btn wa-btn--small wa-btn--lime" disabled={busy} onClick={() => put({ intervene: true })}
+            title="Take this chat over: assigned to you and the bot paused, so you chat with the customer yourself">✋ Intervene</button>
+        )}
         <select value={c.assignedTo || ''} onChange={(e) => put({ assignedTo: e.target.value || null })} disabled={busy} title="Assign">
           <option value="">Unassigned</option>
           {c.staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -159,7 +163,10 @@ function Chat({ phone, onChanged }) {
           : <button type="button" className="wa-btn wa-btn--small" disabled={busy} onClick={() => put({ status: 'open' })}>Reopen</button>}
       </div>
       {c.botPausedUntil && (
-        <p className="wa-botbar">🤖 Bot is paused here until {hm(c.botPausedUntil)} so you can reply. <button type="button" className="wa-link" onClick={() => put({ bot: 'resume' })}>Turn the bot back on</button></p>
+        <p className="wa-botbar">
+          {c.me && c.assignedTo === c.me ? '✋ You have taken over this chat.' : ''} 🤖 Bot is paused here until {hm(c.botPausedUntil)} so you can reply.{' '}
+          <button type="button" className="wa-link" onClick={() => put({ bot: 'resume' })}>Turn the bot back on</button>
+        </p>
       )}
       <div className="wa-thread">
         {c.messages.map((m) => (
@@ -196,6 +203,12 @@ function Chat({ phone, onChanged }) {
         </div>
       ) : (
         <div className="wa-composer wa-composer--template">
+          {!c.windowOpen && (
+            <p className="wa-muted wa-window-note">
+              WhatsApp lets you type freely only within 24 hours of the customer's last message. Send a template now:
+              as soon as they reply, the message box opens here and you can chat with them.
+            </p>
+          )}
           <TemplateSender phone={c.phone} onSent={() => { setShowTemplate(false); load(); onChanged() }} />
           {c.windowOpen && <button type="button" className="wa-link" onClick={() => setShowTemplate(false)}>Back to a normal reply</button>}
         </div>
