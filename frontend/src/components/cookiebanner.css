@@ -310,3 +310,39 @@
     transform: none;
   }
 }
+
+/* Owner, 16 Nov 2026: a small, quiet close (X) and Reject as a text link beside the
+   Accept button, on every screen size. */
+.cookie-card-close {
+  width: 28px;
+  height: 28px;
+  color: rgba(74, 44, 34, 0.45);
+}
+.cookie-card-close svg { width: 11px; height: 11px; }
+.cookie-card-close:hover { color: var(--maroon); background: transparent; }
+
+.cookie-btn.cookie-btn-reject {
+  background: transparent;
+  border: 0;
+  padding: 10px 8px;
+  min-height: 0;
+  color: rgba(42, 26, 20, 0.7);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cookie-btn.cookie-btn-reject:hover {
+  background: transparent;
+  color: var(--maroon);
+  transform: none;
+}
+.cookie-card-actions { gap: 14px; }
+
+@media (max-width: 860px) {
+  .cookie-card-close { top: 6px; right: 6px; width: 28px; height: 28px; }
+  .cookie-card-actions { grid-template-columns: auto minmax(0, 1fr); }
+  .cookie-card-copy { padding-right: 22px; }
+}
+@media (min-width: 561px) and (max-width: 860px) {
+  .cookie-card { grid-template-columns: minmax(0, 1fr) 230px; }
+}
