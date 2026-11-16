@@ -138,7 +138,7 @@ async function campaignButton(campaign, { to, phone, name, text, at }, query) {
     if (had) return
     const when = new Date(at * 1000).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })
     const id = await queueCrmLead('whatsapp_chat', {
-      name: name || `WhatsApp ${mobile}`, phone: mobile, source: 'whatsapp', tags: [campaign.tag],
+      name: name || `WhatsApp ${mobile}`, phone: mobile, source: 'whatsapp', tags: [campaign.tag], allowOwn: true, // the team's test taps too (owner, 16 Nov 2026)
       note: `WhatsApp campaign "${campaign.tag}": tapped "${text || 'button'}" (${when}). Wants a call about an order.`,
     }, { query })
     if (id) await sendCrmLeads({ id, query }).catch(() => {})

@@ -123,8 +123,9 @@ export function crmLead(kind, f) {
 export async function queueCrmLead(kind, fields, db = { query: defaultQuery }) {
   if (!hasDatabase()) return null
   const lead = crmLead(kind, fields)
-  if (!lead.name || lead.mobile.length < 10 || isBlockedMobile(lead.mobile)) return null
-  const payload = fields.stage ? { ...lead, stage: fields.stage } : lead
+  // `allowOwn`: a company number on purpose (a test the team can delete in Sales Daddy afterwards).
+  if (!lead.name || lead.mobile.length < 10 || (isBlockedMobile(lead.mobile) && !fields.allowOwn)) return null
+  const payload = { ...lead, ...(fields.stage && { stage: fields.stage }), ...(fields.allowOwn && isBlockedMobile(lead.mobile) && { allowOwn: true }) }
   const { rows: [row] } = await db.query(
     'insert into crm_outbox (kind, payload) values ($1, $2) returning id', [kind, payload])
   return row.id
@@ -187,7 +188,7 @@ async function deliver(kind, payload, ref) {
   // An event (order step, NeoDove call result) is { lead, note, stage? } and always adds its note.
   const event = kind === 'order_event' || kind === 'call_result' || kind === 'journey'
   // `stage` is ours, not a Sales Daddy field.
-  const { stage: leadStage, ...fields } = event ? payload.lead : payload
+  const { stage: leadStage, allowOwn: _ours, ...fields } = event ? payload.lead : payload
   const stage = payload.stage || leadStage
   const { note } = payload
   const lead = await post({ ...fields, clientRef: ref })
@@ -321,7 +322,7 @@ export async function sendCrmLeads({ id = null, limit = 20, query = defaultQuery
     rows.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
     for (const r of rows) {
       // Queued before the number was blocked: dropped, never sent.
-      if (isBlockedMobile((r.payload?.lead || r.payload)?.mobile)) {
+      if (isBlockedMobile((r.payload?.lead || r.payload)?.mobile) && !r.payload?.allowOwn) {
         await query(`update crm_outbox set status = 'failed', last_error = 'blocked: company number' where id = $1`, [r.id])
         continue
       }
