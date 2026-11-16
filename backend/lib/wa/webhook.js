@@ -15,6 +15,7 @@ import { templateEvent } from './templates.js'
 import { answer } from './bot.js'
 import { optIn, optOut } from './contacts.js'
 import { sendMessage } from './cloud.js'
+import { crmMobile, queueCrmLead, sendCrmLeads } from '../crm.js'
 
 /** Meta's GET check: returns the challenge to echo back, or throws 403. */
 export function verifyChallenge(q = {}) {
@@ -95,12 +96,55 @@ async function onMessage(m, contacts, query, bot) {
     if (wamid) await query(`insert into wa_messages (wamid, direction, phone, kind, body, status, source, category) values ($1, 'out', $2, 'text', $3, 'sent', 'bot', 'service') on conflict (wamid) do nothing`, [wamid, phone, reply]).catch(() => {})
     return
   }
+  // A button on a campaign template (CAMPAIGN_BUTTONS): its own reply and Sales Daddy tag; the bot stays out of it.
+  if (m.type === 'button' && m.context?.id) {
+    const { rows: [sent] } = await query('select template_name from wa_messages where wamid = $1', [m.context.id]).catch(() => ({ rows: [] }))
+    const campaign = CAMPAIGN_BUTTONS[sent?.template_name]
+    if (campaign) return campaignButton(campaign, { to: String(m.from), phone, name, text, at: Number(m.timestamp) || Date.now() / 1000 }, query)
+  }
   // The bot answers each message once (Meta may deliver a call twice), and not old ones replayed after an outage.
   const ageMin = (Date.now() / 1000 - (Number(m.timestamp) || Date.now() / 1000)) / 60
   if (!bot || ageMin > 15 || m.type === 'reaction') return
   // A photo (a payment screenshot, a damaged pack…) goes to the bot too, for the AI to look at.
   const image = m.type === 'image' && m.image?.id ? { id: m.image.id, caption: m.image.caption || '', mime: m.image.mime_type || '' } : null
   await bot({ to: String(m.from), phone, name, text: text || image?.caption || '', replyId: m.button ? '' : replyId, ...(image ? { image } : {}) }, { query })
+}
+
+/**
+ * WhatsApp campaigns whose template button is the customer saying "yes" (owner, 16 Nov 2026), by template name.
+ * A tap: the automatic reply below, and the customer to Sales Daddy as a WhatsApp lead with the campaign's tag (once
+ * per mobile; a later tap adds a note). The tag must exist in Sales Daddy (Settings → Tags), or Sales Daddy drops it.
+ */
+export const CAMPAIGN_BUTTONS = {
+  chennai_traders: {
+    tag: 'chennai_traders',
+    reply: 'எங்களைத் தொடர்புகொண்டதற்கு மிக்க நன்றி! 🙏\n\nஉங்கள் ஆர்டர் தொடர்பான உதவிக்கு எங்கள் விற்பனைக் குழுவினர் விரைவில் உங்களைத் தொடர்புகொள்வார்கள்.',
+  },
+}
+
+async function campaignButton(campaign, { to, phone, name, text, at }, query) {
+  // The reply (the tap opened the 24-hour window, so plain text is allowed).
+  const msg = { messaging_product: 'whatsapp', recipient_type: 'individual', to, type: 'text', text: { body: campaign.reply } }
+  const wamid = await sendMessage(msg).catch((err) => { console.error('[wa] campaign reply:', err.message); return null })
+  if (wamid) {
+    await query(`insert into wa_messages (wamid, direction, phone, kind, body, status, source, category) values ($1, 'out', $2, 'text', $3, 'sent', $4, 'service') on conflict (wamid) do nothing`,
+      [wamid, phone, campaign.reply, `campaign:${campaign.tag}`]).catch(() => {})
+  }
+  // Sales Daddy: a WhatsApp lead tagged with the campaign. Sent once per mobile; a lead Sales Daddy already has gets the tag added.
+  try {
+    const mobile = crmMobile(phone)
+    const { rows: [had] } = await query(
+      `select 1 from crm_outbox where kind = 'whatsapp_chat' and payload->>'mobile' = $1 and payload->'tags' ? $2 limit 1`, [mobile, campaign.tag])
+    if (had) return
+    const when = new Date(at * 1000).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })
+    const id = await queueCrmLead('whatsapp_chat', {
+      name: name || `WhatsApp ${mobile}`, phone: mobile, source: 'whatsapp', tags: [campaign.tag],
+      note: `WhatsApp campaign "${campaign.tag}": tapped "${text || 'button'}" (${when}). Wants a call about an order.`,
+    }, { query })
+    if (id) await sendCrmLeads({ id, query }).catch(() => {})
+  } catch (err) {
+    console.error('[wa] campaign lead:', err.message)
+  }
 }
 
 const STOP_WORDS = ['stop', 'unsubscribe', 'stop all', 'stop promotions', 'opt out', 'optout']
