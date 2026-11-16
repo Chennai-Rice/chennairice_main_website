@@ -213,7 +213,7 @@ export default function MisDashboard({ standalone = false }) {
         {data && view === 'overview' && <Overview rows={filtered} sum={sum} set={set} brands={ds.brands} hasDevice={cols.device} />}
         {data && view === 'brands' && <GroupView rows={filtered} field="brand" label="Brand" always={ds.brands} />}
         {data && view === 'telecallers' && cols.telecaller && <GroupView rows={filtered} field="telecaller" label="Telecaller" />}
-        {data && view === 'reports' && <Reports filtered={filtered} kind={ds.kind} hasTelecaller={cols.telecaller} N={N} />}
+        {data && view === 'reports' && <Reports filtered={filtered} kind={ds.kind} hasTelecaller={cols.telecaller} N={N} from={filters.from} to={filters.to} />}
       </main>
     </div>
     </NounContext.Provider>
@@ -556,6 +556,8 @@ const niceDay = (iso) => {
 }
 const periodOf = (r, type) => (type === 'daily' ? r.date : type === 'monthly' ? r.month : 'all')
 const periodLabel = (key, type) => (type === 'daily' ? niceDay(key) : type === 'monthly' ? monthLabel(key) : 'All time')
+/** The From / To dates as words: "11 Nov 2026 to 14 Nov 2026", or one day, or "from …" / "up to …". */
+const rangeLabel = (from, to) => (from && to ? (from === to ? niceDay(from) : `${niceDay(from)} to ${niceDay(to)}`) : from ? `from ${niceDay(from)}` : `up to ${niceDay(to)}`)
 
 /** One line of the report: how many got through, were not reached, paused, invalid, how they ended, and what they were about. */
 function tally(label, list, devices) {
@@ -602,19 +604,26 @@ function reportColumns(isCalls, devices, N) {
     ...devices.map((d) => ({ h: d, show: (l) => num(l.devices[d]), file: (l) => l.devices[d] }))]
 }
 
-function Reports({ filtered, kind = 'calls', hasTelecaller = true, N }) {
+function Reports({ filtered, kind = 'calls', hasTelecaller = true, N, from = '', to = '' }) {
   const isCalls = kind !== 'leads'
   const bys = REPORT_BY.filter(([k]) => k !== 'telecaller' || hasTelecaller)
   const [by0, setBy] = useState('telecaller')
   const by = bys.some(([k]) => k === by0) ? by0 : bys[0][0]
-  const [type, setType] = useState('daily')
+  const [type0, setType] = useState('daily')
   const [pick, setPick] = useState('')
   const byLabel = bys.find(([k]) => k === by)[1]
 
+  // With From / To dates chosen, the report totals the whole range ("Selected dates") unless another period is picked.
+  const hasRange = Boolean(from || to)
+  const periodTypes = hasRange ? [['range', 'Selected dates'], ...PERIODS] : PERIODS
+  useEffect(() => { if (hasRange) { setType('range'); setPick('') } }, [hasRange, from, to])
+  const type = type0 === 'range' && !hasRange ? 'daily' : type0
+  const whole = type === 'all' || type === 'range' // one report over everything shown
+
   const devices = NO_DEVICES
-  const periods = useMemo(() => [...new Set(filtered.map((r) => periodOf(r, type)).filter(Boolean))].sort().reverse(), [filtered, type])
-  const period = type === 'all' ? 'all' : periods.includes(pick) ? pick : periods[0] || ''
-  const inPeriod = useMemo(() => (type === 'all' ? filtered : filtered.filter((r) => periodOf(r, type) === period)), [filtered, type, period])
+  const periods = useMemo(() => (whole ? [] : [...new Set(filtered.map((r) => periodOf(r, type)).filter(Boolean))].sort().reverse()), [filtered, type, whole])
+  const period = whole ? type : periods.includes(pick) ? pick : periods[0] || ''
+  const inPeriod = useMemo(() => (whole ? filtered : filtered.filter((r) => periodOf(r, type) === period)), [filtered, type, period, whole])
   const lines = useMemo(() => reportLines(inPeriod, by, devices), [inPeriod, by, devices])
   const team = useMemo(() => tally('Team total', inPeriod, devices), [inPeriod, devices])
   const columns = reportColumns(isCalls, devices, N)
@@ -627,17 +636,19 @@ function Reports({ filtered, kind = 'calls', hasTelecaller = true, N }) {
 
   const header = (first) => [first, ...columns.map((c) => c.h)]
   const line = (l) => [l.label, ...columns.map((c) => c.file(l))]
-  const typeName = PERIODS.find(([k]) => k === type)[1]
-  const title = `${byLabel} – ${typeName} Report${type === 'all' ? '' : ` – ${periodLabel(period, type)}`}`
+  const typeName = type === 'range' ? 'Date range' : PERIODS.find(([k]) => k === type)[1]
+  const label = (p) => (type === 'range' ? rangeLabel(from, to) : periodLabel(p, type))
+  const title = `${byLabel} – ${typeName} Report${type === 'all' ? '' : ` – ${label(period)}`}`
   const fileName = (extra) => `mis-${isCalls ? '' : 'leads-'}${by}-${type}${extra}.csv`
+  const rangeFile = `-${from || 'start'}_to_${to || 'today'}`
 
-  const download = () => downloadCsv(fileName(type === 'all' ? '' : `-${period}`), header(byLabel), [...lines.map(line), line(team)])
+  const download = () => downloadCsv(fileName(type === 'all' ? '' : type === 'range' ? rangeFile : `-${period}`), header(byLabel), [...lines.map(line), line(team)])
   const downloadAll = () => {
     const out = []
-    for (const p of periods.length ? periods : ['all']) {
-      const list = type === 'all' ? filtered : filtered.filter((r) => periodOf(r, type) === p)
-      for (const l of reportLines(list, by, devices)) out.push([periodLabel(p, type), ...line(l)])
-      out.push([periodLabel(p, type), ...line(tally('Team total', list, devices))])
+    for (const p of periods.length ? periods : [type]) {
+      const list = whole ? filtered : filtered.filter((r) => periodOf(r, type) === p)
+      for (const l of reportLines(list, by, devices)) out.push([label(p), ...line(l)])
+      out.push([label(p), ...line(tally('Team total', list, devices))])
     }
     downloadCsv(fileName('-all-periods'), ['Period', ...header(byLabel)], out)
   }
@@ -649,9 +660,9 @@ function Reports({ filtered, kind = 'calls', hasTelecaller = true, N }) {
           {bys.map(([k, t]) => <option key={k} value={k}>{t} – {typeName}</option>)}
         </select>
         <select aria-label="Period" value={type} onChange={(e) => { setType(e.target.value); setPick('') }}>
-          {PERIODS.map(([k, t]) => <option key={k} value={k}>{t}</option>)}
+          {periodTypes.map(([k, t]) => <option key={k} value={k}>{t}</option>)}
         </select>
-        {type !== 'all' && (
+        {!whole && (
           <select aria-label="Which period" value={period} onChange={(e) => setPick(e.target.value)} disabled={!periods.length}>
             {periods.map((p) => <option key={p} value={p}>{periodLabel(p, type)}</option>)}
             {!periods.length && <option value="">No dates</option>}
