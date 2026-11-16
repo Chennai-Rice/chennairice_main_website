@@ -411,7 +411,9 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
   let merged = 0
   // In source mode a lead goes to its source campaign; while that campaign's link is not set yet (they are set one by
   // one, owner 13 Nov 2026) it still goes round robin to the telecallers' campaigns, so no lead waits in between.
-  const pool = poolAgents()
+  // Once the source campaigns are in use, the telecallers' three campaigns (Gayathri / Ramya / Lavanya) get nothing
+  // more (owner, 16 Nov 2026): a lead whose source campaign link is not set waits for it instead.
+  const pool = bySource ? [] : poolAgents()
   const byAgent = {}
   const byCampaign = {}
   let waiting = 0
@@ -462,7 +464,9 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
       const { rows: [first] } = await query(
         `select id, status, agent, campaign, payload, created_at from neodove_outbox
           where mobile = $1 and id <> $2 and (status = 'sent' or (status = 'queued' and created_at < $3))
-          order by (status = 'sent') desc, created_at limit 1`, [r.mobile, r.id, r.created_at])
+            -- the old campaigns (telecallers' three, the first per-kind ones) are stopped: a lead only there counts as new
+            and (not $4 or status = 'queued' or agent = any($5::text[]))
+          order by (status = 'sent') desc, created_at limit 1`, [r.mobile, r.id, r.created_at, bySource, Object.keys(SOURCE_CAMPAIGNS)])
       // A sign-up beats a checkout (owner, 16 Nov 2026: a Meta sign-up who adds to cart is a Meta sign-up, not Add to
       // cart): a checkout still waiting to go is folded into this sign-up, which goes to its own campaign.
       if (first?.status === 'queued' && r.campaign === 'signup' && /^checkout_/.test(first.campaign)) {
