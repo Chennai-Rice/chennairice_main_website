@@ -177,6 +177,12 @@ export function Editor({ fields, onDone, fileOnly = false }) {
               {nameAndTemplate}
             </>
           )}
+          {t && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(t.model.header?.format) && (
+            <p className="wa-muted">
+              {t.model.header.format === 'IMAGE' ? 'Picture' : t.model.header.format === 'VIDEO' ? 'Video' : 'PDF'}: the one saved on this template goes with every message
+              {t.model.header.format === 'IMAGE' && !t.model.header.link ? <b> (none saved yet: open the template in Templates, upload it and save)</b> : ''}. To use a different one, change it in Templates.
+            </p>
+          )}
           {t && (
             <>
               <h3 className="wa-h3">{fileOnly ? 'Fill in each person’s message' : 'Fill in the message'}</h3>
@@ -223,7 +229,12 @@ export function Editor({ fields, onDone, fileOnly = false }) {
           <div className="wa-phone wa-bc-preview">
             <div className="wa-phone-top"><b>Chennai Rice</b></div>
             <div className="wa-phone-chat">
-              <div className="wa-bubble"><p className="wa-bubble-body"><WaText text={preview} /></p>{t.model.footer && <p className="wa-bubble-foot">{t.model.footer}</p>}</div>
+              <div className="wa-bubble">
+                {/* The template's own picture / video / PDF goes with every message (saved in Templates). */}
+                {t.model.header?.format === 'IMAGE' && t.model.header.link ? <img className="wa-bubble-img" src={t.model.header.link} alt="" />
+                  : ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(t.model.header?.format) && <div className="wa-bubble-media">{t.model.header.format === 'IMAGE' ? '🖼 Picture' : t.model.header.format === 'VIDEO' ? '🎥 Video' : '📄 PDF'}</div>}
+                <p className="wa-bubble-body"><WaText text={preview} /></p>{t.model.footer && <p className="wa-bubble-foot">{t.model.footer}</p>}
+              </div>
               {t.model.buttons.map((b, i) => <div key={i} className="wa-bubble-btn">{b.type === 'COPY_CODE' ? 'Copy code' : b.text}</div>)}
             </div>
           </div>
