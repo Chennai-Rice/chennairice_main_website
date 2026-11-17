@@ -220,7 +220,7 @@ export async function spinAdmin(db, staff) {
     // Who spun (newest first): mobile, email, prize, code, and whether it was used on a paid order.
     recent: (await db.query(
       // The paid order the code went on (Nov 2026): when, what, how much, and the discount it gave.
-      `select s.created_at, s.name, s.phone, s.email, s.prize_label, c.code, c.expires_at,
+      `select s.created_at, s.name, s.phone, s.email, s.prize_label, c.code, c.expires_at, c.min_order_paise,
               u.order_number as used_on, u.placed_at, u.total_paise, u.discount_paise, u.items, u.city
          from spins s left join discount_codes c on c.id = s.code_id
          left join lateral (
@@ -231,7 +231,7 @@ export async function spinAdmin(db, staff) {
             order by o.placed_at limit 1) u on true
         order by s.created_at desc limit 20000`)).rows.map((x) => ({
       at: x.created_at, name: x.name, phone: x.phone, email: x.email, prize: x.prize_label, code: x.code,
-      expiresAt: x.expires_at, usedOn: x.used_on,
+      expiresAt: x.expires_at, usedOn: x.used_on, minOrder: toRupees(x.min_order_paise || 0),
       order: x.used_on ? { at: x.placed_at, items: x.items || '', total: toRupees(x.total_paise), discount: toRupees(x.discount_paise), city: x.city || '' } : null,
     })),
   }

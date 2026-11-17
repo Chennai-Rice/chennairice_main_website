@@ -75,9 +75,9 @@ export default function WhoSpun({ onAuthError }) {
       if (/^[=+\-@]/.test(t)) t = "'" + t // never a spreadsheet formula
       return '"' + t.replace(/"/g, '""') + '"'
     }
-    const lines = [['When', 'Name', 'Mobile', 'Prize', 'Code', 'Valid till', 'Used', 'Order', 'Purchased on', 'Items', 'Paid (Rs)', 'Discount (Rs)', 'City']]
+    const lines = [['When', 'Name', 'Mobile', 'Prize', 'Code', 'Valid till', 'Used', 'Order', 'Purchased on', 'Items', 'Paid (Rs)', 'Discount (Rs)', 'City', 'Min order (Rs)', 'Link end']]
       .concat(list.map((s) => [when(s.at), s.name, s.phone, s.prize, s.code, day(s.expiresAt), LABEL[stateOf(s)], s.usedOn || '',
-        s.order ? when(s.order.at) : '', s.order?.items || '', s.order ? s.order.total : '', s.order ? s.order.discount : '', s.order?.city || '']))
+        s.order ? when(s.order.at) : '', s.order?.items || '', s.order ? s.order.total : '', s.order ? s.order.discount : '', s.order?.city || '', s.minOrder ? inr(s.minOrder) : '', s.code ? 'spin-' + s.code : '']))
     const blob = new Blob(['﻿' + lines.map((r) => r.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
