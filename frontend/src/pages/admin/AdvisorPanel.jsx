@@ -23,6 +23,7 @@ const SUGGESTIONS = [
 ]
 const KEY = 'cr.admin.advisor'
 const FILES_KEY = 'cr.admin.advisor.files'
+const STYLE_KEY = 'cr.admin.advisor.style'
 const ACCEPT = '.jpg,.jpeg,.png,.webp,.pdf,.docx,.xlsx,.csv'
 const MAX_MB = 10
 const MAX_FILES = 5
@@ -59,6 +60,13 @@ function Advisor({ onAuthError, report }) {
     try { return JSON.parse(sessionStorage.getItem(KEY)) || [] } catch { return [] }
   })
   const [text, setText] = useState('')
+  // Advisor style: the standard analyst, or Hormozi-style (same data, his lens and voice).
+  const [style, setStyle] = useState(() => {
+    try { return sessionStorage.getItem(STYLE_KEY) || '' } catch { return '' }
+  })
+  useEffect(() => {
+    try { sessionStorage.setItem(STYLE_KEY, style) } catch { /* fine */ }
+  }, [style])
   const [busy, setBusy] = useState(false)
   const [usage, setUsage] = useState(null)
   const [editCap, setEditCap] = useState(false)
@@ -142,6 +150,7 @@ function Advisor({ onAuthError, report }) {
         body: JSON.stringify({
           messages: next.filter((m) => !m.error).map(({ role, content }) => ({ role, content })),
           files: files.map((f) => f.id),
+          style,
           site: siteSummary(report),
           ...rangeDates(report?.range),
         }),
@@ -179,8 +188,15 @@ function Advisor({ onAuthError, report }) {
         <div className="av-log" aria-live="polite">
           {messages.length === 0 && (
             <div className="av-welcome">
-              <span className="av-badge">✦ Business Advisor</span>
+              <span className="av-badge">✦ {style === 'hormozi' ? 'Business Advisor · Hormozi-style' : 'Business Advisor'}</span>
               <h2>Ask about your business</h2>
+              {style === 'hormozi' && (
+                <p className="av-style-note">
+                  Hormozi-style: the same live figures, judged the way Alex Hormozi reasons in his public talks: the
+                  constraint first, the offer, the math in rupees, a blunt answer and one action. A simulation built from
+                  his public work, not Alex Hormozi.
+                </p>
+              )}
               <p>
                 Sales, leads, ad campaigns, customers, stock, delivery and website visitors — it reads the live
                 figures and tells you what is happening, why, and what to do. Describe an idea and it will say
@@ -252,6 +268,11 @@ function Advisor({ onAuthError, report }) {
           />
           <button type="submit" disabled={busy || !text.trim() || uploading.length > 0 || outToday}>Ask</button>
         </form>
+        <div className="av-style" role="radiogroup" aria-label="Advisor style">
+          <span>Advisor:</span>
+          <button type="button" role="radio" aria-checked={style !== 'hormozi'} className={style !== 'hormozi' ? 'is-on' : ''} onClick={() => setStyle('')}>Standard</button>
+          <button type="button" role="radio" aria-checked={style === 'hormozi'} className={style === 'hormozi' ? 'is-on' : ''} onClick={() => setStyle('hormozi')}>Hormozi-style</button>
+        </div>
         <p className="av-foot">
           Uses live data for {report?.range?.label?.toLowerCase() || 'the selected period'} (change it at the top).
           Read-only — it never changes anything. Check the numbers before big decisions.
