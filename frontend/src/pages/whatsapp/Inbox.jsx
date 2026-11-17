@@ -283,6 +283,9 @@ export default function Inbox() {
   const [view, setView] = useState('all')
   const [status, setStatus] = useState('open')
   const [q, setQ] = useState('')
+  // A campaign's own inbox: only people sent that template (influencer_collab…). Remembered in this browser.
+  const [template, setTemplateRaw] = useState(() => { try { return localStorage.getItem('wa.inbox.template') || '' } catch { return '' } })
+  const setTemplate = (v) => { setTemplateRaw(v); try { localStorage.setItem('wa.inbox.template', v) } catch { /* private mode */ } }
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [sel, setSel] = useState(null)
@@ -298,9 +301,10 @@ export default function Inbox() {
     setSel(d)
   }
   const load = useCallback(() => {
-    const p = new URLSearchParams({ view, status, q })
+    const p = new URLSearchParams({ view, status, q, template })
     return staffJson('/api/admin/whatsapp/chats?' + p).then((d) => { setData(d); setError('') }).catch((e) => setError(e.message))
-  }, [view, status, q])
+  }, [view, status, q, template])
+  const camp = data?.campaigns?.find((c) => c.name === template)
   useEffect(() => { load() }, [load])
   useInterval(load, 8000)
 
@@ -333,6 +337,15 @@ export default function Inbox() {
               <button type="submit" className="wa-btn wa-btn--small wa-btn--lime" disabled={!num.trim()}>Open</button>
             </form>
             {numErr && <p className="wa-alert">{numErr}</p>}
+            <label className="wa-campaign">
+              <span>Campaign inbox</span>
+              <select value={template} onChange={(e) => setTemplate(e.target.value)}>
+                <option value="">All chats</option>
+                {(data?.campaigns || []).map((c) => <option key={c.name} value={c.name}>{c.name} · {c.people} sent · {c.replied} replied</option>)}
+                {template && !camp && data && <option value={template}>{template}</option>}
+              </select>
+            </label>
+            {template && <p className="wa-campaign-note">Only people sent <b>{template}</b>{camp ? ` (${camp.replied} of ${camp.people} replied)` : ''}. <button type="button" className="wa-link" onClick={() => setTemplate('')}>Show all chats</button></p>}
             <div className="wa-search wa-search--dark"><I name="search" size={16} /><input value={q} placeholder="Search name or number" onChange={(e) => setQ(e.target.value)} /></div>
             <ul className="wa-list">
               {!data && <li className="wa-empty">Loading…</li>}

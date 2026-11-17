@@ -4305,4 +4305,9 @@ test('WhatsApp Inbox filters: New (first message in 24 hours) and Replied (wrote
   assert.deepEqual(await phones('all'), ['9766600001', '9766600002', '9766600003'])
   const { counts } = await listChats({ view: 'all' }, staff)
   assert.ok(counts.new_chats >= 1 && counts.replied >= 1, JSON.stringify(counts))
+  // Campaign inbox: only the people sent that template, and the picker lists it with sent / replied.
+  const camp = await listChats({ view: 'all', status: 'all', template: 'chennai_traders' }, staff)
+  assert.deepEqual(camp.chats.map((c) => c.phone).filter((p) => p.startsWith('97666')), ['9766600002'])
+  const ct = camp.campaigns.find((c) => c.name === 'chennai_traders')
+  assert.ok(ct && ct.people >= 1 && ct.replied >= 1, JSON.stringify(camp.campaigns))
 })

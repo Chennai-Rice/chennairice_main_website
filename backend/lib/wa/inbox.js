@@ -30,6 +30,8 @@ export async function listChats(f = {}, staff, { query = defaultQuery } = {}) {
   if (f.view === 'replied') w.push(REPLIED)
   if (str(f.q)) add(`(l.phone like $? or lower(coalesce(c.name, '')) like $?)`, '%' + str(f.q).toLowerCase() + '%')
   if (str(f.tag)) add(`$? = any(c.tags)`, str(f.tag).toLowerCase())
+  // A campaign's own inbox (Nov 2026): only the people who were sent that template (influencer_collab…).
+  if (str(f.template)) add(`exists (select 1 from wa_messages t where t.phone = l.phone and t.direction = 'out' and t.template_name = $?)`, str(f.template))
   const { rows } = await query(
     `with l as (
        select distinct on (phone) phone, body, direction, created_at, status from wa_messages order by phone, created_at desc
@@ -66,7 +68,28 @@ export async function listChats(f = {}, staff, { query = defaultQuery } = {}) {
       status: r.chat_status, assignedTo: r.assigned_to, assignedName: r.assigned_name, tags: r.tags, unread: r.unread, optedOut: Boolean(r.opted_out_at),
     })),
     counts: t,
+    campaigns: await campaignList(query),
   }
+}
+
+/**
+ * The templates the team sent (bulk messages, broadcasts, inbox templates — not order updates), newest first,
+ * each with how many people got it and how many wrote back: the Inbox's campaign picker.
+ */
+async function campaignList(query) {
+  const { rows } = await query(
+    `with sent as (
+       select template_name as name, phone, min(created_at) as first_at, max(created_at) as last_at
+         from wa_messages
+        where direction = 'out' and kind = 'template' and template_name is not null
+          and (category = 'marketing' or source in ('broadcast', 'inbox'))
+        group by 1, 2
+     )
+     select s.name, count(*)::int as people,
+            count(*) filter (where exists (select 1 from wa_messages i where i.phone = s.phone and i.direction = 'in' and i.created_at > s.first_at))::int as replied,
+            max(s.last_at) as last_at
+       from sent s group by s.name order by max(s.last_at) desc limit 30`).catch(() => ({ rows: [] }))
+  return rows.map((r) => ({ name: r.name, people: r.people, replied: r.replied }))
 }
 
 /** One chat: messages, notes and the customer panel. Marks it read (and sends Meta a read receipt). */
