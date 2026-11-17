@@ -4021,6 +4021,17 @@ test('duplicates: one person is one lead and one customer, whatever lists they a
   const list = (await api('GET', '/api/admin/warehouse/customers?q=97555', { token: OWNER })).body.customers
   const dup = list.filter((c) => c.phone.replace(/\D/g, '').endsWith('9755500002'))
   assert.equal(dup.length, 1, JSON.stringify(list))
+
+  // NeoDove calls saved under two number formats (and by two telecallers): one overdue follow-up, one person contacted.
+  const past = String(Date.now() - 86400000)
+  for (const [mobile, agent] of [['+91 97555 00003', 'Ramya'], ['9755500003', 'Gayathri']]) {
+    await db.query(`insert into neodove_events (payload) values ($1)`,
+      [{ event_name: 'call_disposed', mobile, name: 'Dup Call', agent_name: agent, follow_up_date: past }])
+  }
+  const b = (await api('GET', `/api/admin/analyst?from=${today}&to=${today}`, { token: OWNER })).body
+  assert.equal(b.leads.overdue.list.filter((x) => x.mobile.replace(/\D/g, '').endsWith('9755500003')).length, 1)
+  const perCaller = b.leads.contacted.byCaller.reduce((a, r) => a + r.leads, 0)
+  assert.ok(b.leads.contacted.total < perCaller || b.leads.contacted.byCaller.length === 1, JSON.stringify(b.leads.contacted))
 })
 
 test('cart reminder emails: email 1 after an hour, email 2 with a free-delivery code, resume link, unsubscribe, never after paying, results', async () => {

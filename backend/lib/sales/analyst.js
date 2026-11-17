@@ -247,13 +247,18 @@ async function leadList(p) {
 
 /** NeoDove: people called in the period, by caller. */
 async function contacted(p) {
-  const { rows } = await query(
-    `select coalesce(nullif(payload->>'agent_name', ''), 'Unknown') as caller,
-            count(distinct payload->>'mobile')::int as leads, count(*)::int as calls
-       from neodove_events
+  // One person per mobile (NeoDove sends +91 98…, 98…, 91 98…), and the total counts each person once even when
+  // two telecallers called them (Nov 2026).
+  const calls = `from neodove_events
       where received_at >= $1 and received_at < $2 and coalesce(payload->>'event_name', '') ilike '%dispose%'
-      group by 1 order by leads desc`, [p.fromTs, p.toTs])
-  return { total: rows.reduce((a, r) => a + r.leads, 0), byCaller: rows }
+        and coalesce(payload->>'mobile', '') <> ''`
+  const [{ rows }, { rows: [all] }] = await Promise.all([
+    query(`select coalesce(nullif(payload->>'agent_name', ''), 'Unknown') as caller,
+                  count(distinct ${key10("payload->>'mobile'")})::int as leads, count(*)::int as calls
+             ${calls} group by 1 order by leads desc`, [p.fromTs, p.toTs]),
+    query(`select count(distinct ${key10("payload->>'mobile'")})::int as n ${calls}`, [p.fromTs, p.toTs]),
+  ])
+  return { total: all.n, byCaller: rows }
 }
 
 /**
@@ -263,7 +268,7 @@ async function contacted(p) {
 async function overdueFollowUps() {
   const { rows } = await query(
     `select * from (
-       select distinct on (payload->>'mobile') payload->>'mobile' as mobile,
+       select distinct on (${key10("payload->>'mobile'")}) payload->>'mobile' as mobile,
               nullif(payload->>'name', 'N/A') as name,
               coalesce(nullif(payload->>'agent_name', ''), 'Unknown') as caller,
               nullif(payload->>'lead_stage_name', '') as result,
@@ -273,7 +278,7 @@ async function overdueFollowUps() {
               end as due
          from neodove_events
         where coalesce(payload->>'event_name', '') ilike '%dispose%' and payload->>'mobile' is not null
-        order by payload->>'mobile', received_at desc) last
+        order by ${key10("payload->>'mobile'")}, received_at desc) last
       where due is not null and due < now()
         and not exists (select 1 from lead_status s where s.mobile = right(regexp_replace(last.mobile, '\\D', '', 'g'), 10) and s.status = 'converted')
       order by due`).catch(() => ({ rows: [] }))
