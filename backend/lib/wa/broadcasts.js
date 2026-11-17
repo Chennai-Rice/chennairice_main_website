@@ -274,8 +274,15 @@ export async function broadcastReport(id, { query = defaultQuery, rows = false }
   if (!b) throw httpError('Gone', { status: 404, publicMessage: 'That broadcast is gone.' })
   const { rows: list } = await query(
     `select q.phone, q.status, q.reason, q.sent_at, q.send_after, coalesce(c.name, q.vals->'body'->>0) as name,
-            m.status as delivery, m.error
+            m.status as delivery, m.error, rep.replies, rep.replied_at
        from wa_queue q left join wa_messages m on m.wamid = q.wamid left join wa_contacts c on c.phone = q.phone
+       -- What they wrote back in the 7 days after it was sent (the influencer's email, a question…).
+       left join lateral (
+         select string_agg(coalesce(nullif(x.body, ''), '[' || x.kind || ']'), ' | ' order by x.created_at) as replies,
+                min(x.created_at) as replied_at
+           from wa_messages x
+          where q.sent_at is not null and x.phone = q.phone and x.direction = 'in'
+            and x.created_at > q.sent_at and x.created_at < q.sent_at + interval '7 days') rep on true
       where q.broadcast_id = $1 order by q.phone`, [id])
   const result = (r) => {
     if (r.status === 'queued') return { group: 'waiting', detail: new Date(r.send_after) > new Date() ? 'Waiting (offers go out 9 am – 8 pm)' : 'Waiting for the next send round' }
@@ -292,7 +299,10 @@ export async function broadcastReport(id, { query = defaultQuery, rows = false }
     const x = result(r)
     const k = x.group + '|' + (x.group === 'sent' && x.detail.startsWith('Not delivered') ? 'Not delivered' : x.detail)
     tally[k] = (tally[k] || 0) + 1
-    return { phone: r.phone, name: r.name || '', group: x.group, result: x.detail, sentAt: r.sent_at }
+    const reply = String(r.replies || '').slice(0, 1000)
+    const emails = [...new Set((reply.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || []).map((e) => e.toLowerCase()))]
+    return { phone: r.phone, name: r.name || '', group: x.group, result: x.detail, sentAt: r.sent_at,
+      repliedAt: r.replied_at || null, reply, email: emails.join(', ') }
   })
   const part = (g) => Object.entries(tally).filter(([k]) => k.startsWith(g + '|')).map(([k, n]) => ({ label: k.slice(g.length + 1), n })).sort((a, c) => c.n - a.n)
   // Not delivered, by WhatsApp's error code (131026 not on WhatsApp, 131049 Meta's marketing limit…).
@@ -307,6 +317,7 @@ export async function broadcastReport(id, { query = defaultQuery, rows = false }
     sent: { total: count('sent'), parts: part('sent'), notDeliveredByCode: Object.entries(notDelivered).map(([code, n]) => ({ code, n })).sort((a, c) => c.n - a.n) },
     waiting: { total: count('waiting'), parts: part('waiting') },
     held: { total: count('held'), parts: part('held') },
+    replied: { total: people.filter((p) => p.repliedAt).length, withEmail: people.filter((p) => p.email).length },
     ...(rows ? { people } : {}),
   }
 }

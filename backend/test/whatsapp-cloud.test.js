@@ -408,7 +408,7 @@ import { broadcastReport } from '../lib/wa/broadcasts.js'
 test('Broadcasts → Details: the split of sent (read, delivered, not delivered), yet to send and held back by reason', async () => {
   const later = new Date(Date.now() + 3600e3)
   const rows = [
-    { phone: '9000000001', status: 'sent', delivery: 'read' },
+    { phone: '9000000001', status: 'sent', delivery: 'read', replied_at: new Date(), replies: 'Hi | My mail is Priya.Foodie@Gmail.com thanks' },
     { phone: '9000000002', status: 'sent', delivery: 'delivered' },
     { phone: '9000000003', status: 'sent', delivery: 'failed', error: '131026 Message undeliverable' },
     { phone: '9000000004', status: 'sent', delivery: 'failed', error: '(#131049) This message was not delivered to maintain healthy ecosystem engagement.' },
@@ -433,4 +433,6 @@ test('Broadcasts → Details: the split of sent (read, delivered, not delivered)
   assert.match(held, /Said STOP/)
   assert.match(held, /error 131030/)
   assert.equal(r.people.length, 9)
+  assert.deepEqual(r.replied, { total: 1, withEmail: 1 })
+  assert.equal(r.people.find((p) => p.phone === '9000000001').email, 'priya.foodie@gmail.com')
 })
