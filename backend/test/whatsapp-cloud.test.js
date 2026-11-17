@@ -402,3 +402,35 @@ test('Inbox: Intervene assigns the chat to the person, opens it and pauses the b
   await updateChat('9840000001', {}, { id: 'staff-1' }, { query })
   assert.ok(!calls.some((c) => /assigned_to|wa_bot_state/.test(c.sql)))
 })
+
+import { broadcastReport } from '../lib/wa/broadcasts.js'
+
+test('Broadcasts → Details: the split of sent (read, delivered, not delivered), yet to send and held back by reason', async () => {
+  const later = new Date(Date.now() + 3600e3)
+  const rows = [
+    { phone: '9000000001', status: 'sent', delivery: 'read' },
+    { phone: '9000000002', status: 'sent', delivery: 'delivered' },
+    { phone: '9000000003', status: 'sent', delivery: 'failed', error: '131026 Message undeliverable' },
+    { phone: '9000000004', status: 'sent', delivery: 'failed', error: '(#131049) This message was not delivered to maintain healthy ecosystem engagement.' },
+    { phone: '9000000005', status: 'sent', delivery: 'sent' },
+    { phone: '9000000006', status: 'queued', send_after: later },
+    { phone: '9000000007', status: 'skipped', reason: 'frequency limit (1 a day, 3 a week)' },
+    { phone: '9000000008', status: 'skipped', reason: 'said STOP' },
+    { phone: '9000000009', status: 'failed', reason: '(#131030) Recipient phone number not in allowed list' },
+  ]
+  const query = async (sql) => /from wa_broadcasts/.test(sql)
+    ? { rows: [{ id: 'b1', name: 'Test', template_name: 't', audience: 9, status: 'sending' }] }
+    : { rows }
+  const r = await broadcastReport('b1', { query, rows: true })
+  assert.equal(r.total, 9)
+  assert.deepEqual([r.sent.total, r.waiting.total, r.held.total], [5, 1, 3])
+  const sent = Object.fromEntries(r.sent.parts.map((x) => [x.label, x.n]))
+  assert.equal(sent['Not delivered'], 2)
+  assert.equal(sent.Read, 1)
+  assert.deepEqual(r.sent.notDeliveredByCode.map((x) => x.code).sort(), ['131026', '131049'])
+  const held = r.held.parts.map((x) => x.label).join(' | ')
+  assert.match(held, /frequency limit/)
+  assert.match(held, /Said STOP/)
+  assert.match(held, /error 131030/)
+  assert.equal(r.people.length, 9)
+})

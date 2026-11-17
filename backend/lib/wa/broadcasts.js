@@ -243,6 +243,68 @@ export async function deleteBroadcast(id, { query = defaultQuery } = {}) {
   return { ok: true }
 }
 
+// One plain reason for a held-back or failed message (the queue keeps our own reason or Meta's error text).
+function heldReason(status, reason) {
+  const r = String(reason || '')
+  if (status === 'skipped') {
+    if (/frequency limit/.test(r)) return 'Already got an offer today or 3 this week (frequency limit)'
+    if (/STOP/.test(r)) return 'Said STOP'
+    if (/permission/.test(r)) return 'No WhatsApp permission'
+    if (/cancelled/.test(r)) return 'Broadcast stopped before it was sent'
+    if (/order is on its way/.test(r)) return 'An order is on its way'
+    if (/template/.test(r)) return 'Template problem: ' + r
+    return r || 'Held back'
+  }
+  const code = /\b(1\d{5})\b/.exec(r)?.[1]
+  return 'WhatsApp refused it' + (code ? ` (error ${code})` : '') + (r ? `: ${r.replace(/^\(#?\d+\)\s*/, '').slice(0, 90)}` : '')
+}
+
+/**
+ * Broadcasts → Details (Nov 2026): the split of one broadcast — sent (delivered, read, not delivered, no receipt
+ * yet), still waiting, held back by reason — and, with `rows`, every number with its result.
+ */
+export async function broadcastReport(id, { query = defaultQuery, rows = false } = {}) {
+  const { rows: [b] } = await query(`select id, name, template_name, audience, status from wa_broadcasts where id = $1`, [id])
+  if (!b) throw httpError('Gone', { status: 404, publicMessage: 'That broadcast is gone.' })
+  const { rows: list } = await query(
+    `select q.phone, q.status, q.reason, q.sent_at, q.send_after, coalesce(c.name, q.vals->'body'->>0) as name,
+            m.status as delivery, m.error
+       from wa_queue q left join wa_messages m on m.wamid = q.wamid left join wa_contacts c on c.phone = q.phone
+      where q.broadcast_id = $1 order by q.phone`, [id])
+  const result = (r) => {
+    if (r.status === 'queued') return { group: 'waiting', detail: new Date(r.send_after) > new Date() ? 'Waiting (offers go out 9 am – 8 pm)' : 'Waiting for the next send round' }
+    if (r.status === 'sent') {
+      if (r.delivery === 'read') return { group: 'sent', detail: 'Read' }
+      if (r.delivery === 'delivered') return { group: 'sent', detail: 'Delivered, not read yet' }
+      if (r.delivery === 'failed') return { group: 'sent', detail: 'Not delivered' + (r.error ? `: ${String(r.error).slice(0, 90)}` : '') }
+      return { group: 'sent', detail: 'Sent, no delivery receipt yet' }
+    }
+    return { group: 'held', detail: heldReason(r.status, r.reason) }
+  }
+  const tally = {}
+  const people = list.map((r) => {
+    const x = result(r)
+    const k = x.group + '|' + (x.group === 'sent' && x.detail.startsWith('Not delivered') ? 'Not delivered' : x.detail)
+    tally[k] = (tally[k] || 0) + 1
+    return { phone: r.phone, name: r.name || '', group: x.group, result: x.detail, sentAt: r.sent_at }
+  })
+  const part = (g) => Object.entries(tally).filter(([k]) => k.startsWith(g + '|')).map(([k, n]) => ({ label: k.slice(g.length + 1), n })).sort((a, c) => c.n - a.n)
+  // Not delivered, by WhatsApp's error code (131026 not on WhatsApp, 131049 Meta's marketing limit…).
+  const notDelivered = {}
+  for (const r of list.filter((x) => x.status === 'sent' && x.delivery === 'failed')) {
+    const code = /\b(1\d{5})\b/.exec(String(r.error || ''))?.[1] || 'other'
+    notDelivered[code] = (notDelivered[code] || 0) + 1
+  }
+  const count = (g) => people.filter((p) => p.group === g).length
+  return {
+    id: b.id, name: b.name, template: b.template_name, status: b.status, total: list.length,
+    sent: { total: count('sent'), parts: part('sent'), notDeliveredByCode: Object.entries(notDelivered).map(([code, n]) => ({ code, n })).sort((a, c) => c.n - a.n) },
+    waiting: { total: count('waiting'), parts: part('waiting') },
+    held: { total: count('held'), parts: part('held') },
+    ...(rows ? { people } : {}),
+  }
+}
+
 /** Scheduled broadcasts whose time has come: mark them sending (the queue already holds their messages). */
 export async function startScheduled({ query = defaultQuery } = {}) {
   await query(`update wa_broadcasts set status = 'sending', updated_at = now() where status = 'scheduled' and scheduled_at <= now()`)

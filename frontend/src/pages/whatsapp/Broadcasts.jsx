@@ -235,7 +235,60 @@ export function Editor({ fields, onDone, fileOnly = false }) {
 
 // Broadcasts (a group of contacts) and, with `bulk`, the Bulk message tab (numbers from a CSV / Excel file):
 // the same sending and results, each tab listing its own sends.
+/** One broadcast's split: sent (delivered / read / not delivered), yet to send, held back — each with its reasons. */
+function BroadcastDetails({ id, onClose }) {
+  const [r, setR] = useState(null)
+  const [err, setErr] = useState('')
+  useEffect(() => { staffJson(`/api/admin/whatsapp/broadcasts/${id}/report`).then(setR).catch((e) => setErr(e.message)) }, [id])
+  async function download() {
+    try {
+      const res = await staffFetch(`/api/admin/whatsapp/broadcasts/${id}/report.csv`)
+      if (!res.ok) throw new Error('Could not download the list.')
+      const url = URL.createObjectURL(await res.blob())
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `broadcast-${(r?.name || 'report').replace(/[^\w-]+/g, '_')}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) { setErr(e.message) }
+  }
+  const CODES = { 131026: 'not on WhatsApp / blocked / old app', 131049: "Meta's limit on offers per person", 131047: 'more than 24 hours', 131050: 'customer stopped marketing messages', 130472: 'part of a Meta test group' }
+  const block = (title, tone, part) => (
+    <div className={`wa-split wa-split--${tone}`}>
+      <h4>{title} <b>{num(part.total)}</b>{r.total ? <small>{pct(part.total, r.total)}%</small> : null}</h4>
+      {part.total === 0 ? <p className="wa-muted">None</p> : (
+        <ul>{part.parts.map((x) => <li key={x.label}><span>{x.label}</span><b>{num(x.n)}</b></li>)}</ul>
+      )}
+    </div>
+  )
+  return (
+    <section className="wa-dark wa-split-panel">
+      <div className="wa-dark-head">
+        <h2>{r ? `${r.name}: split of ${num(r.total)}` : 'Loading…'}</h2>
+        <div className="wa-actions">
+          {r && <button type="button" className="wa-btn wa-btn--small" onClick={download}><I name="arrow" size={14} /> Download every number</button>}
+          <button type="button" className="wa-btn wa-btn--small" onClick={onClose}>Close</button>
+        </div>
+      </div>
+      {err && <p className="wa-alert">{err}</p>}
+      {r && (
+        <div className="wa-split-grid">
+          {block('Sent', 'ok', r.sent)}
+          {block('Yet to send', 'pending', r.waiting)}
+          {block('Held back', 'bad', r.held)}
+        </div>
+      )}
+      {r?.sent.notDeliveredByCode.length > 0 && (
+        <p className="wa-muted wa-split-note">
+          Not delivered, by WhatsApp's reason: {r.sent.notDeliveredByCode.map((x) => `${num(x.n)} × ${x.code}${CODES[x.code] ? ` (${CODES[x.code]})` : ''}`).join(' · ')}
+        </p>
+      )}
+    </section>
+  )
+}
+
 export default function Broadcasts({ bulk = false }) {
+  const [details, setDetails] = useState(null)
   const [raw, setD] = useState(null)
   const [error, setError] = useState('')
   const [editing, setEditing] = useState(bulk)
@@ -283,6 +336,7 @@ export default function Broadcasts({ bulk = false }) {
                       <td>{num(s.orders)}{s.revenue ? <small>{s.revenue}</small> : null}</td>
                       <td>{num(s.skipped + s.failed)}</td>
                       <td className="wa-row-actions">
+                        {b.status !== 'draft' && <button type="button" className="wa-btn wa-btn--small" onClick={() => setDetails(details === b.id ? null : b.id)}>{details === b.id ? 'Hide' : 'Details'}</button>}
                         {b.status === 'draft' && <button type="button" className="wa-btn wa-btn--small" onClick={() => act(`/api/admin/whatsapp/broadcasts/${b.id}/launch`, 'POST', `Send "${b.name}" now?`)}>Send</button>}
                         {['scheduled', 'sending'].includes(b.status) && <button type="button" className="wa-btn wa-btn--small" onClick={() => act(`/api/admin/whatsapp/broadcasts/${b.id}/cancel`, 'POST', 'Stop this broadcast? Messages already sent stay sent.')}>Stop</button>}
                         {['draft', 'cancelled', 'done'].includes(b.status) && <button type="button" className="wa-round wa-round--small" title="Delete" onClick={() => act(`/api/admin/whatsapp/broadcasts/${b.id}`, 'DELETE', b.status === 'done' ? `Delete "${b.name}" from this list? The messages already sent stay in the chats; its numbers leave the reports.` : 'Delete this broadcast?')}><I name="trash" size={13} /></button>}
@@ -295,6 +349,7 @@ export default function Broadcasts({ bulk = false }) {
           )}
         </div>
       </section>
+      {details && <BroadcastDetails key={details} id={details} onClose={() => setDetails(null)} />}
     </>
   )
 }

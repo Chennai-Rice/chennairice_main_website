@@ -61,7 +61,7 @@ import { getProfile as waProfile, saveProfile as saveWaProfile, setProfilePhoto 
 import { rawAnalytics, behaviour as webBehaviour, heatmap as webHeatmap } from './web-analytics.js'
 import { runWhatsAppAutomations, automationsAdmin, saveAutomations, testAutomation } from '../wa/automations.js'
 import { optIn as waOptIn, listContacts, contactsCsv, setTags, setPermission, importContacts } from '../wa/contacts.js'
-import { listBroadcasts, saveBroadcast, uploadBroadcastFile, launchBroadcast, cancelBroadcast, deleteBroadcast, audience as broadcastAudience, FIELDS as BROADCAST_FIELDS } from '../wa/broadcasts.js'
+import { listBroadcasts, saveBroadcast, uploadBroadcastFile, launchBroadcast, cancelBroadcast, deleteBroadcast, broadcastReport, audience as broadcastAudience, FIELDS as BROADCAST_FIELDS } from '../wa/broadcasts.js'
 import { report as waReport, reportCsv as waReportCsv } from '../wa/reports.js'
 import { listChats, getChat, replyText, replyMedia, replyTemplate, updateChat, addNote as addChatNote, listQuickReplies, saveQuickReply, deleteQuickReply } from '../wa/inbox.js'
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
@@ -874,6 +874,18 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   }))
   admin.post('/whatsapp/broadcasts/audience', wa, wrap(async (req, res) => { const a = await broadcastAudience(req.body || {}); delete a.people; res.json(a) }))
   admin.post('/whatsapp/broadcasts/:id/launch', wa, wrap(async (req, res) => res.json(await launchBroadcast(req.params.id, req.body || {}))))
+  admin.get('/whatsapp/broadcasts/:id/report', wa, wrap(async (req, res) => { noStore(res); res.json(await broadcastReport(req.params.id)) }))
+  admin.get('/whatsapp/broadcasts/:id/report.csv', wa, wrap(async (req, res) => {
+    const r = await broadcastReport(req.params.id, { rows: true })
+    const cell = (v) => { let t = String(v ?? ''); if (/^[=+\-@]/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"' }
+    const group = { sent: 'Sent', waiting: 'Yet to send', held: 'Held back' }
+    const lines = [['Mobile', 'Name', 'Split', 'Result', 'Sent at'],
+      ...r.people.map((p) => [p.phone, p.name, group[p.group], p.result, p.sentAt ? new Date(p.sentAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : ''])]
+    noStore(res)
+    res.set('Content-Type', 'text/csv; charset=utf-8')
+    res.set('Content-Disposition', `attachment; filename="broadcast-${String(r.name).replace(/[^\w-]+/g, '_').slice(0, 40)}.csv"`)
+    res.send('﻿' + lines.map((l) => l.map(cell).join(',')).join('\r\n'))
+  }))
   admin.post('/whatsapp/broadcasts/:id/cancel', wa, wrap(async (req, res) => res.json(await cancelBroadcast(req.params.id))))
   admin.delete('/whatsapp/broadcasts/:id', wa, wrap(async (req, res) => res.json(await deleteBroadcast(req.params.id))))
   // Phase 6: Reports

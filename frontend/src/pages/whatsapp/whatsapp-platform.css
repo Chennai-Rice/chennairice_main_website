@@ -181,3 +181,17 @@
 .wa-bc-permission input { margin-top: 3px; flex: none; }
 .wa-bubble-img { display: block; width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 6px; }
 .wa-window-note { margin: 0; font-size: 12.5px; line-height: 1.45; }
+/* Broadcasts → Details: the split of one broadcast. */
+.wa-split-panel { margin-top: 16px; }
+.wa-split-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; padding: 4px 16px 16px; }
+.wa-split { background: rgba(255, 255, 255, 0.06); border-radius: 14px; padding: 12px 14px; border-top: 3px solid #8a8a8a; }
+.wa-split--ok { border-top-color: #d7f25c; }
+.wa-split--pending { border-top-color: #f2c94c; }
+.wa-split--bad { border-top-color: #eb7a6b; }
+.wa-split h4 { margin: 0 0 8px; display: flex; align-items: baseline; gap: 8px; font-size: 14px; }
+.wa-split h4 b { font-size: 22px; }
+.wa-split h4 small { opacity: 0.7; }
+.wa-split ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.wa-split li { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.wa-split li span { opacity: 0.85; }
+.wa-split-note { padding: 0 16px 14px; font-size: 12.5px; margin: 0; }
