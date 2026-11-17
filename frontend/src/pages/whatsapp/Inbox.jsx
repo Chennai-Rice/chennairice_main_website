@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { staffJson, staffFetch } from '../../services/staffAuth.js'
 import { I, WaText, when } from './ui.jsx'
 
-const VIEWS = [['all', 'All'], ['unread', 'Unread'], ['mine', 'Mine'], ['unassigned', 'Unassigned']]
+// New: first message in the last 24 hours. Replied: wrote back after one of our templates (bulk message, broadcast).
+const VIEWS = [['all', 'All'], ['new', 'New'], ['unread', 'Unread'], ['replied', 'Replied'], ['mine', 'Mine'], ['unassigned', 'Unassigned']]
+const VIEW_COUNT = { new: 'new_chats', replied: 'replied', mine: 'mine', unassigned: 'unassigned' }
 // A picture or PDF in the chat, loaded through our server (WhatsApp files need the token).
 function ChatMedia({ id, kind }) {
   const [url, setUrl] = useState(null)
@@ -319,7 +321,7 @@ export default function Inbox() {
         <div className="wa-tabs-notch">
           {VIEWS.map(([id, label]) => (
             <button key={id} type="button" className={view === id ? 'is-on' : ''} onClick={() => setView(id)}>
-              {label}{id === 'mine' && data ? <span className="wa-count">{data.counts.mine}</span> : null}{id === 'unassigned' && data ? <span className="wa-count">{data.counts.unassigned}</span> : null}
+              {label}{data && VIEW_COUNT[id] && data.counts[VIEW_COUNT[id]] != null ? <span className="wa-count">{data.counts[VIEW_COUNT[id]]}</span> : null}
             </button>
           ))}
         </div>
