@@ -1442,6 +1442,12 @@ test('Spin & Win: off until switched on, one spin per mobile and browser, prize 
     // The admin view counts it.
     const admin = await api('GET', '/api/admin/spin', { token: OWNER })
     assert.equal(admin.body.report.spins, 1)
+    // Who spun → Purchased: the paid order the code went on, with its date, items and amount.
+    const { rows: [paid] } = await db.query(`select id, discount_code_id from orders where payment_status = 'paid' and placed_at is not null order by placed_at limit 1`)
+    await db.query(`update orders set discount_code_id = (select id from discount_codes where code = $1) where id = $2`, [won.body.code, paid.id])
+    const used = (await api('GET', '/api/admin/spin', { token: OWNER })).body.recent.find((x) => x.code === won.body.code)
+    assert.ok(used.usedOn && used.order && used.order.at && / kg × /.test(used.order.items) && used.order.total > 0, JSON.stringify(used))
+    await db.query(`update orders set discount_code_id = $2 where id = $1`, [paid.id, paid.discount_code_id])
 
     // Switched off again: the wheel goes away.
     await api('PUT', '/api/admin/spin', { token: OWNER, body: { enabled: false } })

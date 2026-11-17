@@ -57,3 +57,7 @@
 /* Who spun: custom dates (from – to) */
 .of-who-dates { display: inline-flex; align-items: center; gap: 6px; }
 .of-who-dates .wh-input { width: auto; padding: 8px 10px; }
+/* Who spun → Purchased: when the code was used, on what, for how much. */
+.of-who-buy { display: grid; gap: 2px; min-width: 200px; font-size: 12.5px; line-height: 1.35; }
+.of-who-buy b { font-weight: 600; }
+.of-who-buy span { opacity: 0.85; }
