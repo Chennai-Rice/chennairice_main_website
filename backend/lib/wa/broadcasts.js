@@ -179,26 +179,32 @@ export async function launchBroadcast(id, { at = null } = {}, { query = defaultQ
   if ((mapping.body || []).length < nBody) throw httpError('Mapping', { publicMessage: 'Fill in every {{ }} of the template.' })
   // A file the team confirmed has permission: record each person's "yes" (source 'import'), so the
   // queue's own permission check lets their messages through and STOP still works as usual.
+  // One statement for everyone (a row at a time took too long for a big file: the request ran out of time).
   if (b.segment?.file?.optedIn) {
-    for (const p of aud.people.filter((x) => x.optedInAt === 'file')) {
+    const fromFile = aud.people.filter((x) => x.optedInAt === 'file')
+    if (fromFile.length) {
       await query(
-        `insert into wa_contacts (phone, name, opted_in_at, opt_in_source) values ($1, $2, now(), 'import')
+        `insert into wa_contacts (phone, name, opted_in_at, opt_in_source)
+         select distinct on (p) p, n, now(), 'import' from unnest($1::text[], $2::text[]) as t(p, n)
          on conflict (phone) do update set opted_in_at = coalesce(wa_contacts.opted_in_at, now()),
            opt_in_source = coalesce(wa_contacts.opt_in_source, 'import'), name = coalesce(wa_contacts.name, excluded.name), updated_at = now()`,
-        [p.phone, p.name])
+        [fromFile.map((p) => p.phone), fromFile.map((p) => p.name || null)])
     }
   }
-  for (const p of aud.people) {
+  for (let i = 0; i < aud.people.length; i += 1000) {
+    const part = aud.people.slice(i, i + 1000)
     await query(
       `insert into wa_queue (phone, template_name, language, category, vals, source, ref, broadcast_id, send_after)
-       values ($1, $2, $3, $4, $5, 'broadcast', $6, $7, $8) on conflict (ref) where ref is not null do nothing`,
-      [p.phone, t.name, t.language, String(t.category).toLowerCase(), JSON.stringify(valuesFor(p, mapping)), `bc:${b.id}:${p.phone}`, b.id, when])
+       select p, $3, $4, $5, v::jsonb, 'broadcast', 'bc:' || $6::text || ':' || p, $6::uuid, $7
+         from unnest($1::text[], $2::text[]) as t(p, v)
+       on conflict (ref) where ref is not null do nothing`,
+      [part.map((p) => p.phone), part.map((p) => JSON.stringify(valuesFor(p, mapping))), t.name, t.language, String(t.category).toLowerCase(), b.id, when])
   }
   const now = when.getTime() <= Date.now() + 60e3
   await query(`update wa_broadcasts set status = $2, scheduled_at = $3, audience = $4, updated_at = now() where id = $1`,
     [b.id, now ? 'sending' : 'scheduled', when, aud.eligible])
-  // The first batch right away; the 10-minute job sends the rest.
-  const first = now ? await sendQueue({ query, fetchImpl, broadcastId: b.id, limit: 60 }) : null
+  // A first small batch right away (the request has 60 seconds); the 10-minute job sends the rest.
+  const first = now ? await sendQueue({ query, fetchImpl, broadcastId: b.id, limit: 20 }) : null
   return { ok: true, queued: aud.eligible, first }
 }
 
