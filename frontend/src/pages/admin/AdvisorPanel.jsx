@@ -23,6 +23,7 @@ const SUGGESTIONS = [
 ]
 const KEY = 'cr.admin.advisor'
 const FILES_KEY = 'cr.admin.advisor.files'
+const STYLE_KEY = 'cr.admin.advisor.style'
 const ACCEPT = '.jpg,.jpeg,.png,.webp,.pdf,.docx,.xlsx,.csv'
 const MAX_MB = 10
 const MAX_FILES = 5
@@ -54,12 +55,25 @@ function rangeDates(range) {
   return { from: d(range.from), to: d(range.to) }
 }
 
+/** The Hormozi-style advisor's picture: ready (eyes open), thinking (eyes closed), talking (mouth open). */
+function Avatar({ mood = 'ready', size }) {
+  return <img className={`av-avatar${size === 'lg' ? ' is-lg' : ''}`} src={`/assets/advisor/hormozi-${mood}.webp`} alt="" width="40" height="40" />
+}
+
 function Advisor({ onAuthError, report }) {
   const [messages, setMessages] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem(KEY)) || [] } catch { return [] }
   })
   const [text, setText] = useState('')
+  // Advisor style: the standard analyst, or Hormozi-style (same data, his lens and voice).
+  const [style, setStyle] = useState(() => {
+    try { return sessionStorage.getItem(STYLE_KEY) || '' } catch { return '' }
+  })
+  useEffect(() => {
+    try { sessionStorage.setItem(STYLE_KEY, style) } catch { /* fine */ }
+  }, [style])
   const [busy, setBusy] = useState(false)
+  const [talking, setTalking] = useState(false) // the Hormozi avatar "speaks" for a moment when an answer arrives
   const [usage, setUsage] = useState(null)
   const [editCap, setEditCap] = useState(false)
   const [cap, setCap] = useState('')
@@ -142,11 +156,13 @@ function Advisor({ onAuthError, report }) {
         body: JSON.stringify({
           messages: next.filter((m) => !m.error).map(({ role, content }) => ({ role, content })),
           files: files.map((f) => f.id),
+          style,
           site: siteSummary(report),
           ...rangeDates(report?.range),
         }),
       })
-      setMessages((m) => [...m, { role: 'assistant', content: r.reply, answer: r.answer, costInr: r.costInr }])
+      setMessages((m) => [...m, { role: 'assistant', content: r.reply, answer: r.answer, costInr: r.costInr, style }])
+      if (style === 'hormozi') { setTalking(true); setTimeout(() => setTalking(false), 2500) }
       setUsage((u) => (u ? { ...u, spentInr: Math.round((u.spentInr + (r.costInr || 0)) * 100) / 100, questionsToday: (u.questionsToday || 0) + 1 } : u))
     } catch (err) {
       if (onAuthError(err)) return
@@ -179,8 +195,16 @@ function Advisor({ onAuthError, report }) {
         <div className="av-log" aria-live="polite">
           {messages.length === 0 && (
             <div className="av-welcome">
-              <span className="av-badge">✦ Business Advisor</span>
+              {style === 'hormozi' && <Avatar mood="ready" size="lg" />}
+              <span className="av-badge">✦ {style === 'hormozi' ? 'Business Advisor · Hormozi-style' : 'Business Advisor'}</span>
               <h2>Ask about your business</h2>
+              {style === 'hormozi' && (
+                <p className="av-style-note">
+                  Hormozi-style: the same live figures, judged the way Alex Hormozi reasons in his public talks: the
+                  constraint first, the offer, the math in rupees, a blunt answer and one action. A simulation built from
+                  his public work, not Alex Hormozi.
+                </p>
+              )}
               <p>
                 Sales, leads, ad campaigns, customers, stock, delivery and website visitors — it reads the live
                 figures and tells you what is happening, why, and what to do. Describe an idea and it will say
@@ -194,7 +218,13 @@ function Advisor({ onAuthError, report }) {
           )}
           {messages.map((m, i) => (
             m.answer ? (
-              <div key={i} className={`av-msg is-assistant is-answer${printing === i ? ' is-printing' : ''}`}>
+              <div key={i} className={`av-msg is-assistant is-answer${printing === i ? ' is-printing' : ''}${m.style === 'hormozi' ? ' is-persona' : ''}`}>
+                {m.style === 'hormozi' && (
+                  <div className="av-persona-head">
+                    <Avatar mood={talking && i === messages.length - 1 ? 'talking' : 'ready'} />
+                    <span>Hormozi-style advisor</span>
+                  </div>
+                )}
                 <AdvisorAnswer answer={m.answer} onAsk={ask} />
                 <div className="av-msg-tools">
                   <button type="button" onClick={() => copy(m.content, i)}>{copied === i ? 'Copied ✓' : 'Copy'}</button>
@@ -213,7 +243,9 @@ function Advisor({ onAuthError, report }) {
               </div>
             )
           ))}
-          {busy && <div className="av-msg is-assistant av-typing" aria-label="Analysing"><span /><span /><span /> <em>Analysing your data…</em></div>}
+          {busy && (style === 'hormozi'
+            ? <div className="av-msg is-assistant av-typing is-persona" aria-label="Thinking"><Avatar mood="thinking" /> <em>Running the numbers…</em></div>
+            : <div className="av-msg is-assistant av-typing" aria-label="Analysing"><span /><span /><span /> <em>Analysing your data…</em></div>)}
           <span ref={end} />
         </div>
 
@@ -252,6 +284,11 @@ function Advisor({ onAuthError, report }) {
           />
           <button type="submit" disabled={busy || !text.trim() || uploading.length > 0 || outToday}>Ask</button>
         </form>
+        <div className="av-style" role="radiogroup" aria-label="Advisor style">
+          <span>Advisor:</span>
+          <button type="button" role="radio" aria-checked={style !== 'hormozi'} className={style !== 'hormozi' ? 'is-on' : ''} onClick={() => setStyle('')}>Standard</button>
+          <button type="button" role="radio" aria-checked={style === 'hormozi'} className={style === 'hormozi' ? 'is-on' : ''} onClick={() => setStyle('hormozi')}>Hormozi-style</button>
+        </div>
         <p className="av-foot">
           Uses live data for {report?.range?.label?.toLowerCase() || 'the selected period'} (change it at the top).
           Read-only — it never changes anything. Check the numbers before big decisions.
