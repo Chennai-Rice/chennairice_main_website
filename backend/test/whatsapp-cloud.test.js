@@ -436,3 +436,14 @@ test('Broadcasts → Details: the split of sent (read, delivered, not delivered)
   assert.deepEqual(r.replied, { total: 1, withEmail: 1 })
   assert.equal(r.people.find((p) => p.phone === '9000000001').email, 'priya.foodie@gmail.com')
 })
+
+test('Bot: the "needs a reply" handoff email is off unless switched on in Bot settings', async () => {
+  const { aiHandoff } = await import('../lib/wa/bot.js')
+  assert.equal(cleanBot(DEFAULT_BOT).handoffEmail, false)
+  assert.equal(cleanBot({ ...DEFAULT_BOT, handoffEmail: true }).handoffEmail, true)
+  const sql = []
+  const query = async (s) => { sql.push(s.replace(/\s+/g, ' ')); return { rows: [] } } // no saved settings: the default (off)
+  await aiHandoff({ phone: '9000000001', name: 'Test', text: 'Hi', ai: { reason: 'Needs a person', reply: 'Sure' } }, { query })
+  assert.ok(sql.some((s) => /insert into wa_notes/.test(s)), 'the AI note is still saved')
+  assert.ok(!sql.some((s) => /email_outbox|staff_users/.test(s)), 'no email is queued')
+})
