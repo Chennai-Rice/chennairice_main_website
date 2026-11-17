@@ -230,6 +230,16 @@ export default function SpinWheel() {
     return () => window.clearTimeout(t)
   }, [config, accepted, quiet, win, show])
 
+  // A link from a WhatsApp message or ad, chennairiceindustries.com/?spin=1 (or #spin), opens the wheel straight
+  // away, before cookies are answered and even if it was seen earlier this visit (Nov 2026).
+  useEffect(() => {
+    if (!config?.enabled || quiet) return undefined
+    const wants = new URLSearchParams(window.location.search).get('spin') === '1' || window.location.hash === '#spin'
+    if (!wants) return undefined
+    const t = window.setTimeout(() => { store.set('sessionStorage', SEEN_KEY, '1'); show() }, 600)
+    return () => window.clearTimeout(t)
+  }, [config, quiet, show])
+
   useEffect(() => {
     if (!open) return undefined
     const key = (e) => { if (e.key === 'Escape' && state !== 'spinning') setOpen(false) }
