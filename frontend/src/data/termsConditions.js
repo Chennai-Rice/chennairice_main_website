@@ -134,7 +134,14 @@ export const TERMS_SECTIONS = [
     ],
   },
   {
-    title: '17. Updates to These Terms',
+    title: '17. WhatsApp Messages',
+    paragraphs: [
+      'By placing an order on our website, you agree that Chennai Rice Industries India Private Limited may contact you on WhatsApp at the mobile number you give at checkout. We use it for order confirmations, payment, dispatch and delivery updates, customer support, and occasional offers, new products and discounts.',
+      'You can stop offers at any time by replying STOP to any of our WhatsApp messages, or by writing to support@chennairiceindustries.com; reply START to receive them again. Messages about your orders, payments and deliveries are part of the service and continue after you stop offers. How we handle your number and messages is explained in our Privacy Policy.',
+    ],
+  },
+  {
+    title: '18. Updates to These Terms',
     paragraphs: [
       'Chennai Rice Industries India Private Limited reserves the right to revise and update these Terms and Conditions at any time without prior notice. We encourage you to review this page periodically to stay informed of any changes. Continued use of the website after changes are posted constitutes your acceptance of the revised terms.',
     ],
@@ -142,7 +149,7 @@ export const TERMS_SECTIONS = [
 ]
 
 export const TERMS_CONTACT = {
-  heading: '18. Contact Us',
+  heading: '19. Contact Us',
   intro: 'For any questions or concerns regarding these Terms and Conditions, please contact us at:',
   companyName: 'Chennai Rice Industries India Private Limited',
   email: 'support@chennairiceindustries.com',

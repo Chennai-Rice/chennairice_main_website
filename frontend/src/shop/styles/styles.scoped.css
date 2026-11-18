@@ -2909,3 +2909,6 @@
   text-decoration: underline;
   cursor: pointer;
 }
+/* "By continuing, you agree to our Terms & Conditions and Privacy Policy…" beside the pay button. */
+.shop-scope .checkout-terms a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.shop-scope .checkout-terms a:hover { color: #7a1f2b; }

@@ -146,7 +146,6 @@ export default function CheckoutPage() {
   const onConfirmedPage = location.pathname === "/order-confirmed";
   const fromHistory = onConfirmedPage ? location.state?.confirmed ?? null : null;
   const [status, setStatus] = useState(fromHistory ? "done" : "idle"); // idle | paying | done
-  const [waOptIn, setWaOptIn] = useState(false); // "Send me offers and updates on WhatsApp"
   const [failure, setFailure] = useState("");
   const failureRef = useRef(null);
   // The same basket was paid for minutes ago (server answer "already_paid"): its order number, and the
@@ -364,13 +363,12 @@ export default function CheckoutPage() {
     }
 
     setStatus("paying");
-    // "Send me offers on WhatsApp" ticked: recorded for the WhatsApp dashboard (/whatsappbot → Contacts).
-    if (waOptIn) {
-      fetch("/api/whatsapp/optin", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: form.phone, name: form.name, source: "checkout" }),
-      }).catch(() => {});
-    }
+    // WhatsApp: agreed to by continuing (the line beside the button, the Terms and the Privacy Policy), recorded
+    // for the WhatsApp dashboard (/whatsappbot → Contacts). STOP still stops offers.
+    fetch("/api/whatsapp/optin", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: form.phone, name: form.name, source: "checkout" }),
+    }).catch(() => {});
     // Checkout journey, step 3: details filled (the form passed its checks).
     recordJourney("details", {
       items: journeyItems(items), value: journeyValue(items),
@@ -641,11 +639,6 @@ export default function CheckoutPage() {
                   {errors.phone && <span className="field-error" id="err-phone">{errors.phone}</span>}
                 </label>
               </div>
-              {/* WhatsApp offers: unticked until the customer ticks it (their clear "yes"). Order updates come anyway. */}
-              <label className="checkout-wa-optin">
-                <input type="checkbox" checked={waOptIn} onChange={(e) => setWaOptIn(e.target.checked)} disabled={busy} />
-                <span>Send me offers and updates on WhatsApp <small>(you can reply STOP any time)</small></span>
-              </label>
 
               <label className="field">
                 <span className="field-label">Address</span>
@@ -813,6 +806,13 @@ export default function CheckoutPage() {
                   here names neither. */}
               <p className="checkout-note">
                 Prices include GST. You will be asked to pay securely on the next step.
+              </p>
+              {/* WhatsApp (owner, Nov 2026): no tick box; placing the order agrees to it, as the Terms and the
+                  Privacy Policy say, shown here beside the button so it is seen. */}
+              <p className="checkout-note checkout-terms">
+                By continuing, you agree to our <Link to="/terms">Terms &amp; Conditions</Link> and{" "}
+                <Link to="/privacy">Privacy Policy</Link>, including order updates and occasional offers on WhatsApp.
+                Reply STOP any time to stop offers.
               </p>
 
               <button
