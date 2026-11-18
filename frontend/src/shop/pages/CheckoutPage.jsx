@@ -104,7 +104,9 @@ function validate(form) {
   const errors = {};
   if (!form.name.trim()) errors.name = "Please tell us your name.";
   if (!EMAIL_PATTERN.test(form.email.trim())) errors.email = "A valid email address is required.";
-  if (!PHONE_PATTERN.test(form.phone.trim())) errors.phone = "A valid phone number is required.";
+  // A 10-digit Indian mobile (details saved before Nov 2026 may still carry +91 or 0 in front).
+  if (!PHONE_PATTERN.test(form.phone.trim()) || !/^[6-9]\d{9}$/.test(form.phone.replace(/\D/g, "").replace(/^(91|0)(?=\d{10}$)/, "")))
+    errors.phone = "Enter a valid 10-digit mobile number.";
   if (!form.addressLine1.trim()) errors.addressLine1 = "Please add your delivery address.";
   if (!form.city.trim()) errors.city = "Please add your city or town.";
   if (!form.state.trim()) errors.state = "Please add your state.";
@@ -191,7 +193,15 @@ export default function CheckoutPage() {
   );
 
   const set = (key) => (event) => {
-    const { value } = event.target;
+    let { value } = event.target;
+    // Phone: a 10-digit mobile, digits only (a pasted or autofilled +91 / 0 in front is dropped). PIN code: 6 digits.
+    if (key === "phone") {
+      let d = value.replace(/\D/g, "");
+      if (d.length > 10 && d.startsWith("91")) d = d.slice(2);
+      else if (d.length > 10 && d.startsWith("0")) d = d.slice(1);
+      value = d.slice(0, 10);
+    }
+    if (key === "pincode") value = value.replace(/\D/g, "").slice(0, 6);
     setForm((current) => ({ ...current, [key]: value }));
     // Clear a field's error as soon as it is touched, rather than leaving a
     // stale complaint under a field the customer is actively fixing.
@@ -618,10 +628,11 @@ export default function CheckoutPage() {
                   <span className="field-label">Phone</span>
                   <input
                     type="tel"
+                    inputMode="numeric"
                     value={form.phone}
                     name="phone"
                   onChange={set("phone")}
-                    placeholder="+91 12345 67890"
+                    placeholder="10-digit mobile number"
                     autoComplete="tel"
                     aria-invalid={!!errors.phone}
                   aria-describedby={errors.phone ? "err-phone" : undefined}
