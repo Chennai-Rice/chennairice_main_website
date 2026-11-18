@@ -98,7 +98,7 @@ export default function Hero() {
 
       <div className="hero-estd">
         <div className="hero-estd-ring">
-          <span className="hero-estd-label">Estd</span>
+          <span className="hero-estd-label">Since</span>
           <span className="hero-estd-year">{HERO.estd}</span>
         </div>
       </div>
