@@ -316,7 +316,7 @@ export default function SpinWheel() {
           {/* The Lucky Spin Wheel Contest emblem (bottom left, like Soru Kutty on the right). */}
           <picture>
             <source srcSet="/assets/spin-emblem.webp" type="image/webp" />
-            <img src="/assets/spin-emblem.png" alt="" width="104" height="87" className="spin-fab-img" />
+            <img src="/assets/spin-emblem.png" alt="Chennai Rice Spin and Win wheel" aria-hidden="true" width="104" height="87" className="spin-fab-img" />
           </picture>
           {win && <span className="spin-fab-badge">Your prize</span>}
         </button>
