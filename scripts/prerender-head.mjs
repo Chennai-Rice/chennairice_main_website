@@ -176,7 +176,12 @@ const jsonLd = (items) => items.length
 const shell = readFileSync(join(DIST, 'index.html'), 'utf8')
 writeFileSync(join(DIST, 'app.html'), shell)
 
-function render({ path, title, description, noindex, image, lang, schema = [], body = '' }) {
+function render({ path, title: rawTitle, description: rawDescription, noindex, image, lang, schema = [], body = '' }) {
+  // Plain apostrophes and quotes in titles and descriptions: some crawlers (Bing's checker) misread the curly
+  // ’ “ ” as "â€™" (Nov 2026). The text on the page keeps its curly ones.
+  const plain = (s) => String(s ?? '').replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+  const title = plain(rawTitle)
+  const description = plain(rawDescription)
   const url = abs(path)
   let html = shell
   // The first-paint headline (index.html #boot) belongs to the home page only.
