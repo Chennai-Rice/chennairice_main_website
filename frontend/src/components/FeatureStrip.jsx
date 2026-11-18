@@ -46,11 +46,14 @@ const ICONS = {
       <ellipse cx="28" cy="27" rx="2" ry="4" transform="rotate(30 28 27)" />
     </>
   ),
+  // No artificial polish: a natural rice grain with a tick badge (pure, nothing added). The old slash
+  // through a grain read as "not natural" (Nov 2026).
   polish: (
     <>
-      <ellipse cx="20" cy="24" rx="6" ry="10" transform="rotate(35 20 24)" />
-      <path d="M31 9l1.5 4L36 14.5 32.5 16 31 20l-1.5-4L26 14.5 29.5 13z" />
-      <path d="M9 35L35 9" />
+      <ellipse cx="19" cy="19" rx="5.5" ry="10.5" transform="rotate(32 19 19)" />
+      <path d="M14.5 22.5c1.8-3.2 4-5.8 6.8-7.6" />
+      <circle cx="30" cy="30" r="7" />
+      <path d="M26.8 30.2l2.3 2.3 4.2-4.6" />
     </>
   ),
   aroma: (
