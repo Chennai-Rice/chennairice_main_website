@@ -84,7 +84,7 @@ export const PRODUCTS = [
     // Our signature red bag (catalogue: "Classic Red").
     desc: 'Ideal for everyday cooking and family meals, in 5 kg, 10 kg and 26 kg packs for every household.',
     packSize: '5 / 10 / 26 KG',
-    riceType: 'Kitchidi Ponni',
+    riceType: 'Rajabhogam',
     idealFor: 'Everyday Family Meals',
     image: '/assets/shop/packs/special-rajabhogam-v2.png',
     // Soft rose cream, so the ghost lettering sits behind the red bag.
