@@ -57,6 +57,7 @@ const LOGO = SITE + '/assets/logo-full-v3.png'
 // The brand picture: logo with our real bags (Nov 2026). AI assistants and link previews show this for "Chennai Rice"
 // instead of searching images (which found other companies' packs).
 const BRAND_IMAGE = SITE + '/assets/brand/chennai-rice-share.jpg'
+const KITCHIDI_BAG = SITE + '/assets/shop/feed/kitchidi-ponni-rice.jpg'
 // Every public profile of the company (empty links — no channel yet — are left out) and its Google Business Profile.
 const SAME_AS = [...(FOOTER.social || []).map((s) => s.href.replace(/&sk=about$/, '')).filter(Boolean), FOOTER.maps?.profile].filter(Boolean)
 const ORG_ID = SITE + '/#organization'
@@ -68,7 +69,8 @@ const organization = {
   legalName: 'Chennai Rice Industries India Private Limited',
   url: SITE + '/',
   logo: LOGO,
-  image: [BRAND_IMAGE, SITE + '/assets/shop/feed/kitchidi-ponni-rice.jpg'],
+  // The Kitchidi Ponni bag first: the one picture an assistant should show for "Chennai Rice" (owner, Nov 2026).
+  image: [KITCHIDI_BAG, BRAND_IMAGE],
   email: FOOTER.email,
   telephone: PHONE,
   address: ADDRESS,
@@ -88,7 +90,7 @@ const localBusiness = {
   name: 'Chennai Rice Industries',
   description: 'Rice mill in Erode, Tamil Nadu: Ponni rice, idli rice and everyday rice in 5, 10 and 26 kg packs.',
   url: SITE + '/',
-  image: BRAND_IMAGE,
+  image: [KITCHIDI_BAG, BRAND_IMAGE],
   telephone: PHONE,
   email: FOOTER.email,
   address: ADDRESS,
