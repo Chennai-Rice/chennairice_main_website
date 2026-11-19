@@ -45,9 +45,6 @@ export default function ProductCard({ product }) {
     setSelectedKg(size.kg);
     trackGoogleEcommerce("select_pack_size", { items: [gaPack(size.kg, size.price)], pack_size: `${size.kg} kg` });
   };
-  // The saving against the MRP, from the real prices only.
-  const savePct = selected.mrp && selected.price != null && selected.mrp > selected.price
-    ? Math.round(((selected.mrp - selected.price) / selected.mrp) * 100) : 0;
 
   const cartProduct = useMemo(
     () => ({
@@ -159,7 +156,6 @@ export default function ProductCard({ product }) {
               {selected.mrp && <s className="price-mrp" aria-label={`Was ${formatRupees(selected.mrp)}`}>{formatRupees(selected.mrp)}</s>}
               <span className="price-amount">{formatRupees(selected.price)}</span>{" "}
               <span className="price-unit">/ {selected.kg} kg</span>
-              {savePct > 0 && <span className="price-save">Save {savePct}%</span>}
             </p>
           ) : (
             <p className="price-enquiry">

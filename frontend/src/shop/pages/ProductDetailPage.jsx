@@ -185,13 +185,6 @@ export default function ProductDetailPage() {
     if (s) trackGoogleEcommerce("select_pack_size", { items: [gaItem({ slug: product.id, kg, name: product.name, price: s.price })], pack_size: `${kg} kg` });
   };
 
-  // What the shopper can see before deciding: the saving against the MRP and the price per kg, so a bigger
-  // pack's value is plain. Only from the real prices; nothing shown when there is no MRP or price.
-  const unitQty = soldOut ? 1 : qty;
-  const saving = selected.mrp && selected.price != null && selected.mrp > selected.price ? (selected.mrp - selected.price) * unitQty : 0;
-  const savingPct = saving ? Math.round(((selected.mrp - selected.price) / selected.mrp) * 100) : 0;
-  const perKg = selected.price != null && Number(selected.kg) > 0 ? selected.price / Number(selected.kg) : null;
-
   const handleAddToCart = (event) => {
     spawnRipple(event);
     // The bag picture flies down into the cart bar (not when "Buy now" is leaving the page anyway).
@@ -284,12 +277,6 @@ export default function ProductDetailPage() {
                   <span className="pdp-price">
                     {soldOut && selected.price == null ? (product.offline ? "Price unavailable" : "Out of stock") : formatRupees(selected.price * (soldOut ? 1 : qty))}
                   </span>
-                  {(saving > 0 || perKg) && (
-                    <span className="pdp-price-facts">
-                      {saving > 0 && <span className="pdp-save">You save {formatRupees(saving)} ({savingPct}%)</span>}
-                      {perKg && <span className="pdp-perkg">{formatRupees(Math.round(perKg * 100) / 100)}/kg</span>}
-                    </span>
-                  )}
                 </>
               ) : (
                 <>
@@ -373,27 +360,6 @@ export default function ProductDetailPage() {
               <ShareButton title={`${product.name} | Chennai Rice`} text={`${product.name} from Chennai Rice`} />
             </div>
 
-            {/* Reassurance where the decision is made (Nov 2026): only what our policies and checkout really offer. */}
-            {showCardPrices && (
-              <ul className="pdp-trust" aria-label="Delivery, payment and support">
-                <li>
-                  <span className="pdp-trust-icon" aria-hidden="true">🚚</span>
-                  <span>Delivery across India. <small>The charge for your PIN code is shown at checkout.</small></span>
-                </li>
-                <li>
-                  <span className="pdp-trust-icon" aria-hidden="true">🔒</span>
-                  <span>Secure payment. <small>UPI, cards, net banking and wallets.</small></span>
-                </li>
-                <li>
-                  <span className="pdp-trust-icon" aria-hidden="true">↺</span>
-                  <span>Damaged, wrong or short pack? <small>We replace it or refund you in full. <Link to="/refund">See the policy</Link></small></span>
-                </li>
-                <li>
-                  <span className="pdp-trust-icon" aria-hidden="true">💬</span>
-                  <span>Questions? <small>WhatsApp us on <a href="https://wa.me/917066646667" target="_blank" rel="noopener noreferrer">70666 46667</a></small></span>
-                </li>
-              </ul>
-            )}
             <Link className="pdp-bulk-link" to="/contact-us">
               Bulk Order Enquiry &rarr;
             </Link>
