@@ -59,6 +59,12 @@ const FROM_EXPO = 'cr.attribution.fromExpo'
 const GOOGLE_CLICK = 'cr.attribution.googleClick'
 export const GOOGLE_CLICK_PARAMS = ['gclid', 'gbraid', 'wbraid']
 
+// The same click is also kept for 90 days in a first-party cookie (cr_gclick) and sent with the order, so a
+// sale days after the ad click can be uploaded to Google Ads (offline conversions). Requested by the Google
+// Ads manager, 19 Nov 2026; described in the Privacy Policy. Only this site reads it.
+const GOOGLE_CLICK_COOKIE = 'cr_gclick'
+const GOOGLE_CLICK_DAYS = 90
+
 function keepGoogleClick(url) {
   const click = {}
   for (const p of GOOGLE_CLICK_PARAMS) {
@@ -67,6 +73,21 @@ function keepGoogleClick(url) {
   }
   if (!Object.keys(click).length) return
   try { window.sessionStorage.setItem(GOOGLE_CLICK, JSON.stringify(click)) } catch { /* storage blocked */ }
+  try {
+    const value = encodeURIComponent(JSON.stringify({ ...click, at: new Date().toISOString() }))
+    document.cookie = `${GOOGLE_CLICK_COOKIE}=${value}; Max-Age=${GOOGLE_CLICK_DAYS * 86400}; Path=/; SameSite=Lax${window.location.protocol === 'https:' ? '; Secure' : ''}`
+  } catch { /* cookies blocked */ }
+}
+
+/** The Google ad click kept in the cookie in the last 90 days ({ gclid | gbraid | wbraid, at }), or null. */
+export function storedGoogleClick() {
+  try {
+    const m = document.cookie.match(new RegExp(`(?:^|;\\s*)${GOOGLE_CLICK_COOKIE}=([^;]+)`))
+    const click = m ? JSON.parse(decodeURIComponent(m[1])) : null
+    return click && typeof click === 'object' && GOOGLE_CLICK_PARAMS.some((p) => click[p]) ? click : null
+  } catch {
+    return null
+  }
 }
 
 /** The Google ad click this tab came from ({ gclid } / { gbraid } / { wbraid }), or null. */
@@ -174,5 +195,11 @@ export function captureAttribution() {
 /** What to send with the order (null = direct). */
 export function currentAttribution() {
   if (typeof window === 'undefined') return null
-  return readStored()
+  const a = readStored()
+  // The Google ad click of the last 90 days goes with the order (offline conversion upload).
+  const click = storedGoogleClick()
+  if (!click) return a
+  const google_click = {}
+  for (const p of [...GOOGLE_CLICK_PARAMS, 'at']) if (click[p]) google_click[p] = click[p]
+  return { ...(a || {}), google_click }
 }

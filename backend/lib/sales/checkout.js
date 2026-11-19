@@ -20,7 +20,7 @@ import { pinStateMismatch } from './regions.js'
 import { quoteDiscount, applyDiscount, cleanCode } from './discounts.js'
 import { ensureReferrer } from './referrals.js'
 import { pushCrmLead } from '../crm.js'
-import { cleanAttribution, classify } from './attribution.js'
+import { cleanAttribution, cleanGoogleClick, classify } from './attribution.js'
 import { moveStock, releaseForOrder } from './stock.js'
 import { queueEmail, templates, trackUrl } from './email.js'
 import { queueOrderPlaced, sendWhatsAppMessages } from '../whatsapp.js'
@@ -205,8 +205,11 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
     // Where the buyer came from (ad, search, direct…), kept with the order.
     const landed = cleanAttribution(rawAttribution)
     const traffic = classify(landed)
+    // Google's ad click ID, kept with the order for an offline conversion upload (Nov 2026).
+    const googleClick = cleanGoogleClick(rawAttribution?.google_click)
     // Meta's browser details for the server-side Purchase (meta-capi.js), kept beside the landing details.
-    const attribution = metaSignal ? { ...(landed || {}), meta: metaSignal } : landed
+    const extra = { ...(googleClick ? { google_click: googleClick } : {}), ...(metaSignal ? { meta: metaSignal } : {}) }
+    const attribution = Object.keys(extra).length ? { ...(landed || {}), ...extra } : landed
     const { rows: [order] } = await db.query(
       `insert into orders (order_number, customer_id, contact_name, contact_email, contact_phone,
                            shipping_address, ship_state, fulfilment_location_id,

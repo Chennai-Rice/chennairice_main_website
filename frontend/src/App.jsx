@@ -7,6 +7,7 @@ import { CookieConsentProvider } from './hooks/useCookieConsent.jsx'
 import { useVisitorTracking } from './hooks/useVisitorTracking.jsx'
 import { useMetaPixel } from './hooks/useMetaPixel.js'
 import { useGoogleAnalytics } from './hooks/useGoogleAnalytics.js'
+import { installAdClickEvents } from './services/adEvents.js'
 import { useTagManagerConsent } from './hooks/useTagManagerConsent.js'
 import './shop/styles/styles.scoped.css'
 import './styles/shop-bridge.css'
@@ -106,10 +107,11 @@ function MetaPixel() {
   return null
 }
 
-/** Google Analytics — only after the visitor accepts analytics cookies. */
+/** Google Analytics and Google Tag Manager (Consent Mode advanced), plus the WhatsApp / call events for GTM. */
 function GoogleAnalytics() {
-  useGoogleAnalytics()
   useTagManagerConsent()
+  useGoogleAnalytics()
+  useEffect(() => { installAdClickEvents() }, [])
   return null
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { currentAttribution, isAdVisit, isExpoVisit } from '../services/attribution.js'
 import { trackMetaEvent } from '../services/metaPixel.js'
+import { pushAdEvent } from '../services/adEvents.js'
 import './contestpopup.css'
 
 // The Super Slogan Contest poster. Taking part starts with buying a Kitchidi
@@ -174,6 +175,8 @@ function AdSignup({ closeRef, close }) {
     await post('/api/contest/lead', { ...details(), ...extra })
     hideFor(HIDE_AFTER_JOIN_MS) // registered: no popup for a week
     trackMetaEvent('Lead', { content_name: 'Super Slogan Contest sign-up' })
+    // Google Ads "Contest entry" (GTM listens for it), after the server accepted the sign-up.
+    pushAdEvent('contest_entry', { coupon_code_used: false, product: 'Kitchidi Ponni Rice', form_name: 'contest_popup' })
     setStep('done')
   }
 

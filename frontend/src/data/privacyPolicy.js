@@ -2,7 +2,7 @@
 // inline JSX) so the legal text can be updated without touching the page's
 // layout code — mirrors how other long-form content lives in src/data/.
 
-export const POLICY_LAST_UPDATED = 'August 27, 2026'
+export const POLICY_LAST_UPDATED = 'November 19, 2026'
 
 export const POLICY_INTRO = [
   `At Chennai Rice Industries, we respect your privacy and are committed to protecting the personal information you share with us. This policy explains, in plain language, what information we collect, why we collect it, how we use it, and how we protect it, whenever you visit our website, enquire about our products, place an order, fill out a form, or reach us by WhatsApp, phone, or email.`,
@@ -126,6 +126,9 @@ export const POLICY_SECTIONS = [
       'Our website uses cookies, pixels, and similar technologies to keep it running smoothly: remembering preferences, maintaining sessions, understanding usage, improving performance, and supporting security and (where applicable) marketing.',
       'Browsing our site also means we may pick up technical details like your IP address, device and browser type, pages visited, and approximate location, which help us understand and improve the experience. You can manage cookie preferences through your browser, though turning some off may affect how the site works.',
       'Where you have accepted analytics cookies, we additionally record which parts of a page were clicked and how far down each page was read. We use this to spot buttons that do not work, links people expect to be clickable, and content nobody reaches. It is stored on our own systems, is not shared with advertisers, and stops the moment you withdraw consent.',
+      'Measuring our ads before you choose. To understand whether our Google ads work, Google\'s measurement tag runs on our site in "consent mode". Until you accept cookies it sets no cookies and sends Google only cookieless signals (for example, that a page was viewed or an order was placed), without identifying you. If you accept, Google can use cookies to measure our ads; if you reject, it stays in cookieless mode.',
+      'Ad click reference. When you reach our site from a Google ad, the ad\'s click reference (for example "gclid") is kept in a cookie on our site for up to 90 days and saved with any order you place, so we can tell Google Ads which ad led to the sale. It contains no personal details.',
+      'Matching an order to an ad. When you place an order, your email address and mobile number may be shared with Google in a scrambled (hashed) form that cannot be read back, only so Google can match the order to an ad you clicked ("enhanced conversions"). Google does not use it to identify you to us or to others.',
     ],
   },
   {

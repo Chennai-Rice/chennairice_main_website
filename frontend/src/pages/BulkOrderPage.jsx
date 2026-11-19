@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { trackMetaEvent } from '../services/metaPixel.js'
+import { pushAdEvent } from '../services/adEvents.js'
 import Ornament from '../components/Ornament.jsx'
 import { FOOTER } from '../data/content.js'
 import usePageMeta from '../shop/hooks/usePageMeta.js'
@@ -120,6 +121,8 @@ export default function BulkOrderPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not send your enquiry.')
       trackMetaEvent('Lead', { content_name: 'Bulk order enquiry' })
+      // Google Ads "Distributor lead" (GTM listens for it).
+      pushAdEvent('generate_lead', { form_name: 'bulk_order', enquiry_type: form.type || 'other' })
       setSent(true)
       setForm(EMPTY)
     } catch (err) {

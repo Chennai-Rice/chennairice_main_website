@@ -4427,3 +4427,20 @@ test('Lead form: the Lead event for Meta carries the hashed phone and email, sys
     fakeMeta.close()
   }
 })
+
+test('Google Ads: the ad click ID (gclid / gbraid / wbraid) is saved with the order for an offline upload; junk is dropped', async () => {
+  const { cleanGoogleClick } = await import('../lib/sales/attribution.js')
+  assert.equal(cleanGoogleClick(null), null)
+  assert.equal(cleanGoogleClick({ gclid: '<script>' }), null)
+  assert.deepEqual(cleanGoogleClick({ gbraid: 'abc_DEF-1', other: 'x', at: 'not a date' }), { gbraid: 'abc_DEF-1' })
+
+  const s = await api('POST', '/api/checkout/session', { body: { ...buyer({ name: 'Gclid Buyer', email: 'gclid@example.com', phone: '9566077701' }),
+    items: [{ id: 'alibaba', qty: 1 }],
+    attribution: { utm_source: 'google', utm_medium: 'cpc', gclid: true, google_click: { gclid: 'Cj0KCQiA-test_123', wbraid: 'bad value!', at: '2026-11-19T05:00:00.000Z' } } },
+  headers: { 'X-Forwarded-For': '10.81.7.1' } })
+  assert.equal(s.status, 200, JSON.stringify(s.body))
+  const { rows: [o] } = await db.query(`select attribution, traffic_source from orders where id = $1`, [s.body.orderId])
+  assert.deepEqual(o.attribution.google_click, { gclid: 'Cj0KCQiA-test_123', at: '2026-11-19T05:00:00.000Z' })
+  assert.equal(o.attribution.gclid, true)
+  assert.equal(o.traffic_source, 'google_ads')
+})

@@ -182,6 +182,9 @@ export default function CheckoutPage() {
       shipping: confirmed.shipping,
       coupon: confirmed.coupon,
       items: confirmed.items || [],
+      // Enhanced conversions (hashed before sending).
+      email: confirmed.customerEmail,
+      phone: confirmed.customerPhone,
     });
   }, [onConfirmedPage, status, confirmed]);
 
@@ -469,6 +472,7 @@ export default function CheckoutPage() {
         last4: result.last4,
         customerName: form.name,
         customerEmail: form.email,
+        customerPhone: form.phone,
         // What was bought, kept on the receipt (the cart is emptied below) for the Google purchase event
         // sent when the order-confirmed page opens.
         shipping: shipping || 0,
