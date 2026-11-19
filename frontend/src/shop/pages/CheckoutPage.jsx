@@ -40,7 +40,7 @@ function readDeliveryChoice() {
   }
 }
 import { metaCheckoutSignal, trackMetaEvent, trackMetaPurchase } from "../../services/metaPixel.js";
-import { trackGooglePurchase } from "../../services/googleAnalytics.js";
+import { trackGooglePurchase, trackGoogleEcommerce, gaItem, splitLineId } from "../../services/googleAnalytics.js";
 import {
   initiatePayment,
   openPaymentWidget,
@@ -301,6 +301,11 @@ export default function CheckoutPage() {
       content_ids: items.map((i) => i.id), content_type: "product",
       num_items: items.reduce((n, i) => n + i.qty, 0),
       value: subtotal, currency: "INR",
+    });
+    // GA4 begin_checkout, at the same moment as Meta's InitiateCheckout (once per checkout) (Nov 2026).
+    trackGoogleEcommerce("begin_checkout", {
+      value: subtotal,
+      items: items.map((i, index) => { const l = splitLineId(i.id); return gaItem({ slug: l.slug, kg: i.packKg ?? l.kg, name: i.name, price: i.price, qty: i.qty, index }); }),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startedCheckout]);

@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { trackAddToCart } from "../../services/events.js";
 import { trackMetaEvent } from "../../services/metaPixel.js";
+import { trackGoogleEcommerce, gaItem, splitLineId } from "../../services/googleAnalytics.js";
 import { recordJourney, journeyItems, journeyValue } from "../../services/journey.js";
 
 /**
@@ -68,6 +69,11 @@ export function CartProvider({ children }) {
     trackMetaEvent("AddToCart", {
       content_ids: [product.id], content_name: product.name, content_type: "product",
       value: product.price, currency: "INR",
+    });
+    // GA4 add_to_cart, one pack per call (the product page adds its quantity one call at a time).
+    const line = splitLineId(product.id);
+    trackGoogleEcommerce("add_to_cart", {
+      items: [gaItem({ slug: line.slug, kg: product.packKg ?? line.kg, name: product.name, price: product.price, qty: 1 })],
     });
 
     setItems((current) => {

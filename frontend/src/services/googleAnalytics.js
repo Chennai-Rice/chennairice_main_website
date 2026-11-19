@@ -135,3 +135,38 @@ export function trackGooglePurchase({ transactionId, value, shipping, coupon, it
   }
   return true
 }
+
+/**
+ * GA4 ecommerce item for a pack (Nov 2026): the same item_id as the purchase and the Merchant Center feed
+ * (CR-<SLUG>-<KG>KG), so GA4 can follow one pack from view to purchase.
+ */
+export function gaItem({ slug, kg, name, price, qty = 1, index }) {
+  const k = Number(kg)
+  return {
+    item_id: k > 0 ? `CR-${String(slug).toUpperCase()}-${k}KG` : String(slug ?? ''),
+    item_name: name,
+    item_brand: 'Chennai Rice',
+    item_category: 'Rice',
+    ...(k > 0 ? { item_variant: `${k} kg` } : {}),
+    ...(index != null ? { index } : {}),
+    price: Number(price) || 0,
+    quantity: Number(qty) || 1,
+  }
+}
+
+/** A cart line id ("kitchidi-ponni-rice-5kg") → { slug, kg }. */
+export function splitLineId(id) {
+  const m = /^(.*)-(\d+(?:\.\d+)?)kg$/.exec(String(id || ''))
+  return m ? { slug: m[1], kg: Number(m[2]) } : { slug: String(id || ''), kg: null }
+}
+
+/**
+ * A GA4 ecommerce event (view_item, select_item, add_to_cart, view_cart, begin_checkout) or the shop's own
+ * select_pack_size, with INR value and items. Sent only once analytics cookies were accepted, like every GA4 event.
+ */
+export function trackGoogleEcommerce(event, { items = [], value, ...extra } = {}) {
+  if (!loaded || !window.gtag) return false
+  const total = value != null ? Number(value) || 0 : items.reduce((t, i) => t + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0)
+  window.gtag('event', event, { currency: 'INR', value: Math.round(total * 100) / 100, items, ...extra })
+  return true
+}

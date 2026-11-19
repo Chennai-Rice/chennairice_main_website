@@ -6,6 +6,7 @@ import { useWishlist } from "../hooks/useWishlist.jsx";
 import { formatRupees } from "../utils/format.js";
 import { showCardPrices } from "../../config.js";
 import { PRODUCT_SEO, productPath } from "../../seo.js";
+import { trackGoogleEcommerce, gaItem } from "../../services/googleAnalytics.js";
 import "./productcard-contest.css";
 
 // The pack that carries the Super Slogan Contest coupon gets its own card
@@ -36,6 +37,18 @@ export default function ProductCard({ product }) {
 
   // The cart line item needs a unique id per size and the size's own price,
   // so switching pack size never overwrites a different size already in cart.
+  // GA4 (Nov 2026): a card opened (select_item) and a pack size picked on the card (select_pack_size).
+  const gaPack = (kg, price) => gaItem({ slug: product.id, kg, name: product.name, price });
+  const opened = () => trackGoogleEcommerce("select_item", { items: [gaPack(selected.kg, selected.price)], item_list_name: "Rice products" });
+  const pickSize = (size) => {
+    if (size.kg === selectedKg) return;
+    setSelectedKg(size.kg);
+    trackGoogleEcommerce("select_pack_size", { items: [gaPack(size.kg, size.price)], pack_size: `${size.kg} kg` });
+  };
+  // The saving against the MRP, from the real prices only.
+  const savePct = selected.mrp && selected.price != null && selected.mrp > selected.price
+    ? Math.round(((selected.mrp - selected.price) / selected.mrp) * 100) : 0;
+
   const cartProduct = useMemo(
     () => ({
       ...product,
@@ -94,7 +107,7 @@ export default function ProductCard({ product }) {
 
         {/* The pack photo opens this product's page, like "View more". It is
             left out of the tab order since that button already leads there. */}
-        <Link className="card-media-link" to={productPath(product.id)} tabIndex={-1}>
+        <Link className="card-media-link" to={productPath(product.id)} tabIndex={-1} onClick={opened}>
           <img
             src={product.image}
             alt={product.alt}
@@ -116,7 +129,7 @@ export default function ProductCard({ product }) {
               type="button"
               className={`pack-size-pill${size.kg === selectedKg ? " is-selected" : ""}${size.inStock === false ? " is-soldout" : ""}`}
               aria-pressed={size.kg === selectedKg}
-              onClick={() => setSelectedKg(size.kg)}
+              onClick={() => pickSize(size)}
             >
               {size.kg} kg
               {size.inStock === false && <span className="visually-hidden"> (out of stock)</span>}
@@ -146,6 +159,7 @@ export default function ProductCard({ product }) {
               {selected.mrp && <s className="price-mrp" aria-label={`Was ${formatRupees(selected.mrp)}`}>{formatRupees(selected.mrp)}</s>}
               <span className="price-amount">{formatRupees(selected.price)}</span>{" "}
               <span className="price-unit">/ {selected.kg} kg</span>
+              {savePct > 0 && <span className="price-save">Save {savePct}%</span>}
             </p>
           ) : (
             <p className="price-enquiry">
@@ -154,7 +168,7 @@ export default function ProductCard({ product }) {
             </p>
           )}
           <div className="card-actions">
-            <Link className="view-btn" to={productPath(product.id)} onClick={spawnRipple}>
+            <Link className="view-btn" to={productPath(product.id)} onClick={(e) => { spawnRipple(e); opened(); }}>
               View more
             </Link>
             {showCardPrices && soldOut ? (
