@@ -153,6 +153,9 @@ async function request(method, path, payload) {
   return { status: res.status, data }
 }
 
+/** A call to the Sales Daddy API, for other modules (lead-forms.js reads new leads with it). */
+export const crmRequest = request
+
 const accepted = (r) => r.status >= 200 && r.status < 300 && r.data.ok !== false
 const leadPath = (id) => `/v1/ext/leads/${encodeURIComponent(id)}`
 

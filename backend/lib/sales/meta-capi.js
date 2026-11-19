@@ -162,6 +162,58 @@ export async function sendPurchaseToMeta(orderId) {
   }
 }
 
+/**
+ * A lead from a Meta Instant Form, as the CRM integration's first stage (Meta "Conversions API for CRM": the raw "Lead").
+ * It is matched on the hashed phone and email (and name, city, state): the form gives no click ID, and the lead ID Meta
+ * generates is not in Sales Daddy's lead list, so it is not sent. Marked system_generated / crm, as Meta asks.
+ */
+export function leadFormEvent(row) {
+  const [first, ...rest] = str(row.name).split(/\s+/)
+  const userData = {
+    em: [sha256(str(row.email).toLowerCase())],
+    ph: [sha256(phoneDigits(row.mobile))],
+    fn: [sha256(norm(first))],
+    ln: rest.length ? [sha256(norm(rest.join(' ')))] : undefined,
+    ct: [sha256(norm(row.city))],
+    st: [sha256(norm(row.state))],
+    country: [sha256('in')],
+  }
+  for (const k of Object.keys(userData)) {
+    if (userData[k] === undefined || (Array.isArray(userData[k]) && !userData[k][0])) delete userData[k]
+  }
+  // Meta takes events up to 7 days old; a lead copied late still goes with its own time, never a future one.
+  const at = Math.min(new Date(row.created_at_sd || row.saved_at || Date.now()).getTime(), Date.now())
+  return {
+    event_name: 'Lead',
+    event_time: Math.floor(at / 1000),
+    event_id: 'leadform-' + row.sd_lead_id,
+    action_source: 'system_generated',
+    custom_data: { event_source: 'crm', lead_event_source: 'Sales Daddy' },
+    user_data: userData,
+  }
+}
+
+/** Posts one event to the dataset. Returns { sent: true } or { error } / { skipped }; never throws. */
+export async function sendMetaEvent(event) {
+  const token = process.env.META_CAPI_TOKEN
+  if (!token) return { skipped: 'no token' }
+  try {
+    const body = { data: [event] }
+    if (process.env.META_TEST_EVENT_CODE) body.test_event_code = process.env.META_TEST_EVENT_CODE
+    const res = await fetch(`https://graph.facebook.com/${GRAPH_VERSION()}/${PIXEL_ID()}/events?access_token=${encodeURIComponent(token)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(8000),
+    })
+    const out = await res.json().catch(() => ({}))
+    if (!res.ok) return { error: clip(out?.error?.message || 'HTTP ' + res.status, 300) }
+    return { sent: true, received: out.events_received }
+  } catch (err) {
+    return { error: clip(err.message, 300) }
+  }
+}
+
 /** The 10-minute job: paid orders from the last 2 days whose Purchase has not reached Meta yet. */
 export async function sendPendingPurchases() {
   if (!process.env.META_CAPI_TOKEN) return { skipped: 'no token' }

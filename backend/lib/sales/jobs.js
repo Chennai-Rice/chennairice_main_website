@@ -15,6 +15,7 @@ import { sendDailyDigest } from './digest.js'
 import { sendCrmLeads } from '../crm.js'
 import { sendWhatsAppMessages } from '../whatsapp.js'
 import { sendNeodoveLeads } from '../neodove.js'
+import { syncLeadForms } from '../lead-forms.js'
 import { syncSettlements } from './settlements.js'
 import { followUpJourneys } from './journey-followup.js'
 import { sendCartReminders, sendPaymentFailedEmails } from './cart-recovery.js'
@@ -42,6 +43,8 @@ export async function runJobs() {
   const metaCapi = await sendPendingPurchases().catch((err) => ({ error: err.message }))
   // Raw AskEva webhook calls are kept 90 days for checking, then dropped.
   await query("delete from askeva_events where received_at < now() - interval '90 days'").catch(() => {})
+  // Meta Instant Form leads that reached Sales Daddy: copied here and queued for NeoDove's Meta campaign (lead-forms.js).
+  const leadForms = await syncLeadForms({ query }).catch((err) => ({ error: err.message }))
   // Sign-ups NeoDove could not take at the time; its raw webhook calls kept 90 days.
   const neodove = await sendNeodoveLeads({ query }).catch(() => ({}))
   await query("delete from neodove_events where received_at < now() - interval '90 days'").catch(() => {})
@@ -64,5 +67,5 @@ export async function runJobs() {
   }
   // Cloud Centre: uptime of every site, alert emails, and at night one PageSpeed check (cloud-checks.js).
   const cloud = await runCloudChecks({ query })
-  return { expired, digest, cartReminders, paymentFailed, email, journeys, crm, whatsapp, waAutomations, metaCapi, neodove, settlements, cloud }
+  return { expired, digest, cartReminders, paymentFailed, email, journeys, crm, whatsapp, waAutomations, metaCapi, leadForms, neodove, settlements, cloud }
 }

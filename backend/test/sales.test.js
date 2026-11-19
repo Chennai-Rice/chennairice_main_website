@@ -4311,3 +4311,108 @@ test('WhatsApp Inbox filters: New (first message in 24 hours) and Replied (wrote
   const ct = camp.campaigns.find((c) => c.name === 'chennai_traders')
   assert.ok(ct && ct.people >= 1 && ct.replied >= 1, JSON.stringify(camp.campaigns))
 })
+
+test('Lead form: Instant Form leads are copied from Sales Daddy once, saved as source lead_form and sent to the NeoDove Meta campaign', async () => {
+  const http = await import('node:http')
+  const neoGot = []
+  const fakeNeo = http.createServer((req, res) => {
+    let body = ''
+    req.on('data', (c) => (body += c)).on('end', () => { neoGot.push({ url: req.url, body: JSON.parse(body) }); res.end('OK') })
+  })
+  const sdAsked = []
+  const leads = [
+    { id: 'sd-1', name: 'Form Facebook', phone: '+919811100001', email: 'f1@example.in', city: 'Salem', state: 'Tamil Nadu', source: 'facebook', form_name: 'B2C FORM', facebook_page: 'Chennai Rice Industries', campaign_name: 'Lead camp', ad_name: 'Ad 1', createdAt: new Date(Date.now() - 5 * 60000).toISOString() },
+    { id: 'sd-2', name: 'Form Instagram', phone: '+919811100002', source: 'instagram', form_name: 'B2C FORM', facebook_page: 'Chennai Rice Industries', createdAt: new Date(Date.now() - 4 * 60000).toISOString() },
+    // Not a form lead: the website's own push (no form or Page).
+    { id: 'sd-3', name: 'Website Person', phone: '+919811100003', source: 'facebook', form_name: null, facebook_page: null, createdAt: new Date(Date.now() - 3 * 60000).toISOString() },
+    // The company's own number is never a lead.
+    { id: 'sd-4', name: 'Own Number', phone: '+919894006032', source: 'facebook', form_name: 'B2C FORM', createdAt: new Date(Date.now() - 2 * 60000).toISOString() },
+  ]
+  const fakeSd = http.createServer((req, res) => {
+    sdAsked.push(req.url)
+    res.setHeader('content-type', 'application/json')
+    res.end(JSON.stringify({ ok: true, leads, nextCursor: null }))
+  })
+  await Promise.all([new Promise((r) => fakeNeo.listen(0, r)), new Promise((r) => fakeSd.listen(0, r))])
+  const url = `http://127.0.0.1:${fakeNeo.address().port}`
+  Object.assign(process.env, {
+    SALESDADDY_API_KEY: 'sd_live_test', SALESDADDY_BASE_URL: 'http://127.0.0.1:' + fakeSd.address().port,
+    NEODOVE_ENDPOINT_META: url + '/meta', NEODOVE_ENDPOINT_ENQUIRY: url + '/enquiry', NEODOVE_PAUSE_UNTIL: '',
+  })
+  try {
+    await db.query(`update neodove_outbox set status = 'failed' where status = 'queued'`)
+    const { syncLeadForms } = await import('../lib/lead-forms.js')
+    const first = await syncLeadForms({ query: db.query })
+    assert.deepEqual([first.saved, first.skipped, first.queued], [2, 1, 2], JSON.stringify(first))
+    assert.match(sdAsked[0], /^\/v1\/ext\/leads\?since=.*&limit=100/)
+    // Both went to the Meta campaign, marked as lead form.
+    const metaCalls = neoGot.filter((g) => g.url === '/meta' && ['9811100001', '9811100002'].includes(String(g.body.mobile)))
+    assert.equal(metaCalls.length, 2, JSON.stringify(neoGot))
+    const f = metaCalls.find((g) => g.body.mobile === 9811100001).body
+    assert.deepEqual([f.Source, f['Lead type'], f.Traffic, f.Campaign, f.Page, f.Ad], ['Lead form (Facebook)', 'Lead form', 'Lead form', 'Meta', 'B2C FORM', 'Ad 1'])
+    assert.equal(metaCalls.find((g) => g.body.mobile === 9811100002).body.Source, 'Lead form (Instagram)')
+    const { rows: [ls] } = await db.query(`select source from lead_status where mobile = '9811100001'`)
+    assert.equal(ls.source, 'lead_form')
+    assert.equal((await db.query(`select count(*)::int as n from lead_forms where mobile in ('9811100001','9811100002')`)).rows[0].n, 2)
+    assert.equal((await db.query(`select count(*)::int as n from lead_forms where mobile in ('9811100003','9894006032')`)).rows[0].n, 0)
+
+    // A second read of the same leads copies nothing and sends nothing.
+    neoGot.length = 0
+    const again = await syncLeadForms({ query: db.query })
+    assert.deepEqual([again.saved, again.queued], [0, 0], JSON.stringify(again))
+    assert.equal(neoGot.length, 0)
+
+    // Sales Daddy refuses: reported, nothing saved, the stop point does not move.
+    fakeSd.removeAllListeners('request')
+    fakeSd.on('request', (req, res) => { res.statusCode = 403; res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ ok: false, error: 'scope_denied' })) })
+    assert.match((await syncLeadForms({ query: db.query })).error, /403 scope_denied/)
+  } finally {
+    for (const k of ['SALESDADDY_API_KEY', 'SALESDADDY_BASE_URL', 'NEODOVE_ENDPOINT_META', 'NEODOVE_ENDPOINT_ENQUIRY', 'NEODOVE_PAUSE_UNTIL']) delete process.env[k]
+    fakeNeo.close()
+    fakeSd.close()
+  }
+})
+
+test('Lead form: the Lead event for Meta carries the hashed phone and email, system_generated / crm, and is sent once', async () => {
+  const http = await import('node:http')
+  const got = []
+  const fakeMeta = http.createServer((req, res) => {
+    let body = ''
+    req.on('data', (c) => (body += c)).on('end', () => { got.push({ url: req.url, body: JSON.parse(body) }); res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ events_received: 1 })) })
+  })
+  await new Promise((r) => fakeMeta.listen(0, r))
+  const { leadFormEvent } = await import('../lib/sales/meta-capi.js')
+  const ev = leadFormEvent({ sd_lead_id: 'sd-9', name: 'Priya Devi Kumar', email: 'Priya@Example.in', mobile: '9811100009', city: 'Coimbatore', state: 'Tamil Nadu', created_at_sd: '2026-11-19T09:09:00Z' })
+  assert.deepEqual([ev.event_name, ev.action_source, ev.event_id, ev.custom_data.event_source, ev.custom_data.lead_event_source],
+    ['Lead', 'system_generated', 'leadform-sd-9', 'crm', 'Sales Daddy'])
+  const { createHash } = await import('node:crypto')
+  const h = (v) => createHash('sha256').update(v).digest('hex')
+  assert.deepEqual(ev.user_data.em, [h('priya@example.in')])
+  assert.deepEqual(ev.user_data.ph, [h('919811100009')])
+  assert.deepEqual([ev.user_data.fn, ev.user_data.ln, ev.user_data.ct], [[h('priya')], [h('devikumar')], [h('coimbatore')]])
+  assert.equal(ev.event_time, Math.floor(new Date('2026-11-19T09:09:00Z').getTime() / 1000))
+  assert.ok(!JSON.stringify(ev).includes('Priya@Example.in'))
+  try {
+    const { sendLeadFormEvents } = await import('../lib/lead-forms.js')
+    await db.query(`insert into lead_forms (sd_lead_id, mobile, name, email, created_at_sd) values ('sd-meta-1', '9811100010', 'Meta Test', 'm@example.in', now())`)
+    // No token: nothing sent.
+    assert.equal((await sendLeadFormEvents(db.query)).skipped, 'off')
+    Object.assign(process.env, { META_CAPI_TOKEN: 'tok', META_GRAPH_VERSION: 'v23.0' })
+    const realFetch = globalThis.fetch
+    globalThis.fetch = (u, o) => realFetch(String(u).replace('https://graph.facebook.com', 'http://127.0.0.1:' + fakeMeta.address().port), o)
+    try {
+      const r = await sendLeadFormEvents(db.query)
+      assert.ok(r.sent >= 1, JSON.stringify(r))
+      const mine = got.filter((g) => g.body.data[0].event_id === 'leadform-sd-meta-1')
+      assert.equal(mine.length, 1)
+      assert.match(mine[0].url, /^\/v23\.0\/\d+\/events\?access_token=tok/)
+      // Once only.
+      got.length = 0
+      assert.equal((await sendLeadFormEvents(db.query)).sent, 0)
+      assert.equal(got.length, 0)
+    } finally { globalThis.fetch = realFetch }
+  } finally {
+    for (const k of ['META_CAPI_TOKEN', 'META_GRAPH_VERSION']) delete process.env[k]
+    fakeMeta.close()
+  }
+})

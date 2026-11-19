@@ -41,6 +41,7 @@ import { httpError, safeEqual } from './sales/util.js'
 const SOURCE_TYPES = {
   meta_ads_facebook: 'Meta Ads', meta_ads_instagram: 'Meta Ads', meta_ads: 'Meta Ads', google_ads: 'Google Ads', google_shopping: 'Google Ads', whatsapp: 'WhatsApp',
   facebook: 'Social media', instagram: 'Social media', google_search: 'Google search', expo: 'Expo QR',
+  lead_form: 'Lead form',
 }
 export function leadType(campaign, source) {
   if (campaign === 'bulk_enquiry') return 'Bulk enquiry'
@@ -105,7 +106,8 @@ export function routeOf(campaign, source) {
   if (campaign === 'checkout_payment' || campaign === 'checkout_details') return 'cart'
   if (campaign === 'signup') {
     const s = String(source || '')
-    if (/^meta_ads/.test(s) || ORGANIC.has(s)) return 'meta'
+    // A Meta Instant Form lead (lead-forms.js) goes to the Meta campaign too (owner, 19 Nov 2026).
+    if (/^meta_ads/.test(s) || ORGANIC.has(s) || s === 'lead_form') return 'meta'
     if (s === 'google_ads' || s === 'google_shopping') return 'google_ads'
     if (s === 'whatsapp') return 'whatsapp'
   }
@@ -540,7 +542,7 @@ export async function sendNeodoveLeads({ id = null, limit = 20, query = defaultQ
       }
       if (bySource && usable(url)) {
         viaSource = true
-        const extra = { Campaign: ROUTE_NAMES[route], ...(route === 'meta' && { Traffic: ORGANIC.has(r.lead_source) ? 'Organic' : 'Meta ad' }) }
+        const extra = { Campaign: ROUTE_NAMES[route], ...(route === 'meta' && { Traffic: r.lead_source === 'lead_form' ? 'Lead form' : ORGANIC.has(r.lead_source) ? 'Organic' : 'Meta ad' }) }
         try { result = await post({ ...r.payload, ...extra }, url) } catch (err) { result = { status: 0, text: err.message } }
         agent = route
         if (r.agent !== route) await query('update neodove_outbox set agent = $2 where id = $1', [r.id, route]).catch(() => {})
