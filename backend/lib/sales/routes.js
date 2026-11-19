@@ -68,6 +68,7 @@ import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { listDiscountCodes, createDiscountCode, setDiscountCodeActive } from './discounts.js'
 import { spinConfig, spin, spinAdmin, saveSpinSettings } from './spin.js'
+import { spinReminderReport, recordLinkClick } from '../wa/spin-report.js'
 import { myReferral, referralAdmin, saveReferralSettings, cancelReferralReward } from './referrals.js'
 import { referralsOn } from './discounts.js'
 import { listReports, reportCsv } from './reports.js'
@@ -210,6 +211,10 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   // "Send me offers on WhatsApp" ticked on the spin form or at checkout (wa/contacts.js).
   router.post('/api/whatsapp/optin', rateLimit({ windowMs: 10 * 60000, max: 10 }), wrap(async (req, res) => {
     res.json(await waOptIn(req.body?.phone, { name: str(req.body?.name).slice(0, 80) || null, source: ['spin', 'checkout'].includes(req.body?.source) ? req.body.source : 'website' }))
+  }))
+  // A tap on a WhatsApp button link (/w/<slug>), for the Spin reminder report (wa/spin-report.js).
+  router.post('/api/w/click', rateLimit({ windowMs: 10 * 60000, max: 30 }), wrap(async (req, res) => {
+    res.json(await recordLinkClick(req.body?.slug, { query }))
   }))
 
   // Refer a friend: whether it is running, and a customer's code and rewards (mobile number + order email).
@@ -734,6 +739,12 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/cart-reminders', wrap(async (req, res) => res.json(await cartRemindersAdmin({ query }, req.staff, { days: req.query.days }))))
   admin.put('/cart-reminders', wrap(async (req, res) => res.json(await saveCartReminderSettings({ query }, req.staff, req.body))))
   admin.get('/spin', wrap(async (req, res) => res.json(await spinAdmin({ query }, req.staff))))
+  // Spin reminder results: sent, delivered / read, clicked, purchased with the code, revenue (owners and IT, as /offers).
+  admin.get('/spin/reminders', wrap(async (req, res) => {
+    requirePermission(req.staff, 'settings.manage')
+    res.set('Cache-Control', 'no-store')
+    res.json(await spinReminderReport({ template: str(req.query.template), from: str(req.query.from), to: str(req.query.to) }, { query }))
+  }))
   admin.put('/spin', wrap(async (req, res) => res.json(await saveSpinSettings({ query }, req.staff, req.body))))
   admin.get('/shipping-zones', perm('shipping.manage'), wrap(async (_req, res) => res.json({ zones: await listZones() })))
   admin.put('/shipping-zones', wrap(async (req, res) => res.json({ zone: await upsertZone(req.staff, req.body) })))

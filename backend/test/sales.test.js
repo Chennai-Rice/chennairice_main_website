@@ -4444,3 +4444,58 @@ test('Google Ads: the ad click ID (gclid / gbraid / wbraid) is saved with the or
   assert.equal(o.attribution.gclid, true)
   assert.equal(o.traffic_source, 'google_ads')
 })
+
+test('Spin reminders report: sent, read, Claim link tapped, bought with the code and the revenue, per template', async () => {
+  const { spinReminderReport, recordLinkClick } = await import('../lib/wa/spin-report.js')
+  // Two spins of our own, each with its code.
+  const mk = async (phone, code) => {
+    const { rows: [c] } = await db.query(`insert into discount_codes (code, kind, amount_paise, min_order_paise, locked_phone, source) values ($1, 'amount', 5000, 75000, $2, 'spin') returning id`, [code, phone])
+    await db.query(`insert into spins (phone, name, prize_key, prize_label, code_id) values ($1, 'Rem Test', 'amount50', '₹50 OFF', $2)`, [phone, c.id])
+    return { phone, name: 'Rem Test', code_id: c.id, code }
+  }
+  const sp = await mk('9566088801', 'SPIN-REM001')
+  const other = await mk('9566088802', 'SPIN-REM002')
+  const sentAt = new Date(Date.now() - 3600e3)
+  await db.query(`insert into wa_queue (phone, template_name, language, vals, source, status, wamid, sent_at, created_at)
+                  values ($1, 'spin_reminder_ta_1', 'ta', $2, 'broadcast', 'sent', 'wamid.rem1', $3, $3)`,
+    [sp.phone, JSON.stringify({ body: ['A', 'B', 'C', 'D'], buttons: { 0: sp.code.replace(/-/g, ''), 1: 'spin-' + sp.code } }), sentAt])
+  await db.query(`insert into wa_messages (wamid, direction, phone, kind, template_name, status) values ('wamid.rem1', 'out', $1, 'template', 'spin_reminder_ta_1', 'read')`, [sp.phone])
+  if (other) {
+    await db.query(`insert into wa_queue (phone, template_name, vals, source, status, reason, created_at)
+                    values ($1, 'spin_reminder', $2, 'spin_reminder', 'skipped', 'Already got an offer today', now())`,
+      [other.phone, JSON.stringify({ buttons: { 0: other.code, 1: 'spin-' + other.code } })])
+  }
+  // A tap before the send does not count; one after it does (the slug written as WhatsApp sends it).
+  await db.query(`insert into wa_link_clicks (slug, code, clicked_at) values ($1, $2, $3)`, ['spin-' + sp.code, sp.code.replace(/-/g, ''), new Date(sentAt.getTime() - 86400e3)])
+  assert.deepEqual(await recordLinkClick('spin-' + sp.code.toLowerCase(), { query: db.query }), { ok: true })
+  assert.deepEqual(await recordLinkClick('<script>', { query: db.query }), { ok: false })
+  // The order that used the code, after the reminder.
+  const { rows: [o] } = await db.query(`select id, total_paise from orders where payment_status = 'paid' order by placed_at desc limit 1`)
+  await db.query(`update orders set discount_code_id = $1, placed_at = now() where id = $2`, [sp.code_id, o.id])
+
+  const r = await spinReminderReport({}, { query: db.query })
+  const me = r.people.find((p) => p.template === 'spin_reminder_ta_1')
+  assert.equal(me.code, sp.code)
+  assert.equal(me.status, 'read')
+  assert.equal(me.clicks, 1)
+  assert.equal(me.order.total, o.total_paise / 100)
+  assert.equal(r.summary.sent, 1)
+  assert.equal(r.summary.read, 1)
+  assert.equal(r.summary.clicked, 1)
+  assert.equal(r.summary.purchased, 1)
+  assert.equal(r.summary.revenue, o.total_paise / 100)
+  if (other) {
+    assert.equal(r.summary.notSent, 1)
+    assert.equal(r.people.find((p) => p.template === 'spin_reminder').reason, 'Already got an offer today')
+  }
+  assert.ok(r.byTemplate.find((t) => t.template === 'spin_reminder_ta_1' && t.purchased === 1))
+  // One template only.
+  const ta = await spinReminderReport({ template: 'spin_reminder_ta_1' }, { query: db.query })
+  assert.deepEqual(ta.people.map((p) => p.template), ['spin_reminder_ta_1'])
+
+  // The route: owners and IT only.
+  const res = await api('GET', '/api/admin/spin/reminders', { token: OWNER })
+  assert.equal(res.status, 200)
+  assert.equal(res.body.summary.purchased, 1)
+  assert.equal((await api('POST', '/api/w/click', { body: { slug: 'spin-' + sp.code } })).body.ok, true)
+})

@@ -4,6 +4,7 @@ import DiscountCodes from '../warehouse/DiscountCodes.jsx'
 import SpinSettings from '../warehouse/SpinSettings.jsx'
 import ReferralSettings from '../warehouse/ReferralSettings.jsx'
 import WhoSpun from './WhoSpun.jsx'
+import SpinReminders from './SpinReminders.jsx'
 import CartReminders from './CartReminders.jsx'
 import ReviewsAdmin from './ReviewsAdmin.jsx'
 import { staffJson, signOutStaff } from '../../services/staffAuth.js'
@@ -23,6 +24,7 @@ const VIEWS = [
   { id: 'overview', label: 'Overview', icon: 'reports', subtitle: 'Spin & Win, Refer a friend and discount codes at a glance' },
   { id: 'spin', label: 'Spin & Win', icon: 'refresh', subtitle: 'Prizes, chances and budget' },
   { id: 'spins', label: 'Who spun', icon: 'users', subtitle: 'Every spin: name, mobile, prize, code and whether it was used' },
+  { id: 'reminders', label: 'Spin reminders', icon: 'bell', subtitle: 'WhatsApp spin reminders: who got them, who clicked, who bought with the code, and the revenue' },
   { id: 'referral', label: 'Refer a friend', icon: 'user', subtitle: 'Amounts, top referrers and rewards' },
   { id: 'cart', label: 'Cart reminders', icon: 'bell', subtitle: 'Emails to shoppers who stopped at checkout: switch, offer and recovered orders' },
   { id: 'reviews', label: 'Reviews', icon: 'users', subtitle: 'Reviews from the Order Delivered email: publish the ones to show on /review' },
@@ -154,6 +156,7 @@ function Dashboard({ onAuthError }) {
           {view === 'overview' && <Overview onAuthError={onAuthError} go={go} />}
           {view === 'spin' && <SpinSettings say={say} onAuthError={onAuthError} />}
           {view === 'spins' && <WhoSpun onAuthError={onAuthError} />}
+          {view === 'reminders' && <SpinReminders onAuthError={onAuthError} />}
           {view === 'referral' && <ReferralSettings say={say} onAuthError={onAuthError} />}
           {view === 'cart' && <CartReminders say={say} onAuthError={onAuthError} />}
           {view === 'reviews' && <ReviewsAdmin say={say} onAuthError={onAuthError} />}

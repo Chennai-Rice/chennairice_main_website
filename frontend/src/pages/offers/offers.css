@@ -75,3 +75,21 @@
 .of-who-prize-split .is-used { background: #e8f3ea; color: #2f7a46; }
 .of-who-prize-split .is-open { background: #fdf3dc; color: #8a5a12; }
 .of-who-prize-split .is-expired { background: #f1eeee; color: #6b6b6b; }
+
+/* Spin reminders (Nov 2026): results funnel, per-template split and the message status pills. */
+.of-rem-funnel { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin: 6px 0 14px; }
+.of-rem-funnel > div { display: grid; gap: 2px; padding: 12px 14px; border-radius: 12px; border: 1px solid #e6dccb; background: #fffaf2; }
+.of-rem-funnel b { font-size: 22px; line-height: 1.1; }
+.of-rem-funnel span { font-weight: 700; font-size: 13px; }
+.of-rem-funnel small { color: var(--wh-muted, #7a6459); font-size: 12px; min-height: 1em; }
+.of-rem-funnel .is-money { background: #e8f3ea; border-color: #cfe5d5; }
+.of-rem-funnel .is-money b { color: #2f7a46; }
+.of-rem-split { margin-bottom: 14px; }
+.of-rem-reason { font-size: 12px; color: var(--wh-muted, #7a6459); margin-top: 2px; }
+.of-rem-note { font-size: 12px; margin-top: 10px; }
+.of-rem-st--read { background: #e8f3ea; color: #2f7a46; }
+.of-rem-st--delivered { background: #e7eef8; color: #2b4a75; }
+.of-rem-st--sent, .of-rem-st--queued { background: #f3ebe4; color: #8a7766; }
+.of-rem-st--failed, .of-rem-st--skipped { background: #fde2e1; color: #a12622; }
+@media (max-width: 900px) { .of-rem-funnel { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .of-rem-funnel { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
