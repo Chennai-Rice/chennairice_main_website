@@ -17,7 +17,7 @@ const GROUND = 505 // the process line
 const ZONES = [
   { num: '01', title: 'Paddy In', label: 'Sourcing', info: 'Paddy is procured from farmers and traders across 5 states.', w: 380 },
   { num: '02', title: 'Parboiling', label: 'What makes boiled rice firm', w: 380 },
-  { num: '03', title: 'Milling', label: 'Husk to polished grain', w: 480 },
+  { num: '03', title: 'Milling', label: 'Husk to clean white grain', w: 480 },
   { num: '04', title: 'Ready for You', label: 'Checked, packed, delivered', w: 460 },
 ]
 
@@ -31,7 +31,7 @@ const STEPS = [
   { n: 7, z: 1, x: 335, tip: 320, title: 'Drying', label: ['DRYING'], desc: 'Dried to the right moisture.' },
   { n: 8, z: 2, x: 55, tip: 395, title: 'Husking', label: ['HUSKING'], desc: 'Husk removed, giving brown rice.' },
   { n: 9, z: 2, x: 150, tip: 410, title: 'Paddy Separation', label: ['PADDY', 'SEPARATION'], desc: 'Unhusked grains sent back.' },
-  { n: 10, z: 2, x: 245, tip: 380, title: 'Whitening & Polishing', label: ['WHITENING &', 'POLISHING'], desc: 'Bran removed, grain polished.' },
+  { n: 10, z: 2, x: 245, tip: 380, title: 'Gentle Whitening', label: ['GENTLE', 'WHITENING'], desc: 'Bran gently removed by machine.' },
   { n: 11, z: 2, x: 337, tip: 405, title: 'Grading', label: ['GRADING'], desc: 'Sorted by grain size, broken grains removed.' },
   { n: 12, z: 2, x: 432, tip: 340, title: 'Colour Sorting', label: ['COLOUR', 'SORTING'], desc: 'Optical sorters remove discoloured grains.' },
   { n: 13, z: 3, x: 72, tip: 395, title: 'Final Quality Check', label: ['FINAL', 'QUALITY CHECK'], desc: 'Each batch tested before packing.' },

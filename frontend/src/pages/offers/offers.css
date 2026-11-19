@@ -57,3 +57,21 @@
 /* Who spun: custom dates (from – to) */
 .of-who-dates { display: inline-flex; align-items: center; gap: 6px; }
 .of-who-dates .wh-input { width: auto; padding: 8px 10px; }
+/* Who spun → Purchased: when the code was used, on what, for how much. */
+.of-who-buy { display: grid; gap: 2px; min-width: 200px; font-size: 12.5px; line-height: 1.35; }
+.of-who-buy b { font-weight: 600; }
+.of-who-buy span { opacity: 0.85; }
+/* Who spun → one card per offer: won, used, not yet used; a tap filters the table to that offer. */
+.of-who-prizes { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin: 4px 0 16px; }
+.of-who-prize { display: grid; gap: 4px; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid #e6dccb; background: #fffaf2; color: inherit; font: inherit; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s; }
+.of-who-prize:hover { border-color: #c9a96b; }
+.of-who-prize.is-on { border-color: #7a1f2b; box-shadow: 0 0 0 2px rgba(122, 31, 43, 0.15); background: #fff; }
+.of-who-prize:focus-visible { outline: 2px solid #7a1f2b; outline-offset: 2px; }
+.of-who-prize b { font-size: 14px; }
+.of-who-prize > span { font-size: 13px; }
+.of-who-prize strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+.of-who-prize-split { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; }
+.of-who-prize-split span { padding: 1px 8px; border-radius: 999px; }
+.of-who-prize-split .is-used { background: #e8f3ea; color: #2f7a46; }
+.of-who-prize-split .is-open { background: #fdf3dc; color: #8a5a12; }
+.of-who-prize-split .is-expired { background: #f1eeee; color: #6b6b6b; }

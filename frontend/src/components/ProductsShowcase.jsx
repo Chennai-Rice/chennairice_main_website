@@ -311,13 +311,13 @@ export default function ProductsShowcase() {
         <Img
           className="showcase-paddy showcase-paddy-a"
           src={ASSETS.wheatRight}
-          alt=""
+          alt="Golden paddy stalks"
           aria-hidden="true"
         />
         <Img
           className="showcase-paddy showcase-paddy-b"
           src={ASSETS.wheatLeft}
-          alt=""
+          alt="Golden paddy stalks"
           aria-hidden="true"
         />
 

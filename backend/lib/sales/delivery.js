@@ -5,7 +5,7 @@
 // charge grows with the number of packs; ours is one flat charge), so a single small bag stays courier.
 //
 // Our team carries only the big bags (Nov 2026): a cart with any 5 kg or 10 kg bag goes by courier, so
-// the choice appears only when every bag is above 10 kg (the 25 and 26 kg packs).
+// the choice appears only when every bag is a 25 kg pack (5, 10 and 26 kg bags go by courier, Nov 2026).
 //
 // The customer chooses at checkout once the PIN code is known; the server works out both charges and
 // checks the choice again when the order is placed, so a PIN outside the area or a changed amount is
@@ -25,6 +25,8 @@ export const DELIVERY_METHODS = ['courier', 'in_house']
 export const IN_HOUSE_DEFAULTS = { paise: 20000, promise: 'Within 48 hours' }
 /** Bags of this size or smaller (the 5 and 10 kg packs) are never delivered by our team. */
 export const IN_HOUSE_SMALL_PACK_KG = 10
+/** Bags of this size or larger (the 26 kg packs) go by courier only too (owner, Nov 2026): our team takes the 25 kg ones. */
+export const IN_HOUSE_COURIER_FROM_KG = 26
 
 /** The in-house delivery settings, cleaned. */
 export function inHouseSettings(settings = {}) {
@@ -43,11 +45,11 @@ export function inHouseSettings(settings = {}) {
 }
 
 /**
- * Does the cart have a 5 or 10 kg bag (which keeps it on courier)? From its lines, or, without them, from
+ * Does the cart have a 5, 10 or 26 kg bag (which keeps it on courier)? From its lines, or, without them, from
  * its biggest bag.
  */
 export function hasSmallBag({ largestPackKg = 0, lines = null } = {}) {
-  const small = (kg) => !(Number(kg) > IN_HOUSE_SMALL_PACK_KG)
+  const small = (kg) => !(Number(kg) > IN_HOUSE_SMALL_PACK_KG) || Number(kg) >= IN_HOUSE_COURIER_FROM_KG
   return Array.isArray(lines) && lines.length ? lines.some((l) => small(l.packKg)) : small(largestPackKg)
 }
 
@@ -93,7 +95,7 @@ export function chooseDelivery(courierPaise, pincode, method, settings = {}, car
     // the PIN is covered: it is the cart's 5 or 10 kg bags that keep it on courier
     throw httpError('In-house delivery is not offered for 5 or 10 kg bags.', {
       status: 422,
-      publicMessage: 'Chennai Rice delivery is only for 25 and 26 kg bags. Please choose courier delivery.',
+      publicMessage: 'Chennai Rice delivery is only for 25 kg bags. Please choose courier delivery.',
     })
   }
   if (!option) {

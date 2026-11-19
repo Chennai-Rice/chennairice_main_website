@@ -22,7 +22,7 @@ export const FEED_PAGES = {
   'chennai-bullets': ['chennai-bullets-rice', 'Chennai Bullets Rice'],
   'a1-special-ponni': ['a1-special-ponni-rice', 'A1 Special Ponni Rice'],
   rudra: ['rudra-ponni-rice', 'Rudra Ponni Rice'],
-  thaaram: ['thaaram-pooni-rice', 'Thaaram Nei Kitchadi Rice'],
+  thaaram: ['thaaram-nei-kitchadi', 'Thaaram Nei Kitchadi Rice'],
   'special-idly-rice': ['special-idly-rice', 'Special Idly Rice'],
 }
 const CATEGORY = 'Food, Beverages & Tobacco > Food Items > Grains, Rice & Cereal > Rice'

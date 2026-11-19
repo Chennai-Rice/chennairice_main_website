@@ -59,8 +59,10 @@ export default function ProfileCard() {
       ))}
       <label className="wa-lbl">Category
         <select value={f.vertical || 'GROCERY'} onChange={set('vertical')}>
-          <option value="GROCERY">Food &amp; grocery (rice)</option><option value="RETAIL">Retail / shopping</option>
-          <option value="RESTAURANT">Restaurant</option><option value="OTHER">Other</option>
+          {/* WhatsApp has no "manufacturer" type: Other is the closest, and the About line says what we are. */}
+          <option value="OTHER">Other: best for a rice manufacturer</option>
+          <option value="GROCERY">Grocery: shows "Supermarket / Convenience store"</option><option value="RETAIL">Retail / shopping</option>
+          <option value="RESTAURANT">Restaurant</option>
         </select>
       </label>
       {note && <p className={note.bad ? 'wa-alert' : 'wa-ok'}>{note.text}</p>}

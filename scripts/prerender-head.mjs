@@ -54,6 +54,10 @@ const ADDRESS = {
 }
 const PHONE = '+91-70666-46667'
 const LOGO = SITE + '/assets/logo-full-v3.png'
+// The brand picture: logo with our real bags (Nov 2026). AI assistants and link previews show this for "Chennai Rice"
+// instead of searching images (which found other companies' packs).
+const BRAND_IMAGE = SITE + '/assets/brand/chennai-rice-share.jpg'
+const KITCHIDI_BAG = SITE + '/assets/shop/feed/kitchidi-ponni-rice.jpg'
 // Every public profile of the company (empty links — no channel yet — are left out) and its Google Business Profile.
 const SAME_AS = [...(FOOTER.social || []).map((s) => s.href.replace(/&sk=about$/, '')).filter(Boolean), FOOTER.maps?.profile].filter(Boolean)
 const ORG_ID = SITE + '/#organization'
@@ -65,6 +69,8 @@ const organization = {
   legalName: 'Chennai Rice Industries India Private Limited',
   url: SITE + '/',
   logo: LOGO,
+  // The Kitchidi Ponni bag first: the one picture an assistant should show for "Chennai Rice" (owner, Nov 2026).
+  image: [KITCHIDI_BAG, BRAND_IMAGE],
   email: FOOTER.email,
   telephone: PHONE,
   address: ADDRESS,
@@ -84,7 +90,7 @@ const localBusiness = {
   name: 'Chennai Rice Industries',
   description: 'Rice mill in Erode, Tamil Nadu: Ponni rice, idli rice and everyday rice in 5, 10 and 26 kg packs.',
   url: SITE + '/',
-  image: LOGO,
+  image: [KITCHIDI_BAG, BRAND_IMAGE],
   telephone: PHONE,
   email: FOOTER.email,
   address: ADDRESS,
@@ -170,7 +176,12 @@ const jsonLd = (items) => items.length
 const shell = readFileSync(join(DIST, 'index.html'), 'utf8')
 writeFileSync(join(DIST, 'app.html'), shell)
 
-function render({ path, title, description, noindex, image, lang, schema = [], body = '' }) {
+function render({ path, title: rawTitle, description: rawDescription, noindex, image, lang, schema = [], body = '' }) {
+  // Plain apostrophes and quotes in titles and descriptions: some crawlers (Bing's checker) misread the curly
+  // ’ “ ” as "â€™" (Nov 2026). The text on the page keeps its curly ones.
+  const plain = (s) => String(s ?? '').replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+  const title = plain(rawTitle)
+  const description = plain(rawDescription)
   const url = abs(path)
   let html = shell
   // The first-paint headline (index.html #boot) belongs to the home page only.
@@ -188,7 +199,13 @@ function render({ path, title, description, noindex, image, lang, schema = [], b
   // Robots and keywords on every page (index.html carries the defaults).
   swap(/<meta name="robots" content="[^"]*" \/>/, `<meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large'}" />`)
   swap(/<meta name="keywords" content="[^"]*" \/>/, `<meta name="keywords" content="${esc(keywordsFor(path))}" />`)
-  if (image) swap(/<meta property="og:image" content="[^"]*" \/>/, `<meta property="og:image" content="${esc(SITE + image)}" />`)
+  if (image) {
+    // A page's own picture (a product's square bag photo): its own size and description, not the brand picture's.
+    swap(/<meta property="og:image" content="[^"]*" \/>/, `<meta property="og:image" content="${esc(SITE + image)}" />`)
+    swap(/<meta property="og:image:width" content="[^"]*" \/>/, '<meta property="og:image:width" content="1000" />')
+    swap(/<meta property="og:image:height" content="[^"]*" \/>/, '<meta property="og:image:height" content="1000" />')
+    swap(/<meta property="og:image:alt" content="[^"]*" \/>/, `<meta property="og:image:alt" content="${esc(title.split(/\s+[|–-]\s+/)[0] + ' bag by Chennai Rice')}" />`)
+  }
   const extra = [
     noindex ? '' : `<link rel="canonical" href="${esc(url)}" />`,
     ...(ALTERNATE[path] ? [

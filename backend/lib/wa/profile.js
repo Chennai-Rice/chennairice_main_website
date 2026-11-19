@@ -9,12 +9,13 @@ export const VERTICALS = ['GROCERY', 'RETAIL', 'RESTAURANT', 'OTHER']
 
 // The suggested profile (Nov 2026): only facts from the website (address, email, FSSAI, Erode mill, 75 years).
 export const SUGGESTED = {
-  about: 'Kitchidi Ponni rice from our own mill in Erode 🍚 Order: chennairiceindustries.com',
+  // WhatsApp has no "manufacturer" category (Nov 2026): Other, and the About line says we are the manufacturer.
+  about: 'Rice manufacturer · our own mill in Erode since the 1950s 🍚 Order: chennairiceindustries.com',
   description: 'Chennai Rice Industries: makers of Kitchidi Ponni Rice and premium Ponni, idli and aged rice, milled at our fully automated facility in Erode with over 75 years of expertise. 5 kg to 26 kg packs, delivered to your door. Order online at chennairiceindustries.com, or message us here for prices, delivery to your PIN code, order tracking and bulk or wholesale orders. FSSAI Lic. 12415007000253.',
   address: 'SF No. 116/1,2,4-B, N. Thayirpalayam Village, Nasiyanur, Gangapuram Post, Erode, Tamil Nadu – 638102',
   email: 'support@chennairiceindustries.com',
   websites: ['https://chennairiceindustries.com/', 'https://chennairiceindustries.com/rice-products'],
-  vertical: 'GROCERY',
+  vertical: 'OTHER',
 }
 
 export async function getProfile({ fetchImpl } = {}) {

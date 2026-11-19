@@ -44,7 +44,7 @@ export default function Footer() {
       <div className="foot-art" aria-hidden="true">
         <picture>
           <source srcSet="/assets/footer-band.webp" type="image/webp" />
-          <img src="/assets/footer-band.png" alt="" />
+          <img src="/assets/footer-band.png" alt="Paddy fields and village homes of Tamil Nadu" aria-hidden="true" />
         </picture>
       </div>
 
@@ -144,7 +144,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <img className="foot-sprig" src="/assets/footer-sprig.png" alt="" aria-hidden="true" />
+      <img className="foot-sprig" src="/assets/footer-sprig.png" alt="Rice sprig" aria-hidden="true" />
 
       <div className="foot-bar">
         <div className="container foot-bar-inner">

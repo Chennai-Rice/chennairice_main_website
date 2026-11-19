@@ -124,7 +124,12 @@
       },
       {
         "source": "/products/thaaram",
-        "destination": "/products/thaaram-pooni-rice",
+        "destination": "/products/thaaram-nei-kitchadi",
+        "type": 301
+      },
+      {
+        "source": "/products/thaaram-pooni-rice",
+        "destination": "/products/thaaram-nei-kitchadi",
         "type": 301
       },
       {

@@ -219,11 +219,20 @@ export async function spinAdmin(db, staff) {
     report: { spins: r.spins, lastWeek: r.week, orders: r.orders, given: toRupees(r.given), sales: toRupees(r.sales), byPrize },
     // Who spun (newest first): mobile, email, prize, code, and whether it was used on a paid order.
     recent: (await db.query(
-      `select s.created_at, s.name, s.phone, s.email, s.prize_label, c.code, c.expires_at,
-              (select o.order_number from orders o where o.discount_code_id = c.id and o.payment_status in ('paid', 'partially_refunded') limit 1) as used_on
-         from spins s left join discount_codes c on c.id = s.code_id order by s.created_at desc limit 20000`)).rows.map((x) => ({
+      // The paid order the code went on (Nov 2026): when, what, how much, and the discount it gave.
+      `select s.created_at, s.name, s.phone, s.email, s.prize_label, c.code, c.expires_at, c.min_order_paise,
+              u.order_number as used_on, u.placed_at, u.total_paise, u.discount_paise, u.items, u.city
+         from spins s left join discount_codes c on c.id = s.code_id
+         left join lateral (
+           select o.order_number, o.placed_at, o.total_paise, o.discount_paise, o.shipping_address->>'city' as city,
+                  (select string_agg(i.product_name || ' ' || (i.pack_kg::float)::text || ' kg × ' || i.quantity, ', ' order by i.product_name)
+                     from order_items i where i.order_id = o.id) as items
+             from orders o where o.discount_code_id = c.id and o.payment_status in ('paid', 'partially_refunded')
+            order by o.placed_at limit 1) u on true
+        order by s.created_at desc limit 20000`)).rows.map((x) => ({
       at: x.created_at, name: x.name, phone: x.phone, email: x.email, prize: x.prize_label, code: x.code,
-      expiresAt: x.expires_at, usedOn: x.used_on,
+      expiresAt: x.expires_at, usedOn: x.used_on, minOrder: toRupees(x.min_order_paise || 0),
+      order: x.used_on ? { at: x.placed_at, items: x.items || '', total: toRupees(x.total_paise), discount: toRupees(x.discount_paise), city: x.city || '' } : null,
     })),
   }
 }

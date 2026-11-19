@@ -51,7 +51,8 @@ export default function SoruKutty() {
               <img
                 className="sk-launcher-avatar"
                 src="/assets/soru-kutty-hello.png"
-                alt=""
+                alt="Soru Kutty, the Chennai Rice chat helper"
+                aria-hidden="true"
                 width="320"
                 height="271"
               />

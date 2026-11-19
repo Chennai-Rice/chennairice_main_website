@@ -78,6 +78,8 @@ export const POLICY_SECTIONS = [
     title: 'WhatsApp and other digital communication',
     paragraphs: [
       'We use WhatsApp and similar platforms for enquiries, support, order updates, and occasional offers. Messages on these channels may include your phone number, name, order details, and anything else you choose to share. We work with authorised technology providers to run these communications, and our specific setup may evolve as we grow.',
+      'When you place an order on our website, you agree, as shown on the checkout page, that Chennai Rice Industries may message you on WhatsApp at the mobile number you give: order confirmations, payment, dispatch and delivery updates, and occasional offers and new products. We send offers no more than a few times a week.',
+      'To stop offers, reply STOP to any of our WhatsApp messages, or write to support@chennairiceindustries.com. Reply START if you want them again. Messages about your orders, payments and deliveries continue even after you stop offers.',
     ],
   },
   {

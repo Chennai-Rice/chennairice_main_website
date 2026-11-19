@@ -7,6 +7,7 @@ const when = (d) => new Date(d).toLocaleString('en-IN', { day: 'numeric', month:
 const day = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }) : '')
 const stateOf = (s) => (s.usedOn ? 'used' : s.expiresAt && new Date(s.expiresAt) < new Date() ? 'expired' : 'open')
 const LABEL = { used: 'Used', open: 'Not yet', expired: 'Expired' }
+const inr = (n) => '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })
 // The India date (YYYY-MM-DD) of a moment, and the date ranges for the period filter.
 const istDay = (d) => new Date(new Date(d).getTime() + 5.5 * 3600e3).toISOString().slice(0, 10)
 const shift = (ymd, days) => new Date(Date.parse(ymd + 'T00:00:00Z') + days * 864e5).toISOString().slice(0, 10)
@@ -53,6 +54,16 @@ export default function WhoSpun({ onAuthError }) {
       (!t || [s.phone, s.name, s.code, s.prize, s.email, s.usedOn].some((v) => String(v || '').toLowerCase().includes(t))))
   }, [scoped, q, show])
   const prizes = useMemo(() => [...new Set((rows || []).map((s) => s.prize).filter(Boolean))].sort((a, b) => prizeRank(a) - prizeRank(b) || a.localeCompare(b)), [rows])
+  // One card per offer (Nov 2026): won, used, not yet used and expired in the chosen dates; a tap shows only that offer.
+  const byPrize = useMemo(() => {
+    const r = rangeOf(period, from, to)
+    const inDates = (rows || []).filter((s) => !r || (istDay(s.at) >= r[0] && istDay(s.at) <= r[1]))
+    return prizes.map((p) => {
+      const mine = inDates.filter((s) => s.prize === p)
+      const n = (k) => mine.filter((s) => stateOf(s) === k).length
+      return { prize: p, won: mine.length, used: n('used'), open: n('open'), expired: n('expired') }
+    }).filter((x) => x.won > 0)
+  }, [rows, prizes, period, from, to])
 
   if (error) return <p className="of-alert" role="alert">{error}</p>
   if (!rows) return <p className="wh-muted">Loading…</p>
@@ -64,8 +75,9 @@ export default function WhoSpun({ onAuthError }) {
       if (/^[=+\-@]/.test(t)) t = "'" + t // never a spreadsheet formula
       return '"' + t.replace(/"/g, '""') + '"'
     }
-    const lines = [['When', 'Name', 'Mobile', 'Prize', 'Code', 'Valid till', 'Used', 'Order']]
-      .concat(list.map((s) => [when(s.at), s.name, s.phone, s.prize, s.code, day(s.expiresAt), LABEL[stateOf(s)], s.usedOn || '']))
+    const lines = [['When', 'Name', 'Mobile', 'Prize', 'Code', 'Valid till', 'Used', 'Order', 'Purchased on', 'Items', 'Paid (Rs)', 'Discount (Rs)', 'City', 'Min order (Rs)', 'Link end']]
+      .concat(list.map((s) => [when(s.at), s.name, s.phone, s.prize, s.code, day(s.expiresAt), LABEL[stateOf(s)], s.usedOn || '',
+        s.order ? when(s.order.at) : '', s.order?.items || '', s.order ? s.order.total : '', s.order ? s.order.discount : '', s.order?.city || '', s.minOrder ? inr(s.minOrder) : '', s.code ? 'spin-' + s.code : '']))
     const blob = new Blob(['﻿' + lines.map((r) => r.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
@@ -108,10 +120,24 @@ export default function WhoSpun({ onAuthError }) {
           <button type="button" className="wh-btn" onClick={csv} disabled={!list.length}>Download CSV</button>
         </div>
       </div>
+      <div className="of-who-prizes" role="group" aria-label="Spins by offer">
+        {byPrize.map((x) => (
+          <button key={x.prize} type="button" className={'of-who-prize' + (prize === x.prize ? ' is-on' : '')} aria-pressed={prize === x.prize}
+            onClick={() => setPrize(prize === x.prize ? '' : x.prize)}>
+            <b>{x.prize}</b>
+            <span><strong>{x.won}</strong> won</span>
+            <span className="of-who-prize-split">
+              <span className="is-used">{x.used} used</span>
+              <span className="is-open">{x.open} not yet</span>
+              {x.expired > 0 && <span className="is-expired">{x.expired} expired</span>}
+            </span>
+          </button>
+        ))}
+      </div>
       <div className="of-who-table">
         <table>
           <thead>
-            <tr><th>When</th><th>Name</th><th>Mobile</th><th>Prize</th><th>Code</th><th>Valid till</th><th>Used</th></tr>
+            <tr><th>When</th><th>Name</th><th>Mobile</th><th>Prize</th><th>Code</th><th>Valid till</th><th>Used</th><th>Purchased</th></tr>
           </thead>
           <tbody>
             {list.map((s) => {
@@ -125,10 +151,19 @@ export default function WhoSpun({ onAuthError }) {
                   <td className="wh-mono">{s.code}</td>
                   <td>{day(s.expiresAt)}</td>
                   <td><span className={'of-pill of-pill--' + st}>{LABEL[st]}</span>{s.usedOn && <span className="of-who-order wh-mono">{s.usedOn}</span>}</td>
+                  <td>
+                    {s.order ? (
+                      <div className="of-who-buy">
+                        <b>{when(s.order.at)}</b>
+                        <span>{s.order.items}</span>
+                        <span>Paid {inr(s.order.total)}{s.order.discount ? ` · saved ${inr(s.order.discount)}` : ''}{s.order.city ? ` · ${s.order.city}` : ''}</span>
+                      </div>
+                    ) : <span className="wh-muted">—</span>}
+                  </td>
                 </tr>
               )
             })}
-            {!list.length && <tr><td colSpan={7} className="wh-muted">{rows.length ? 'No spins match these filters.' : 'No spins yet.'}</td></tr>}
+            {!list.length && <tr><td colSpan={8} className="wh-muted">{rows.length ? 'No spins match these filters.' : 'No spins yet.'}</td></tr>}
           </tbody>
         </table>
       </div>

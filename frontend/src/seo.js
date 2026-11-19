@@ -219,7 +219,7 @@ export const PRODUCT_SEO = {
     name: 'Thaaram Nei Kitchadi',
     line: 'Strong grains that hold shape in nei kitchadi and pongal.',
     dishes: ['Nei Kitchadi', 'Ven Pongal', 'Sakkarai Pongal'],
-    slug: 'thaaram-pooni-rice',
+    slug: 'thaaram-nei-kitchadi',
     h1: 'Thaaram Nei Kitchadi Rice – 25 kg',
     title: 'Thaaram Nei Kitchadi Rice 25 kg – Buy Online | Chennai Rice',
     description: 'Buy Thaaram Nei Kitchadi Rice 25 kg from Chennai Rice, Erode. Akshaya Ponni with strong grains for nei kitchadi and pongal. Home & wholesale delivery.',
@@ -324,7 +324,12 @@ export function productPath(id) {
   return `/products/${PRODUCT_SEO[id]?.slug || id}`
 }
 
-/** The shop ID for a URL slug: a new public slug, or an old ID still in use. */
+// Public slugs that were renamed: the old address still finds the product, and its page moves to the new one.
+const OLD_SLUGS = {
+  'thaaram-pooni-rice': 'thaaram', // → /products/thaaram-nei-kitchadi (Nov 2026)
+}
+
+/** The shop ID for a URL slug: a new public slug, an old renamed slug, or an old ID still in use. */
 export function productIdFromSlug(slug) {
-  return ID_BY_SLUG[slug] || slug
+  return ID_BY_SLUG[slug] || OLD_SLUGS[slug] || slug
 }

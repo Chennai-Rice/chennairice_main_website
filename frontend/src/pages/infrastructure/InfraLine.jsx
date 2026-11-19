@@ -561,7 +561,7 @@ export default function InfraLine() {
 
         {/* what the grain looks like as it goes: paddy -> brown -> semi-polished -> polished */}
         <ol className="ipl-key" aria-label="How the grain changes along the line">
-          {[['paddy', 'Paddy'], ['brown', 'Brown rice'], ['semi', 'Semi-polished'], ['polished', 'Polished rice']].map(([k, label], i) => (
+          {[['paddy', 'Paddy'], ['brown', 'Brown rice'], ['semi', 'Partly whitened'], ['polished', 'White rice']].map(([k, label], i) => (
             <li key={k}>
               {i > 0 && <span className="ipl-key-arrow" aria-hidden="true">›</span>}
               <svg viewBox="-10 -6 20 12" width="44" height="26" aria-hidden="true">{GRAIN[k]}</svg>

@@ -1163,9 +1163,10 @@ test('in-house delivery: a flat ₹200 choice in Tamil Nadu for the big bags, ch
     `select v.id, v.price_paise, v.mrp_paise from product_variants v join products p on p.id = v.product_id
       where p.slug = $1 and v.pack_kg = $2`, [slug, kg])).rows[0]
   const v = await pack('alibaba', 10)
-  const big = await pack('chennai-bullets', 26)
-  const packs = [v, big]
-  const BIG = 'chennai-bullets-26kg'
+  const big = await pack('rudra', 25)
+  const big26 = await pack('chennai-bullets', 26)
+  const packs = [v, big, big26]
+  const BIG = 'rudra-25kg'
   const quote = (pincode, deliveryMethod, qty = 2, items = [{ id: BIG, qty }]) =>
     api('POST', '/api/checkout/quote', { body: { pincode, deliveryMethod, items } })
   const setting = (key, value) => db.query(
@@ -1209,7 +1210,8 @@ test('in-house delivery: a flat ₹200 choice in Tamil Nadu for the big bags, ch
 
     // 5 and 10 kg bags: courier only, in Tamil Nadu too, and also when they share the cart with a 26 kg bag
     // (5 kg: the price list test below).
-    for (const items of [[{ id: 'alibaba-10kg', qty: 2 }], [{ id: BIG, qty: 1 }, { id: 'alibaba-10kg', qty: 1 }]]) {
+    // 26 kg bags too, since Nov 2026: our team takes only the 25 kg ones.
+    for (const items of [[{ id: 'alibaba-10kg', qty: 2 }], [{ id: BIG, qty: 1 }, { id: 'alibaba-10kg', qty: 1 }], [{ id: 'chennai-bullets-26kg', qty: 2 }], [{ id: BIG, qty: 1 }, { id: 'chennai-bullets-26kg', qty: 1 }]]) {
       const small = await quote('641001', 'in_house', 0, items)
       assert.equal(small.status, 200, JSON.stringify(small.body))
       assert.deepEqual(small.body.deliveryOptions.map((o) => o.method), ['courier'], JSON.stringify(items))
@@ -1221,7 +1223,7 @@ test('in-house delivery: a flat ₹200 choice in Tamil Nadu for the big bags, ch
       headers: { 'X-Forwarded-For': '10.9.9.3' },
     })
     assert.equal(smallOrder.status, 422, JSON.stringify(smallOrder.body))
-    assert.match(smallOrder.body.error, /only for 25 and 26 kg bags/)
+    assert.match(smallOrder.body.error, /only for 25 kg bags/)
 
     // Kerala: courier only.
     const kerala = await quote('682001', 'in_house', 1)
@@ -1442,6 +1444,12 @@ test('Spin & Win: off until switched on, one spin per mobile and browser, prize 
     // The admin view counts it.
     const admin = await api('GET', '/api/admin/spin', { token: OWNER })
     assert.equal(admin.body.report.spins, 1)
+    // Who spun → Purchased: the paid order the code went on, with its date, items and amount.
+    const { rows: [paid] } = await db.query(`select id, discount_code_id from orders where payment_status = 'paid' and placed_at is not null order by placed_at limit 1`)
+    await db.query(`update orders set discount_code_id = (select id from discount_codes where code = $1) where id = $2`, [won.body.code, paid.id])
+    const used = (await api('GET', '/api/admin/spin', { token: OWNER })).body.recent.find((x) => x.code === won.body.code)
+    assert.ok(used.usedOn && used.order && used.order.at && / kg × /.test(used.order.items) && used.order.total > 0, JSON.stringify(used))
+    await db.query(`update orders set discount_code_id = $2 where id = $1`, [paid.id, paid.discount_code_id])
 
     // Switched off again: the wheel goes away.
     await api('PUT', '/api/admin/spin', { token: OWNER, body: { enabled: false } })
@@ -1604,17 +1612,20 @@ test('Final price list (Nov 2026): website prices top bag to bottom, in-house a 
   // In-house a bag, summed for the order.
   const { deliveryOptions: opts } = await import('../lib/sales/delivery.js')
   const own = (lines) => opts(99999, '641001', {}, { lines }).find((o) => o.method === 'in_house').paise
-  assert.equal(own([{ inHousePaise: 4900, quantity: 2, packKg: 26 }]), 9800)
-  assert.equal(own([{ inHousePaise: 6000, quantity: 1, packKg: 25 }, { inHousePaise: 20000, quantity: 1, packKg: 26 }]), 26000)
+  assert.equal(own([{ inHousePaise: 4900, quantity: 2, packKg: 25 }]), 9800)
+  assert.equal(own([{ inHousePaise: 6000, quantity: 1, packKg: 25 }, { inHousePaise: 20000, quantity: 1, packKg: 25 }]), 26000)
   // 5 and 10 kg bags go by courier (Nov 2026), also beside a 26 kg bag.
   const hasOwn = (lines) => opts(99999, '641001', {}, { lines }).some((o) => o.method === 'in_house')
   assert.equal(hasOwn([{ inHousePaise: 5000, quantity: 1, packKg: 5 }]), false)
   assert.equal(hasOwn([{ inHousePaise: 9000, quantity: 1, packKg: 10 }]), false)
   assert.equal(hasOwn([{ inHousePaise: 11000, quantity: 1, packKg: 26 }, { inHousePaise: 5000, quantity: 1, packKg: 5 }]), false)
+  // 26 kg bags go by courier too (Nov 2026): our team takes only the 25 kg ones.
+  assert.equal(hasOwn([{ inHousePaise: 11000, quantity: 1, packKg: 26 }]), false)
+  assert.equal(hasOwn([{ inHousePaise: 11000, quantity: 1, packKg: 25 }, { inHousePaise: 11000, quantity: 1, packKg: 26 }]), false)
 
   // In-house: ₹200 with a 26 kg bag, ₹100 otherwise; the owner can change both.
   const { deliveryOptions } = await import('../lib/sales/delivery.js')
-  assert.equal(deliveryOptions(58900, '641001', {}, { largestPackKg: 26 }).find((o) => o.method === 'in_house').paise, 20000)
+  assert.ok(!deliveryOptions(58900, '641001', {}, { largestPackKg: 26 }).some((o) => o.method === 'in_house'))
   // Offered even when the courier is cheaper (a 25 kg bag, courier ₹54); never for a 5 kg bag.
   assert.equal(deliveryOptions(5400, '641001', {}, { largestPackKg: 25 }).find((o) => o.method === 'in_house').paise, 20000)
   assert.ok(!deliveryOptions(25000, '641001', {}, { largestPackKg: 5 }).some((o) => o.method === 'in_house'))
