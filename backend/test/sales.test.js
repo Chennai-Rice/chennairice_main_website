@@ -4332,10 +4332,10 @@ test('Lead form: Instant Form leads are copied from Sales Daddy once, saved as s
   })
   const sdAsked = []
   const leads = [
-    { id: 'sd-1', name: 'Form Facebook', phone: '+919811100001', email: 'f1@example.in', city: 'Salem', state: 'Tamil Nadu', source: 'facebook', form_name: 'B2C FORM', facebook_page: 'Chennai Rice Industries', campaign_name: 'Lead camp', ad_name: 'Ad 1', createdAt: new Date(Date.now() - 5 * 60000).toISOString() },
-    { id: 'sd-2', name: 'Form Instagram', phone: '+919811100002', source: 'instagram', form_name: 'B2C FORM', facebook_page: 'Chennai Rice Industries', createdAt: new Date(Date.now() - 4 * 60000).toISOString() },
+    { id: 'sd-1', name: 'Form Facebook', phone: '+919811170001', email: 'f1@example.in', city: 'Salem', state: 'Tamil Nadu', source: 'facebook', form_name: 'B2C FORM', facebook_page: 'Chennai Rice Industries', campaign_name: 'Lead camp', ad_name: 'Ad 1', createdAt: new Date(Date.now() - 5 * 60000).toISOString() },
+    { id: 'sd-2', name: 'Form Instagram', phone: '+919811170002', source: 'instagram', form_name: 'B2C FORM', facebook_page: 'Chennai Rice Industries', createdAt: new Date(Date.now() - 4 * 60000).toISOString() },
     // Not a form lead: the website's own push (no form or Page).
-    { id: 'sd-3', name: 'Website Person', phone: '+919811100003', source: 'facebook', form_name: null, facebook_page: null, createdAt: new Date(Date.now() - 3 * 60000).toISOString() },
+    { id: 'sd-3', name: 'Website Person', phone: '+919811170003', source: 'facebook', form_name: null, facebook_page: null, createdAt: new Date(Date.now() - 3 * 60000).toISOString() },
     // The company's own number is never a lead.
     { id: 'sd-4', name: 'Own Number', phone: '+919894006032', source: 'facebook', form_name: 'B2C FORM', createdAt: new Date(Date.now() - 2 * 60000).toISOString() },
   ]
@@ -4357,15 +4357,15 @@ test('Lead form: Instant Form leads are copied from Sales Daddy once, saved as s
     assert.deepEqual([first.saved, first.skipped, first.queued], [2, 1, 2], JSON.stringify(first))
     assert.match(sdAsked[0], /^\/v1\/ext\/leads\?since=.*&limit=100/)
     // Both went to the Meta campaign, marked as lead form.
-    const metaCalls = neoGot.filter((g) => g.url === '/meta' && ['9811100001', '9811100002'].includes(String(g.body.mobile)))
+    const metaCalls = neoGot.filter((g) => g.url === '/meta' && ['9811170001', '9811170002'].includes(String(g.body.mobile)))
     assert.equal(metaCalls.length, 2, JSON.stringify(neoGot))
-    const f = metaCalls.find((g) => g.body.mobile === 9811100001).body
+    const f = metaCalls.find((g) => g.body.mobile === 9811170001).body
     assert.deepEqual([f.Source, f['Lead type'], f.Traffic, f.Campaign, f.Page, f.Ad], ['Lead form (Facebook)', 'Lead form', 'Lead form', 'Meta', 'B2C FORM', 'Ad 1'])
-    assert.equal(metaCalls.find((g) => g.body.mobile === 9811100002).body.Source, 'Lead form (Instagram)')
-    const { rows: [ls] } = await db.query(`select source from lead_status where mobile = '9811100001'`)
+    assert.equal(metaCalls.find((g) => g.body.mobile === 9811170002).body.Source, 'Lead form (Instagram)')
+    const { rows: [ls] } = await db.query(`select source from lead_status where mobile = '9811170001'`)
     assert.equal(ls.source, 'lead_form')
-    assert.equal((await db.query(`select count(*)::int as n from lead_forms where mobile in ('9811100001','9811100002')`)).rows[0].n, 2)
-    assert.equal((await db.query(`select count(*)::int as n from lead_forms where mobile in ('9811100003','9894006032')`)).rows[0].n, 0)
+    assert.equal((await db.query(`select count(*)::int as n from lead_forms where mobile in ('9811170001','9811170002')`)).rows[0].n, 2)
+    assert.equal((await db.query(`select count(*)::int as n from lead_forms where mobile in ('9811170003','9894006032')`)).rows[0].n, 0)
 
     // A second read of the same leads copies nothing and sends nothing.
     neoGot.length = 0
