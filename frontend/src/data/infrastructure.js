@@ -141,7 +141,7 @@ export const PROCESSING_STAGES = [
   { id: 'destoning', num: '03', title: 'Destoning', text: 'Stones and dense debris are separated out from the grain stream.' },
   { id: 'husking', num: '04', title: 'Husking', text: 'The husk is removed from the paddy to reveal brown rice.' },
   { id: 'separation', num: '05', title: 'Separation', text: 'Husked and un-husked grain are separated for re-processing where needed.' },
-  { id: 'whitening', num: '06', title: 'Whitening / Polishing', text: 'The bran layer is removed and the grain is polished.' },
+  { id: 'whitening', num: '06', title: 'Gentle Whitening', text: 'The outer bran layer is gently removed by machine, leaving clean, natural-looking grains.' },
   { id: 'grading', num: '07', title: 'Grading', text: 'Grains are graded by size and length.' },
   { id: 'colour-sorting', num: '08', title: 'Colour Sorting', text: 'Optical sorting removes discoloured and off-type grains.' },
   { id: 'quality-check', num: '09', title: 'Quality Check', text: 'A quality check is carried out before the batch proceeds to packaging.' },
