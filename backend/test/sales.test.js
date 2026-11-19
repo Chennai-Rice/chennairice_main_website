@@ -4503,3 +4503,14 @@ test('Spin reminders report: sent, read, Claim link tapped, bought with the code
   assert.equal(res.body.summary.purchased, 1)
   assert.equal((await api('POST', '/api/w/click', { body: { slug: 'spin-' + sp.code } })).body.ok, true)
 })
+
+test('WhatsApp offers: two senders at the same moment, one offer a day: only one claims the person', async () => {
+  const { claimOffer } = await import('../lib/wa/automations.js')
+  await db.query(`insert into wa_contacts (phone, opted_in_at) values ('9566099901', now()) on conflict (phone) do update set last_offer_at = null`)
+  const both = await Promise.all([claimOffer(db.query, '9566099901'), claimOffer(db.query, '9566099901')])
+  assert.equal(both.filter(Boolean).length, 1, JSON.stringify(both))
+  assert.equal(both.filter((x) => x === false).length, 1)
+  // A day later the next offer is free again.
+  await db.query(`update wa_contacts set last_offer_at = now() - interval '21 hours' where phone = '9566099901'`)
+  assert.ok(await claimOffer(db.query, '9566099901'))
+})

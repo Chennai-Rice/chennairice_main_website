@@ -340,6 +340,8 @@ test('queue: no offers without a yes, none after STOP, 1 a day; utility still go
     if (sql.includes('from wa_contacts where phone')) return { rows: people[args[0]] ? [people[args[0]]] : [] }
     if (sql.includes('as day, count(*)')) return { rows: [{ day: args[0] === '9000000004' ? 1 : 0, week: 1 }] }
     if (sql.includes("status in ('placed'")) return { rows: [] }
+    // The day's offer claim (migration 058): free for everyone here.
+    if (sql.includes('set last_offer_at = now()')) return { rows: [{ before: null }] }
     if (sql.startsWith("update wa_queue set status = 'skipped'")) { outcome[args[0]] = args[1]; return { rows: [] } }
     if (sql.startsWith("update wa_queue set status = 'sent'")) { outcome[args[0]] = 'sent'; return { rows: [] } }
     return { rows: [], rowCount: 1 }

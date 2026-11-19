@@ -253,6 +253,25 @@ async function winbackVals(r, c, query) {
 const istHour = () => new Date(Date.now() + 5.5 * 3600e3).getUTCHours()
 
 /**
+ * Claim today's offer for this person: true-ish { before } when it is theirs to send, false when another
+ * message took it in the last 20 hours, null when the column is not there yet (migration 058 not run: the
+ * count check above still applies).
+ */
+export async function claimOffer(query, phone) {
+  try {
+    const { rows: [c] } = await query(
+      `with prev as (select last_offer_at from wa_contacts where phone = $1)
+       update wa_contacts set last_offer_at = now()
+        where phone = $1 and (last_offer_at is null or last_offer_at < now() - interval '20 hours')
+       returning (select last_offer_at from prev) as before`, [phone])
+    return c ? { before: c.before } : false
+  } catch (err) {
+    if (/last_offer_at/.test(err.message)) return null
+    throw err
+  }
+}
+
+/**
  * Sends queued messages that are due (automations and broadcasts). Marketing: only to people who said yes
  * and did not say STOP, 1 a day / 3 a week each, 9 am – 8 pm India time, not while an order is on its way.
  */
@@ -271,6 +290,7 @@ export async function sendQueue({ query = defaultQuery, fetchImpl, limit = 150, 
   let failed = 0
   for (const r of rows) {
     const marketing = r.category === 'marketing'
+    let claimed = null // { before } once this person's offer for the day is claimed
     const skip = async (reason, final = true) => {
       skipped++
       if (final) await query(`update wa_queue set status = 'skipped', reason = $2 where id = $1`, [r.id, reason])
@@ -309,6 +329,12 @@ export async function sendQueue({ query = defaultQuery, fetchImpl, limit = 150, 
     }
     const message = { messaging_product: 'whatsapp', recipient_type: 'individual', to: '91' + r.phone, type: 'template',
       template: { name: t.name, language: { code: t.language }, ...(components.length ? { components } : {}) } }
+    if (marketing) {
+      // The day's offer is claimed in one step, so a second sender at the same moment (two broadcasts, the
+      // job and a launch) cannot send this person another one (migration 058). Released if the send fails.
+      claimed = await claimOffer(query, r.phone)
+      if (claimed === false) { await skip('frequency limit (1 a day, 3 a week)'); continue }
+    }
     try {
       const wamid = await sendMessage(message, { fetchImpl })
       await query(`update wa_queue set status = 'sent', sent_at = now(), wamid = $2, reason = null where id = $1`, [r.id, wamid])
@@ -320,6 +346,7 @@ export async function sendQueue({ query = defaultQuery, fetchImpl, limit = 150, 
       sent++
     } catch (err) {
       failed++
+      if (claimed) await query(`update wa_contacts set last_offer_at = $2 where phone = $1`, [r.phone, claimed.before]).catch(() => {})
       const retry = !err.meta?.status || err.meta.status >= 500 || err.meta.status === 429
       await query(`update wa_queue set status = $2, reason = $3, send_after = now() + interval '15 minutes' where id = $1`,
         [r.id, retry && r.attempts < 4 ? 'queued' : 'failed', String(err.publicMessage || err.message).slice(0, 300)])
