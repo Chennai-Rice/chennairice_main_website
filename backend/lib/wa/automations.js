@@ -108,12 +108,12 @@ function finders(cfg, settings) {
     },
     async spin_reminder(q) {
       const { rows } = await q(
-        `select sp.id, sp.phone, sp.name, sp.prize_label, d.code, d.expires_at from spins sp join discount_codes d on d.id = sp.code_id
+        `select sp.id, sp.phone, sp.name, sp.prize_label, d.code, d.expires_at, d.min_order_paise from spins sp join discount_codes d on d.id = sp.code_id
           where sp.created_at <= now() - make_interval(days => $1::int) and sp.created_at > now() - make_interval(days => $1::int + $2::int)
             and d.is_active and (d.expires_at is null or d.expires_at > now() + interval '1 day')
             and not exists (select 1 from orders o where o.discount_code_id = d.id and o.status not in ('pending_payment', 'cancelled'))
             and sp.prize_label !~* 'bag|gift'`, [cfg.spin_reminder.days, LAUNCH_WINDOW_DAYS])
-      return rows.map((r) => ({ phone: r.phone, ref: `spin_reminder:${r.id}`, vals: { body: [first(r.name), r.prize_label, day(r.expires_at)], buttons: { 0: r.code, 1: `spin-${r.code}` } } }))
+      return rows.map((r) => ({ phone: r.phone, ref: `spin_reminder:${r.id}`, vals: { body: [first(r.name), r.prize_label, rs(r.min_order_paise), day(r.expires_at)], buttons: { 0: r.code, 1: `spin-${r.code}` } } }))
     },
     async spin_last_chance(q) {
       const { rows } = await q(
