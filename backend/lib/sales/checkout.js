@@ -358,8 +358,12 @@ export async function markOrderPaid(args) {
   // The WhatsApp thank-you was queued with the order; send it now (best effort,
   // the 10-minute job retries it, and it never holds up the payment).
   if (!result.already) sendWhatsAppMessages({ limit: 5 }).catch(() => {})
-  // The Purchase to Meta from the server (best effort; the 10-minute job retries it).
-  if (!result.already) sendPurchaseToMeta(result.order.id).catch(() => {})
+  // The Purchase to Meta from the server, waited for (at most 2.5 s): sent in the background it was often cut
+  // off when the server paused after replying, and the 10-minute job sent it again (Nov 2026). The job still
+  // retries one that did not go.
+  if (!result.already) {
+    await Promise.race([sendPurchaseToMeta(result.order.id).catch(() => {}), new Promise((r) => setTimeout(r, 2500))])
+  }
   // Bought with a friend's referral: a lead for the team, with who referred them (best effort).
   if (!result.already && result.order.referrer_id) referralLead(result.order).catch(() => {})
   return result

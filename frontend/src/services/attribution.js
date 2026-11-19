@@ -1,3 +1,4 @@
+import { keepMetaClick } from "./metaPixel.js";
 // Where this visitor came from, for the "sales by source" report.
 //
 // On landing, the ad tags in the link (utm_*, Meta fbclid, Google gclid, Google
@@ -125,7 +126,10 @@ export function captureAttribution() {
   if ((a.utm_source || '').toLowerCase() === 'expo') {
     try { window.sessionStorage.setItem(FROM_EXPO, '1') } catch { /* the popup stays off */ }
   }
-  if (url.searchParams.get('fbclid')) a.fbclid = true
+  if (url.searchParams.get('fbclid')) {
+    a.fbclid = true
+    keepMetaClick(url.searchParams.get('fbclid'))
+  }
   if (url.searchParams.get('gclid') || url.searchParams.get('gbraid') || url.searchParams.get('wbraid')) a.gclid = true
   // Google Merchant Center adds srsltid to its product links (Shopping tab, free listings): Google Shopping.
   if (url.searchParams.get('srsltid')) a.srsltid = true
