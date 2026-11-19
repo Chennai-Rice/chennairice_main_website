@@ -151,7 +151,7 @@ export default function SpinReminders({ onAuthError }) {
             </table>
           </div>
           <p className="wh-muted of-rem-note">
-            Clicked: the "Claim my reward" / பரிசைப் பெறுங்கள் button was tapped (counted from 20 Nov 2026, when click counting started).
+            Clicked: the "Claim my reward" / பரிசைப் பெறுங்கள் button was tapped (counted only from the day click counting went live; earlier reminders show No).
             Bought: a paid order that used this person's code after the reminder was sent.
           </p>
         </>
