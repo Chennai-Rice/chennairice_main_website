@@ -65,10 +65,12 @@ export function trackMetaEvent(name, data = {}, eventId) {
  */
 export function trackMetaPurchase({ orderNumber, value, items = [] }) {
   if (!loaded || !window.fbq || !orderNumber) return false
+  // Once per order in this browser, across tabs and later visits (it was per tab: a second tab, or coming
+  // back to the page from history, sent the sale to Meta again, 19 Nov 2026).
   const key = `cr.mpurchase.${orderNumber}`
   try {
-    if (sessionStorage.getItem(key)) return false
-    sessionStorage.setItem(key, '1')
+    if (localStorage.getItem(key) || sessionStorage.getItem(key)) return false
+    localStorage.setItem(key, '1')
   } catch { /* private mode: the event ID still de-duplicates at Meta */ }
   trackMetaEvent('Purchase', {
     content_ids: items.map((i) => i.id), content_type: 'product',
@@ -89,10 +91,28 @@ export function metaCheckoutSignal() {
   const choice = readConsent()
   return {
     fbp: cookie('_fbp'),
-    fbc: cookie('_fbc'),
+    // Meta's click ID: its own cookie, or the ad click we kept on landing (the cookie is only set once the
+    // Pixel loads, so a buyer who never answered the cookie notice had none and Meta could not tie the sale
+    // to the ad, 15 Nov 2026).
+    fbc: cookie('_fbc') || metaClick(),
     url: window.location.origin + window.location.pathname,
     consent: !choice ? 'unset' : choice.marketing ? 'granted' : 'denied',
   }
+}
+
+// The last Meta ad click (fbclid from the landing link) as Meta's click ID, kept 7 days (Meta's click window).
+const CLICK_KEY = 'cr.metaclick'
+/** On landing from a Meta ad: keep its click as fb.1.<time>.<fbclid>. */
+export function keepMetaClick(fbclid) {
+  const id = String(fbclid || '').replace(/[^\w.-]/g, '').slice(0, 400)
+  if (!id) return
+  try { localStorage.setItem(CLICK_KEY, JSON.stringify({ fbc: `fb.1.${Date.now()}.${id}`, at: Date.now() })) } catch { /* fine */ }
+}
+function metaClick() {
+  try {
+    const c = JSON.parse(localStorage.getItem(CLICK_KEY) || 'null')
+    return c && Date.now() - c.at < 7 * 864e5 ? c.fbc : undefined
+  } catch { return undefined }
 }
 
 /** One page view. The site is a single-page app, so this runs on every route change. */

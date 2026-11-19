@@ -108,15 +108,26 @@ export async function sendPurchaseToMeta(orderId) {
   const token = process.env.META_CAPI_TOKEN
   if (!token) return { skipped: 'no token' }
   try {
-    const { rows: [order] } = await query(
+    const { rows: [paid] } = await query(
       `select * from orders where id = $1 and payment_status in ('paid', 'partially_refunded')`, [orderId])
-    if (!order) return { skipped: 'not paid' }
-    const meta = order.attribution?.meta
-    if (!meta) return { skipped: 'no browser details' } // orders from before this was added
-    if (meta.sentAt) return { skipped: 'already sent' }
-    if (meta.consent === 'denied') return { skipped: 'marketing cookies rejected' }
+    if (!paid) return { skipped: 'not paid' }
+    // An order without the browser's details (the Pixel was blocked, or the buyer never answered the cookie
+    // notice) is still sent, matched on phone and email: it used to be skipped and never reached Meta (17 Nov 2026).
+    if (paid.attribution?.meta?.sentAt) return { skipped: 'already sent' }
+    if (paid.attribution?.meta?.consent === 'denied') return { skipped: 'marketing cookies rejected' }
+    // ₹1 test orders are not sales.
+    if (Number(paid.total_paise) <= 100) return { skipped: 'test order' }
     // Meta takes events up to 7 days old.
-    if (Date.now() - new Date(order.placed_at).getTime() > 7 * 864e5) return { skipped: 'too old' }
+    if (Date.now() - new Date(paid.placed_at).getTime() > 7 * 864e5) return { skipped: 'too old' }
+    // Claim it first, so the send at payment and the 10-minute job never both send it (they did: 2 to 4
+    // server Purchases per order, Nov 2026). A claim older than 30 minutes (a send that died half way) is free again.
+    const { rows: [order] } = await query(
+      `update orders set attribution = jsonb_set(coalesce(attribution, '{}'::jsonb), '{meta}',
+                                                 coalesce(attribution->'meta', '{}'::jsonb) || jsonb_build_object('sendingAt', now()))
+        where id = $1 and not coalesce(attribution->'meta' ? 'sentAt', false)
+          and coalesce((attribution->'meta'->>'sendingAt')::timestamptz < now() - interval '30 minutes', true)
+        returning *`, [orderId])
+    if (!order) return { skipped: 'being sent' }
 
     const { rows: items } = await query(
       `select i.quantity, i.unit_price_paise, i.pack_kg, p.slug from order_items i
@@ -134,17 +145,19 @@ export async function sendPurchaseToMeta(orderId) {
     const out = await res.json().catch(() => ({}))
     if (!res.ok) {
       const error = clip(out?.error?.message || 'HTTP ' + res.status, 300)
+      // Not sent: the claim goes, so the 10-minute job tries again.
       await query(
-        `update orders set attribution = jsonb_set(attribution, '{meta,lastError}', to_jsonb($2::text)) where id = $1`,
+        `update orders set attribution = jsonb_set(attribution #- '{meta,sendingAt}', '{meta,lastError}', to_jsonb($2::text)) where id = $1`,
         [orderId, error])
       return { error }
     }
     await query(
-      `update orders set attribution = jsonb_set(attribution #- '{meta,lastError}', '{meta,sentAt}', to_jsonb(now())) where id = $1`,
+      `update orders set attribution = jsonb_set(attribution #- '{meta,lastError}' #- '{meta,sendingAt}', '{meta,sentAt}', to_jsonb(now())) where id = $1`,
       [orderId])
     return { sent: true, received: out.events_received }
   } catch (err) {
     console.error('[meta-capi]', err.message)
+    await query(`update orders set attribution = attribution #- '{meta,sendingAt}' where id = $1`, [orderId]).catch(() => {})
     return { error: err.message }
   }
 }
@@ -155,8 +168,10 @@ export async function sendPendingPurchases() {
   const { rows } = await query(
     `select id from orders
       where payment_status in ('paid', 'partially_refunded') and placed_at > now() - interval '2 days'
-        and attribution ? 'meta' and not (attribution->'meta' ? 'sentAt')
+        and total_paise > 100
+        and not coalesce(attribution->'meta' ? 'sentAt', false)
         and coalesce(attribution->'meta'->>'consent', '') <> 'denied'
+        and coalesce((attribution->'meta'->>'sendingAt')::timestamptz < now() - interval '30 minutes', true)
       order by placed_at limit 50`)
   let sent = 0
   for (const { id } of rows) if ((await sendPurchaseToMeta(id)).sent) sent++
