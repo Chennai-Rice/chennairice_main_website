@@ -879,8 +879,9 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     const r = await broadcastReport(req.params.id, { rows: true })
     const cell = (v) => { let t = String(v ?? ''); if (/^[=+\-@]/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"' }
     const group = { sent: 'Sent', waiting: 'Yet to send', held: 'Held back' }
-    const lines = [['Mobile', 'Name', 'Split', 'Result', 'Sent at'],
-      ...r.people.map((p) => [p.phone, p.name, group[p.group], p.result, p.sentAt ? new Date(p.sentAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : ''])]
+    const at = (d) => (d ? new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '')
+    const lines = [['Mobile', 'Name', 'Split', 'Result', 'Sent at', 'Replied', 'Replied at', 'Email in reply', 'Their reply'],
+      ...r.people.map((p) => [p.phone, p.name, group[p.group], p.result, at(p.sentAt), p.repliedAt ? 'Yes' : 'No', at(p.repliedAt), p.email, p.reply])]
     noStore(res)
     res.set('Content-Type', 'text/csv; charset=utf-8')
     res.set('Content-Disposition', `attachment; filename="broadcast-${String(r.name).replace(/[^\w-]+/g, '_').slice(0, 40)}.csv"`)

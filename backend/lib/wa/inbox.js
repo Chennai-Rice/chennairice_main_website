@@ -12,6 +12,9 @@ import { sendTemplate } from './admin.js'
 import { last10 } from './contacts.js'
 
 const WINDOW_MS = 24 * 3600e3
+// The customer wrote back after one of our templates (not order updates): bulk messages, broadcasts, inbox templates.
+const REPLIED = `exists (select 1 from wa_messages o where o.phone = l.phone and o.direction = 'out' and o.kind = 'template'
+    and (o.category = 'marketing' or o.source in ('broadcast', 'inbox')) and o.created_at < lastin.at)`
 
 export async function listChats(f = {}, staff, { query = defaultQuery } = {}) {
   const params = []
@@ -21,13 +24,21 @@ export async function listChats(f = {}, staff, { query = defaultQuery } = {}) {
   if (f.view === 'mine') add(`c.assigned_to = $?`, staff.id)
   if (f.view === 'unassigned') w.push('c.assigned_to is null')
   if (f.view === 'unread') w.push('coalesce(u.n, 0) > 0')
+  // New: the customer's first message ever came in the last 24 hours. Replied: the customer wrote after we sent
+  // them a template (bulk message, broadcast, inbox template), i.e. they answered our message (Nov 2026).
+  if (f.view === 'new') w.push(`fi.at > now() - interval '24 hours'`)
+  if (f.view === 'replied') w.push(REPLIED)
   if (str(f.q)) add(`(l.phone like $? or lower(coalesce(c.name, '')) like $?)`, '%' + str(f.q).toLowerCase() + '%')
   if (str(f.tag)) add(`$? = any(c.tags)`, str(f.tag).toLowerCase())
+  // A campaign's own inbox (Nov 2026): only the people who were sent that template (influencer_collab…).
+  if (str(f.template)) add(`exists (select 1 from wa_messages t where t.phone = l.phone and t.direction = 'out' and t.template_name = $?)`, str(f.template))
   const { rows } = await query(
     `with l as (
        select distinct on (phone) phone, body, direction, created_at, status from wa_messages order by phone, created_at desc
      ), lastin as (
        select phone, max(created_at) as at from wa_messages where direction = 'in' group by phone
+     ), fi as (
+       select phone, min(created_at) as at from wa_messages where direction = 'in' group by phone
      ), u as (
        select m.phone, count(*)::int as n from wa_messages m left join wa_contacts c on c.phone = m.phone
         where m.direction = 'in' and m.created_at > coalesce(c.last_read_at, 'epoch'::timestamptz) group by m.phone
@@ -36,15 +47,20 @@ export async function listChats(f = {}, staff, { query = defaultQuery } = {}) {
             coalesce(c.name, (select payload->>'profileName' from wa_messages x where x.phone = l.phone and x.direction = 'in' and payload ? 'profileName' order by created_at desc limit 1)) as name,
             coalesce(c.status, 'open') as chat_status, c.assigned_to, s.full_name as assigned_name, coalesce(c.tags, '{}') as tags,
             coalesce(u.n, 0) as unread, c.opted_out_at
-       from l left join lastin on lastin.phone = l.phone left join wa_contacts c on c.phone = l.phone
+       from l left join lastin on lastin.phone = l.phone left join fi on fi.phone = l.phone left join wa_contacts c on c.phone = l.phone
        left join u on u.phone = l.phone left join staff_users s on s.id = c.assigned_to
        ${w.length ? 'where ' + w.join(' and ') : ''}
       order by l.created_at desc limit 200`, params)
   const { rows: [t] } = await query(
-    `select count(*) filter (where coalesce(c.status, 'open') = 'open')::int as open,
+    `with lastin as (select phone, max(created_at) as at from wa_messages where direction = 'in' group by phone),
+          fi as (select phone, min(created_at) as at from wa_messages where direction = 'in' group by phone)
+     select count(*) filter (where coalesce(c.status, 'open') = 'open')::int as open,
             count(*) filter (where c.assigned_to = $1 and coalesce(c.status, 'open') = 'open')::int as mine,
-            count(*) filter (where c.assigned_to is null and coalesce(c.status, 'open') = 'open')::int as unassigned
-       from (select distinct phone from wa_messages) p left join wa_contacts c on c.phone = p.phone`, [staff.id])
+            count(*) filter (where c.assigned_to is null and coalesce(c.status, 'open') = 'open')::int as unassigned,
+            count(*) filter (where fi.at > now() - interval '24 hours')::int as new_chats,
+            count(*) filter (where ${REPLIED.replaceAll('l.phone', 'p.phone')})::int as replied
+       from (select distinct phone from wa_messages) p left join wa_contacts c on c.phone = p.phone
+       left join lastin on lastin.phone = p.phone left join fi on fi.phone = p.phone`, [staff.id])
   return {
     chats: rows.map((r) => ({
       phone: r.phone, name: r.name, last: r.body, lastDirection: r.direction, lastAt: r.created_at, lastStatus: r.last_status,
@@ -52,7 +68,28 @@ export async function listChats(f = {}, staff, { query = defaultQuery } = {}) {
       status: r.chat_status, assignedTo: r.assigned_to, assignedName: r.assigned_name, tags: r.tags, unread: r.unread, optedOut: Boolean(r.opted_out_at),
     })),
     counts: t,
+    campaigns: await campaignList(query),
   }
+}
+
+/**
+ * The templates the team sent (bulk messages, broadcasts, inbox templates — not order updates), newest first,
+ * each with how many people got it and how many wrote back: the Inbox's campaign picker.
+ */
+async function campaignList(query) {
+  const { rows } = await query(
+    `with sent as (
+       select template_name as name, phone, min(created_at) as first_at, max(created_at) as last_at
+         from wa_messages
+        where direction = 'out' and kind = 'template' and template_name is not null
+          and (category = 'marketing' or source in ('broadcast', 'inbox'))
+        group by 1, 2
+     )
+     select s.name, count(*)::int as people,
+            count(*) filter (where exists (select 1 from wa_messages i where i.phone = s.phone and i.direction = 'in' and i.created_at > s.first_at))::int as replied,
+            max(s.last_at) as last_at
+       from sent s group by s.name order by max(s.last_at) desc limit 30`).catch(() => ({ rows: [] }))
+  return rows.map((r) => ({ name: r.name, people: r.people, replied: r.replied }))
 }
 
 /** One chat: messages, notes and the customer panel. Marks it read (and sends Meta a read receipt). */

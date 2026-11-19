@@ -3767,8 +3767,9 @@ test('NeoDove team campaigns: every lead, whatever its source, goes round robin 
     // In turn, oldest lead first: Gayathri, Ramya, Lavanya, Gayathri…
     assert.deepEqual(got.slice(0, 4).map((g) => g.path), ['/gayathri', '/ramya', '/lavanya', '/gayathri'])
     assert.equal(got.find((g) => g.path === '/ramya').body.Telecaller, 'Ramya')
-    const bulk = got.find((g) => g.body.Source === 'Bulk order form')
-    assert.deepEqual([bulk.body.Company, bulk.body['Buyer type']], ['Five Traders', 'wholesaler'])
+    // The two bulk enquiries are saved in the same instant, so either may go first: check B Five's by its company.
+    const bulk = got.find((g) => g.body.Source === 'Bulk order form' && g.body.Company === 'Five Traders')
+    assert.deepEqual([bulk?.body.Company, bulk?.body['Buyer type']], ['Five Traders', 'wholesaler'])
     // The next lead goes to the one with the fewest (all equal: the first in order), then keeps balancing.
     await recordSignup(db, { name: 'S Seven', phone: '9700000007', source: 'whatsapp' })
     await recordSignup(db, { name: 'S Eight', phone: '9700000008', source: 'meta_ads' })
@@ -4285,4 +4286,28 @@ test('team: a person can have extra roles on top of the main one, and may do wha
   assert.equal((await adjust()).status, 403)
   const list = await api('GET', '/api/admin/staff', { token: OWNER })
   assert.deepEqual(list.body.staff.find((p) => p.email === 'tamil@x.test').extra_roles, [])
+})
+
+test('WhatsApp Inbox filters: New (first message in 24 hours) and Replied (wrote back after a bulk / broadcast template)', async () => {
+  const { listChats } = await import('../lib/wa/inbox.js')
+  const staff = { id: '00000000-0000-0000-0000-000000000001' }
+  // A brand-new chat today; an old customer who got a bulk message 2 days ago and replied today; an old chat, no reply.
+  await db.query(`insert into wa_messages (wamid, direction, phone, kind, body, status, created_at) values
+    ('t-new-in', 'in', '9766600001', 'text', 'Hi', 'received', now() - interval '1 hour'),
+    ('t-rep-in0', 'in', '9766600002', 'text', 'Hello', 'received', now() - interval '10 days'),
+    ('t-rep-out', 'out', '9766600002', 'template', 'Offer', 'delivered', now() - interval '2 days'),
+    ('t-rep-in', 'in', '9766600002', 'text', 'Price?', 'received', now() - interval '30 minutes'),
+    ('t-old-in', 'in', '9766600003', 'text', 'Hi', 'received', now() - interval '5 days')`)
+  await db.query(`update wa_messages set category = 'marketing', source = 'broadcast', template_name = 'chennai_traders' where wamid = 't-rep-out'`)
+  const phones = async (view) => (await listChats({ view, status: 'all' }, staff)).chats.map((c) => c.phone).filter((p) => p.startsWith('97666')).sort()
+  assert.deepEqual(await phones('new'), ['9766600001'])
+  assert.deepEqual(await phones('replied'), ['9766600002'])
+  assert.deepEqual(await phones('all'), ['9766600001', '9766600002', '9766600003'])
+  const { counts } = await listChats({ view: 'all' }, staff)
+  assert.ok(counts.new_chats >= 1 && counts.replied >= 1, JSON.stringify(counts))
+  // Campaign inbox: only the people sent that template, and the picker lists it with sent / replied.
+  const camp = await listChats({ view: 'all', status: 'all', template: 'chennai_traders' }, staff)
+  assert.deepEqual(camp.chats.map((c) => c.phone).filter((p) => p.startsWith('97666')), ['9766600002'])
+  const ct = camp.campaigns.find((c) => c.name === 'chennai_traders')
+  assert.ok(ct && ct.people >= 1 && ct.replied >= 1, JSON.stringify(camp.campaigns))
 })

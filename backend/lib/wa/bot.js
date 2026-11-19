@@ -89,6 +89,9 @@ export function cleanBot(input = {}) {
     items,
     fallback: String(input.fallback || DEFAULT_BOT.fallback).slice(0, 1024),
     handoffHours: Math.min(72, Math.max(1, Number(input.handoffHours) || 12)),
+    // Email the team each time the AI passes a chat on ("WhatsApp: … needs a reply"). Off unless switched on
+    // (owner, Nov 2026: too many after a bulk message); the chat still opens in the Inbox with the AI's note.
+    handoffEmail: input.handoffEmail === true,
     ai: { enabled: input.ai?.enabled !== false },
   }
 }
@@ -311,6 +314,7 @@ export async function aiHandoff({ phone, name, text, ai }, { query = defaultQuer
           and right(regexp_replace(contact_phone, '\\D', '', 'g'), 10) = $3`,
       [ai.order, ('WhatsApp: ' + why).slice(0, 500), String(phone).replace(/\D/g, '').slice(-10)]).catch(() => {})
   }
+  if (!(await getBot(query)).handoffEmail) return
   const to = await staffRecipients({ query }).catch(() => [])
   if (!to.length) return
   const bucket = Math.floor(Date.now() / (3 * 3600e3))

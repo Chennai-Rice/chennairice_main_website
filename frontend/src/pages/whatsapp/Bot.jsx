@@ -224,6 +224,10 @@ export default function Bot() {
             <label className="wa-field wa-field--inline"><span>After "talk to our team", the bot stays quiet in that chat for</span>
               <input type="number" min={1} max={72} value={bot.handoffHours} onChange={(e) => set({ handoffHours: Number(e.target.value) })} /> <span>hours</span>
             </label>
+            <label className="wa-field wa-field--inline">
+              <input type="checkbox" checked={bot.handoffEmail === true} onChange={(e) => set({ handoffEmail: e.target.checked })} />
+              <span>Email the team ("WhatsApp: … needs a reply") each time the AI passes a chat to a person. Off: the chat still opens in the Inbox with the AI's note.</span>
+            </label>
             <p className="wa-bot-help">Always automatic: an order number (CR-…) gets its status (only for the number that placed it), and a 6-digit PIN code gets delivery details.</p>
           </div>
           <Simulator bot={bot} />

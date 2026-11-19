@@ -289,6 +289,11 @@ function BroadcastDetails({ id, onClose }) {
           {block('Held back', 'bad', r.held)}
         </div>
       )}
+      {r?.replied && (
+        <p className="wa-muted wa-split-note">
+          Replied: <b>{num(r.replied.total)}</b>{r.replied.withEmail ? ` · ${num(r.replied.withEmail)} shared an email ID` : ''} · the download lists each reply and any email ID in it.
+        </p>
+      )}
       {r?.sent.notDeliveredByCode.length > 0 && (
         <p className="wa-muted wa-split-note">
           Not delivered, by WhatsApp's reason: {r.sent.notDeliveredByCode.map((x) => `${num(x.n)} × ${x.code}${CODES[x.code] ? ` (${CODES[x.code]})` : ''}`).join(' · ')}
