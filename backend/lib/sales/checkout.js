@@ -41,6 +41,8 @@ export function buildGuestCustomer(body) {
     state: f('state'), pincode: f('pincode'), landmark: f('landmark'),
     deliveryMethod: f('deliveryMethod') || 'courier',
     discountCode: cleanCode(body?.discountCode),
+    // The customer removed their own offer at checkout (Spin & Win prize / referral reward): none is used.
+    skipAutoOffer: body?.skipAutoOffer === true,
   }
   if (!c.name || c.name.length > 120) return { error: 'Please tell us your name.' }
   if (!c.email || !EMAIL_PATTERN.test(c.email) || c.email.length > 200) return { error: 'A valid email address is required.' }
@@ -76,10 +78,14 @@ export async function quoteCart(body) {
   // A discount code, checked the same way as when the order is placed; one that does not apply is
   // explained (discountError) and the cart is still priced without it.
   // Without a code, a referral reward of the customer's (mobile number + email) is used by itself.
+  // Without a code, the customer's own offer (Spin & Win prize, referral reward) is used by itself, unless
+  // they removed it (skipAutoOffer). Its code is not sent back: typing a mobile number never shows anyone's code.
   const d = await quoteDiscount({ query }, body?.discountCode, {
     phone: body?.phone, email: body?.email, pincode: str(body?.pincode), subtotalPaise: priced.subtotalPaise, shippingPaise: shipping,
+    skipAuto: body?.skipAutoOffer === true,
   })
-  const discountPaise = d && !d.error ? d.discountPaise : 0
+  const applied = d && d.code && !d.error ? d : null
+  const discountPaise = applied ? applied.discountPaise : 0
   return {
     lines: priced.lines.map((l) => ({
       id: l.slug + '-' + l.packKg + 'kg', name: l.name, packKg: l.packKg, qty: l.quantity,
@@ -91,7 +97,16 @@ export async function quoteCart(body) {
     deliveryMethod: chosen?.method || (shipping == null ? null : 'courier'),
     deliveryOptions: options.map((o) => ({ method: o.method, charge: toRupees(o.paise), promise: o.promise })),
     region: priced.region,
-    discount: d && !d.error ? { code: d.code.code, amount: toRupees(d.discountPaise), label: d.label, auto: Boolean(d.auto), source: d.code.source, gift: d.gift || null } : null,
+    discount: applied ? {
+      code: applied.auto ? null : applied.code.code, amount: toRupees(applied.discountPaise), label: applied.label,
+      auto: Boolean(applied.auto), source: applied.code.source, gift: applied.gift || null,
+      ...(applied.auto ? { expiresAt: applied.code.expires_at || null } : {}),
+    } : null,
+    // A Spin & Win prize the cart is below the minimum for: how much more to add.
+    pendingOffer: d?.pending ? {
+      label: d.pending.label, source: d.pending.source, expiresAt: d.pending.expiresAt || null,
+      minOrder: toRupees(d.pending.minOrderPaise), addMore: toRupees(d.pending.addMorePaise),
+    } : null,
     discountError: d?.error || null,
     total: toRupees(priced.subtotalPaise + (shipping || 0) - discountPaise),
     taxIncluded: toRupees(priced.taxPaise),
@@ -114,7 +129,8 @@ async function sameRecentOrder(db, customer, priced, shippingPaise, method, hold
       where o.contact_email = $1
         and o.created_at > now() - make_interval(mins => $2)
         and o.delivery_method = $3
-        and coalesce(o.discount_code, '') = $4
+        and (coalesce(o.discount_code, '') = $4
+             or ($4 = '' and $10 and o.discount_code_id in (select id from discount_codes where source in ('spin', 'reward'))))
         and o.shipping_address->>'pincode' = $5
         and lower(o.shipping_address->>'line1') = lower($6)
         and o.subtotal_paise = $7 and o.shipping_paise = $8
@@ -125,7 +141,7 @@ async function sameRecentOrder(db, customer, priced, shippingPaise, method, hold
       limit 1
       for update of o`,
     [customer.email, holdMinutes, method, customer.discountCode || '', customer.pincode, customer.addressLine1,
-      priced.subtotalPaise, shippingPaise, basket]
+      priced.subtotalPaise, shippingPaise, basket, customer.skipAutoOffer !== true]
   )
   return match || null
 }
@@ -174,6 +190,7 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
     // The discount code, checked again inside this transaction (its row locked, so two orders cannot
     // both take the last use). A code that no longer applies stops the order with the reason.
     const discount = await applyDiscount(db, customer.discountCode, {
+      skipAuto: customer.skipAutoOffer === true,
       phone: customer.phone, email: customer.email, pincode: customer.pincode, subtotalPaise: priced.subtotalPaise, shippingPaise: shipping,
       address: { line1: customer.addressLine1, pincode: customer.pincode },
     })

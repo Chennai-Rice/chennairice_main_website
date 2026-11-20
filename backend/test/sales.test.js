@@ -1461,6 +1461,62 @@ test('Spin & Win: off until switched on, one spin per mobile and browser, prize 
   }
 })
 
+test('Spin & Win prize used by itself at checkout: best one, code never shown, minimum, expired, wrong number, contest coupon never, removed', async () => {
+  const { autoOffer, applyDiscount } = await import('../lib/sales/discounts.js')
+  const phone = '9811188801'
+  const cart = (over = {}) => ({ phone, email: '', pincode: '641001', subtotalPaise: 100000, shippingPaise: 9000, ...over })
+  try {
+    // Nothing for a number without a prize, or before the number is complete.
+    assert.deepEqual(await autoOffer(db, cart()), { best: null, pending: null })
+    assert.deepEqual(await autoOffer(db, cart({ phone: '98111' })), { best: null, pending: null })
+
+    await db.query(`insert into discount_codes (code, kind, amount_paise, locked_phone, source) values ('SPIN-AUTO50', 'amount', 5000, $1, 'spin')`, [phone])
+    await db.query(`insert into discount_codes (code, kind, amount_paise, locked_phone, source) values ('SPIN-AUTO80', 'amount', 8000, $1, 'spin')`, [phone])
+    // A slogan contest coupon locked to the same number: never used by itself.
+    await db.query(`insert into discount_codes (code, kind, amount_paise, locked_phone, source) values ('CONTEST-AUTO', 'amount', 50000, $1, 'manual')`, [phone])
+    // Expired, and another number's: never.
+    await db.query(`insert into discount_codes (code, kind, amount_paise, locked_phone, source, expires_at) values ('SPIN-OLD99', 'amount', 9900, $1, 'spin', now() - interval '1 day')`, [phone])
+    await db.query(`insert into discount_codes (code, kind, amount_paise, locked_phone, source) values ('SPIN-THEIR1', 'amount', 9900, '9811188802', 'spin')`)
+
+    // The one that takes the most off.
+    const { best } = await autoOffer(db, cart())
+    assert.equal(best.code.code, 'SPIN-AUTO80')
+    assert.equal(best.discountPaise, 8000)
+    assert.equal(best.auto, true)
+    // At the order: the same one; removed by the customer: none.
+    assert.equal((await applyDiscount(db, '', cart())).code.code, 'SPIN-AUTO80')
+    assert.deepEqual(await applyDiscount(db, '', cart({ skipAuto: true })), { code: null, discountPaise: 0 })
+
+    // Below a prize's minimum: how much more to add, nothing applied.
+    await db.query(`update discount_codes set is_active = false where code = 'SPIN-AUTO50'`)
+    await db.query(`update discount_codes set min_order_paise = 150000 where code = 'SPIN-AUTO80'`)
+    const short = await autoOffer(db, cart())
+    assert.equal(short.best, null)
+    assert.deepEqual([short.pending.minOrderPaise, short.pending.addMorePaise, short.pending.label], [150000, 50000, '₹80 off'])
+
+    // The quote: the prize applied without its code; the shortfall said.
+    const quote = (body) => api('POST', '/api/checkout/quote', { body: { pincode: '641001', items: [{ id: 'alibaba-10kg', qty: 1 }], deliveryMethod: 'courier', ...body } })
+    await db.query(`update discount_codes set min_order_paise = 0 where code = 'SPIN-AUTO80'`)
+    const q = await quote({ phone })
+    assert.equal(q.status, 200, JSON.stringify(q.body))
+    assert.equal(q.body.discount.code, null)
+    assert.deepEqual([q.body.discount.amount, q.body.discount.auto, q.body.discount.source], [80, true, 'spin'])
+    assert.equal(q.body.total, q.body.subtotal + q.body.shipping - 80)
+    assert.ok(!JSON.stringify(q.body).includes('SPIN-AUTO80'), 'the code is never sent back')
+    const skipped = await quote({ phone, skipAutoOffer: true })
+    assert.equal(skipped.body.discount, null)
+    assert.equal(skipped.body.total, skipped.body.subtotal + skipped.body.shipping)
+    await db.query(`update discount_codes set min_order_paise = $1 where code = 'SPIN-AUTO80'`, [Math.round(q.body.subtotal * 100) + 10000])
+    const nudge = await quote({ phone })
+    assert.equal(nudge.body.discount, null)
+    assert.deepEqual([nudge.body.pendingOffer.addMore, nudge.body.pendingOffer.source], [100, 'spin'])
+    // A typed code still wins over the customer's own offer, and the contest coupon only works when typed.
+    assert.equal((await quote({ phone, discountCode: 'CONTEST-AUTO' })).body.discount.code, 'CONTEST-AUTO')
+  } finally {
+    await db.query(`delete from discount_codes where code in ('SPIN-AUTO50', 'SPIN-AUTO80', 'CONTEST-AUTO', 'SPIN-OLD99', 'SPIN-THEIR1')`)
+  }
+})
+
 test('Refer a friend: code after paying, friend saves on a first order, never their own, reward on delivery used by itself', async () => {
   const { rows: [v] } = await db.query(
     `select v.id from product_variants v join products p on p.id = v.product_id where p.slug = 'alibaba' and v.pack_kg = 10`)

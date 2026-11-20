@@ -80,7 +80,7 @@ const PINCODE_PATTERN = /^[1-9][0-9]{5}$/;
 
 // The form's fields in page order, with the names the error summary uses.
 const FIELD_LABELS = {
-  name: "Full name", email: "Email", phone: "Phone", addressLine1: "Address",
+  phone: "Phone", name: "Full name", email: "Email", addressLine1: "Address",
   city: "City / town", state: "State", pincode: "PIN code",
 };
 
@@ -135,9 +135,23 @@ export default function CheckoutPage() {
   }, []);
   const [discountCode, setDiscountCodeState] = useState(readDiscountCode);
   const setDiscountCode = useCallback((code) => { setDiscountCodeState(code); saveDiscountCode(code); }, []);
+  // The customer's own offer (Spin & Win prize, referral reward) is used by itself once the mobile number is
+  // typed; "Remove" turns that off for this number (a new number starts with it on again).
+  const mobile10 = String(form.phone).replace(/\D/g, "").slice(-10);
+  const [skipAutoFor, setSkipAutoFor] = useState("");
+  const skipAutoOffer = Boolean(mobile10) && skipAutoFor === mobile10;
   const {
-    subtotal, shipping, region, total, hasPin, deliveryOptions, deliveryMethod, discount, discountError, error: quoteError,
-  } = useCartQuote(form.pincode, deliveryChoice, { discountCode, phone: form.phone, email: form.email });
+    subtotal, shipping, region, total, hasPin, deliveryOptions, deliveryMethod, discount, discountError, pendingOffer, error: quoteError,
+  } = useCartQuote(form.pincode, deliveryChoice, { discountCode, phone: form.phone, email: form.email, skipAutoOffer });
+  // Google Analytics: a Spin & Win prize used by itself, or waiting for a bigger cart (once per number each).
+  const offerSeen = useRef(new Set());
+  useEffect(() => {
+    const spin = discount?.auto && discount.source === "spin";
+    const what = spin ? "spin_code_auto_applied" : pendingOffer?.source === "spin" ? "spin_code_min_not_met" : "";
+    if (!what || !mobile10 || offerSeen.current.has(what + mobile10)) return;
+    offerSeen.current.add(what + mobile10);
+    trackGoogleEcommerce(what, { value: spin ? discount.amount : 0, ...(spin ? {} : { add_more: pendingOffer.addMore }) });
+  }, [discount, pendingOffer, mobile10]);
   const ownDelivery = deliveryMethod === "in_house";
   const [errors, setErrors] = useState({});
   // After payment the receipt moves to /order-confirmed (a page of its own
@@ -401,6 +415,7 @@ export default function CheckoutPage() {
           ...form,
           deliveryMethod: deliveryMethod || "courier",
           ...(discountCode ? { discountCode } : {}),
+          ...(!discountCode && skipAutoOffer ? { skipAutoOffer: true } : {}),
           items: items.map((item) => ({ id: item.id, qty: item.qty })),
           attribution: currentAttribution(),
           meta: metaCheckoutSignal(),
@@ -599,22 +614,39 @@ export default function CheckoutPage() {
               </p>
 
               <label className="field">
-                <span className="field-label">Full name</span>
+                <span className="field-label">Phone</span>
                 <input
-                  type="text"
-                  value={form.name}
-                  name="name"
-                  onChange={set("name")}
-                  placeholder="Your full name"
-                  autoComplete="name"
-                  aria-invalid={!!errors.name}
-                  aria-describedby={errors.name ? "err-name" : undefined}
+                  type="tel"
+                  inputMode="numeric"
+                  value={form.phone}
+                  name="phone"
+                onChange={set("phone")}
+                  placeholder="10-digit mobile number"
+                  autoComplete="tel"
+                  aria-invalid={!!errors.phone}
+                aria-describedby={errors.phone ? "err-phone" : undefined}
                   disabled={busy}
                 />
-                {errors.name && <span className="field-error" id="err-name">{errors.name}</span>}
+                {errors.phone && <span className="field-error" id="err-phone">{errors.phone}</span>}
+                {!errors.phone && <span className="field-hint">Won a Spin &amp; Win prize? It is applied by itself for this number.</span>}
               </label>
 
               <div className="checkout-field-row">
+                <label className="field">
+                  <span className="field-label">Full name</span>
+                  <input
+                    type="text"
+                    value={form.name}
+                    name="name"
+                    onChange={set("name")}
+                    placeholder="Your full name"
+                    autoComplete="name"
+                    aria-invalid={!!errors.name}
+                    aria-describedby={errors.name ? "err-name" : undefined}
+                    disabled={busy}
+                  />
+                  {errors.name && <span className="field-error" id="err-name">{errors.name}</span>}
+                </label>
                 <label className="field">
                   <span className="field-label">Email</span>
                   <input
@@ -629,23 +661,6 @@ export default function CheckoutPage() {
                     disabled={busy}
                   />
                   {errors.email && <span className="field-error" id="err-email">{errors.email}</span>}
-                </label>
-
-                <label className="field">
-                  <span className="field-label">Phone</span>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    value={form.phone}
-                    name="phone"
-                  onChange={set("phone")}
-                    placeholder="10-digit mobile number"
-                    autoComplete="tel"
-                    aria-invalid={!!errors.phone}
-                  aria-describedby={errors.phone ? "err-phone" : undefined}
-                    disabled={busy}
-                  />
-                  {errors.phone && <span className="field-error" id="err-phone">{errors.phone}</span>}
                 </label>
               </div>
 
@@ -792,12 +807,29 @@ export default function CheckoutPage() {
                   checking={Boolean(discountCode && !discount && !discountError)}
                   onApply={setDiscountCode}
                   onRemove={() => setDiscountCode("")}
+                  phoneReady={mobile10.length === 10}
+                  pendingOffer={pendingOffer}
+                  autoRemoved={skipAutoOffer && !discountCode}
+                  onRemoveAuto={() => {
+                    setSkipAutoFor(mobile10);
+                    if (discount?.source === "spin") trackGoogleEcommerce("spin_code_removed", { value: discount.amount });
+                  }}
+                  onRestoreAuto={() => setSkipAutoFor("")}
                   disabled={busy}
                 />
                 <div className="summary-row summary-row--total">
                   <dt>Total</dt>
-                  <dd>{formatRupees(total)}</dd>
+                  <dd>
+                    {discount?.amount > 0 && <s className="summary-was">{formatRupees(total + discount.amount)}</s>}
+                    {formatRupees(total)}
+                  </dd>
                 </div>
+                {discount?.amount > 0 && (
+                  <div className="summary-row summary-saving">
+                    <dt>You save</dt>
+                    <dd>{formatRupees(discount.amount)}</dd>
+                  </div>
+                )}
               </dl>
 
               {toFix.length > 0 && (

@@ -269,7 +269,10 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.json(await recordAskevaWebhook(req.body))
   }))
 
-  router.post('/api/checkout/quote', wrap(async (req, res) => res.json(await quoteCart(req.body))))
+  // A quote with a mobile number finds that customer's own offer (Spin & Win prize): those are rate-limited,
+  // so nobody can try numbers in bulk. Pricing a cart without one is not.
+  const quoteLookups = rateLimit({ windowMs: 60000, max: 40 })
+  router.post('/api/checkout/quote', (req, res, next) => (req.body?.phone ? quoteLookups(req, res, next) : next()), wrap(async (req, res) => res.json(await quoteCart(req.body))))
 
   // One step of a shopper's checkout journey (cart, checkout, details, payment, cancelled, failed, purchased).
   router.post('/api/journey', rateLimit({ windowMs: 60000, max: 60 }), wrap(async (req, res) => {

@@ -66,3 +66,15 @@
 /* A gift prize (Spin & Win): nothing off, something in the parcel. */
 .discount-row { flex-wrap: wrap; }
 .discount-gift { flex-basis: 100%; margin: 2px 0 0; font-size: 13px; color: #2f7a46; font-weight: 600; }
+
+/* The customer's Spin & Win prize, used by itself once the mobile number is typed (Nov 2026). */
+.discount-auto { padding: 8px 10px; margin: 2px 0 6px; border-radius: 10px; background: #f1f8f2; border: 1px solid #cfe6d4; }
+.discount-auto-note { flex-basis: 100%; font-size: 12px; font-weight: 500; color: var(--ink-500, #7a6459); }
+.discount-pending { margin: 0 0 6px; font-size: 13px; color: var(--ink-700, #4e3a32); }
+.discount-hint { margin: 0; font-size: 13px; color: var(--ink-500, #7a6459); }
+/* Order summary: the total before the discount, struck out, and the saving. */
+.summary-was { margin-right: 8px; font-size: 0.6em; font-weight: 500; color: var(--ink-500, #7a6459); }
+.shop-scope .summary-saving dt,
+.shop-scope .summary-saving dd,
+.summary-saving dt,
+.summary-saving dd { color: #2f7a46; font-weight: 700; }

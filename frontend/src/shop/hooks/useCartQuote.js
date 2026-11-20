@@ -14,7 +14,7 @@ const PIN = /^[1-9]\d{5}$/;
  * With a discount code (and the mobile number, which some codes are locked to), the server checks it:
  * `discount` is what it takes off, `discountError` why it does not apply.
  */
-export default function useCartQuote(pincode = "", deliveryMethod = "courier", { discountCode = "", phone = "", email = "" } = {}) {
+export default function useCartQuote(pincode = "", deliveryMethod = "courier", { discountCode = "", phone = "", email = "", skipAutoOffer = false } = {}) {
   const { items, subtotal, syncPrices } = useCart();
   const [quote, setQuote] = useState(null);
   const [error, setError] = useState("");
@@ -28,8 +28,8 @@ export default function useCartQuote(pincode = "", deliveryMethod = "courier", {
   const typedEmail = String(email || "").trim().toLowerCase();
   const mail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typedEmail) ? typedEmail : "";
   const key = useMemo(
-    () => items.map((i) => `${i.id}:${i.qty}`).join(",") + "@" + pin + "/" + deliveryMethod + "#" + code + "~" + mobile + "~" + mail,
-    [items, pin, deliveryMethod, code, mobile, mail],
+    () => items.map((i) => `${i.id}:${i.qty}`).join(",") + "@" + pin + "/" + deliveryMethod + "#" + code + "~" + mobile + "~" + mail + (skipAutoOffer ? "~skip" : ""),
+    [items, pin, deliveryMethod, code, mobile, mail, skipAutoOffer],
   );
 
   useEffect(() => {
@@ -41,17 +41,22 @@ export default function useCartQuote(pincode = "", deliveryMethod = "courier", {
     const ctrl = new AbortController();
     const timer = window.setTimeout(async () => {
       try {
-        const res = await fetch("/api/checkout/quote", {
+        const ask = (withPhone) => fetch("/api/checkout/quote", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             items: items.map((i) => ({ id: i.id, qty: i.qty })), pincode: pin, deliveryMethod,
             ...(code ? { discountCode: code } : {}),
-            ...(mobile ? { phone: mobile } : {}),
+            ...(mobile && withPhone ? { phone: mobile } : {}),
             ...(mail ? { email: mail } : {}),
+            ...(skipAutoOffer ? { skipAutoOffer: true } : {}),
           }),
           signal: ctrl.signal,
         });
+        let res = await ask(true);
+        // Too many offer look-ups from this connection: the cart is still priced (without the offer), so
+        // checkout carries on as normal.
+        if (res.status === 429 && mobile) res = await ask(false);
         const data = await res.json().catch(() => null);
         if (!res.ok) {
           setQuote(null);
@@ -82,9 +87,12 @@ export default function useCartQuote(pincode = "", deliveryMethod = "courier", {
     // [{ method: "courier" | "in_house", charge, promise }] once the PIN code is known
     deliveryOptions: quote?.deliveryOptions || [],
     deliveryMethod: quote?.deliveryMethod || null,
-    // { code, amount, label, auto }; auto = the customer's referral reward, used without a code typed
+    // { code, amount, label, auto, source, expiresAt }; auto = the customer's own offer (Spin & Win prize or
+    // referral reward), used without a code typed; its code is not sent
     discount: quote?.discount && (code || quote.discount.auto) ? quote.discount : null,
     discountError: code ? quote?.discountError || "" : "",
+    // { label, minOrder, addMore, expiresAt }: a Spin & Win prize waiting for a bigger cart (no code typed)
+    pendingOffer: !code && quote?.pendingOffer ? quote.pendingOffer : null,
     total: quote ? quote.total : sub,
     hasPin: Boolean(pin),
     error,
