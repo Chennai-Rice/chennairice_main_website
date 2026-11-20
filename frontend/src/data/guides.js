@@ -175,7 +175,7 @@ export const GUIDES = {
     faqs: [
       { q: 'Which Ponni rice is best for daily meals?', a: 'For everyday lunch and dinner, a boiled Ponni that cooks soft and separate is the usual choice. From Chennai Rice, Kitchidi Ponni Rice (aged a year), Special Rajabhogam and A1 Special Ponni are made for daily meals; Nayara Super Aged suits lunch boxes and variety rice.' },
       { q: 'Is boiled rice or raw rice better for everyday meals?', a: 'Most Tamil homes use boiled (parboiled) rice for daily meals because it cooks firmer with separate grains. Raw rice cooks softer and stickier and is usually kept for pongal, payasam and sweets.' },
-      { q: 'Who makes Kitchidi Ponni Rice and Special Rajabhogam?', a: 'Both are milled and packed by Chennai Rice Industries India (P) Ltd at Nasiyanur, Erode, Tamil Nadu — a family rice business since the 1950's.' },
+      { q: 'Who makes Kitchidi Ponni Rice and Special Rajabhogam?', a: 'Both are milled and packed by Chennai Rice Industries India (P) Ltd at Nasiyanur, Erode, Tamil Nadu — a family rice business since the 1950\'s.' },
       { q: 'Which pack size should I buy?', a: 'A 26 kg bag usually suits a family that eats rice twice a day; 5 or 10 kg suits smaller households or trying a new variety. See our guide on how much rice a family needs per month.' },
       { q: 'Where can I buy these packs?', a: 'Order online at chennairiceindustries.com (delivered across India, with the delivery charge shown from your PIN code), through our distributors and shops, or send a bulk enquiry for larger quantities.' },
     ],
@@ -610,7 +610,7 @@ export const GUIDES = {
     ],
     faqs: [
       { q: 'Does Chennai Rice supply rice in bulk?', a: 'Yes. Chennai Rice Industries supplies Ponni rice and idli rice in bulk to wholesalers, distributors, retailers, hotels, caterers and institutions, from its mill in Erode, Tamil Nadu. Send a bulk enquiry for a quote.' },
-      { q: 'Where is the Chennai Rice mill?', a: 'At Nasiyanur, Erode, Tamil Nadu 638102. The family has been in the rice business since the 1950's.' },
+      { q: 'Where is the Chennai Rice mill?', a: 'At Nasiyanur, Erode, Tamil Nadu 638102. The family has been in the rice business since the 1950\'s.' },
       { q: 'Which rice suits hotels, caterers and functions?', a: 'Chennai Bullets is made for big kitchens, functions and festival feasts; Rudra is Rajabhogam Ponni for everyday meals in large volumes; Special Idly Rice is for idli and dosa batter.' },
       { q: 'How do I become a Chennai Rice distributor?', a: 'Apply on our Rice Distributorship page and our team will contact you.' },
     ],
