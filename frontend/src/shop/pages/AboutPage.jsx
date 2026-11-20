@@ -116,7 +116,7 @@ export default function AboutPage() {
               <div className="ab-heritage-intro-text reveal reveal--right d1">
                 <p className="eyebrow">Our Heritage</p>
                 <span className="ab-heritage-rule" aria-hidden="true" />
-                <h2 className="ab-heritage-kicker">Since 1951</h2>
+                <h2 className="ab-heritage-kicker">Since 1950s</h2>
                 <p className="ab-heritage-tagline">{LEGACY.tagline}</p>
                 <div className="ab-heritage-intro-right">
                   <p className="ab-heritage-lede">{LEGACY.lede}</p>

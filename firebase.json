@@ -63,6 +63,36 @@
     ],
     "redirects": [
       {
+        "source": "/kitchidi-ponni",
+        "destination": "/products/kitchidi-ponni-rice",
+        "type": 301
+      },
+      {
+        "source": "/kitchadi-ponni",
+        "destination": "/products/kitchidi-ponni-rice",
+        "type": 301
+      },
+      {
+        "source": "/kitchidi-ponni-rice",
+        "destination": "/products/kitchidi-ponni-rice",
+        "type": 301
+      },
+      {
+        "source": "/rajabhogam-rice",
+        "destination": "/products/special-rajabhogam-rice",
+        "type": 301
+      },
+      {
+        "source": "/rajabhogam",
+        "destination": "/products/special-rajabhogam-rice",
+        "type": 301
+      },
+      {
+        "source": "/special-rajabhogam",
+        "destination": "/products/special-rajabhogam-rice",
+        "type": 301
+      },
+      {
         "source": "/ta",
         "destination": "/",
         "type": 301

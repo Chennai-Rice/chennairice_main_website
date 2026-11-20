@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { FOOTER } from '../data/content.js'
 import { useCookieConsent } from '../hooks/useCookieConsent.jsx'
 import './footer.css'
@@ -35,6 +35,7 @@ const Social = {
 
 export default function Footer() {
   const { reopen } = useCookieConsent()
+  const showMap = useLocation().pathname.startsWith("/contact-us")
 
   return (
     <footer className="foot" id="contact">
@@ -127,6 +128,9 @@ export default function Footer() {
             <span className="foot-gstin">GSTIN {FOOTER.gstin}</span>
           </address>
 
+          {/* The Google Map loads only on the Contact page (Google Ads manager, 20 Nov 2026: it slowed product pages on
+              phones); every other page links to it. */}
+          {showMap ? (
           <div className="foot-map">
             <iframe
               title="Chennai Rice Industries on Google Maps"
@@ -141,6 +145,12 @@ export default function Footer() {
               </svg>
             </a>
           </div>
+          ) : (
+            <a className="foot-map-link" href={FOOTER.maps.profile} target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+              Find us on Google Maps
+            </a>
+          )}
         </div>
       </div>
 

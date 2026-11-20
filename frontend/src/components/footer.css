@@ -394,3 +394,20 @@
     transform: none;
   }
 }
+
+/* Every page but Contact: a link to the map instead of the map itself (no Google Maps loaded). */
+.foot-map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 9px 14px;
+  border: 1px solid rgba(246, 239, 220, 0.35);
+  border-radius: 999px;
+  color: #f6efdc;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.foot-map-link:hover { background: rgba(246, 239, 220, 0.08); }
+.foot-map-link svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
