@@ -80,7 +80,7 @@ const PINCODE_PATTERN = /^[1-9][0-9]{5}$/;
 
 // The form's fields in page order, with the names the error summary uses.
 const FIELD_LABELS = {
-  phone: "Phone", name: "Full name", email: "Email", addressLine1: "Address",
+  name: "Full name", phone: "Phone", email: "Email", addressLine1: "Address",
   city: "City / town", state: "State", pincode: "PIN code",
 };
 
@@ -614,38 +614,38 @@ export default function CheckoutPage() {
               </p>
 
               <label className="field">
-                <span className="field-label">Phone</span>
+                <span className="field-label">Full name</span>
                 <input
-                  type="tel"
-                  inputMode="numeric"
-                  value={form.phone}
-                  name="phone"
-                onChange={set("phone")}
-                  placeholder="10-digit mobile number"
-                  autoComplete="tel"
-                  aria-invalid={!!errors.phone}
-                aria-describedby={errors.phone ? "err-phone" : undefined}
+                  type="text"
+                  value={form.name}
+                  name="name"
+                  onChange={set("name")}
+                  placeholder="Your full name"
+                  autoComplete="name"
+                  aria-invalid={!!errors.name}
+                  aria-describedby={errors.name ? "err-name" : undefined}
                   disabled={busy}
                 />
-                {errors.phone && <span className="field-error" id="err-phone">{errors.phone}</span>}
-                {!errors.phone && <span className="field-hint">Won a Spin &amp; Win prize? It is applied by itself for this number.</span>}
+                {errors.name && <span className="field-error" id="err-name">{errors.name}</span>}
               </label>
 
               <div className="checkout-field-row">
                 <label className="field">
-                  <span className="field-label">Full name</span>
+                  <span className="field-label">Phone</span>
                   <input
-                    type="text"
-                    value={form.name}
-                    name="name"
-                    onChange={set("name")}
-                    placeholder="Your full name"
-                    autoComplete="name"
-                    aria-invalid={!!errors.name}
-                    aria-describedby={errors.name ? "err-name" : undefined}
+                    type="tel"
+                    inputMode="numeric"
+                    value={form.phone}
+                    name="phone"
+                    onChange={set("phone")}
+                    placeholder="10-digit mobile number"
+                    autoComplete="tel"
+                    aria-invalid={!!errors.phone}
+                    aria-describedby={errors.phone ? "err-phone" : undefined}
                     disabled={busy}
                   />
-                  {errors.name && <span className="field-error" id="err-name">{errors.name}</span>}
+                  {errors.phone && <span className="field-error" id="err-phone">{errors.phone}</span>}
+                  {!errors.phone && <span className="field-hint">Your Spin &amp; Win prize applies by itself for this number.</span>}
                 </label>
                 <label className="field">
                   <span className="field-label">Email</span>
