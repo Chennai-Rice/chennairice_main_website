@@ -1642,6 +1642,19 @@ ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
   .pdp-buybar .ripple { position: absolute; border-radius: 50%; background: rgba(255, 255, 255, 0.35); transform: scale(0); animation: pdp-ripple 480ms ease-out forwards; pointer-events: none; }
   /* One bar at a time: the cart pill waits while the buy bar is up, and the page ends with room for it. */
   body:has(.pdp-buybar.is-shown) .checkout-bar { display: none; }
+  /* Order on WhatsApp, a round green button at the end of the bar. */
+  .pdp-buybar-wa {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: #1f9d55;
+    color: #fff;
+  }
+  .pdp-buybar-wa:focus-visible { outline: 3px solid #6e1423; outline-offset: 2px; }
   main.pdp { padding-bottom: 72px; }
 }
 @media (prefers-reduced-motion: reduce) { .pdp-buybar { transition: none; } }

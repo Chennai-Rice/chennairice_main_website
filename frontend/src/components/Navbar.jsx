@@ -62,6 +62,17 @@ export default function Navbar() {
         </nav>
 
         <div className="nav-actions">
+          {/* Click to call (Google Ads "Call click": a tap on any tel: link is counted, services/adEvents.js). */}
+          <a className="nav-icon nav-call" href="tel:+917066646667" aria-label="Call Chennai Rice on 70666 46667" data-track-location="header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M6.6 3.5h2.6l1.4 3.7-1.8 1.3a11 11 0 0 0 6.7 6.7l1.3-1.8 3.7 1.4v2.6a1.8 1.8 0 0 1-2 1.8A15.6 15.6 0 0 1 4.8 5.5a1.8 1.8 0 0 1 1.8-2z"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </a>
           <Link
             className="nav-icon"
             to="/wishlist"

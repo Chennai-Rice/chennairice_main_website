@@ -15,6 +15,7 @@ import './styles/shop-bridge.css'
 import Navbar from './components/Navbar.jsx'
 import Footer from './components/Footer.jsx'
 import SoruKutty from './components/chatbot/SoruKutty.jsx'
+import ActionBar from './components/ActionBar.jsx'
 import CookieBanner from './components/CookieBanner.jsx'
 import SpinWheel from './components/SpinWheel.jsx'
 import ContestPopup from './components/ContestPopup.jsx'
@@ -294,6 +295,7 @@ export default function App() {
       </Routes>
       </Suspense>
       {!isTool && <Footer />}
+      {isStorefront && <ActionBar />}
       {isStorefront && <SoruKutty />}
       {isStorefront && <CookieBanner />}
       {/* Spin & Win: shows only while switched on in Warehouse → Settings. */}

@@ -11,10 +11,8 @@ import { keptGoogleClick, GOOGLE_CLICK_PARAMS } from './attribution.js'
 
 export const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-SWQD75DWP6'
 
-// Google Ads: the account id (AW-…) and the label of its "Purchase" conversion, from Google Ads → Goals →
-// Conversions → the purchase conversion → Tag setup. With either missing, nothing is sent to Google Ads.
+// Google Ads: the account's tag (AW-…), configured on the same gtag.js. Purchases reach Google Ads through GA4.
 export const GOOGLE_ADS_ID = import.meta.env.VITE_GOOGLE_ADS_ID || ''
-const GOOGLE_ADS_PURCHASE_LABEL = import.meta.env.VITE_GOOGLE_ADS_PURCHASE_LABEL || ''
 
 let loaded = false
 
@@ -160,14 +158,9 @@ function sendPurchase({ transactionId, value, shipping, coupon, items }) {
       quantity: Number(i.qty) || 1,
     })),
   })
-  if (GOOGLE_ADS_ID && GOOGLE_ADS_PURCHASE_LABEL) {
-    window.gtag('event', 'conversion', {
-      send_to: `${GOOGLE_ADS_ID}/${GOOGLE_ADS_PURCHASE_LABEL}`,
-      transaction_id: transactionId,
-      value: total,
-      currency: 'INR',
-    })
-  }
+  // No direct Google Ads purchase conversion any more (Google Ads manager, 19 Nov 2026): Google Ads counts the
+  // sale through the GA4-imported "Purchase" above; the old website-tag "Purchase" action was removed, and a
+  // second one would count each sale twice.
   return true
 }
 
