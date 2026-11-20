@@ -283,25 +283,39 @@ function leadChannel(l) {
   return 'other'
 }
 
+// The lead's checkout journey (Nov 2026): the furthest step they reached on the website checkout.
+const JOURNEY = {
+  cart: ['Cart only', 'grey'], checkout: ['Opened checkout', 'blue'], details: ['Filled details, did not pay', 'amber'],
+  payment: ['Went to payment, did not finish', 'amber'], cancelled: ['Cancelled the payment', 'red'], failed: ['Payment failed', 'red'], purchased: ['Paid', 'green'],
+}
+const JOURNEY_FILTERS = [['any', 'Reached checkout'], ['unpaid', 'Checkout, not paid'], ['paid', 'Checkout, paid'], ['none', 'No checkout']]
+const journeyMatch = (l, f) => !f || (f === 'none' ? !l.journey : f === 'any' ? !!l.journey
+  : f === 'paid' ? l.journey?.stage === 'purchased' : !!l.journey && l.journey.stage !== 'purchased')
+
 function LeadList({ list }) {
   const [kind, setKind] = useState('')
   const [q, setQ] = useState('')
   const [src, setSrc] = useState('')
   const [status, setStatus] = useState('')
+  const [jf, setJf] = useState('')
   const [page, setPage] = useState(0)
   const LEAD_PAGE = 50
-  useEffect(() => { setPage(0) }, [kind, q, src, status, list])
+  useEffect(() => { setPage(0) }, [kind, q, src, status, jf, list])
   const counts = list.reduce((a, l) => ({ ...a, [l.kind]: (a[l.kind] || 0) + 1 }), {})
   // Counts for each dropdown follow the other filters, so each option shows how many it would list.
   const byType = list.filter((l) => !kind || l.kind === kind)
   const srcCount = (k) => byType.filter((l) => leadChannel(l) === k && (!status || l.status === status)).length
   const statusCount = (k) => byType.filter((l) => l.status === k && (!src || leadChannel(l) === src)).length
-  const rows = list.filter((l) => (!kind || l.kind === kind) && (!src || leadChannel(l) === src) && (!status || l.status === status)
+  const journeyCount = (f) => byType.filter((l) => journeyMatch(l, f) && (!src || leadChannel(l) === src) && (!status || l.status === status)).length
+  const rows = list.filter((l) => (!kind || l.kind === kind) && (!src || leadChannel(l) === src) && (!status || l.status === status) && journeyMatch(l, jf)
     && (!q || `${l.name} ${l.phone} ${l.email || ''} ${l.campaign || ''} ${l.detail || ''} ${l.remark || ''}`.toLowerCase().includes(q.trim().toLowerCase())))
   function download() {
     const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
-    const csv = [['Type', 'Name', 'Mobile', 'Email', 'Came from', 'Campaign', 'Ad', 'Details', 'Date', 'Status', 'Calls', 'Last call result', 'Caller', 'Remarks', 'Last called'],
-      ...rows.map((l) => [KIND[l.kind], l.name, l.phone, l.email, SOURCE[l.source] || l.source, l.campaign, l.ad, l.detail, when(l.at), LEAD_STATUS[l.status][0], l.calls, l.result, l.caller, l.remark, l.calledAt ? when(l.calledAt) : ''])]
+    const csv = [['Type', 'Name', 'Mobile', 'Email', 'Came from', 'Campaign', 'Ad', 'Details', 'Date', 'Status', 'Calls', 'Last call result', 'Caller', 'Remarks', 'Last called',
+      'Checkout journey', 'Journey date', 'Basket', 'Basket value (Rs)', 'Payment problem', 'Order'],
+      ...rows.map((l) => [KIND[l.kind], l.name, l.phone, l.email, SOURCE[l.source] || l.source, l.campaign, l.ad, l.detail, when(l.at), LEAD_STATUS[l.status][0], l.calls, l.result, l.caller, l.remark, l.calledAt ? when(l.calledAt) : '',
+        l.journey ? JOURNEY[l.journey.stage]?.[0] || l.journey.stage : 'No checkout', l.journey ? when(l.journey.at) : '', l.journey?.items || '',
+        l.journey?.value ?? '', l.journey?.error || '', l.journey?.order || ''])]
       .map((r) => r.map(cell).join(',')).join('\r\n')
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }))
@@ -312,7 +326,7 @@ function LeadList({ list }) {
     <Panel title="New leads — one by one" note="Everyone counted in New leads: website sign-ups, expo QR leads and new WhatsApp chats, with what happened next." wide>
       <p className="an-lead-sum">
         <strong>{count(list.length)} new leads</strong> = {count(counts.signup || 0)} sign-ups + {count(counts.whatsapp || 0)} WhatsApp chats + {count(counts.expo || 0)} expo QR
-        {(src || status) && <> · showing <strong>{count(rows.length)}</strong>{src ? ' from ' + LEAD_SOURCES.find(([k]) => k === src)[1] : ''}{status ? ' · ' + LEAD_STATUS[status][0] : ''} <button type="button" className="wh-link-btn" onClick={() => { setSrc(''); setStatus('') }}>clear</button></>}
+        {(src || status || jf) && <> · showing <strong>{count(rows.length)}</strong>{src ? ' from ' + LEAD_SOURCES.find(([k]) => k === src)[1] : ''}{status ? ' · ' + LEAD_STATUS[status][0] : ''}{jf ? ' · ' + JOURNEY_FILTERS.find(([k]) => k === jf)[1] : ''} <button type="button" className="wh-link-btn" onClick={() => { setSrc(''); setStatus(''); setJf('') }}>clear</button></>}
       </p>
       <div className="an-leadbar">
         <div className="an-seg" role="group" aria-label="Lead type">
@@ -328,6 +342,10 @@ function LeadList({ list }) {
           <span className="wh-select an-lead-filter"><select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status">
             <option value="">All statuses</option>
             {Object.entries(LEAD_STATUS).map(([k, [label]]) => <option key={k} value={k}>{label} ({statusCount(k)})</option>)}
+          </select></span>
+          <span className="wh-select an-lead-filter"><select value={jf} onChange={(e) => setJf(e.target.value)} aria-label="Checkout journey">
+            <option value="">All checkout journeys</option>
+            {JOURNEY_FILTERS.map(([k, label]) => <option key={k} value={k}>{label} ({journeyCount(k)})</option>)}
           </select></span>
           <input className="an-search" type="search" placeholder="Search name, mobile, campaign…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search leads" />
           <button type="button" className="wh-btn wh-btn--outline wh-btn--small" onClick={download} disabled={!rows.length}>Download CSV</button>
@@ -349,6 +367,15 @@ function LeadList({ list }) {
             {(l.result || l.calls > 0) && <span className="an-sub">{[l.result, l.calls ? `${l.calls} call${l.calls === 1 ? '' : 's'}` : null, l.caller].filter(Boolean).join(' · ')}</span>}
           </>
         ) },
+        // How far they got on the website checkout, matched by mobile (the checkout form gives it).
+        { label: 'Checkout journey', value: (l) => (l.journey ? (
+          <>
+            <span className={`an-status is-${JOURNEY[l.journey.stage]?.[1] || 'grey'}`}><i />{JOURNEY[l.journey.stage]?.[0] || l.journey.stage}</span>
+            <span className="an-sub">{[when(l.journey.at), l.journey.value != null ? '₹' + Number(l.journey.value).toLocaleString('en-IN') : null, l.journey.order].filter(Boolean).join(' · ')}</span>
+            {l.journey.items && <span className="an-sub">{l.journey.items}</span>}
+            {l.journey.error && l.journey.stage !== 'purchased' && <span className="an-sub">Why: {l.journey.error}</span>}
+          </>
+        ) : <span className="wh-muted">No checkout</span>) },
         // What the telecaller noted on the latest NeoDove call.
         { label: 'Remarks', value: (l) => (l.remark
           ? <><span className="an-remark">{l.remark}</span>{l.calledAt && <span className="an-sub">{when(l.calledAt)}</span>}</>

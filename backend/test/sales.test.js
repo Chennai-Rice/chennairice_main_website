@@ -2582,6 +2582,9 @@ test('Analyst: owner sees sales, leads, campaigns and delivery KPIs; rice type, 
   assert.equal((await api('POST', '/api/admin/analyst/ad-spend', { token: OWNER, body: { spentOn: today, platform: 'meta', campaign: 'Diwali Reels', ad: 'Reel A', amount: 500 } })).status, 201)
   assert.equal((await api('PUT', '/api/admin/analyst/target', { token: OWNER, body: { kgPerMonth: 1000 } })).status, 200)
 
+  // Her checkout journey: she reached payment and cancelled once (the mobile as the form sent it).
+  await db.query(`insert into checkout_journeys (id, stage, contact_phone, value_paise, last_error, items, payment_attempts)
+                  values (gen_random_uuid(), 'cancelled', '+91 95000 77777', 55500, 'Cancelled by the customer', '[{"name":"Alibaba","qty":1}]', 1)`)
   const r = await api('GET', `/api/admin/analyst?from=${today}&to=${today}`, { token: OWNER })
   assert.equal(r.status, 200, JSON.stringify(r.body))
   const a = r.body
@@ -2596,6 +2599,7 @@ test('Analyst: owner sees sales, leads, campaigns and delivery KPIs; rice type, 
   assert.equal(a.leads.funnel[0].stage, 'New lead')
   const anu = a.leads.list.find((x) => x.name === 'Analyst Anu')
   assert.ok(anu && anu.kind === 'signup' && anu.campaign === 'Diwali Reels' && anu.status === 'bought', JSON.stringify(anu))
+  assert.deepEqual([anu.journey.stage, anu.journey.value, anu.journey.error, anu.journey.items], ['cancelled', 555, 'Cancelled by the customer', '1 × Alibaba'])
   assert.ok(a.leads.perDay.length === 1 && a.leads.perDay[0].leads >= 1 && a.leads.perDay[0].won >= 1)
   assert.ok(a.recentOrders.some((o) => o.customer === 'Analyst Anu' && o.amount > 0 && / kg/.test(o.items)))
   const camp = a.campaigns.byCampaign.find((c) => c.campaign === 'Diwali Reels')
