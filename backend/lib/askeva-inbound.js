@@ -93,6 +93,11 @@ const fmt = (d) => new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 
 // (campaign_contacts, for CAMPAIGN_DAYS after the upload), and anyone who taps the campaign's button.
 const CAMPAIGN_DAYS = 30
 const CAMPAIGN_BUTTONS = ['ஆர்டர் வேண்டும்']
+// The scrapped_data WhatsApp template's button (note the "!": the plain "ஆர்டர் செய்ய" is the Chennai Fresh Foods contest
+// button, cff-contest.js). Whoever taps it is saved as a lead tagged scrapped_data in Sales Daddy (Settings → Tags must have it).
+const SCRAPPED_BUTTON = 'ஆர்டர் செய்ய!'
+const SCRAPPED_TAG = 'scrapped_data'
+export const isScrappedTap = (text) => String(text ?? '').normalize('NFC').replace(/\s+/g, ' ').trim() === SCRAPPED_BUTTON
 async function fromCampaign(db, phone, text) {
   if (CAMPAIGN_BUTTONS.includes(String(text || '').trim())) return true
   // A savepoint, so a missing table (before migration 040) does not break the caller's transaction.
@@ -119,7 +124,8 @@ async function saveMessage(db, { phone, name, text, at }, source) {
   if (isBlockedMobile(phone)) return null
   // A reply to a trade campaign (the Diwali retailer campaign): the owner keeps these in a separate database,
   // so nothing about it is saved here or sent to Sales Daddy.
-  if (await fromCampaign(db, phone, text)) return null
+  const scrapped = isScrappedTap(text)
+  if (!scrapped && await fromCampaign(db, phone, text)) return null
   const { rows: [c] } = await db.query(
     `insert into whatsapp_contacts (phone, name, first_message, first_message_at, last_message, last_message_at, messages, source)
      values ($1, $2, $3, $4, $3, $4, case when $5 = 'import' then 0 else 1 end, $5)
@@ -132,13 +138,15 @@ async function saveMessage(db, { phone, name, text, at }, source) {
      returning *, (xmax = 0) as is_new`,
     [phone, name, text || null, at, source]
   )
-  const due = c.is_new || !c.crm_noted_at || Date.now() - new Date(c.crm_noted_at).getTime() > 24 * 3600000
+  const due = scrapped || c.is_new || !c.crm_noted_at || Date.now() - new Date(c.crm_noted_at).getTime() > 24 * 3600000
   if (!due) return null
   const id = await queueCrmLead('whatsapp_chat', {
     name: c.name || `WhatsApp ${phone}`,
     phone,
     source: 'whatsapp',
+    ...(scrapped && { tags: [SCRAPPED_TAG] }),
     note: [
+      scrapped ? 'Tapped "ஆர்டர் செய்ய!" on the scrapped_data WhatsApp campaign.' : '',
       source === 'import' ? 'WhatsApp contact (from AskEva).' : (c.is_new ? 'New WhatsApp chat (AskEva).' : 'WhatsApp message (AskEva).'),
       text ? `Message (${fmt(at)}): ${text}` : `Last message: ${fmt(at)}`,
     ].join('\n'),
@@ -173,7 +181,7 @@ export async function recordAskevaWebhook(payload) {
   const parsed = all.filter((m) => !isContestTap(m.text))
   // Replies to a trade campaign are dropped before anything is stored (see saveMessage).
   const messages = []
-  for (const m of parsed) if (!(await fromCampaign({ query: defaultQuery }, m.phone, m.text))) messages.push(m)
+  for (const m of parsed) if (isScrappedTap(m.text) || !(await fromCampaign({ query: defaultQuery }, m.phone, m.text))) messages.push(m)
   if (parsed.length && !messages.length) return { ok: true, messages: 0, campaign: true }
   // Only the company's own number in it (crm.js isBlockedMobile): not even the raw call is kept.
   if (!messages.length && fromBlockedNumber(payload)) return { ok: true, messages: 0, blocked: true }
