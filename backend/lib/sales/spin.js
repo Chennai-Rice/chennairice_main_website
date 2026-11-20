@@ -12,6 +12,10 @@
 //   spin_prizes             JSON list, see DEFAULT_PRIZES     (chances add up to 100)
 //   spin_budget_inr         ₹ given in spin codes per month   (0 = no limit); past it the wheel closes
 //   spin_valid_days         days a prize code works           (default 30)
+//
+// At checkout (Nov 2026): a mobile number that has never spun and has no paid order is offered one spin there
+// (checkoutSpinOpen); its prize is applied to that order by itself (discounts.js autoOffer). Each prize can
+// have its own checkout chance (checkoutChance, adding up to 100); without them the checkout uses the chances.
 import crypto from 'node:crypto'
 import { tx } from '../db.js'
 import { httpError, str, toRupees, getSettings } from './util.js'
@@ -67,8 +71,36 @@ function validPrizes(list) {
     if (!(Number(p.minOrder) >= 0 && Number(p.minOrder) <= 100000)) return false
     if (p.region && !['TN', 'SOUTH', 'NORTH', 'NE'].includes(p.region)) return false
     if (!(Number(p.chance) >= 0 && Number(p.chance) <= 100)) return false
+    if (hasChance(p.checkoutChance) && !(Number(p.checkoutChance) >= 0 && Number(p.checkoutChance) <= 100)) return false
   }
+  if (list.some((p) => hasChance(p.checkoutChance)) &&
+      Math.abs(list.reduce((t, p) => t + (Number(p.checkoutChance) || 0), 0) - 100) >= 0.001) return false
   return Math.abs(list.reduce((t, p) => t + Number(p.chance), 0) - 100) < 0.001
+}
+
+const hasChance = (v) => v != null && v !== ''
+/** The prizes with the checkout's own chances, when they are set (otherwise the same chances). */
+export function checkoutPrizes(prizes) {
+  if (!prizes.some((p) => hasChance(p.checkoutChance))) return prizes
+  return prizes.map((p) => ({ ...p, chance: Number(p.checkoutChance) || 0 }))
+}
+
+const PAID = `('paid', 'partially_refunded', 'refunded')`
+/**
+ * Checkout: may this mobile number spin there? Spin & Win is on and within budget, the number has never
+ * spun and has no paid order (the checkout wheel is for first orders).
+ */
+export async function checkoutSpinOpen(db, phone) {
+  const mobile = cleanMobile(phone)
+  if (!mobile) return false
+  const settings = await getSettings(db)
+  if (!enabled(settings)) return false
+  const { rows: [r] } = await db.query(
+    `select exists (select 1 from spins where phone = $1) as spun,
+            exists (select 1 from orders o where o.payment_status in ${PAID}
+                     and right(regexp_replace(o.contact_phone, '[^0-9]', '', 'g'), 10) = $1) as ordered`, [mobile])
+  if (r.spun || r.ordered) return false
+  return !(await overBudget(db, settings))
 }
 
 const enabled = (settings) => str(settings.spin_enabled).toLowerCase() === 'true'
@@ -141,6 +173,11 @@ export async function spin(db, body = {}, { ip = '' } = {}) {
 
   const { rows: [had] } = await db.query('select * from spins where phone = $1', [phone])
   if (had) return { already: true, ...prizeView(had, await codeFor(db, had.code_id)) }
+  // The checkout's wheel: first orders only, and its own chances.
+  const atCheckout = body.from === 'checkout'
+  if (atCheckout && !(await checkoutSpinOpen(db, phone))) {
+    throw httpError('Checkout spin not open', { status: 409, publicMessage: 'The checkout spin is for first orders only.' })
+  }
   if (deviceId) {
     const { rows: [other] } = await db.query('select 1 from spins where device_id = $1 limit 1', [deviceId])
     if (other) throw httpError('Device already spun', { status: 409, publicMessage: 'This phone has already had its spin. One spin per person.' })
@@ -149,7 +186,7 @@ export async function spin(db, body = {}, { ip = '' } = {}) {
     throw httpError('Spin budget reached', { status: 404, publicMessage: 'Spin & Win is closed for this month. Please come back next month.' })
   }
 
-  const prize = pickPrize(spinPrizes(settings))
+  const prize = pickPrize(atCheckout ? checkoutPrizes(spinPrizes(settings)) : spinPrizes(settings))
   const days = validDays(settings)
   // The code and the spin together, all or nothing.
   const result = await tx(async (t) => {
@@ -162,7 +199,7 @@ export async function spin(db, body = {}, { ip = '' } = {}) {
          values ($1, $2, $3, $4, $5, $6, 1, 1, now() + make_interval(days => $7), 'spin', $8, $9, $10, $11)
          on conflict (code) do nothing returning *`,
         [candidate, prize.kind, prize.kind === 'amount' ? Math.round(Number(prize.amount || 0) * 100) : 0,
-          Math.round(Number(prize.minOrder || 0) * 100), prize.region || null, phone, days, 'Spin & Win: ' + name,
+          Math.round(Number(prize.minOrder || 0) * 100), prize.region || null, phone, days, (atCheckout ? 'Spin & Win (checkout): ' : 'Spin & Win: ') + name,
           prize.kind === 'percent' ? Math.round(Number(prize.percent) * 100) : 0,
           prize.kind === 'percent' && prize.maxOff != null && prize.maxOff !== '' ? Math.round(Number(prize.maxOff) * 100) : null,
           prize.kind === 'gift' ? str(prize.gift) : null])
@@ -259,13 +296,14 @@ export async function saveSpinSettings(db, staff, body = {}) {
       ...(p.kind === 'percent' ? { percent: Number(p.percent), maxOff: str(String(p.maxOff ?? '')) === '' ? null : Number(p.maxOff) } : {}),
       ...(p.kind === 'gift' ? { gift: str(p.gift) } : {}),
       minOrder: Number(p.minOrder) || 0, region: str(p.region) || null, chance: Number(p.chance),
+      ...(hasChance(p.checkoutChance) ? { checkoutChance: Number(p.checkoutChance) } : {}),
     }))
     const notOnWheel = prizes.filter((p) => !onWheel(p)).map((p) => p.label)
     if (notOnWheel.length) {
       throw httpError(`${notOnWheel.join(', ')}: not on the wheel picture. Use ₹25/₹50/₹75/₹100/₹150 OFF, Free Delivery or a gift/bag.`)
     }
     if (!validPrizes(prizes)) {
-      throw httpError('Prizes: 2 to 8, each with a label, a ₹ amount (₹1–₹2,000), a % (1–50), free delivery or a gift name, and chances that add up to 100%.')
+      throw httpError('Prizes: 2 to 8, each with a label, a ₹ amount (₹1–₹2,000), a % (1–50), free delivery or a gift name, and chances that add up to 100% (and checkout chances, when used, too).')
     }
     changes.spin_prizes = JSON.stringify(prizes)
   }

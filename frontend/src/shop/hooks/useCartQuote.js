@@ -14,7 +14,7 @@ const PIN = /^[1-9]\d{5}$/;
  * With a discount code (and the mobile number, which some codes are locked to), the server checks it:
  * `discount` is what it takes off, `discountError` why it does not apply.
  */
-export default function useCartQuote(pincode = "", deliveryMethod = "courier", { discountCode = "", phone = "", email = "", skipAutoOffer = false } = {}) {
+export default function useCartQuote(pincode = "", deliveryMethod = "courier", { discountCode = "", phone = "", email = "", skipAutoOffer = false, refresh = 0 } = {}) {
   const { items, subtotal, syncPrices } = useCart();
   const [quote, setQuote] = useState(null);
   const [error, setError] = useState("");
@@ -28,8 +28,8 @@ export default function useCartQuote(pincode = "", deliveryMethod = "courier", {
   const typedEmail = String(email || "").trim().toLowerCase();
   const mail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typedEmail) ? typedEmail : "";
   const key = useMemo(
-    () => items.map((i) => `${i.id}:${i.qty}`).join(",") + "@" + pin + "/" + deliveryMethod + "#" + code + "~" + mobile + "~" + mail + (skipAutoOffer ? "~skip" : ""),
-    [items, pin, deliveryMethod, code, mobile, mail, skipAutoOffer],
+    () => items.map((i) => `${i.id}:${i.qty}`).join(",") + "@" + pin + "/" + deliveryMethod + "#" + code + "~" + mobile + "~" + mail + (skipAutoOffer ? "~skip" : "") + "~" + refresh,
+    [items, pin, deliveryMethod, code, mobile, mail, skipAutoOffer, refresh],
   );
 
   useEffect(() => {
@@ -93,6 +93,8 @@ export default function useCartQuote(pincode = "", deliveryMethod = "courier", {
     discountError: code ? quote?.discountError || "" : "",
     // { label, minOrder, addMore, expiresAt }: a Spin & Win prize waiting for a bigger cart (no code typed)
     pendingOffer: !code && quote?.pendingOffer ? quote.pendingOffer : null,
+    // A first-time mobile number may spin once here (checkout wheel); `refresh` re-prices after the spin.
+    checkoutSpin: Boolean(quote?.checkoutSpin),
     total: quote ? quote.total : sub,
     hasPin: Boolean(pin),
     error,

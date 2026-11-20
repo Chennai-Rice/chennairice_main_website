@@ -14,7 +14,7 @@ export default function SpinSettings({ say, onAuthError }) {
 
   const take = (d) => {
     setData(d)
-    setForm({ enabled: d.enabled, budget: String(d.budget), validDays: String(d.validDays), prizes: d.prizes.map((p) => ({ ...p, region: p.region || '' })) })
+    setForm({ enabled: d.enabled, budget: String(d.budget), validDays: String(d.validDays), prizes: d.prizes.map((p) => ({ ...p, region: p.region || '', checkoutChance: p.checkoutChance ?? '' })) })
   }
   const load = useCallback(() => {
     staffJson('/api/admin/spin').then(take).catch((err) => { if (!onAuthError(err)) say(err.message, 'error') })
@@ -23,17 +23,22 @@ export default function SpinSettings({ say, onAuthError }) {
 
   if (!form) return null
   const total = form.prizes.reduce((t, p) => t + (Number(p.chance) || 0), 0)
+  // The checkout wheel's own chances (first orders, at checkout): empty everywhere = the same as above.
+  const usesCheckout = form.prizes.some((p) => String(p.checkoutChance ?? '') !== '')
+  const checkoutTotal = form.prizes.reduce((t, p) => t + (Number(p.checkoutChance) || 0), 0)
 
   async function save(e) {
     e.preventDefault()
     if (Math.abs(total - 100) > 0.001) return say(`The chances add up to ${total}%. They must add up to 100%.`, 'error')
+    if (usesCheckout && Math.abs(checkoutTotal - 100) > 0.001) return say(`The checkout chances add up to ${checkoutTotal}%. They must add up to 100%, or all be empty.`, 'error')
     setBusy(true)
     try {
       const d = await staffJson('/api/admin/spin', {
         method: 'PUT',
         body: JSON.stringify({
           enabled: form.enabled, budget: Number(form.budget) || 0, validDays: Number(form.validDays) || 7,
-          prizes: form.prizes.map((p) => ({ ...p, amount: Number(p.amount) || 0, minOrder: Number(p.minOrder) || 0, chance: Number(p.chance) || 0, region: p.region || null })),
+          prizes: form.prizes.map((p) => ({ ...p, amount: Number(p.amount) || 0, minOrder: Number(p.minOrder) || 0, chance: Number(p.chance) || 0, region: p.region || null,
+            checkoutChance: usesCheckout ? Number(p.checkoutChance) || 0 : null })),
         }),
       })
       take(d)
@@ -95,11 +100,11 @@ export default function SpinSettings({ say, onAuthError }) {
         </div>
 
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
             <thead>
               <tr className="wh-small" style={{ textAlign: 'left' }}>
                 <th style={cell}>On the wheel</th><th style={cell}>Gives</th><th style={cell}>Amount / gift</th><th style={cell}>Min. order ₹</th>
-                <th style={cell}>Area</th><th style={cell}>Chance %</th><th style={cell}></th>
+                <th style={cell}>Area</th><th style={cell}>Chance %</th><th style={cell} title="The wheel at checkout, for first orders. Leave all empty to use the same chances.">Checkout chance %</th><th style={cell}></th>
               </tr>
             </thead>
             <tbody>
@@ -132,6 +137,7 @@ export default function SpinSettings({ say, onAuthError }) {
                     </select></span>
                   </td>
                   <td style={cell}><input className="wh-input" type="number" min="0" max="100" step="0.5" value={p.chance} onChange={setPrize(i, 'chance')} aria-label="Chance" style={{ width: 80 }} /></td>
+                  <td style={cell}><input className="wh-input" type="number" min="0" max="100" step="0.5" value={p.checkoutChance ?? ''} onChange={setPrize(i, 'checkoutChance')} aria-label="Checkout chance" placeholder="same" style={{ width: 80 }} /></td>
                   <td style={cell}>{form.prizes.length > 2 && <button type="button" className="wh-btn wh-btn--small" onClick={() => removePrize(i)}>Remove</button>}</td>
                 </tr>
               ))}
@@ -147,6 +153,9 @@ export default function SpinSettings({ say, onAuthError }) {
             </span>
           )}
           Chances add up to <strong>{total}%</strong>{Math.abs(total - 100) > 0.001 ? ' (must be 100%)' : ''}.
+          {usesCheckout
+            ? <> Checkout chances add up to <strong style={{ color: Math.abs(checkoutTotal - 100) > 0.001 ? '#b3261e' : undefined }}>{checkoutTotal}%</strong>{Math.abs(checkoutTotal - 100) > 0.001 ? ' (must be 100%)' : ''}.</>
+            : <> The checkout wheel (first orders, shown at checkout) uses the same chances.</>}
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {form.prizes.length < 8 && <button type="button" className="wh-btn" onClick={addPrize}>Add a prize</button>}

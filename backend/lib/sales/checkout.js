@@ -18,6 +18,7 @@ import { deliveryTaxRateBp } from './tax.js'
 import { deliveryOptions, chooseDelivery } from './delivery.js'
 import { pinStateMismatch } from './regions.js'
 import { quoteDiscount, applyDiscount, cleanCode } from './discounts.js'
+import { checkoutSpinOpen } from './spin.js'
 import { ensureReferrer } from './referrals.js'
 import { pushCrmLead } from '../crm.js'
 import { cleanAttribution, cleanGoogleClick, classify } from './attribution.js'
@@ -103,6 +104,9 @@ export async function quoteCart(body) {
       auto: Boolean(applied.auto), source: applied.code.source, gift: applied.gift || null,
       ...(applied.auto ? { expiresAt: applied.code.expires_at || null } : {}),
     } : null,
+    // A first-time mobile number with nothing to apply: offered one spin at checkout (spin.js checkoutSpinOpen).
+    checkoutSpin: Boolean(!cleanCode(body?.discountCode) && !applied && !d?.pending &&
+      await checkoutSpinOpen({ query }, body?.phone).catch(() => false)),
     // A Spin & Win prize the cart is below the minimum for: how much more to add.
     pendingOffer: d?.pending ? {
       label: d.pending.label, source: d.pending.source, expiresAt: d.pending.expiresAt || null,

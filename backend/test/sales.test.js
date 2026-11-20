@@ -1531,6 +1531,49 @@ test('checkout without an email: order placed and paid, no confirmation email, c
   assert.equal(bad.status, 400)
 })
 
+test('Spin at checkout: offered to a new number only, its own chances, prize applied by itself, never after a paid order', async () => {
+  const quote = (body) => api('POST', '/api/checkout/quote', {
+    body: { pincode: '641001', items: [{ id: 'alibaba-10kg', qty: 1 }], deliveryMethod: 'courier', ...body }, headers: { 'X-Forwarded-For': '10.9.9.9' } })
+  const spinApi = (body, n) => api('POST', '/api/spin', { body: { name: 'Meena', ...body }, headers: { 'X-Forwarded-For': '10.9.8.' + n } })
+  const { DEFAULT_PRIZES } = await import('../lib/sales/spin.js')
+  const fresh = '9811188811'
+  try {
+    // Off: never offered.
+    assert.equal((await quote({ phone: fresh })).body.checkoutSpin, false)
+    // Checkout chances must add up to 100 when used.
+    const bad = await api('PUT', '/api/admin/spin', { token: OWNER, body: { prizes: DEFAULT_PRIZES.map((p) => ({ ...p, checkoutChance: p.key === 'p50' ? 50 : 0 })) } })
+    assert.equal(bad.status, 400)
+    // On, and at checkout only ₹50 OFF can be won.
+    const on = await api('PUT', '/api/admin/spin', { token: OWNER, body: { enabled: true, prizes: DEFAULT_PRIZES.map((p) => ({ ...p, checkoutChance: p.key === 'p50' ? 100 : 0 })) } })
+    assert.equal(on.status, 200, JSON.stringify(on.body))
+    assert.equal(on.body.prizes.find((p) => p.key === 'p50').checkoutChance, 100)
+
+    // A new number with nothing to apply: offered. A number with a paid order (the test buyer): not offered, and refused.
+    assert.equal((await quote({ phone: fresh })).body.checkoutSpin, true)
+    assert.equal((await quote({ phone: '9876543210' })).body.checkoutSpin, false)
+    assert.equal((await spinApi({ phone: '9876543210', from: 'checkout' }, 1)).status, 409)
+    // A typed code: not offered.
+    assert.equal((await quote({ phone: fresh, discountCode: 'NOSUCH' })).body.checkoutSpin, false)
+
+    // The spin at checkout: ₹50 off, then applied by itself and no second offer.
+    const won = await spinApi({ phone: fresh, from: 'checkout' }, 2)
+    assert.equal(won.status, 200, JSON.stringify(won.body))
+    assert.equal(won.body.prize.key, 'p50')
+    const { rows: [c] } = await db.query('select note from discount_codes where code = $1', [won.body.code])
+    assert.match(c.note, /\(checkout\)/)
+    const after = await quote({ phone: fresh, items: [{ id: 'alibaba-10kg', qty: 2 }] })
+    assert.equal(after.body.checkoutSpin, false)
+    assert.deepEqual([after.body.discount?.amount, after.body.discount?.source, after.body.discount?.code], [50, 'spin', null])
+    // Spinning again from checkout: the same prize back, not a second one.
+    const again = await spinApi({ phone: fresh, from: 'checkout' }, 3)
+    assert.deepEqual([again.body.already, again.body.code], [true, won.body.code])
+  } finally {
+    await db.query('delete from spins')
+    await db.query(`delete from discount_codes where source = 'spin'`)
+    await db.query(`delete from company_settings where key like 'spin_%'`)
+  }
+})
+
 test('Refer a friend: code after paying, friend saves on a first order, never their own, reward on delivery used by itself', async () => {
   const { rows: [v] } = await db.query(
     `select v.id from product_variants v join products p on p.id = v.product_id where p.slug = 'alibaba' and v.pack_kg = 10`)

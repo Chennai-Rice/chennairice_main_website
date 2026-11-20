@@ -12,6 +12,7 @@ import usePageMeta from "../hooks/usePageMeta.js";
 import PaymentReceipt from "../components/PaymentReceipt.jsx";
 import DeliveryChoice from "../components/DeliveryChoice.jsx";
 import DiscountCode from "../components/DiscountCode.jsx";
+import CheckoutSpin from "../components/CheckoutSpin.jsx";
 import SuggestInput from "../components/SuggestInput.jsx";
 import { matchTowns } from "../data/indianTowns.js";
 import ReferralShare from "../components/ReferralShare.jsx";
@@ -141,9 +142,11 @@ export default function CheckoutPage() {
   const mobile10 = String(form.phone).replace(/\D/g, "").slice(-10);
   const [skipAutoFor, setSkipAutoFor] = useState("");
   const skipAutoOffer = Boolean(mobile10) && skipAutoFor === mobile10;
+  // Bumped after a spin at checkout, so the quote is asked again and the new prize applies.
+  const [quoteRefresh, setQuoteRefresh] = useState(0);
   const {
-    subtotal, shipping, region, total, hasPin, deliveryOptions, deliveryMethod, discount, discountError, pendingOffer, error: quoteError,
-  } = useCartQuote(form.pincode, deliveryChoice, { discountCode, phone: form.phone, email: form.email, skipAutoOffer });
+    subtotal, shipping, region, total, hasPin, deliveryOptions, deliveryMethod, discount, discountError, pendingOffer, checkoutSpin, error: quoteError,
+  } = useCartQuote(form.pincode, deliveryChoice, { discountCode, phone: form.phone, email: form.email, skipAutoOffer, refresh: quoteRefresh });
   // Google Analytics: a Spin & Win prize used by itself, or waiting for a bigger cart (once per number each).
   const offerSeen = useRef(new Set());
   useEffect(() => {
@@ -801,6 +804,14 @@ export default function CheckoutPage() {
                   </dt>
                   <dd>{shipping == null ? (hasPin ? "—" : "Enter PIN code") : formatRupees(shipping)}</dd>
                 </div>
+                <CheckoutSpin
+                  available={checkoutSpin && !discountCode && !busy}
+                  phone={form.phone}
+                  name={form.name}
+                  subtotal={subtotal}
+                  onWon={() => { setSkipAutoFor(""); setQuoteRefresh((n) => n + 1); }}
+                  disabled={busy}
+                />
                 <DiscountCode
                   applied={discountCode}
                   discount={discount}
