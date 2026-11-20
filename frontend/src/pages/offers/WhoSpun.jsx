@@ -38,6 +38,7 @@ export default function WhoSpun({ onAuthError }) {
   const [period, setPeriod] = useState('all')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  const [deleting, setDeleting] = useState('')
 
   useEffect(() => {
     staffJson('/api/admin/spin').then((d) => setRows(d.recent || [])).catch((err) => { if (!onAuthError(err)) setError(err.message) })
@@ -64,6 +65,22 @@ export default function WhoSpun({ onAuthError }) {
       return { prize: p, won: mine.length, used: n('used'), open: n('open'), expired: n('expired') }
     }).filter((x) => x.won > 0)
   }, [rows, prizes, period, from, to])
+
+  // Delete one spin and its prize code (a test, a mistake). Not when the prize is on an order: the server refuses.
+  async function remove(s) {
+    if (!window.confirm(`Delete the spin by ${s.name || s.phone} (${s.phone}), prize ${s.prize}, code ${s.code}?
+
+The code stops working and this number can spin again. This cannot be undone.`)) return
+    setDeleting(s.phone)
+    try {
+      await staffJson('/api/admin/spin/' + encodeURIComponent(s.phone), { method: 'DELETE' })
+      setRows((r) => r.filter((x) => x.phone !== s.phone))
+    } catch (err) {
+      if (!onAuthError(err)) window.alert(err.message)
+    } finally {
+      setDeleting('')
+    }
+  }
 
   if (error) return <p className="of-alert" role="alert">{error}</p>
   if (!rows) return <p className="wh-muted">Loading…</p>
@@ -137,7 +154,7 @@ export default function WhoSpun({ onAuthError }) {
       <div className="of-who-table">
         <table>
           <thead>
-            <tr><th>When</th><th>Name</th><th>Mobile</th><th>Prize</th><th>Code</th><th>Valid till</th><th>Used</th><th>Purchased</th></tr>
+            <tr><th>When</th><th>Name</th><th>Mobile</th><th>Prize</th><th>Code</th><th>Valid till</th><th>Used</th><th>Purchased</th><th></th></tr>
           </thead>
           <tbody>
             {list.map((s) => {
@@ -160,10 +177,18 @@ export default function WhoSpun({ onAuthError }) {
                       </div>
                     ) : <span className="wh-muted">—</span>}
                   </td>
+                  <td>
+                    {!s.usedOn && (
+                      <button type="button" className="wh-btn wh-btn--small of-who-del" onClick={() => remove(s)} disabled={deleting === s.phone}
+                        aria-label={'Delete the spin by ' + (s.name || s.phone)}>
+                        {deleting === s.phone ? 'Deleting…' : 'Delete'}
+                      </button>
+                    )}
+                  </td>
                 </tr>
               )
             })}
-            {!list.length && <tr><td colSpan={8} className="wh-muted">{rows.length ? 'No spins match these filters.' : 'No spins yet.'}</td></tr>}
+            {!list.length && <tr><td colSpan={9} className="wh-muted">{rows.length ? 'No spins match these filters.' : 'No spins yet.'}</td></tr>}
           </tbody>
         </table>
       </div>

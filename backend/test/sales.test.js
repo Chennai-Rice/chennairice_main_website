@@ -1567,6 +1567,13 @@ test('Spin at checkout: offered to a new number only, its own chances, prize app
     // Spinning again from checkout: the same prize back, not a second one.
     const again = await spinApi({ phone: fresh, from: 'checkout' }, 3)
     assert.deepEqual([again.body.already, again.body.code], [true, won.body.code])
+
+    // Offers → Who spun → Delete: owners only; the spin and its code go, and the number may spin again.
+    assert.equal((await api('DELETE', '/api/admin/spin/' + fresh, { token: tokens.sales })).status, 403)
+    assert.equal((await api('DELETE', '/api/admin/spin/' + fresh, { token: OWNER })).status, 200)
+    assert.equal((await db.query('select 1 from discount_codes where code = $1', [won.body.code])).rowCount, 0)
+    assert.equal((await quote({ phone: fresh })).body.checkoutSpin, true)
+    assert.equal((await api('DELETE', '/api/admin/spin/' + fresh, { token: OWNER })).status, 404)
   } finally {
     await db.query('delete from spins')
     await db.query(`delete from discount_codes where source = 'spin'`)

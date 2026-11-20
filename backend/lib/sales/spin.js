@@ -315,3 +315,30 @@ export async function saveSpinSettings(db, staff, body = {}) {
   await audit(db, staff, 'spin.settings', 'company_settings', null, changes).catch(() => {})
   return spinAdmin(db, staff)
 }
+
+/**
+ * Offers → Who spun → Delete (owners and IT): one spin and its prize code, e.g. a test or a spin made by
+ * mistake. Not when the code is on an order (paid, or a payment still open): that order keeps its record.
+ * The mobile number can spin again afterwards.
+ */
+export async function deleteSpin(db, staff, rawPhone) {
+  requirePermission(staff, 'settings.manage')
+  const phone = cleanMobile(rawPhone)
+  if (!phone) throw httpError('Bad mobile', { publicMessage: 'That mobile number is not valid.' })
+  const gone = await tx(async (t) => {
+    const { rows: [s] } = await t.query('select * from spins where phone = $1 for update', [phone])
+    if (!s) throw httpError('No spin', { status: 404, publicMessage: 'That spin is not there any more.' })
+    if (s.code_id) {
+      const { rows: [o] } = await t.query(
+        `select order_number from orders where discount_code_id = $1
+            and (payment_status in ('paid', 'partially_refunded', 'refunded') or status = 'pending_payment')
+          order by created_at limit 1`, [s.code_id])
+      if (o) throw httpError('Spin used', { status: 409, publicMessage: `This prize is on order ${o.order_number}, so it cannot be deleted.` })
+    }
+    await t.query('delete from spins where id = $1', [s.id])
+    if (s.code_id) await t.query(`delete from discount_codes where id = $1 and source = 'spin'`, [s.code_id])
+    return s
+  })
+  await audit(db, staff, 'spin.delete', 'spins', gone.id, { phone, prize: gone.prize_label }).catch(() => {})
+  return { ok: true }
+}

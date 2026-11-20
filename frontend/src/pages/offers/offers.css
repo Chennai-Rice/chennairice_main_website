@@ -93,3 +93,5 @@
 .of-rem-st--failed, .of-rem-st--skipped { background: #fde2e1; color: #a12622; }
 @media (max-width: 900px) { .of-rem-funnel { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .of-rem-funnel { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Who spun → Delete (a test or a mistake). */
+.of-who-del { color: #b3261e; border-color: #e7b3ae; }

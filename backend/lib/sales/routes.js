@@ -67,7 +67,7 @@ import { listChats, getChat, replyText, replyMedia, replyTemplate, updateChat, a
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { listDiscountCodes, createDiscountCode, setDiscountCodeActive } from './discounts.js'
-import { spinConfig, spin, spinAdmin, saveSpinSettings } from './spin.js'
+import { spinConfig, spin, spinAdmin, saveSpinSettings, deleteSpin } from './spin.js'
 import { spinReminderReport, recordLinkClick } from '../wa/spin-report.js'
 import { myReferral, referralAdmin, saveReferralSettings, cancelReferralReward } from './referrals.js'
 import { referralsOn } from './discounts.js'
@@ -749,6 +749,8 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.json(await spinReminderReport({ template: str(req.query.template), from: str(req.query.from), to: str(req.query.to) }, { query }))
   }))
   admin.put('/spin', wrap(async (req, res) => res.json(await saveSpinSettings({ query }, req.staff, req.body))))
+  // Offers → Who spun → Delete: one spin and its unused prize code (spin.js deleteSpin).
+  admin.delete('/spin/:phone', wrap(async (req, res) => res.json(await deleteSpin({ query }, req.staff, req.params.phone))))
   admin.get('/shipping-zones', perm('shipping.manage'), wrap(async (_req, res) => res.json({ zones: await listZones() })))
   admin.put('/shipping-zones', wrap(async (req, res) => res.json({ zone: await upsertZone(req.staff, req.body) })))
   admin.get('/emails', perm('emails.view'), wrap(async (req, res) => res.json({ emails: await listEmails(req.query) })))
