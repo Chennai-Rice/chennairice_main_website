@@ -29,6 +29,14 @@
   }
   .site-actionbar-buy { background: var(--maroon, #7a1f2b); color: #fff; }
   .site-actionbar-wa { background: #1f9d55; color: #fff; }
+  /* Call: a round button before the other two. */
+  .site-actionbar a.site-actionbar-call {
+    flex: 0 0 46px;
+    width: 46px;
+    background: #fff;
+    color: var(--maroon, #7a1f2b);
+    border: 1.5px solid var(--maroon, #7a1f2b);
+  }
   .site-actionbar a:focus-visible { outline: 3px solid var(--maroon-ink, #4a1016); outline-offset: 2px; }
 
   @media (max-width: 380px) {

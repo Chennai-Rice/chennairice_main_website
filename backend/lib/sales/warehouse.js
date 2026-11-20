@@ -310,7 +310,9 @@ export async function listWarehouseCustomers(f = {}, { maxLimit = 100 } = {}) {
     with bo as (
       -- Each order with its customer; one buyer per mobile number (Nov 2026), so a person saved twice (two emails)
       -- is listed once.
-      select c.id, c.created_at as c_created, c.name, c.phone, c.email::text as email, o.id as order_id,
+      select c.id, c.created_at as c_created, c.name, c.phone,
+             -- A buyer who gave no email has a stand-in (m<mobile>@noemail.invalid, checkout.js): shown as none.
+             case when c.email::text like '%@noemail.invalid' then null else c.email::text end as email, o.id as order_id,
              o.placed_at, o.created_at, o.shipping_address->>'city' as city, o.ship_state, o.traffic_source, o.payment_status,
              coalesce(nullif(right(regexp_replace(c.phone, '[^0-9]', '', 'g'), 10), ''), 'id:' || c.id::text) as pkey,
              (select sum(i.quantity) from order_items i where i.order_id = o.id) as packs

@@ -103,7 +103,8 @@ function pinStateMismatch(state, pincode) {
 function validate(form) {
   const errors = {};
   if (!form.name.trim()) errors.name = "Please tell us your name.";
-  if (!EMAIL_PATTERN.test(form.email.trim())) errors.email = "A valid email address is required.";
+  // Email is optional (Nov 2026); when given it must look like one.
+  if (form.email.trim() && !EMAIL_PATTERN.test(form.email.trim())) errors.email = "Please check your email address, or leave it empty.";
   // A 10-digit Indian mobile (details saved before Nov 2026 may still carry +91 or 0 in front).
   if (!PHONE_PATTERN.test(form.phone.trim()) || !/^[6-9]\d{9}$/.test(form.phone.replace(/\D/g, "").replace(/^(91|0)(?=\d{10}$)/, "")))
     errors.phone = "Enter a valid 10-digit mobile number.";
@@ -648,7 +649,7 @@ export default function CheckoutPage() {
                   {!errors.phone && <span className="field-hint">Your Spin &amp; Win prize applies by itself for this number.</span>}
                 </label>
                 <label className="field">
-                  <span className="field-label">Email</span>
+                  <span className="field-label">Email <span className="field-optional">(optional)</span></span>
                   <input
                     type="email"
                     value={form.email}

@@ -45,7 +45,8 @@ export function buildGuestCustomer(body) {
     skipAutoOffer: body?.skipAutoOffer === true,
   }
   if (!c.name || c.name.length > 120) return { error: 'Please tell us your name.' }
-  if (!c.email || !EMAIL_PATTERN.test(c.email) || c.email.length > 200) return { error: 'A valid email address is required.' }
+  // Email is optional (Nov 2026): without one there is no confirmation email; WhatsApp and the phone carry the order.
+  if (c.email && (!EMAIL_PATTERN.test(c.email) || c.email.length > 200)) return { error: 'Please check your email address, or leave it empty.' }
   if (!c.phone || !PHONE_PATTERN.test(c.phone)) return { error: 'A valid phone number is required.' }
   if (!c.addressLine1) return { error: 'Please add your delivery address.' }
   if (!c.city) return { error: 'Please add your city or town.' }
@@ -123,10 +124,12 @@ export async function quoteCart(body) {
 async function sameRecentOrder(db, customer, priced, shippingPaise, method, holdMinutes) {
   const basket = priced.lines.map((l) => `${l.variantId}:${l.quantity}`).sort().join(',')
   // One checkout at a time per email (until this transaction ends), so a double tap makes one order.
-  await db.query('select pg_advisory_xact_lock(hashtext($1))', ['checkout:' + customer.email])
+  const mobile10 = String(customer.phone || '').replace(/\D/g, '').slice(-10)
+  await db.query('select pg_advisory_xact_lock(hashtext($1))', ['checkout:' + (customer.email || mobile10)])
   const { rows: [match] } = await db.query(
     `select o.* from orders o
-      where o.contact_email = $1
+      where (case when $1 <> '' then o.contact_email = $1
+                  else o.contact_email = '' and right(regexp_replace(o.contact_phone, '\\D', '', 'g'), 10) = $11 end)
         and o.created_at > now() - make_interval(mins => $2)
         and o.delivery_method = $3
         and (coalesce(o.discount_code, '') = $4
@@ -141,7 +144,7 @@ async function sameRecentOrder(db, customer, priced, shippingPaise, method, hold
       limit 1
       for update of o`,
     [customer.email, holdMinutes, method, customer.discountCode || '', customer.pincode, customer.addressLine1,
-      priced.subtotalPaise, shippingPaise, basket, customer.skipAutoOffer !== true]
+      priced.subtotalPaise, shippingPaise, basket, customer.skipAutoOffer !== true, mobile10]
   )
   return match || null
 }
@@ -207,11 +210,13 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
          returning id`, [mobile10, customer.name])
       : { rows: [] }
     if (!cust) {
+      // No email given: the customer record (email is its key) gets a stand-in made from the mobile number;
+      // it is never written to (.invalid cannot be delivered) and the order itself keeps no email.
       ({ rows: [cust] } = await db.query(
         `insert into customers (email, name, phone) values ($1, $2, $3)
          on conflict (email) do update set name = excluded.name, phone = excluded.phone
          returning id`,
-        [customer.email, customer.name, customer.phone]
+        [customer.email || `m${mobile10 || Date.now()}@noemail.invalid`, customer.name, customer.phone]
       ))
     }
 
@@ -276,11 +281,15 @@ export async function placeOrder(customer, items, rawAttribution = null, metaSig
 
 /** A pending order the same buyer is retrying. The email is the only proof
  *  of ownership a guest has, so it must match. */
-async function loadResumable(orderId, email) {
+async function loadResumable(orderId, email, phone) {
   return tx(async (db) => {
     const { rows: [order] } = await db.query('select * from orders where id = $1 for update', [orderId])
     if (!order) throw httpError('That order does not exist.', { status: 404 })
-    if (order.contact_email.toLowerCase() !== email.toLowerCase()) {
+    // No email on the order: the mobile number must match instead.
+    const same = order.contact_email
+      ? order.contact_email.toLowerCase() === String(email || '').toLowerCase()
+      : !email && String(phone || '').replace(/\D/g, '').slice(-10) === String(order.contact_phone).replace(/\D/g, '').slice(-10)
+    if (!same) {
       throw httpError('Email does not match order.', { status: 403, publicMessage: 'Those details do not match that order.' })
     }
     if (order.payment_status === 'paid') {
@@ -311,7 +320,7 @@ export async function createCheckoutSession(body, client = {}) {
   const resumeId = str(body?.orderId)
   if (resumeId && invalidUuid(resumeId)) throw httpError('That order does not exist.', { status: 404 })
   const order = resumeId
-    ? await loadResumable(resumeId, customer.email)
+    ? await loadResumable(resumeId, customer.email, customer.phone)
     : await placeOrder(customer, body?.items, body?.attribution, cleanMetaSignal(body?.meta, client), { repeatOk: body?.repeatOk === true })
 
   const exclude = [].concat(body?.excludeGateway || []).map((g) => str(g).toLowerCase()).filter(Boolean)

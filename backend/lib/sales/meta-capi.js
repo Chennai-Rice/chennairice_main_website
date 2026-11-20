@@ -64,7 +64,7 @@ export function purchaseEvent(order, items) {
     item_price: Number(i.unit_price_paise) / 100,
   }))
   const userData = {
-    em: [sha256(str(order.contact_email).toLowerCase())],
+    em: str(order.contact_email) ? [sha256(str(order.contact_email).toLowerCase())] : undefined,
     ph: [sha256(phoneDigits(order.contact_phone))],
     fn: [sha256(norm(first))],
     ln: rest.length ? [sha256(norm(rest.join(' ')))] : undefined,

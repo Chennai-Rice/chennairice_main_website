@@ -1517,6 +1517,20 @@ test('Spin & Win prize used by itself at checkout: best one, code never shown, m
   }
 })
 
+test('checkout without an email: order placed and paid, no confirmation email, customer saved by mobile', async () => {
+  const { session, verify } = await buy([{ id: 'alibaba-10kg', qty: 1 }], buyer({ phone: '98111 88803', email: '' }))
+  assert.equal(verify.status, 200, JSON.stringify(verify.body))
+  const { rows: [o] } = await db.query('select contact_email, payment_status, customer_id from orders where id = $1', [session.orderId])
+  assert.deepEqual([o.contact_email, o.payment_status], ['', 'paid'])
+  const { rows: [{ n }] } = await db.query('select count(*)::int as n from email_outbox where order_id = $1', [session.orderId])
+  assert.equal(n, 0)
+  const { rows: [c] } = await db.query('select email from customers where id = $1', [o.customer_id])
+  assert.equal(c.email, 'm9811188803@noemail.invalid')
+  // A badly typed email is still refused.
+  const bad = await api('POST', '/api/checkout/session', { body: { ...buyer({ phone: '9811188804', email: 'abc' }), items: [{ id: 'alibaba-10kg', qty: 1 }] } })
+  assert.equal(bad.status, 400)
+})
+
 test('Refer a friend: code after paying, friend saves on a first order, never their own, reward on delivery used by itself', async () => {
   const { rows: [v] } = await db.query(
     `select v.id from product_variants v join products p on p.id = v.product_id where p.slug = 'alibaba' and v.pack_kg = 10`)

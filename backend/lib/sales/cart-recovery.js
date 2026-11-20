@@ -120,7 +120,7 @@ async function offerCode(db, offer, phone, now) {
 const UNPAID = `not exists (
   select 1 from orders o where o.payment_status = any($1) and o.created_at >= j.started_at - interval '10 minutes'
      and (right(regexp_replace(o.contact_phone, '[^0-9]', '', 'g'), 10) = right(regexp_replace(coalesce(j.contact_phone, ''), '[^0-9]', '', 'g'), 10)
-          or lower(o.contact_email) = lower(j.contact_email)))`
+          or (coalesce(j.contact_email, '') <> '' and lower(o.contact_email) = lower(j.contact_email))))`
 
 /** Queue the reminders that are due. Returns { sent1, sent2 } (or { off } / { waiting }). Never throws. */
 export async function sendCartReminders(db = { query: defaultQuery }, { now = Date.now(), force = false } = {}) {

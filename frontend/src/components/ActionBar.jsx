@@ -20,6 +20,17 @@ export default function ActionBar() {
   if (count > 0 || HIDDEN.some((re) => re.test(pathname))) return null
   return (
     <div className="site-actionbar" data-track-location="sticky_bar">
+      {/* Click to call: counted as phone_call_click (button_location sticky_bar) by services/adEvents.js. */}
+      <a className="site-actionbar-call" href="tel:+917066646667" aria-label="Call Chennai Rice on 70666 46667">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M6.6 3.5h2.6l1.4 3.7-1.8 1.3a11 11 0 0 0 6.7 6.7l1.3-1.8 3.7 1.4v2.6a1.8 1.8 0 0 1-2 1.8A15.6 15.6 0 0 1 4.8 5.5a1.8 1.8 0 0 1 1.8-2z"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </a>
       <Link className="site-actionbar-buy" to="/rice-products">Buy now</Link>
       <a className="site-actionbar-wa" href={whatsappOrderLink('Hi Chennai Rice, I would like to order rice.')} target="_blank" rel="noopener noreferrer">
         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
