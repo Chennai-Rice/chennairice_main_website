@@ -96,9 +96,17 @@ export function cleanBot(input = {}) {
   }
 }
 
+// The order buttons of the scrapped_data / supermarket WhatsApp campaigns ("ஆர்டர் செய்ய!" and "ஆர்டர் செய்ய !!", spaces ignored):
+// no prices or links, the customer is told in Tamil that the team will contact them, and the chat is handed to the team.
+const CAMPAIGN_ORDER_BUTTONS = ['ஆர்டர்செய்ய!', 'ஆர்டர்செய்ய!!']
+const CAMPAIGN_ORDER_REPLY = 'நன்றி! 🙏 எங்கள் குழு விரைவில் உங்களைத் தொடர்புகொள்ளும்.'
+
 /** What to do with one incoming message. Pure: no database, no network. */
 export function decide(bot, { text = '', replyId = '', image = null } = {}, state = {}) {
   const items = bot.items || []
+  if (!image && CAMPAIGN_ORDER_BUTTONS.includes(String(text).normalize('NFC').replace(/\s+/g, ''))) {
+    return { kind: 'item', item: { id: 'campaign_order', action: 'handoff', reply: CAMPAIGN_ORDER_REPLY } }
+  }
   // A photo: the AI looks at it (a payment screenshot, a damaged pack…). Without AI, the menu as before.
   if (image) return bot.ai?.enabled ? { kind: 'ai', text: text || '', image } : { kind: 'fallback' }
   if (replyId) {
