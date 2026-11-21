@@ -10,7 +10,7 @@
 import crypto from 'node:crypto'
 import { query as defaultQuery } from '../db.js'
 import { httpError, safeEqual } from '../sales/util.js'
-import { recordAskevaWebhook, waPhone } from '../askeva-inbound.js'
+import { recordAskevaWebhook, tapTag, waPhone } from '../askeva-inbound.js'
 import { templateEvent } from './templates.js'
 import { answer } from './bot.js'
 import { optIn, optOut } from './contacts.js'
@@ -96,6 +96,10 @@ async function onMessage(m, contacts, query, bot) {
     if (wamid) await query(`insert into wa_messages (wamid, direction, phone, kind, body, status, source, category) values ($1, 'out', $2, 'text', $3, 'sent', 'bot', 'service') on conflict (wamid) do nothing`, [wamid, phone, reply]).catch(() => {})
     return
   }
+  // The order buttons of the scrapped_data / supermarket campaigns (askeva-inbound.js tapTag): the Tamil "team will contact you"
+  // reply and the lead with the tag, whatever the template is called. The bot stays out of it.
+  const tapped = tapTag(text)
+  if (tapped) return campaignButton({ tag: tapped, reply: TAP_REPLY }, { to: String(m.from), phone, name, text, at: Number(m.timestamp) || Date.now() / 1000 }, query)
   // A button on a campaign template (CAMPAIGN_BUTTONS): its own reply and Sales Daddy tag; the bot stays out of it.
   if (m.type === 'button' && m.context?.id) {
     const { rows: [sent] } = await query('select template_name from wa_messages where wamid = $1', [m.context.id]).catch(() => ({ rows: [] }))
@@ -115,6 +119,7 @@ async function onMessage(m, contacts, query, bot) {
  * A tap: the automatic reply below, and the customer to Sales Daddy as a WhatsApp lead with the campaign's tag (once
  * per mobile; a later tap adds a note). The tag must exist in Sales Daddy (Settings → Tags), or Sales Daddy drops it.
  */
+const TAP_REPLY = 'நன்றி! 🙏 எங்கள் குழு விரைவில் உங்களைத் தொடர்புகொள்ளும்.'
 export const CAMPAIGN_BUTTONS = {
   chennai_traders: {
     tag: 'chennai_traders',
