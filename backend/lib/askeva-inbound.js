@@ -93,11 +93,13 @@ const fmt = (d) => new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 
 // (campaign_contacts, for CAMPAIGN_DAYS after the upload), and anyone who taps the campaign's button.
 const CAMPAIGN_DAYS = 30
 const CAMPAIGN_BUTTONS = ['ஆர்டர் வேண்டும்']
-// The scrapped_data WhatsApp template's button (note the "!": the plain "ஆர்டர் செய்ய" is the Chennai Fresh Foods contest
-// button, cff-contest.js). Whoever taps it is saved as a lead tagged scrapped_data in Sales Daddy (Settings → Tags must have it).
-const SCRAPPED_BUTTON = 'ஆர்டர் செய்ய!'
-const SCRAPPED_TAG = 'scrapped_data'
-export const isScrappedTap = (text) => String(text ?? '').normalize('NFC').replace(/\s+/g, ' ').trim() === SCRAPPED_BUTTON
+// Buttons of the WhatsApp campaigns whose taps become a Sales Daddy lead with a tag (Settings → Tags must have the tag).
+// The plain "ஆர்டர் செய்ய" is the Chennai Fresh Foods contest button (cff-contest.js), so each campaign's button has
+// its own number of "!" after it. Spaces are ignored when comparing.
+const TAP_TAGS = { 'ஆர்டர்செய்ய!': 'scrapped_data', 'ஆர்டர்செய்ய!!': 'Supermarkets' }
+/** The tag for a tap on one of those buttons, else null. */
+export const tapTag = (text) => TAP_TAGS[String(text ?? '').normalize('NFC').replace(/\s+/g, '')] || null
+export const isScrappedTap = (text) => Boolean(tapTag(text))
 async function fromCampaign(db, phone, text) {
   if (CAMPAIGN_BUTTONS.includes(String(text || '').trim())) return true
   // A savepoint, so a missing table (before migration 040) does not break the caller's transaction.
@@ -144,9 +146,9 @@ async function saveMessage(db, { phone, name, text, at }, source) {
     name: c.name || `WhatsApp ${phone}`,
     phone,
     source: 'whatsapp',
-    ...(scrapped && { tags: [SCRAPPED_TAG] }),
+    ...(scrapped && { tags: [tapTag(text)] }),
     note: [
-      scrapped ? 'Tapped "ஆர்டர் செய்ய!" on the scrapped_data WhatsApp campaign.' : '',
+      scrapped ? `Tapped "${text}" on a WhatsApp campaign (${tapTag(text)}).` : '',
       source === 'import' ? 'WhatsApp contact (from AskEva).' : (c.is_new ? 'New WhatsApp chat (AskEva).' : 'WhatsApp message (AskEva).'),
       text ? `Message (${fmt(at)}): ${text}` : `Last message: ${fmt(at)}`,
     ].join('\n'),
