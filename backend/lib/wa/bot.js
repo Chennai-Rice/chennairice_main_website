@@ -140,6 +140,32 @@ export function decide(bot, { text = '', replyId = '', image = null } = {}, stat
   return bot.ai?.enabled ? { kind: 'ai', text } : { kind: 'fallback' }
 }
 
+/**
+ * Today's prices, easy to read on a phone (owner, 24 Nov 2026: one long line per rice was hard to read):
+ *   *Kitchadi Ponni*
+ *   ▫️ 5 kg — *₹555*
+ *   ▫️ 26 kg — *₹2,499*
+ * One block per rice, one line per pack (smallest first), a blank line between rices, then delivery and the link.
+ */
+export function priceListText(list = [], heading = '') {
+  if (!list.length) return `Our prices are on the website: ${SITE}/w/shop-bot`
+  const byRice = new Map()
+  for (const p of list) {
+    if (!byRice.has(p.name)) byRice.set(p.name, [])
+    byRice.get(p.name).push(p)
+  }
+  const blocks = [...byRice].map(([name, packs]) => [
+    `*${name}*`,
+    ...packs.sort((a, b) => a.packKg - b.packKg).map((p) =>
+      `▫️ ${p.packKg} kg — *${rupees(p.price)}*${p.mrp && p.mrp > p.price ? `  ~${rupees(p.mrp)}~` : ''}`),
+  ].join('\n'))
+  return [
+    `🍚 *${String(heading || '').trim().replace(/[:.\s]+$/, '') || 'Today\'s prices'}* (per pack, GST included)`,
+    ...blocks,
+    `🚚 Delivery charge depends on your PIN code.\n🛒 Order here: ${SITE}/w/shop-bot`,
+  ].join('\n\n')
+}
+
 // ---- WhatsApp message bodies (without "to") ----
 const textMsg = (body) => ({ type: 'text', text: { body: body.slice(0, 4096), preview_url: true } })
 
@@ -203,6 +229,8 @@ export async function render(bot, decision, { phone = '', name = '' } = {}, deps
       return out
     }
     out.messages.push(textMsg(r.reply))
+    // Asked for the prices / price list: the same tidy list as the Prices menu item, not one the AI types out.
+    if (r.showPrices && deps.prices) out.messages.push(textMsg(priceListText(await deps.prices().catch(() => []))))
     out.state = { awaiting: null, ai: r, ...(r.handoff ? { pausedHours: bot.handoffHours } : {}) }
     return out
   }
@@ -248,9 +276,7 @@ export async function render(bot, decision, { phone = '', name = '' } = {}, deps
     return out
   }
   if (item.action === 'prices') {
-    const list = await deps.prices()
-    const lines = list.length ? list.map((p) => `• ${p.name} ${p.packKg} kg: *${rupees(p.price)}*${p.mrp && p.mrp > p.price ? ` ~${rupees(p.mrp)}~` : ''}`).join('\n') : 'Prices are on our website.'
-    out.messages.push(textMsg(`${item.reply || 'Today\'s prices:'}\n${lines}\n\nDelivery charge depends on your PIN code. Order here: ${SITE}/w/shop-bot`))
+    out.messages.push(textMsg(priceListText(await deps.prices(), item.reply)))
     return out
   }
   if (item.action === 'offers') {

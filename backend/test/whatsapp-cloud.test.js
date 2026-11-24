@@ -106,7 +106,7 @@ test('readable lines for each kind of incoming message', () => {
 })
 
 // ---- the bot ----
-import { DEFAULT_BOT, cleanBot, decide, render, menuMsg } from '../lib/wa/bot.js'
+import { DEFAULT_BOT, cleanBot, decide, render, menuMsg, priceListText } from '../lib/wa/bot.js'
 
 const bot = cleanBot(DEFAULT_BOT)
 const deps = {
@@ -169,7 +169,7 @@ test('bot: menu taps, keywords, order numbers, PIN codes and the fallback', asyn
   const offers = await render(bot, decide(bot, { replyId: 'offers' }), { phone: '9876543210' }, deps)
   assert.match(offers.messages[0].text.body, /SPIN-A745B4/)
   const prices = await render(bot, decide(bot, { replyId: 'prices' }), {}, deps)
-  assert.match(prices.messages[0].text.body, /Kitchadi Ponni 5 kg: \*₹425\*/)
+  assert.ok(prices.messages[0].text.body.includes('*Kitchadi Ponni*\n▫️ 5 kg — *₹425*  ~₹480~'))
   const hand = await render(bot, decide(bot, { replyId: 'human' }), {}, deps)
   assert.equal(hand.state.pausedHours, 12)
   const fb = await render(bot, decide(bot, { text: 'zzz' }), {}, deps)
@@ -459,4 +459,17 @@ test('Bot: the "needs a reply" handoff email is off unless switched on in Bot se
   await aiHandoff({ phone: '9000000001', name: 'Test', text: 'Hi', ai: { reason: 'Needs a person', reply: 'Sure' } }, { query })
   assert.ok(sql.some((s) => /insert into wa_notes/.test(s)), 'the AI note is still saved')
   assert.ok(!sql.some((s) => /email_outbox|staff_users/.test(s)), 'no email is queued')
+})
+
+test('price list: one block per rice, one line per pack (smallest first), Indian commas, delivery and link at the end', () => {
+  const t = priceListText([
+    { name: 'Kitchadi Ponni', packKg: 26, price: 2499 }, { name: 'Kitchadi Ponni', packKg: 5, price: 555 },
+    { name: 'Special Idly Rice', packKg: 10, price: 599 },
+  ])
+  assert.match(t, /^🍚 *Today's prices*/)
+  assert.ok(t.includes('*Kitchadi Ponni*\n▫️ 5 kg — *₹555*\n▫️ 26 kg — *₹2,499*'))
+  assert.ok(t.includes('\n\n*Special Idly Rice*\n▫️ 10 kg — *₹599*'))
+  assert.match(t, /Delivery charge depends on your PIN code/)
+  assert.ok(t.includes('/w/shop-bot'))
+  assert.match(priceListText([]), /prices are on the website/)
 })

@@ -147,7 +147,7 @@ ${photoFacts(photo)}${handedOver ? 'This chat has already been passed to the tea
 RULES
 - Order status: say what the status means in plain words, with the courier link or details page if there is one. Never promise a delivery date unless "Expected by" is given.
 - A LATE order (paid, not dispatched for 2+ days): apologise, say you have flagged it to the dispatch team right now and someone from the team will get back to them soon, and hand over.
-- Prices: only from the list above. To buy: ${SITE}/w/shop-bot (pay by UPI, card or net banking). Rice choice: Kitchadi Ponni / Ponni packs suit daily meals; for idli/dosa suggest our idly rice if it is in the list.
+- Prices: only from the list above. If they ask for the prices of all or several rices, or the price list ("price list", "all rice rate", "what rices do you have"): do NOT type the list — write one short line (e.g. "Here are today's prices 👇") and set "showPrices": true; the full list is sent as a separate, tidy message. For one rice, give its packs one per line, e.g. "Kitchadi Ponni:\\n5 kg — *₹555*\\n26 kg — *₹2,499*". To buy: ${SITE}/w/shop-bot (pay by UPI, card or net banking). Rice choice: Kitchadi Ponni / Ponni packs suit daily meals; for idli/dosa suggest our idly rice if it is in the list.
 - Never promise refunds, replacements, discounts, free delivery or call-backs at a set time — the team decides those (hand over).
 - Hand over to the team (handoff: true) for: complaints, late or missing orders, damaged or wrong items, refunds or cancellations, payment taken but no order, bulk/wholesale/dealer enquiries, anything you cannot answer from the facts, or when they ask for a person. When you hand over, tell them our team will get back to them here soon.
 - Photos: if a PHOTO line is given above, answer from it (never claim to see more than it says). Voice notes or files: you cannot hear or open them — ask them to type the problem in a line, and hand over if it sounds like a complaint.
@@ -155,7 +155,7 @@ RULES
 - Off-topic chat: answer kindly in one line and bring it back to how you can help.
 
 ANSWER WITH JSON ONLY:
-{"reply": "<the WhatsApp message>", "handoff": true|false, "reason": "<for the team, 1 short line, English>", "order": "<order number this is about, or empty>"}`
+{"reply": "<the WhatsApp message>", "handoff": true|false, "reason": "<for the team, 1 short line, English>", "order": "<order number this is about, or empty>", "showPrices": true|false}`
 }
 
 /**
@@ -220,6 +220,7 @@ export async function askModel({ system, history, text }, { fetchImpl = fetch, a
     handoff: out.handoff === true || out.handoff === 'true',
     reason: String(out.reason || '').slice(0, 300),
     order: String(out.order || '').toUpperCase().match(/CR-\d{8}-[A-Z0-9]{5}/)?.[0] || '',
+    showPrices: out.showPrices === true || out.showPrices === 'true',
   }
 }
 
