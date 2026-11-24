@@ -97,7 +97,7 @@ export async function getChat(phone, staff, { query = defaultQuery, fetchImpl, m
   const p = str(phone)
   const [{ rows: messages }, { rows: notes }, { rows: [c] }, { rows: orders }, { rows: [spin] }, { rows: [ref] }, { rows: [bot] }, { rows: staffList }] = await Promise.all([
     query(`select id, wamid, direction, kind, template_name, body, status, error, source, staff_id, created_at, payload->>'profileName' as profile_name,
-                  coalesce(payload->'image'->>'id', payload->'document'->>'id', payload->'sticker'->>'id') as media_id
+                  coalesce(payload->'image'->>'id', payload->'document'->>'id', payload->'sticker'->>'id') as media_id, payload->'image'->>'link' as media_link
              from wa_messages where phone = $1 order by created_at desc limit 300`, [p]),
     query(`select n.id, n.body, n.created_at, s.full_name from wa_notes n left join staff_users s on s.id = n.staff_id where n.phone = $1 order by n.created_at desc limit 50`, [p]),
     query(`select c.*, s.full_name as assigned_name from wa_contacts c left join staff_users s on s.id = c.assigned_to where c.phone = $1`, [p]),
@@ -125,7 +125,7 @@ export async function getChat(phone, staff, { query = defaultQuery, fetchImpl, m
     status: c?.status || 'open', assignedTo: c?.assigned_to || null, assignedName: c?.assigned_name || null,
     tags: c?.tags || [], optedInAt: c?.opted_in_at || null, optedOutAt: c?.opted_out_at || null,
     botPausedUntil: bot?.paused_until && new Date(bot.paused_until) > new Date() ? bot.paused_until : null,
-    messages: messages.reverse().map((m) => ({ id: m.id, direction: m.direction, kind: m.kind, mediaId: m.media_id, template: m.template_name, body: m.body, status: m.status, error: m.error, source: m.source, at: m.created_at })),
+    messages: messages.reverse().map((m) => ({ id: m.id, direction: m.direction, kind: m.kind, mediaId: m.media_id, mediaLink: m.media_link, template: m.template_name, body: m.body, status: m.status, error: m.error, source: m.source, at: m.created_at })),
     notes: notes.map((n) => ({ id: n.id, body: n.body, at: n.created_at, by: n.full_name })),
     customer: {
       orders: orders.map((o) => ({ number: o.order_number, status: o.status, total: money ? formatInr(o.total_paise) : null, at: o.placed_at, city: o.city })),

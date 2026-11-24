@@ -16,7 +16,17 @@ const newItem = (n) => ({ id: `item${Date.now().toString(36)}${n}`, label: '', d
 function BotBubble({ m, onTap }) {
   const [open, setOpen] = useState(false)
   if (m.type === 'text') return <div className="wa-bubble"><p className="wa-bubble-body"><WaText text={m.text.body} /></p></div>
+  // A bag photo with its caption (prices).
+  if (m.type === 'image') {
+    return (
+      <div className="wa-bubble">
+        <img src={m.image.link} alt="" style={{ display: 'block', width: '100%', maxWidth: 220, borderRadius: 8, marginBottom: 6, background: '#fff' }} />
+        {m.image.caption && <p className="wa-bubble-body"><WaText text={m.image.caption} /></p>}
+      </div>
+    )
+  }
   const i = m.interactive
+  if (!i) return null
   return (
     <>
       <div className="wa-bubble"><p className="wa-bubble-body"><WaText text={i.body.text} /></p></div>
