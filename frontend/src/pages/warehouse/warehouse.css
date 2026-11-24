@@ -816,3 +816,9 @@ button.wh-kpi:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(8
 /* Customers: the filters as dropdowns (Nov 2026). */
 .wh-cust-filters { align-items: flex-end; }
 .wh-cust-filters .wh-filter { flex: 0 1 220px; }
+
+/* Orders → details: Resolve the flag (a note, then the order can be dispatched). */
+.wh-resolve { display: grid; gap: 6px; margin-top: 10px; }
+.wh-resolve textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--wh-line, #ddd); border-radius: 8px; font: inherit; resize: vertical; }
+.wh-resolve .wh-btn { justify-self: start; }
+.wh-resolve-error { margin: 0; color: #b3261e; font-size: 13px; }

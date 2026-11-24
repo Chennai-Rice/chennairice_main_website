@@ -118,7 +118,7 @@ function RowMenu({ order, onView, onUndo, onDelete, onClose, say }) {
   )
 }
 
-function Details({ order, onClose }) {
+function Details({ order, onClose, onResolved }) {
   const a = order.address
   return (
     <div className="wh-modal-backdrop" onClick={onClose}>
@@ -159,10 +159,44 @@ function Details({ order, onClose }) {
             {order.giftNote && <p className="wh-gift-note"><strong>🎁 Pack the gift:</strong> {order.giftNote} (Spin &amp; Win prize).</p>}
             {order.deliveryMethod === 'in_house' && <p className="wh-own-note"><strong>Our delivery:</strong> the customer chose delivery by our own team. Dispatch with Own vehicle and call before going.</p>}
             {order.needsAttention && <p className="wh-flag-note">Flagged: {order.needsAttention}</p>}
+            {order.needsAttention && <ResolveFlag order={order} onResolved={onResolved} />}
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+/*
+ * Clears a flag once someone has dealt with it (owner, 24 Nov 2026: a flagged order could never be dispatched,
+ * there was no button). Owners, admins, IT and sales only (the server checks order.resolve); the note is kept on
+ * the order and in the audit log.
+ */
+function ResolveFlag({ order, onResolved }) {
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  async function save(e) {
+    e.preventDefault()
+    if (!note.trim()) return setError('Say how it was resolved (for example: spoke to the customer, payment checked).')
+    setBusy(true)
+    setError('')
+    try {
+      await staffJson(`/api/admin/orders/${order.id}/resolve`, { method: 'POST', body: JSON.stringify({ note: note.trim() }) })
+      onResolved?.(order)
+    } catch (err) {
+      setError(err.status === 403 ? 'Only the owner, IT or sales can clear a flag.' : err.message)
+      setBusy(false)
+    }
+  }
+  return (
+    <form className="wh-resolve" onSubmit={save}>
+      <label htmlFor="wh-resolve-note"><strong>Resolve the flag</strong> — how was it sorted out?</label>
+      <textarea id="wh-resolve-note" rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)}
+        placeholder="e.g. Spoke to the customer, all fine, OK to dispatch" disabled={busy} />
+      {error && <p className="wh-resolve-error" role="alert">{error}</p>}
+      <button type="submit" className="wh-btn wh-btn--primary wh-btn--small" disabled={busy}>{busy ? 'Saving…' : 'Resolve flag'}</button>
+    </form>
   )
 }
 
@@ -688,7 +722,7 @@ export default function OrdersView({ status, onStatus, prefs, say, onAuthError, 
       {confirm && (
         <Confirm {...confirm} busy={pending.size > 0} onCancel={() => setConfirm(null)} />
       )}
-      {details && <Details order={details} onClose={() => setDetails(null)} />}
+      {details && <Details order={details} onClose={() => setDetails(null)} onResolved={(o) => { setDetails(null); say(`${o.orderNumber}: flag resolved, ready to dispatch`); load({ quiet: true }) }} />}
     </>
   )
 }
