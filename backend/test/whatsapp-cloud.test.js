@@ -169,7 +169,7 @@ test('bot: menu taps, keywords, order numbers, PIN codes and the fallback', asyn
   const offers = await render(bot, decide(bot, { replyId: 'offers' }), { phone: '9876543210' }, deps)
   assert.match(offers.messages[0].text.body, /SPIN-A745B4/)
   const prices = await render(bot, decide(bot, { replyId: 'prices' }), {}, deps)
-  assert.ok(prices.messages[0].text.body.includes('*Kitchadi Ponni*\n▫️ 5 kg — *₹425*  ~₹480~'))
+  assert.ok(prices.messages[0].text.body.includes('*Kitchadi Ponni*\n5 kg *₹425*'))
   const hand = await render(bot, decide(bot, { replyId: 'human' }), {}, deps)
   assert.equal(hand.state.pausedHours, 12)
   const fb = await render(bot, decide(bot, { text: 'zzz' }), {}, deps)
@@ -461,16 +461,17 @@ test('Bot: the "needs a reply" handoff email is off unless switched on in Bot se
   assert.ok(!sql.some((s) => /email_outbox|staff_users/.test(s)), 'no email is queued')
 })
 
-test('price list: one block per rice, one line per pack (smallest first), Indian commas, delivery and link at the end', () => {
+test('price list: two lines per rice (name, then all packs smallest first), saving once at the top, delivery and link at the end', () => {
   const t = priceListText([
-    { name: 'Kitchadi Ponni', packKg: 26, price: 2499 }, { name: 'Kitchadi Ponni', packKg: 5, price: 555 },
-    { name: 'Special Idly Rice', packKg: 10, price: 599 },
+    { name: 'Kitchadi Ponni', packKg: 26, price: 2499, mrp: 2999 }, { name: 'Kitchadi Ponni', packKg: 5, price: 555, mrp: 699 },
+    { name: 'Special Idly Rice', packKg: 10, price: 599, mrp: 799 },
   ])
-  assert.ok(t.startsWith("🍚 *Today's prices* (per pack, GST included)"))
-  assert.ok(priceListText([{ name: 'X', packKg: 5, price: 1 }], "Here are today's prices:").startsWith("🍚 *Here are today's prices* ("))
-  assert.ok(t.includes('*Kitchadi Ponni*\n▫️ 5 kg — *₹555*\n▫️ 26 kg — *₹2,499*'))
-  assert.ok(t.includes('\n\n*Special Idly Rice*\n▫️ 10 kg — *₹599*'))
-  assert.match(t, /Delivery charge depends on your PIN code/)
+  assert.ok(t.startsWith("🍚 *Today's prices* — up to 25% off MRP"))
+  assert.ok(priceListText([{ name: 'X', packKg: 5, price: 1 }], "Here are today's prices:").startsWith("🍚 *Here are today's prices*\n"))
+  assert.ok(t.includes('*Kitchadi Ponni*\n5 kg *₹555*  ·  26 kg *₹2,499*'))
+  assert.ok(t.includes('\n\n*Special Idly Rice*\n10 kg *₹599*'))
+  assert.ok(!t.includes('~'))
+  assert.match(t, /Delivery depends on your PIN code/)
   assert.ok(t.includes('/w/shop-bot'))
   assert.match(priceListText([]), /prices are on the website/)
 })

@@ -143,9 +143,8 @@ export function decide(bot, { text = '', replyId = '', image = null } = {}, stat
 /**
  * Today's prices, easy to read on a phone (owner, 24 Nov 2026: one long line per rice was hard to read):
  *   *Kitchadi Ponni*
- *   ▫️ 5 kg — *₹555*
- *   ▫️ 26 kg — *₹2,499*
- * One block per rice, one line per pack (smallest first), a blank line between rices, then delivery and the link.
+ *   5 kg *₹555*  ·  26 kg *₹2,499*
+ * Two lines per rice (name, then all packs), a blank line between rices, then delivery and the link.
  */
 export function priceListText(list = [], heading = '') {
   if (!list.length) return `Our prices are on the website: ${SITE}/w/shop-bot`
@@ -154,15 +153,15 @@ export function priceListText(list = [], heading = '') {
     if (!byRice.has(p.name)) byRice.set(p.name, [])
     byRice.get(p.name).push(p)
   }
-  const blocks = [...byRice].map(([name, packs]) => [
-    `*${name}*`,
-    ...packs.sort((a, b) => a.packKg - b.packKg).map((p) =>
-      `▫️ ${p.packKg} kg — *${rupees(p.price)}*${p.mrp && p.mrp > p.price ? `  ~${rupees(p.mrp)}~` : ''}`),
-  ].join('\n'))
+  // Two lines per rice: the name, then every pack on one line. No struck-out MRP on each pack (owner, 24 Nov 2026:
+  // "too clumsy"): the best saving is said once at the top instead.
+  const blocks = [...byRice].map(([name, packs]) =>
+    `*${name}*\n${packs.sort((a, b) => a.packKg - b.packKg).map((p) => `${p.packKg} kg *${rupees(p.price)}*`).join('  ·  ')}`)
+  const off = Math.max(0, ...list.filter((p) => p.mrp > p.price).map((p) => Math.floor((1 - p.price / p.mrp) * 100)))
   return [
-    `🍚 *${String(heading || '').trim().replace(/[:.\s]+$/, '') || 'Today\'s prices'}* (per pack, GST included)`,
+    `🍚 *${String(heading || '').trim().replace(/[:.\s]+$/, '') || 'Today\'s prices'}*${off >= 5 ? ` — up to ${off}% off MRP` : ''}`,
     ...blocks,
-    `🚚 Delivery charge depends on your PIN code.\n🛒 Order here: ${SITE}/w/shop-bot`,
+    `Prices per pack, GST included. Delivery depends on your PIN code.\n🛒 Order: ${SITE}/w/shop-bot`,
   ].join('\n\n')
 }
 
