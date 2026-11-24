@@ -100,6 +100,8 @@ export function cleanBot(input = {}) {
 // no prices or links, the customer is told in Tamil that the team will contact them, and the chat is handed to the team.
 const CAMPAIGN_ORDER_BUTTONS = ['ஆர்டர்செய்ய!', 'ஆர்டர்செய்ய!!']
 const CAMPAIGN_ORDER_REPLY = 'நன்றி! 🙏 எங்கள் குழு விரைவில் உங்களைத் தொடர்புகொள்ளும்.'
+// Words that leave a waiting step (order number) and go on as usual.
+const ESCAPE_WORDS = ['cancel', 'back', 'stop', 'exit', 'main menu']
 
 /** What to do with one incoming message. Pure: no database, no network. */
 export function decide(bot, { text = '', replyId = '', image = null } = {}, state = {}) {
@@ -120,7 +122,12 @@ export function decide(bot, { text = '', replyId = '', image = null } = {}, stat
   const pin = String(text).match(/\b[1-9]\d{5}\b/)
   const fresh = state.awaiting_at && Date.now() - new Date(state.awaiting_at).getTime() < 30 * 60e3
   if (pin && (fresh && state.awaiting === 'pincode' || t === pin[0])) return { kind: 'pincode', pin: pin[0] }
-  if (fresh && state.awaiting === 'order_number' && t) return { kind: 'track', ref: null, text }
+  // Waiting for an order number: a greeting, "menu", "cancel"/"back" or a menu item's name still does what it
+  // always does, so the customer is never stuck in this step (owner, 24 Nov 2026: "menu" and "hi" kept getting
+  // "That does not look like an order number").
+  const escapes = t && ((bot.greetings || []).some((g) => t === norm(g) || t.startsWith(norm(g) + ' '))
+    || ESCAPE_WORDS.includes(t) || items.some((it) => norm(it.label) === t))
+  if (fresh && state.awaiting === 'order_number' && t && !escapes) return { kind: 'track', ref: null, text }
   if (!t) return bot.ai?.enabled && text ? { kind: 'ai', text } : { kind: 'fallback' }
   // With AI on, a sentence ("hi, I ordered on 10th and it has not come") is answered by the AI rather
   // than matched on one of its words; short messages ("hi", "price", "track") still get the menu.
@@ -203,8 +210,10 @@ export async function render(bot, decision, { phone = '', name = '' } = {}, deps
   if (decision.kind === 'track') {
     const ref = decision.ref || parseTrackingRef(decision.text)
     if (!ref) {
-      out.messages.push(textMsg('That does not look like an order number. It looks like *CR-20261111-AB12C*. Please send it again, or type *menu*.'))
-      out.state = { awaiting: 'order_number' }
+      // Asked once only: the menu comes with it and the bot stops waiting, so the next message is read as usual.
+      // An order number sent later is still found (it is recognised anywhere in a message).
+      out.messages.push(menuMsg(bot, 'That does not look like an order number. It looks like *CR-20261111-AB12C* (in your order email and SMS). Send it any time, or choose from the menu below.'))
+      out.state = { awaiting: null }
       return out
     }
     const order = await deps.findOrder(ref, phone)

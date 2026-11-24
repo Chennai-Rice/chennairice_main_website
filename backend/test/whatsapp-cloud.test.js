@@ -152,6 +152,17 @@ test('bot: menu taps, keywords, order numbers, PIN codes and the fallback', asyn
 
   const ask = await render(bot, decide(bot, { replyId: 'track' }), {}, deps)
   assert.equal(ask.state.awaiting, 'order_number')
+  // Waiting for the order number: "menu", "hi", "cancel" or a menu item still work; anything else is asked once,
+  // with the menu, and the bot stops waiting (24 Nov 2026: customers were stuck on "That does not look like…").
+  const waiting = { awaiting: 'order_number', awaiting_at: new Date() }
+  assert.equal(decide(bot, { text: 'menu' }, waiting).kind, 'welcome')
+  assert.equal(decide(bot, { text: 'Hi' }, waiting).kind, 'welcome')
+  assert.equal(decide(bot, { text: 'cancel' }, waiting).kind !== 'track', true)
+  assert.equal(decide(bot, { text: 'CR-20261111-AB12C' }, waiting).kind, 'track')
+  const wrong = await render(bot, decide(bot, { text: 'where is it' }, waiting), {}, deps)
+  assert.equal(wrong.state.awaiting, null)
+  assert.equal(wrong.messages[0].type, 'interactive')
+  assert.match(JSON.stringify(wrong.messages[0]), /does not look like an order number/)
   const pin = await render(bot, decide(bot, { text: 'my pin is 600001' }, { awaiting: 'pincode', awaiting_at: new Date() }), {}, deps)
   assert.match(pin.messages[0].text.body, /We deliver to 600001/)
 
