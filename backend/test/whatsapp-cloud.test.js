@@ -106,7 +106,7 @@ test('readable lines for each kind of incoming message', () => {
 })
 
 // ---- the bot ----
-import { DEFAULT_BOT, cleanBot, decide, render, menuMsg, priceListText, matchRices, groupRices, priceQuestion, logText } from '../lib/wa/bot.js'
+import { DEFAULT_BOT, cleanBot, decide, render, menuMsg, priceListText } from '../lib/wa/bot.js'
 
 const bot = cleanBot(DEFAULT_BOT)
 const deps = {
@@ -474,44 +474,4 @@ test('price list: two lines per rice (name, then all packs smallest first), savi
   assert.match(t, /Delivery depends on your PIN code/)
   assert.ok(t.includes('/w/shop-bot'))
   assert.match(priceListText([]), /prices are on the website/)
-})
-
-test('bag photos: one rice gets its photo with prices; the full list gets the best sellers photos first', async () => {
-  const img = (s) => 'https://chennairiceindustries.com/assets/shop/packs/' + s + '.png'
-  const list = [
-    { name: 'Kitchidi Ponni Rice', slug: 'kitchidi-ponni-rice', image: img('kp'), packKg: 26, price: 2499, mrp: 2999 },
-    { name: 'Kitchidi Ponni Rice', slug: 'kitchidi-ponni-rice', image: img('kp'), packKg: 5, price: 555, mrp: 699 },
-    { name: 'Special Rajabhogam', slug: 'special-rajabhogam', image: img('sr'), packKg: 5, price: 549 },
-    { name: 'A1 Special Ponni', slug: 'a1-special-ponni', image: img('a1'), packKg: 5, price: 515 },
-    { name: 'Special Idly Rice', slug: 'special-idly-rice', image: img('id'), packKg: 10, price: 599 },
-    { name: 'Chennai Bullets', slug: 'chennai-bullets', image: img('cb'), packKg: 5, price: 512 },
-  ]
-  const rices = groupRices(list)
-  const names = (t) => matchRices(t, rices).map((r) => r.slug)
-  assert.deepEqual(names('kitchadi ponni price'), ['kitchidi-ponni-rice'])
-  assert.deepEqual(names('Kichadi ponni rate?'), ['kitchidi-ponni-rice'])
-  assert.deepEqual(names('idli rice'), ['special-idly-rice'])
-  assert.deepEqual(names('a1 ponni price'), ['a1-special-ponni'])
-  assert.deepEqual(names('ponni rice price'), [])
-  assert.deepEqual(names('chennai rice price'), [])
-  assert.equal(priceQuestion('kitchadi ponni'), true)
-  assert.equal(priceQuestion('my kitchadi ponni order did not come yet please help'), false)
-
-  const deps = { prices: async () => list }
-  const one = await render(bot, decide(bot, { text: 'kitchadi ponni price' }), { text: 'kitchadi ponni price' }, deps)
-  assert.equal(one.messages.length, 1)
-  assert.equal(one.messages[0].type, 'image')
-  assert.equal(one.messages[0].image.link, img('kp'))
-  assert.ok(one.messages[0].image.caption.startsWith('*Kitchidi Ponni Rice*\n5 kg *₹555*  ·  26 kg *₹2,499*'))
-  assert.ok(one.messages[0].image.caption.includes('/products/kitchidi-ponni-rice'))
-  assert.ok(logText(one.messages[0]).startsWith('[photo] *Kitchidi Ponni Rice*'))
-
-  const all = await render(bot, decide(bot, { replyId: 'prices' }), {}, deps)
-  assert.deepEqual(all.messages.map((m) => m.type), ['image', 'image', 'image', 'text'])
-  assert.deepEqual(all.messages.slice(0, 3).map((m) => m.image.link), [img('kp'), img('sr'), img('id')])
-  assert.ok(all.messages[3].text.body.includes('*Chennai Bullets*'))
-
-  // A complaint that names a rice is not a price question: no photo, the AI (or menu) answers.
-  const complaint = await render(bot, { kind: 'fallback' }, { text: 'my kitchadi ponni order did not come yet please help' }, deps)
-  assert.notEqual(complaint.messages[0].type, 'image')
 })

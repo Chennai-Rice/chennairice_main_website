@@ -140,60 +140,6 @@ export function decide(bot, { text = '', replyId = '', image = null } = {}, stat
   return bot.ai?.enabled ? { kind: 'ai', text } : { kind: 'fallback' }
 }
 
-// ---- Bag photos (owner, 24 Nov 2026) ----
-// With the full price list, these rices' bag photos come first (catalog slugs, in this order).
-export const PHOTO_RICES = ['kitchidi-ponni-rice', 'special-rajabhogam', 'special-idly-rice']
-const imageMsg = (link, caption) => ({ type: 'image', image: { link, caption: caption.slice(0, 1024) } })
-const packsLine = (packs) => packs.map((p) => `${p.packKg} kg *${rupees(p.price)}*`).join('  ·  ')
-
-/** The price rows grouped per rice: [{ name, slug, image, packs (smallest first) }], in catalog order. */
-export function groupRices(list = []) {
-  const by = new Map()
-  for (const p of list) {
-    if (!by.has(p.name)) by.set(p.name, { name: p.name, slug: p.slug || '', image: p.image || '', packs: [] })
-    by.get(p.name).packs.push(p)
-  }
-  for (const r of by.values()) r.packs.sort((a, b) => a.packKg - b.packKg)
-  return [...by.values()]
-}
-
-// Spellings customers use, folded to the catalog's words (kitchadi / kichadi / kitchidi, idli / idly).
-const riceWords = (s) => norm(s)
-  .replace(/\b(kitchadi|kichadi|kichidi|kitchidi|kitchdi|kichdi)\b/g, 'kitchidi')
-  .replace(/\bidli\b/g, 'idly')
-const RICE_STOP = new Set(['rice', 'special', 'super', 'aged', 'the'])
-
-/** The rices a message names: every word of the name (apart from rice/special/super/aged) appears. At most 3. */
-export function matchRices(text, rices = []) {
-  const said = riceWords(text)
-  const words = new Set(said.split(' '))
-  const joined = said.replace(/ /g, '')
-  return rices.filter((r) => {
-    const keys = riceWords(r.name).split(' ').filter((w) => w && !RICE_STOP.has(w))
-    return keys.length > 0 && keys.every((k) => words.has(k) || (k.length >= 5 && joined.includes(k)))
-  }).slice(0, 3)
-}
-
-/** A question about price, or a short message ("kitchadi ponni") — not a sentence about an order problem. */
-export function priceQuestion(text) {
-  const t = norm(text)
-  return /\b(price|prices|rate|rates|cost|how much|vilai|evlo|evvalavu|mrp)\b/.test(t) || t.split(' ').length <= 3
-}
-
-/** One rice: its bag photo with the prices as the caption and its page to order (text only if it has no photo). */
-export function riceCard(r) {
-  const caption = `*${r.name}*\n${packsLine(r.packs)}\n\nPer pack, GST included. Delivery depends on your PIN code.\n🛒 Order: ${SITE}${r.slug ? `/products/${r.slug}` : '/w/shop-bot'}`
-  return r.image ? imageMsg(r.image, caption) : textMsg(caption)
-}
-
-/** The full price list: the PHOTO_RICES bag photos first (name and prices as captions), then the tidy text list. */
-export function priceListMessages(list = [], heading = '') {
-  const rices = groupRices(list)
-  const photos = PHOTO_RICES.map((slug) => rices.find((r) => r.slug === slug)).filter((r) => r && r.image)
-    .map((r) => imageMsg(r.image, `*${r.name}*\n${packsLine(r.packs)}`))
-  return [...photos, textMsg(priceListText(list, heading))]
-}
-
 /**
  * Today's prices, easy to read on a phone (owner, 24 Nov 2026: one long line per rice was hard to read):
  *   *Kitchadi Ponni*
@@ -209,7 +155,8 @@ export function priceListText(list = [], heading = '') {
   }
   // Two lines per rice: the name, then every pack on one line. No struck-out MRP on each pack (owner, 24 Nov 2026:
   // "too clumsy"): the best saving is said once at the top instead.
-  const blocks = [...byRice].map(([name, packs]) => `*${name}*\n${packsLine(packs.sort((a, b) => a.packKg - b.packKg))}`)
+  const blocks = [...byRice].map(([name, packs]) =>
+    `*${name}*\n${packs.sort((a, b) => a.packKg - b.packKg).map((p) => `${p.packKg} kg *${rupees(p.price)}*`).join('  ·  ')}`)
   const off = Math.max(0, ...list.filter((p) => p.mrp > p.price).map((p) => Math.floor((1 - p.price / p.mrp) * 100)))
   return [
     `🍚 *${String(heading || '').trim().replace(/[:.\s]+$/, '') || 'Today\'s prices'}*${off >= 5 ? ` — up to ${off}% off MRP` : ''}`,
@@ -258,20 +205,10 @@ const STATUS_WORDS = {
  * The replies for a decision. `deps` does the lookups (findOrder, offers, prices, delivery), so the
  * simulator and tests can use stand-ins. Returns { messages, state } where state is what to remember.
  */
-export async function render(bot, decision, { phone = '', name = '', text = '' } = {}, deps = {}) {
+export async function render(bot, decision, { phone = '', name = '' } = {}, deps = {}) {
   const first = String(name || '').trim().split(/\s+/)[0] || 'there'
   const welcome = () => menuMsg(bot, bot.welcome.text.replaceAll('{{name}}', first))
   const out = { messages: [], state: { awaiting: null } }
-  // About one rice ("kitchadi ponni price", "idly rice rate"): that bag's photo with its prices (owner, 24 Nov 2026).
-  const asksPrices = decision.kind === 'item' && decision.item?.action === 'prices'
-  if (text && deps.prices && !decision.handedOver
-    && (asksPrices || ((decision.kind === 'ai' || decision.kind === 'fallback') && !decision.image && priceQuestion(text)))) {
-    const picked = matchRices(text, groupRices(await deps.prices().catch(() => [])))
-    if (picked.length) {
-      for (const r of picked) out.messages.push(riceCard(r))
-      return out
-    }
-  }
   if (decision.kind === 'welcome') { out.messages.push(welcome()); return out }
   if (decision.kind === 'fallback') { out.messages.push(menuMsg(bot, bot.fallback)); return out }
   if (decision.kind === 'ai') {
@@ -292,7 +229,7 @@ export async function render(bot, decision, { phone = '', name = '', text = '' }
     }
     out.messages.push(textMsg(r.reply))
     // Asked for the prices / price list: the same tidy list as the Prices menu item, not one the AI types out.
-    if (r.showPrices && deps.prices) out.messages.push(...priceListMessages(await deps.prices().catch(() => [])))
+    if (r.showPrices && deps.prices) out.messages.push(textMsg(priceListText(await deps.prices().catch(() => []))))
     out.state = { awaiting: null, ai: r, ...(r.handoff ? { pausedHours: bot.handoffHours } : {}) }
     return out
   }
@@ -338,7 +275,7 @@ export async function render(bot, decision, { phone = '', name = '', text = '' }
     return out
   }
   if (item.action === 'prices') {
-    out.messages.push(...priceListMessages(await deps.prices(), item.reply))
+    out.messages.push(textMsg(priceListText(await deps.prices(), item.reply)))
     return out
   }
   if (item.action === 'offers') {
@@ -390,7 +327,7 @@ export function liveDeps(query = defaultQuery, { fetchImpl } = {}) {
     },
     async prices() {
       const cat = await listCatalog({ query })
-      return cat.flatMap((p) => p.variants.filter((v) => v.price != null).map((v) => ({ name: p.name, slug: p.slug, image: p.image ? new URL(p.image, SITE).href : '', packKg: Number(v.packKg), price: v.price, mrp: v.mrp }))).slice(0, 40)
+      return cat.flatMap((p) => p.variants.filter((v) => v.price != null).map((v) => ({ name: p.name, packKg: Number(v.packKg), price: v.price, mrp: v.mrp }))).slice(0, 40)
     },
     async delivery(pin) {
       return checkDelivery({ query }, pin).catch(() => ({ delivers: false }))
@@ -464,7 +401,7 @@ export async function saveBot(input, { query = defaultQuery } = {}) {
 export async function simulate({ bot: input, text, replyId, phone, name, state }, { query = defaultQuery } = {}) {
   const bot = cleanBot(input || DEFAULT_BOT)
   const decision = decide(bot, { text, replyId }, state || {})
-  const res = await render(bot, decision, { phone, name, text }, liveDeps(query))
+  const res = await render(bot, decision, { phone, name }, liveDeps(query))
   const awaiting = res.state.awaiting
   return { decision: decision.kind, messages: res.messages, state: { awaiting, awaiting_at: awaiting ? new Date().toISOString() : null }, paused: Boolean(res.state.pausedHours) }
 }
@@ -472,7 +409,6 @@ export async function simulate({ bot: input, text, replyId, phone, name, state }
 /** A readable copy of a message body for the log. */
 export function logText(m) {
   if (m.type === 'text') return m.text.body
-  if (m.type === 'image') return `[photo] ${m.image.caption || ''}`.trim()
   const i = m.interactive
   const opts = i.type === 'button' ? i.action.buttons.map((b) => b.reply.title) : i.action.sections.flatMap((s) => s.rows.map((r) => r.title))
   return `${i.body.text}\n[${opts.join(' · ')}]`
@@ -506,7 +442,7 @@ export async function answer({ to, phone, name, text, replyId, image = null }, {
       `select coalesce((select replies_today from wa_bot_state where phone = $1 and day = $2::date), 0)::int as n`, [phone, today])
     if (c.n >= MAX_REPLIES_A_DAY) return { skipped: 'daily limit for this chat' }
     const decision = handedOver ? { kind: 'ai', text, image, handedOver: true } : decide(bot, { text, replyId, image }, st || {})
-    const res = await render(bot, decision, { phone, name, text }, liveDeps(query, { fetchImpl: aiFetch }))
+    const res = await render(bot, decision, { phone, name }, liveDeps(query, { fetchImpl: aiFetch }))
     const source = res.state.ai ? 'ai' : 'bot'
     for (const m of res.messages) {
       const message = { messaging_product: 'whatsapp', recipient_type: 'individual', to, ...m }
