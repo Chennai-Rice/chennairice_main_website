@@ -475,3 +475,15 @@ test('price list: two lines per rice (name, then all packs smallest first), savi
   assert.ok(t.includes('/w/shop-bot'))
   assert.match(priceListText([]), /prices are on the website/)
 })
+
+test('order number while the chat is with the team: looked up (not the AI), and the chat stays with the team', async () => {
+  const deps = { findOrder: async (ref) => (ref.orderNumber === 'CR-20261122-ZRVFY'
+    ? { orderNumber: 'CR-20261122-ZRVFY', status: 'shipped', samePhone: true, trackingUrl: null, expected: null } : null) }
+  const found = await render(bot, { kind: 'track', ref: { orderNumber: 'CR-20261122-ZRVFY' }, handedOver: true }, { phone: '9876543210' }, deps)
+  assert.match(found.messages[0].text.body, /CR-20261122-ZRVFY\* is on the way/)
+  assert.equal(found.state.pausedHours, bot.handoffHours)
+  const missing = await render(bot, { kind: 'track', ref: { orderNumber: 'CR-20261122-XXXXX' } }, {}, deps)
+  assert.match(missing.messages[0].text.body, /could not find a placed order/)
+  assert.match(missing.messages[0].text.body, /payment did not go through/)
+  assert.equal(missing.state.pausedHours, undefined)
+})

@@ -244,7 +244,10 @@ export async function render(bot, decision, { phone = '', name = '' } = {}, deps
       return out
     }
     const order = await deps.findOrder(ref, phone)
-    if (!order) out.messages.push(textMsg('We could not find that order. Please check the number on your order email or SMS. 🙏'))
+    // A chat with the team stays with the team after the lookup.
+    if (decision.handedOver) out.state = { awaiting: null, pausedHours: bot.handoffHours }
+    // Unpaid orders are not orders yet (findOrder skips pending_payment): say so, instead of only "not found".
+    if (!order) out.messages.push(textMsg('We could not find a placed order with that number. 🙏 Please check it on your order email or SMS. If the payment did not go through, the order was not placed — you can order again here: ' + SITE + '/w/shop-bot'))
     else if (!order.samePhone) out.messages.push(textMsg('For your privacy, we can only share an order\'s status with the WhatsApp number used to place it. Please message us from that number, or check it here: ' + SITE + '/track-order'))
     else {
       const lines = [`Order *${order.orderNumber}* is ${STATUS_WORDS[order.status] || order.status.replaceAll('_', ' ')}.`]
@@ -441,7 +444,11 @@ export async function answer({ to, phone, name, text, replyId, image = null }, {
     const { rows: [c] } = await query(
       `select coalesce((select replies_today from wa_bot_state where phone = $1 and day = $2::date), 0)::int as n`, [phone, today])
     if (c.n >= MAX_REPLIES_A_DAY) return { skipped: 'daily limit for this chat' }
-    const decision = handedOver ? { kind: 'ai', text, image, handedOver: true } : decide(bot, { text, replyId, image }, st || {})
+    // An order or shipment number is always looked up, even while the chat is with the team: the AI only knows
+    // orders placed from this WhatsApp number and was answering "we could not find order …" (24 Nov 2026).
+    const ref = handedOver && !image ? parseTrackingRef(text) : null
+    const decision = ref ? { kind: 'track', ref, handedOver: true }
+      : handedOver ? { kind: 'ai', text, image, handedOver: true } : decide(bot, { text, replyId, image }, st || {})
     const res = await render(bot, decision, { phone, name }, liveDeps(query, { fetchImpl: aiFetch }))
     const source = res.state.ai ? 'ai' : 'bot'
     for (const m of res.messages) {
