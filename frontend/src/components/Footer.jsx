@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { FOOTER } from '../data/content.js'
 import { useCookieConsent } from '../hooks/useCookieConsent.jsx'
+import { COMPANY_WHATSAPP } from '../services/adEvents.js'
 import './footer.css'
 
 /* Thin-line marks on one 24px grid. Only networks with a real profile URL in
@@ -127,6 +128,19 @@ export default function Footer() {
             </span>
             <span className="foot-gstin">GSTIN {FOOTER.gstin}</span>
           </address>
+
+          {/* WhatsApp chat with our number (owner, 24 Nov 2026). The site-wide click listener counts it as whatsapp_click. */}
+          <a
+            className="foot-wa"
+            href={`https://wa.me/${COMPANY_WHATSAPP}?text=${encodeURIComponent('Hi Chennai Rice, I would like to know more about your rice.')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2.2a9.7 9.7 0 0 0-8.4 14.6L2.3 21.7l5-1.3A9.7 9.7 0 1 0 12 2.2zm0 17.7a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 19.9zm4.4-6c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.8.9c-.1.2-.3.2-.5.1a6.6 6.6 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 1.9s.8 2.2.9 2.4c.1.1 1.6 2.5 4 3.5 1.5.6 2.1.7 2.8.6.5-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1l-.4-.2z" />
+            </svg>
+            Chat on WhatsApp
+          </a>
 
           {/* The Google Map loads only on the Contact page (Google Ads manager, 20 Nov 2026: it slowed product pages on
               phones); every other page links to it. */}

@@ -175,6 +175,33 @@
   color: rgba(246, 239, 220, 0.62);
 }
 
+/* "Chat on WhatsApp" under the contacts: WhatsApp green so it reads as WhatsApp at a glance. */
+.foot-wa {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: #25d366;
+  color: #0b3d1f;
+  font-weight: 700;
+  font-size: 14.5px;
+  text-decoration: none;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.foot-wa svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+.foot-wa:hover,
+.foot-wa:focus-visible {
+  background: #1ebe5b;
+  transform: translateY(-1px);
+}
+
 .foot-map {
   position: relative;
   margin-top: 18px;
