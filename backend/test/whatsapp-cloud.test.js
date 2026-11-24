@@ -466,7 +466,8 @@ test('price list: one block per rice, one line per pack (smallest first), Indian
     { name: 'Kitchadi Ponni', packKg: 26, price: 2499 }, { name: 'Kitchadi Ponni', packKg: 5, price: 555 },
     { name: 'Special Idly Rice', packKg: 10, price: 599 },
   ])
-  assert.match(t, /^🍚 *Today's prices*/)
+  assert.ok(t.startsWith("🍚 *Today's prices* (per pack, GST included)"))
+  assert.ok(priceListText([{ name: 'X', packKg: 5, price: 1 }], "Here are today's prices:").startsWith("🍚 *Here are today's prices* ("))
   assert.ok(t.includes('*Kitchadi Ponni*\n▫️ 5 kg — *₹555*\n▫️ 26 kg — *₹2,499*'))
   assert.ok(t.includes('\n\n*Special Idly Rice*\n▫️ 10 kg — *₹599*'))
   assert.match(t, /Delivery charge depends on your PIN code/)
