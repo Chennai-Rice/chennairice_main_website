@@ -106,7 +106,7 @@ test('readable lines for each kind of incoming message', () => {
 })
 
 // ---- the bot ----
-import { DEFAULT_BOT, cleanBot, decide, render, menuMsg, priceListText } from '../lib/wa/bot.js'
+import { DEFAULT_BOT, cleanBot, decide, render, menuMsg, priceListText, isGreeting } from '../lib/wa/bot.js'
 
 const bot = cleanBot(DEFAULT_BOT)
 const deps = {
@@ -486,4 +486,9 @@ test('order number while the chat is with the team: looked up (not the AI), and 
   assert.match(missing.messages[0].text.body, /could not find a placed order/)
   assert.match(missing.messages[0].text.body, /payment did not go through/)
   assert.equal(missing.state.pausedHours, undefined)
+})
+
+test('greeting while the chat waits for the team: a fresh start with the menu (not the AI)', () => {
+  for (const t of ['hi', 'Hi!', 'hello', 'Vanakkam', 'menu', 'hi there']) assert.equal(isGreeting(bot, t), true, t)
+  for (const t of ['hi I want a refund for my order', 'where is my order', '']) assert.equal(isGreeting(bot, t), false, t)
 })

@@ -103,6 +103,12 @@ const CAMPAIGN_ORDER_REPLY = 'நன்றி! 🙏 எங்கள் குழ
 // Words that leave a waiting step (order number) and go on as usual.
 const ESCAPE_WORDS = ['cancel', 'back', 'stop', 'exit', 'main menu']
 
+/** Just a greeting ("hi", "Hello!", "vanakkam", "menu"): at most 3 words starting with one of the bot's greetings. */
+export function isGreeting(bot, text) {
+  const t = norm(text)
+  return Boolean(t) && t.split(' ').length <= 3 && (bot.greetings || []).some((g) => t === norm(g) || t.startsWith(norm(g) + ' '))
+}
+
 /** What to do with one incoming message. Pure: no database, no network. */
 export function decide(bot, { text = '', replyId = '', image = null } = {}, state = {}) {
   const items = bot.items || []
@@ -447,8 +453,12 @@ export async function answer({ to, phone, name, text, replyId, image = null }, {
     // An order or shipment number is always looked up, even while the chat is with the team: the AI only knows
     // orders placed from this WhatsApp number and was answering "we could not find order …" (24 Nov 2026).
     const ref = handedOver && !image ? parseTrackingRef(text) : null
+    // A greeting ("hi", "hello", "vanakkam") while no one from the team has replied yet is a fresh start: the menu,
+    // and the hand-over ends (24 Nov 2026: "hi" got the AI's "we couldn't locate that order" again).
+    const greeting = handedOver && !image && isGreeting(bot, text)
     const decision = ref ? { kind: 'track', ref, handedOver: true }
-      : handedOver ? { kind: 'ai', text, image, handedOver: true } : decide(bot, { text, replyId, image }, st || {})
+      : greeting ? { kind: 'welcome' }
+        : handedOver ? { kind: 'ai', text, image, handedOver: true } : decide(bot, { text, replyId, image }, st || {})
     const res = await render(bot, decision, { phone, name }, liveDeps(query, { fetchImpl: aiFetch }))
     const source = res.state.ai ? 'ai' : 'bot'
     for (const m of res.messages) {
