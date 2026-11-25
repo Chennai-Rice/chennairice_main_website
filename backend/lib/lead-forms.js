@@ -22,6 +22,22 @@ export const metaLeadId = (l) => {
   return /^\d{5,40}$/.test(v) ? v : null
 }
 /**
+ * Saves one form lead. Sales Daddy's id is the person (one per phone): copied once. A lead copied before the
+ * meta_lead_id field existed gets it filled in later, without being set up again. Returns a row only when it inserted
+ * or filled the ID; `inserted` is true only for a new row (xmax = 0). Shared with db/lead-forms-dryrun.js.
+ */
+export const LEAD_FORM_UPSERT =
+  `insert into lead_forms (sd_lead_id, mobile, name, email, city, state, platform, form_name, facebook_page, campaign_name, ad_name, created_at_sd, meta_lead_id)
+   values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+   on conflict (sd_lead_id) do update set meta_lead_id = coalesce(lead_forms.meta_lead_id, excluded.meta_lead_id)
+     where lead_forms.meta_lead_id is null and excluded.meta_lead_id is not null
+   returning id, (xmax = 0) as inserted`
+export const leadFormParams = (l, mobile, created) => [
+  String(l.id), mobile, text(l.name, 200), text(l.email, 200), text(l.city, 120), text(l.state, 120), l.source,
+  text(l.form_name, 200), text(l.facebook_page, 200), text(l.campaign_name, 200), text(l.ad_name, 200), created, metaLeadId(l),
+]
+
+/**
  * A lead that came from a Meta lead form: it has Meta's lead ID (Sales Daddy's own rule), or, for leads read before
  * that field existed, a Facebook / Instagram source with the form or Page set (only form leads have those).
  */
@@ -69,16 +85,7 @@ export async function syncLeadForms({ query = defaultQuery, since = null, now = 
       if (!isFormLead(l) || !l.id) continue
       const mobile = crmMobile(l.phone)
       if (!/^[6-9]\d{9}$/.test(mobile) || isBlockedMobile(mobile)) { skipped++; continue }
-      // Sales Daddy's id is the person (one per phone): copied once. A lead copied before the meta_lead_id field
-      // existed gets it filled in later, without being set up again (xmax = 0 only for a new row).
-      const { rows: [row] } = await query(
-        `insert into lead_forms (sd_lead_id, mobile, name, email, city, state, platform, form_name, facebook_page, campaign_name, ad_name, created_at_sd, meta_lead_id)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-         on conflict (sd_lead_id) do update set meta_lead_id = coalesce(lead_forms.meta_lead_id, excluded.meta_lead_id)
-           where lead_forms.meta_lead_id is null and excluded.meta_lead_id is not null
-         returning id, (xmax = 0) as inserted`,
-        [String(l.id), mobile, text(l.name, 200), text(l.email, 200), text(l.city, 120), text(l.state, 120), l.source,
-          text(l.form_name, 200), text(l.facebook_page, 200), text(l.campaign_name, 200), text(l.ad_name, 200), created, metaLeadId(l)])
+      const { rows: [row] } = await query(LEAD_FORM_UPSERT, leadFormParams(l, mobile, created))
       if (!row?.inserted) continue // copied before
       saved++
       const outboxId = await recordSignup({ query }, {
