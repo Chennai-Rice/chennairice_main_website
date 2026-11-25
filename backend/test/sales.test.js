@@ -4299,7 +4299,7 @@ test('order emails: packed, out for delivery, delivered with the review link, re
   const pub = await api('GET', '/api/reviews')
   assert.equal(pub.body.count, 1)
   assert.equal(pub.body.average, 5)
-  assert.deepEqual([pub.body.reviews[0].name, pub.body.reviews[0].text], ['Kavya R.', 'Soft, fragrant rice. Delivered on time!'])
+  assert.deepEqual([pub.body.reviews[0].name, pub.body.reviews[0].text], ['Kavya Ramesh', 'Soft, fragrant rice. Delivered on time!'])
   // Published: it can no longer be changed from the link.
   assert.equal((await api('POST', '/api/reviews', { body: { o, t, rating: 1 } })).status, 409)
 
