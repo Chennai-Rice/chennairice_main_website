@@ -45,7 +45,6 @@ function Card({ review, onToggle }) {
   const [open, setOpen] = useState(false)
   const long = review.text.length > LONG
   const toggle = () => { setOpen((o) => !o); onToggle?.(!open) }
-  const product = String(review.products || '').split(',')[0].trim()
   return (
     <article className="testi-card">
       <div className="testi-head">
@@ -68,7 +67,6 @@ function Card({ review, onToggle }) {
           {open ? 'Show less' : 'Read more'}
         </button>
       )}
-      {product && <div className="testi-product">Verified buyer · {product}</div>}
     </article>
   )
 }
