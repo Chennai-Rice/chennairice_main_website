@@ -102,11 +102,14 @@ export async function syncLeadForms({ query = defaultQuery, since = null, now = 
 
 /**
  * The Lead event to Meta for form leads not sent yet (Meta's "Conversions API for CRM", first stage: the raw lead), so
- * Meta learns which people filled the form. Also retries the ones Meta refused, for up to 6 days. LEAD_FORMS_TO_META=off
- * stops it. Returns { sent, failed }.
+ * Meta learns which people filled the form. Also retries the ones Meta refused, for up to 6 days. Returns { sent, failed }.
+ *
+ * Off unless LEAD_FORMS_TO_META=on (25 Nov 2026). Sales Daddy gives us no Meta lead ID, so the event cannot carry it;
+ * Meta then cannot match it to the form lead it already has and counts the same person again as a "website lead"
+ * (21–24 Nov: 1,339 leads in Ads Manager for about 660 people). Turn it on only once the event carries Meta's lead ID.
  */
 export async function sendLeadFormEvents(query = defaultQuery) {
-  if (!process.env.META_CAPI_TOKEN || process.env.LEAD_FORMS_TO_META === 'off') return { skipped: 'off' }
+  if (!process.env.META_CAPI_TOKEN || process.env.LEAD_FORMS_TO_META !== 'on') return { skipped: 'off' }
   const { rows } = await query(
     `select * from lead_forms where meta_sent_at is null and saved_at > now() - interval '6 days' order by saved_at limit 50`)
   let sent = 0

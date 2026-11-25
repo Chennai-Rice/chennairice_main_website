@@ -53,3 +53,7 @@ scripts/.blog-local/
 
 # The one-off Supabase export (customer data): never committed.
 backend/db/supabase-export/
+
+# Playwright output
+test-results/
+playwright-report/

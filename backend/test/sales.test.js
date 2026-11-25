@@ -4533,6 +4533,9 @@ test('Lead form: the Lead event for Meta carries the hashed phone and email, sys
     // No token: nothing sent.
     assert.equal((await sendLeadFormEvents(db.query)).skipped, 'off')
     Object.assign(process.env, { META_CAPI_TOKEN: 'tok', META_GRAPH_VERSION: 'v23.0' })
+    // Token but not switched on: still nothing (it double-counted leads in Meta without the lead ID, 25 Nov 2026).
+    assert.equal((await sendLeadFormEvents(db.query)).skipped, 'off')
+    process.env.LEAD_FORMS_TO_META = 'on'
     const realFetch = globalThis.fetch
     globalThis.fetch = (u, o) => realFetch(String(u).replace('https://graph.facebook.com', 'http://127.0.0.1:' + fakeMeta.address().port), o)
     try {
@@ -4547,7 +4550,7 @@ test('Lead form: the Lead event for Meta carries the hashed phone and email, sys
       assert.equal(got.length, 0)
     } finally { globalThis.fetch = realFetch }
   } finally {
-    for (const k of ['META_CAPI_TOKEN', 'META_GRAPH_VERSION']) delete process.env[k]
+    for (const k of ['META_CAPI_TOKEN', 'META_GRAPH_VERSION', 'LEAD_FORMS_TO_META']) delete process.env[k]
     fakeMeta.close()
   }
 })

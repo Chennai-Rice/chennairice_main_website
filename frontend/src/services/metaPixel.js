@@ -1,9 +1,10 @@
 // Meta (Facebook) Pixel, for ads measurement.
 //
-// Meta's base code sits in index.html's <head>: it sets up the pixel and sends
-// the first PageView on every page. This file sends the rest (a PageView per
-// page the visitor opens in the app, and the shop events), and tells Meta to
-// stop if the visitor rejects marketing cookies (src/hooks/useMetaPixel.js).
+// Loaded here, on demand, only after the visitor accepts marketing cookies
+// (src/hooks/useMetaPixel.js); it is no longer in index.html's <head>, which
+// sent a PageView before the cookie banner was answered (25 Nov 2026). This
+// file sends the PageViews and shop events, and tells Meta to stop if the
+// visitor withdraws consent.
 
 import { readConsent } from '../lib/consentPolicy.js'
 

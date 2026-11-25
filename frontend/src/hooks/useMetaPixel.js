@@ -4,19 +4,18 @@ import { useCookieConsent } from './useCookieConsent.jsx'
 import { disableMetaPixel, enableMetaPixel, pixelFromHead, trackMetaPageView } from '../services/metaPixel.js'
 
 /**
- * Meta Pixel on the storefront: on from the first page (the base code in
- * index.html's <head> sends that page's PageView), a PageView for every page
- * opened after that, and switched off if the visitor rejects marketing cookies
- * (cookie banner, or footer → Cookie Preferences).
+ * Meta Pixel on the storefront: loaded only once the visitor accepts marketing
+ * cookies (cookie banner, or footer → Cookie Preferences), then a PageView for
+ * the current page and every page opened after it; switched off again if they
+ * withdraw. Nothing goes to Meta before the banner is answered (25 Nov 2026).
  */
 export function useMetaPixel() {
   const { decided, allowMarketing } = useCookieConsent()
   const { pathname } = useLocation()
-  // The <head> code already counted the page the visitor landed on.
   const lastTracked = useRef(pixelFromHead ? pathname : null)
 
   useEffect(() => {
-    if (decided && !allowMarketing) {
+    if (!decided || !allowMarketing) {
       disableMetaPixel()
       lastTracked.current = null
       return

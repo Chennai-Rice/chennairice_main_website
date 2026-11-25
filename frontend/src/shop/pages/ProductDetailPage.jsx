@@ -361,7 +361,10 @@ export default function ProductDetailPage() {
               <ShareButton title={`${product.name} | Chennai Rice`} text={`${product.name} from Chennai Rice`} />
             </div>
 
-            <Link className="pdp-bulk-link" to="/contact-us">
+            <Link
+              className="pdp-bulk-link"
+              to={`/bulk-order?product=${encodeURIComponent(product.name)}${selected?.kg ? `&size=${selected.kg}` : ""}`}
+            >
               Bulk Order Enquiry &rarr;
             </Link>
 
