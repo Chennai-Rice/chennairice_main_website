@@ -134,6 +134,53 @@
   line-height: 1.85;
   color: #6b5b4b;
 }
+/* Long reviews start folded to 5 lines; "Read more" opens them in the card. */
+.testi-quote.is-folded {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.testi-more {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 4px 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.testi-more:hover,
+.testi-more:focus-visible {
+  color: #7a1f1f;
+}
+.testi-product {
+  margin-top: auto;
+  padding-top: 14px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+/* Real customers have no photo: their initials in a gold circle. */
+.testi-initials {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, #f6e7c4, #e8c97e);
+  color: #6b1d1d;
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: 0.5px;
+}
+
+/* Phones show one card at a time: let it be as tall as its own review, not the longest one. */
+@media (max-width: 900px) {
+  .testi-track { align-items: flex-start; }
+}
+
 .testi-mark {
   font-family: var(--serif);
   font-size: 26px;

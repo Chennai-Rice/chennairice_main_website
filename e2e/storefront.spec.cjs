@@ -61,3 +61,41 @@ test('a wrong product address shows "Product not found"', async ({ page, trackin
   await page.goto('/products/zzz-not-a-rice')
   await expect(page.getByRole('heading', { name: 'Product not found' })).toBeVisible()
 })
+
+// Home "What Our Customers Say": real published reviews only (test data below, not real customers).
+const REVIEWS = {
+  average: 5, count: 4, reviews: [
+    { name: 'Test Buyer', city: 'Chennai', rating: 5, text: 'Soft rice, cooks well every time.', products: 'Kitchidi Ponni Rice' },
+    { name: 'Stars Only', city: 'Madurai', rating: 5, text: '', products: 'Kitchidi Ponni Rice' },
+    { name: 'LONG WRITER', city: 'TIRUVALLUR', rating: 4, text: 'Very good rice. '.repeat(30).trim(), products: 'Kitchidi Ponni Rice' },
+    { name: 'Third Person', city: 'Erode', rating: 5, text: 'Good taste and fast delivery.', products: 'Special Rajabhogam' },
+  ],
+}
+
+test('home reviews: real reviews only, star-only skipped, long one has Read more', async ({ page, tracking }) => {
+  void tracking
+  await page.route('**/api/reviews', (route) => route.fulfill({ json: REVIEWS }))
+  await page.goto('/')
+  const section = page.locator('section.testi')
+  await section.scrollIntoViewIfNeeded()
+  await expect(section.locator('.testi-card')).toHaveCount(3)
+  await expect(section.getByText('Stars Only')).toHaveCount(0)
+  await expect(section.getByText('Gopal Reddy')).toHaveCount(0)
+  await expect(section.getByText('Long Writer')).toHaveCount(1)
+  await expect(section.getByText('Tiruvallur')).toHaveCount(1)
+  const long = section.locator('.testi-card', { hasText: 'Long Writer' })
+  await expect(long.locator('.testi-quote')).toHaveClass(/is-folded/)
+  await long.getByRole('button', { name: 'Read more' }).click()
+  await expect(long.locator('.testi-quote')).not.toHaveClass(/is-folded/)
+  await expect(long.getByRole('button', { name: 'Show less' })).toBeVisible()
+  await expect(section.locator('.testi-card', { hasText: 'Test Buyer' }).getByRole('button', { name: 'Read more' })).toHaveCount(0)
+})
+
+test('home reviews: section hidden when no written review is published', async ({ page, tracking }) => {
+  void tracking
+  await page.route('**/api/reviews', (route) => route.fulfill({ json: { average: 5, count: 1, reviews: [{ name: 'A', city: 'B', rating: 5, text: '' }] } }))
+  await page.goto('/')
+  await page.waitForLoadState('networkidle')
+  await expect(page.locator('section.testi')).toHaveCount(0)
+  await expect(page.getByText('What Our Customers Say')).toHaveCount(0)
+})

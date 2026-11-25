@@ -170,75 +170,8 @@ export const FEATURES = [
   { icon: 'aroma', label: ['Rich in Taste', '& Aroma'], text: 'Stored with care in monitored silos so every meal keeps its natural taste and aroma.' },
 ]
 
-// Ratings run 3 to 5 rather than a wall of fives. The quote and the score
-// are written as a pair: the lower-rated entries carry a real reservation,
-// because a three-star card that reads like a rave fools nobody.
-export const TESTIMONIALS = [
-  {
-    name: 'Anitha Krishnan',
-    city: 'Chennai',
-    rating: 5,
-    quote:
-      "Chennai Rice has become our family's favourite. The aroma and taste are simply unmatched!",
-    avatar: '/assets/testimonials/avatar-1.jpg',
-  },
-  {
-    name: 'Gopal Reddy',
-    city: 'Coimbatore',
-    rating: 4,
-    quote:
-      "Consistent quality year after year. Delivery can run slow in the monsoon, but the rice itself never disappoints.",
-    avatar: '/assets/testimonials/avatar-2.jpg',
-  },
-  {
-    name: 'Meena Iyer',
-    city: 'Bangalore',
-    rating: 5,
-    quote:
-      "Fluffy, soft and perfect for all our dishes. I highly recommend Chennai Rice.",
-    avatar: '/assets/testimonials/avatar-3.jpg',
-  },
-  {
-    name: 'Ramesh Kumar',
-    city: 'Trichy',
-    rating: 3,
-    quote:
-      "Good rice at a fair price. The large bag is awkward to store in a small kitchen — I wish the smaller pack were easier to find locally.",
-    avatar: '/assets/testimonials/avatar-4.jpg',
-  },
-  {
-    name: 'Lakshmi Sundaram',
-    city: 'Madurai',
-    rating: 5,
-    quote:
-      "Every grain cooks evenly. My family can taste the difference at every meal.",
-    avatar: '/assets/testimonials/avatar-5.jpg',
-  },
-  {
-    name: 'Karthik Raja',
-    city: 'Salem',
-    rating: 4,
-    quote:
-      "Clean, well sorted and never sticky. Took a little getting used to on the water ratio, but we are happy with it.",
-    avatar: '/assets/testimonials/avatar-6.jpg',
-  },
-  {
-    name: 'Saroja Devi',
-    city: 'Thanjavur',
-    rating: 5,
-    quote:
-      "I have cooked rice for forty years. This is the quality I remember from childhood.",
-    avatar: '/assets/testimonials/avatar-7.jpg',
-  },
-  {
-    name: 'Vignesh Balaji',
-    city: 'Erode',
-    rating: 3,
-    quote:
-      "Dependable everyday rice and good value. Not as aromatic as the premium varieties, but it does the job well.",
-    avatar: '/assets/testimonials/avatar-8.jpg',
-  },
-]
+// The home page testimonials are real customer reviews (published in /offers → Reviews), loaded from
+// /api/reviews by components/Testimonials.jsx. The made-up cards that were here were removed (25 Nov 2026).
 
 export const CELEB_HEAD = {
   label: 'Brand Ambassador',
