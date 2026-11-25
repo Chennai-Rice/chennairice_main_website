@@ -155,12 +155,15 @@ function SpecificationsPanel({ product }) {
  * tab that happens to be open.
  */
 export default function ProductTabs({ product, details, riceName }) {
-  const [activeTab, setActiveTab] = useState(TABS[0].id);
+  // A tab whose values are not confirmed yet is left out, instead of showing "being confirmed … shortly"
+  // on every product (audit, 25 Nov 2026). It comes back by itself once details.nutrition / .cooking exist.
+  const tabs = TABS.filter((t) => (t.id === "nutrition" ? details.nutrition : t.id === "cooking" ? details.cooking : true));
+  const [activeTab, setActiveTab] = useState(tabs[0].id);
 
   return (
     <div className="pdp-tabs-block">
       <div className="pdp-tabs-nav" role="tablist" aria-label="Product information">
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
@@ -176,7 +179,7 @@ export default function ProductTabs({ product, details, riceName }) {
         ))}
       </div>
 
-      {TABS.map((tab) => (
+      {tabs.map((tab) => (
         <div
           key={tab.id}
           role="tabpanel"

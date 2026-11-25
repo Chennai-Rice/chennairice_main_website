@@ -68,7 +68,7 @@ export const HERO = {
     { label: 'Shop Chennai Rice', to: '/rice-products', primary: true },
     { label: 'Bulk & Distributor Enquiry', to: '/bulk-order' },
   ],
-  estd: "1950's",
+  estd: "1950s",
 }
 
 /* Slot numbers are derived from position rather than written in, so removing
@@ -159,7 +159,7 @@ export const SHOWCASE = {
   ctaButton: 'View All Products',
 }
 
-export const FEATURES_TITLE = 'Why Tamil Homes Trust Chennai Rice ?'
+export const FEATURES_TITLE = 'Why Tamil Homes Trust Chennai Rice?'
 
 export const FEATURES = [
   { icon: 'sourced', label: ['Carefully', 'Sourced'], text: 'Paddy procured from five states and kept separate and traceable from purchase to storage.' },
@@ -278,9 +278,20 @@ export const FOOTER = {
       links: [
         { label: 'About Us', to: '/about-us' },
         { label: 'Infrastructure', to: '/infrastructure' },
-        { label: 'Recipes', to: '/recipes' },
         { label: 'Blogs', to: '/blog' },
         { label: 'Contact Us', to: '/contact-us' },
+      ],
+    },
+    {
+      // Rice guides that no other page linked to (audit, 25 Nov 2026): linked from every page here.
+      head: 'Rice Guides',
+      links: [
+        { label: 'How Much Rice per Month', to: '/how-much-rice-per-month' },
+        { label: 'How to Cook Ponni Rice', to: '/how-to-cook-ponni-rice' },
+        { label: 'Ponni Rice Price', to: '/ponni-rice-price' },
+        { label: 'Ponni vs Basmati Rice', to: '/ponni-rice-vs-basmati-rice' },
+        { label: 'Buy Ponni Rice Online', to: '/buy-ponni-rice-online' },
+        { label: 'Bulk Rice Suppliers in Tamil Nadu', to: '/bulk-rice-suppliers-tamil-nadu' },
       ],
     },
     {

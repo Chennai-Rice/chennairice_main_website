@@ -66,6 +66,7 @@ const DevJournalPage = import.meta.env.DEV ? lazy(() => import('./pages/DevJourn
    them to download an article reader they never open. */
 const BlogListPage = lazy(() => import('./pages/blog/BlogListPage.jsx'))
 const BlogPostPage = lazy(() => import('./pages/blog/BlogPostPage.jsx'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage.jsx'))
 
 /* Routes that exist in the navigation and footer but whose copy is still
    being written. Listed here so no link in the footer ever 404s. */
@@ -291,7 +292,9 @@ export default function App() {
         <Route path="/index.html" element={<Navigate to="/rice-products" replace />} />
         <Route path="/about.html" element={<Navigate to="/about-us" replace />} />
         <Route path="/cart.html" element={<Navigate to="/cart" replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Unknown address: a "Page not found" page (hosting also answers it with HTTP 404). It used to send
+            every wrong address to the home page, which search engines read as duplicate home pages. */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
       </Suspense>
       {!isTool && <Footer />}

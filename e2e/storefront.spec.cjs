@@ -101,3 +101,42 @@ test('home reviews: section hidden when no written review is published', async (
   await expect(page.locator('section.testi')).toHaveCount(0)
   await expect(page.getByText('What Our Customers Say')).toHaveCount(0)
 })
+
+// Audit fixes, 25 Nov 2026.
+test('a wrong address shows "Page not found" (not the home page)', async ({ page, tracking }) => {
+  void tracking
+  await page.goto('/this-page-does-not-exist')
+  await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
+  await expect(page).toHaveURL(/\/this-page-does-not-exist$/)
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
+})
+
+test('footer links the rice guides; no Recipes link', async ({ page, tracking }) => {
+  void tracking
+  await page.goto('/')
+  const foot = page.locator('footer')
+  for (const path of ['/how-much-rice-per-month', '/how-to-cook-ponni-rice', '/ponni-rice-price', '/ponni-rice-vs-basmati-rice', '/buy-ponni-rice-online', '/bulk-rice-suppliers-tamil-nadu']) {
+    await expect(foot.locator(`a[href="${path}"]`)).toHaveCount(1)
+  }
+  await expect(foot.locator('a[href="/recipes"]')).toHaveCount(0)
+})
+
+test('product page: no recipe dead ends, no "being confirmed" nutrition, out-of-stock packs not suggested, breadcrumb to hub', async ({ page, tracking }) => {
+  void tracking
+  await page.goto('/products/kitchidi-ponni-rice')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Kitchidi Ponni')
+  await expect(page.locator('a[href="/recipes"]')).toHaveCount(0)
+  await expect(page.getByText('View Recipe')).toHaveCount(0)
+  await expect(page.getByText(/Nutrition values for this pack are being confirmed/)).toHaveCount(0)
+  const related = page.locator('.pdp-related-track')
+  await expect(related.getByText('Special Rajabhogam').first()).toBeVisible()
+  await expect(related.getByText('Rudra')).toHaveCount(0)
+  await expect(page.locator('nav a[href="/ponni-rice"]').first()).toBeVisible()
+})
+
+test('Ponni hub page does not promote a pack that is out of stock', async ({ page, tracking }) => {
+  void tracking
+  await page.goto('/ponni-rice')
+  await page.waitForLoadState('networkidle')
+  await expect(page.locator('.lp a[href="/products/rudra-ponni-rice"]')).toHaveCount(0)
+})

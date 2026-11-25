@@ -14,6 +14,8 @@ const CATALOG = {
         { packKg: 26, price: 2499, mrp: 2900, inStock: true },
       ],
     },
+    { slug: 'special-rajabhogam', name: 'Special Rajabhogam', tag: 'Classic Red', variants: [{ packKg: 10, price: 900, mrp: 1000, inStock: true }] },
+    { slug: 'rudra', name: 'Rudra', tag: '', variants: [{ packKg: 25, price: null, mrp: null, inStock: false }] },
   ],
 }
 

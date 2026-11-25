@@ -78,7 +78,7 @@ export default function AboutPage() {
             <span className="ab-heritage-rule" aria-hidden="true" />
             <div className="ab-intro-body">
               <p>
-                Chennai Rice began as a family rice mill in Tamil Nadu in the 1950's. More than 75 years later,
+                Chennai Rice began as a family rice mill in Tamil Nadu in the 1950s. More than 75 years later,
                 Chennai Rice Industries India Private Limited runs one of the region’s larger modern rice plants at
                 Nasiyanur, Erode, processing around 1,000 tonnes of paddy every day.
               </p>
@@ -116,7 +116,7 @@ export default function AboutPage() {
               <div className="ab-heritage-intro-text reveal reveal--right d1">
                 <p className="eyebrow">Our Heritage</p>
                 <span className="ab-heritage-rule" aria-hidden="true" />
-                <h2 className="ab-heritage-kicker">Since 1950's</h2>
+                <h2 className="ab-heritage-kicker">Since 1950s</h2>
                 <p className="ab-heritage-tagline">{LEGACY.tagline}</p>
                 <div className="ab-heritage-intro-right">
                   <p className="ab-heritage-lede">{LEGACY.lede}</p>

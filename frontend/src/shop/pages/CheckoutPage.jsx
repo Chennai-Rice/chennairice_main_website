@@ -649,7 +649,15 @@ export default function CheckoutPage() {
                     disabled={busy}
                   />
                   {errors.phone && <span className="field-error" id="err-phone">{errors.phone}</span>}
-                  {!errors.phone && <span className="field-hint">Your Spin &amp; Win prize applies by itself for this number.</span>}
+                  {/* A plain hint for everyone; the prize line only for a buyer whose number has a prize waiting
+                      (it was on every checkout, audit 25 Nov 2026). */}
+                  {!errors.phone && (
+                    <span className="field-hint">
+                      {discount?.source === "spin" || pendingOffer?.source === "spin"
+                        ? "Your Spin & Win prize applies by itself for this number."
+                        : "We send your order updates to this number."}
+                    </span>
+                  )}
                 </label>
                 <label className="field">
                   <span className="field-label">Email <span className="field-optional">(optional)</span></span>

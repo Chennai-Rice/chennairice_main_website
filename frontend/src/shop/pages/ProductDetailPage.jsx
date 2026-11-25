@@ -201,7 +201,8 @@ export default function ProductDetailPage() {
     navigate("/cart");
   };
 
-  const related = allProducts.filter((p) => p.id !== product.id);
+  // Other packs, leaving out ones with no size in stock (audit, 25 Nov 2026).
+  const related = allProducts.filter((p) => p.id !== product.id && p.packSizes?.some((s) => s.inStock !== false));
 
   // Headings follow "Chennai Rice SEO - Product Page": the H1 is the product's
   // heading name and the sections say "<name> Rice" ("Special Idly Rice"
@@ -232,7 +233,8 @@ export default function ProductDetailPage() {
             items={[
               { label: "Home", to: "/" },
               { label: "Products", to: "/rice-products" },
-              { label: category, to: "/rice-products" },
+              // The category opens its own hub page (audit, 25 Nov 2026): idli rice → /idli-rice, Ponni → /ponni-rice.
+              { label: category, to: product.id === "special-idly-rice" ? "/idli-rice" : "/ponni-rice" },
               { label: product.name },
             ]}
           />

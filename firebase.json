@@ -19,11 +19,176 @@
         }
       },
       {
-        "source": "**",
+        "source": "/admin",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/admin/**",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/offers",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/offers/**",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/warehouse",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/warehouse/**",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/cloud",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/cloud/**",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/whatsappbot",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/whatsappbot/**",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/whatsapp",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/whatsapp/**",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/w/**",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/dev/**",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/blog/**",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/cart",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/cart.html",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/refer",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/review",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/reviews",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/checkout",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/order-confirmed",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/wishlist",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/expo",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/faqs",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/about.html",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/our-team",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/careers",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/quality",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/packaging",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/recipes",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/csr",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/downloads",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/home",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/products",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/about",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/contact",
         "destination": "/app.html"
       }
     ],
     "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "SAMEORIGIN"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "camera=(), microphone=(), geolocation=()"
+          }
+        ]
+      },
       {
         "source": "/assets/**/*.@(js|css)",
         "headers": [

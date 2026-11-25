@@ -7,15 +7,15 @@ export const LEGACY = {
   lede: "From the trading streets of Salem to the forefront of India’s rice milling industry.",
   intro: [
     "The story of Chennai Rice Industries is a remarkable journey of entrepreneurial vision, perseverance, innovation and a legacy carried forward through five generations.",
-    "What began as a humble rice trading venture in the 1950's has evolved into a modern industrial enterprise. Across generations, the family has transformed its operations from traditional rice trading to rice milling, modern manufacturing, advanced grain storage and AI-enabled smart rice milling.",
+    "What began as a humble rice trading venture in the 1950s has evolved into a modern industrial enterprise. Across generations, the family has transformed its operations from traditional rice trading to rice milling, modern manufacturing, advanced grain storage and AI-enabled smart rice milling.",
     "Each generation has built upon the foundations laid by its predecessors, preserving the values of trust, quality and commitment while continuously embracing innovation and technological advancement.",
   ],
   chapters: [
     {
-      era: "1950's",
+      era: "1950s",
       label: "The Beginning of a Legacy",
       title: "Where It All Began",
-      portrait: { src: "/assets/about/chapter-1951.jpg", name: "Leigh Bazaar, Salem", role: "Where it began · 1950's" },
+      portrait: { src: "/assets/about/chapter-1951.jpg", name: "Leigh Bazaar, Salem", role: "Where it began · 1950s" },
       body: [
         "In the bustling Leigh Bazaar of Salem, Mr. Ardhanari Mudaliar began his entrepreneurial journey in rice trading.",
         "With determination, integrity and a vision for the future, he laid the foundation for a family legacy that would continue to grow and evolve across generations.",
@@ -118,7 +118,7 @@ export const LEGACY = {
   vision:
     "To build a fully data-driven smart rice mill, where generations of experience meet the power of intelligence and innovation.",
   evolution: [
-    { era: "1950's", title: "Rice Trading", note: "The foundation of our legacy in Leigh Bazaar, Salem." },
+    { era: "1950s", title: "Rice Trading", note: "The foundation of our legacy in Leigh Bazaar, Salem." },
     { era: "1956", title: "Ranganathar Rice Mill — Rice Milling", note: "The family’s transition from trading to manufacturing." },
     { era: "1980", title: "AM Modern Rice Mill — Modern Milling & Packaged Rice", note: "Contributing to the evolution of modern milling and packaged rice." },
     { era: "2005", title: "Shyamalan Modern Rice Industries", note: "A new generation of technological advancement and industrial growth." },

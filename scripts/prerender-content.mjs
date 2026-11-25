@@ -21,15 +21,15 @@ export const COMPANY = {
   name: 'Chennai Rice Industries',
   legalName: 'Chennai Rice Industries India Private Limited',
   brand: 'Chennai Rice',
-  // The family business: rice trading in Salem from 1951 ("over 75 years"), milling from 1956;
+  // The family business: rice trading in Salem since the 1950s ("over 75 years"; owner confirmed 25 Nov 2026), milling from 1956;
   // the company itself was incorporated in 2013 (shop/data/legacy.js).
-  founded: '1951',
+  founded: '1950',
   incorporated: '2013',
   founder: 'M. S. Tamilselvan',
   place: 'Nasiyanur, Erode, Tamil Nadu, India',
   slogan: "South India's No. 1 Non-Basmati Rice Manufacturer",
   facts: [
-    'Family rice business since 1951 (rice trading in Salem, milling since 1956), with the fifth generation now in the business; Chennai Rice Industries India Pvt. Ltd. (2013) runs the rice mill at Nasiyanur, Erode, Tamil Nadu.',
+    'Family rice business since the 1950s (rice trading in Salem, milling since 1956), with the fifth generation now in the business; Chennai Rice Industries India Pvt. Ltd. (2013) runs the rice mill at Nasiyanur, Erode, Tamil Nadu.',
     "South India's No. 1 non-basmati rice manufacturer: Ponni rice, idli rice and everyday South Indian rice, not basmati.",
     'Capacity of 2,44,000 tonnes a year (MTPA), with 61,500 MT of paddy storage in 31 silos.',
     'Paddy is selected, tested, stored, parboiled (for boiled rice), milled on a 10-stage line (cleaning, husking, polishing, grading, colour sorting) and packed at the Erode plant.',
@@ -180,7 +180,7 @@ export function llmsTxt({ products, guides, landing }) {
   const lines = [
     `# ${COMPANY.name} (${COMPANY.brand})`,
     '',
-    `> ${COMPANY.legalName} runs a rice mill at ${COMPANY.place}; the family has been in the rice business since ${COMPANY.founded} (over 75 years). It mills and packs Ponni rice and idli rice under the Chennai Rice brand and its pack brands (Kitchidi Ponni Rice, Special Rajabhogam, Nayara Super Aged, A1 Special Ponni and others), sold through distributors and shops and online across India at ${SITE}.`,
+    `> ${COMPANY.legalName} runs a rice mill at ${COMPANY.place}; the family has been in the rice business since the 1950s (over 75 years). It mills and packs Ponni rice and idli rice under the Chennai Rice brand and its pack brands (Kitchidi Ponni Rice, Special Rajabhogam, Nayara Super Aged, A1 Special Ponni and others), sold through distributors and shops and online across India at ${SITE}.`,
     '',
     '## Key facts',
     ...COMPANY.facts.map((f) => `- ${f}`),
