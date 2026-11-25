@@ -79,6 +79,8 @@ test('home reviews: real reviews only, star-only skipped, long one has Read more
   const section = page.locator('section.testi')
   await section.scrollIntoViewIfNeeded()
   await expect(section.locator('.testi-card')).toHaveCount(3)
+  // Highest rating first, fuller review first within it; the 4-star one last.
+  await expect(section.locator('.testi-name')).toHaveText(['Test Buyer', 'Third Person', 'Long Writer'])
   await expect(section.getByText('Stars Only')).toHaveCount(0)
   await expect(section.getByText('Gopal Reddy')).toHaveCount(0)
   await expect(section.getByText('Long Writer')).toHaveCount(1)

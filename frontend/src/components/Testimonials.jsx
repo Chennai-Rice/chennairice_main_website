@@ -32,11 +32,13 @@ const tidy = (s) => {
 }
 const initials = (name) => tidy(name).split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase() || 'C'
 
-/** Published reviews that have words, newest first. */
+/** Published reviews that have words: highest rating first, and within that the fuller reviews first, so a
+ *  detailed review leads and a few-word one ("Really so nice to eat…") comes later (owner, 25 Nov 2026). */
 export function writtenReviews(list) {
   return (Array.isArray(list) ? list : [])
     .map((r) => ({ ...r, text: String(r.text || '').trim(), rating: Math.min(5, Math.max(1, Number(r.rating) || 5)) }))
     .filter((r) => r.text.replace(/[^\p{L}\p{N}]/gu, '').length >= 3)
+    .sort((a, b) => b.rating - a.rating || b.text.length - a.text.length)
 }
 
 function Card({ review, onToggle }) {
