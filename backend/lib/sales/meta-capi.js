@@ -164,8 +164,9 @@ export async function sendPurchaseToMeta(orderId) {
 
 /**
  * A lead from a Meta Instant Form, as the CRM integration's first stage (Meta "Conversions API for CRM": the raw "Lead").
- * It is matched on the hashed phone and email (and name, city, state): the form gives no click ID, and the lead ID Meta
- * generates is not in Sales Daddy's lead list, so it is not sent. Marked system_generated / crm, as Meta asks.
+ * It is matched on Meta's lead ID when Sales Daddy gives it (meta_lead_id, from 25 Nov 2026), and on the hashed phone
+ * and email (and name, city, state). Marked system_generated / crm, as Meta asks. Still off by default
+ * (LEAD_FORMS_TO_META, lead-forms.js) until a test shows Meta does not count it as a second lead.
  */
 export function leadFormEvent(row) {
   const [first, ...rest] = str(row.name).split(/\s+/)
@@ -177,6 +178,9 @@ export function leadFormEvent(row) {
     ct: [sha256(norm(row.city))],
     st: [sha256(norm(row.state))],
     country: [sha256('in')],
+    // Meta's own lead ID (Sales Daddy's meta_lead_id, from 25 Nov 2026), so Meta ties the event to the form lead it
+    // already has. Sent as text: 17-digit IDs lose digits as a JavaScript number.
+    lead_id: row.meta_lead_id ? String(row.meta_lead_id) : undefined,
   }
   for (const k of Object.keys(userData)) {
     if (userData[k] === undefined || (Array.isArray(userData[k]) && !userData[k][0])) delete userData[k]
