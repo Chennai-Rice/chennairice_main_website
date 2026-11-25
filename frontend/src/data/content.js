@@ -18,8 +18,8 @@ export const ASSETS = {
      visitors kept the old mark indefinitely — the browser never even asked.
      Bump the suffix whenever the artwork changes. */
   // Menu bar (Nov 2026): the round Chennai Rice mark with a cream edge, so it reads on the maroon bar.
-  logo: '/assets/logo-nav-v4.png',
-  logoOnLight: '/assets/logo-full-v3.png',
+  logo: '/assets/logo-nav-v4.webp', // 19 KB instead of the 143 KB PNG (25 Nov 2026)
+  logoOnLight: '/assets/logo-full-v3.webp',
   /* Re-encoded from the original 94.8 MB master (kept in git history as
      assets/hero.mp4): letterbox bars cropped off (1920x918 picture from
      y=80), scaled to 1280 wide, H.264 CRF 27, no audio track — the hero

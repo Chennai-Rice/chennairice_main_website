@@ -67,7 +67,7 @@ export default function ProductGallery({ images, alt, peek = false }) {
           // front of it, placed by his head, so the pack never covers it.
           <>
             <span className="pdp-peek" aria-hidden="true">
-              <img className="pdp-peek-mascot" src="/assets/mascot-peek.webp" width="560" height="650" alt="" />
+              <img className="pdp-peek-mascot" src="/assets/mascot-peek.webp" width="560" height="650" alt="" loading="lazy" decoding="async" />
             </span>
             <span className="pdp-peek-bubble" aria-hidden="true">Coupon code inside!</span>
           </>

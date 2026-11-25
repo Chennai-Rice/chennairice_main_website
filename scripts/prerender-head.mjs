@@ -14,7 +14,7 @@
 //                               serves it at /<page>, without a slash)
 //   dist/app.html               the plain app shell, for every other URL (blog
 //                               posts, cart, …); the app sets their tags itself
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -185,7 +185,7 @@ const appShell = (title) => shell
 writeFileSync(join(DIST, 'app.html'), appShell('Chennai Rice'))
 writeFileSync(join(DIST, '404.html'), appShell('Page not found | Chennai Rice'))
 
-function render({ path, title: rawTitle, description: rawDescription, noindex, image, lang, schema = [], body = '' }) {
+function render({ path, title: rawTitle, description: rawDescription, noindex, image, preload, lang, schema = [], body = '' }) {
   // Plain apostrophes and quotes in titles and descriptions: some crawlers (Bing's checker) misread the curly
   // ’ “ ” as "â€™" (Nov 2026). The text on the page keeps its curly ones.
   const plain = (s) => String(s ?? '').replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
@@ -223,6 +223,8 @@ function render({ path, title: rawTitle, description: rawDescription, noindex, i
       `<link rel="alternate" hreflang="x-default" href="${esc(abs(ALTERNATE[path].en))}" />`,
     ] : []),
     lang === 'ta' ? `<link rel="stylesheet" href="${TAMIL_FONT}" />` : '',
+    // The product page's bag photo starts downloading with the page, not after the app and the catalogue (LCP).
+    preload ? `<link rel="preload" as="image" href="${esc(preload)}" fetchpriority="high" />` : '',
     jsonLd(schema),
   ].filter(Boolean).join('\n    ')
   html = html.replace('</head>', `    ${extra}\n    ${HEAD_SNIPPET}\n  </head>`)
@@ -232,6 +234,13 @@ function render({ path, title: rawTitle, description: rawDescription, noindex, i
   mkdirSync(dirname(file), { recursive: true })
   writeFileSync(file, html)
   return path
+}
+
+// The pack photo the product page shows: its .webp when there is one (as the shop picks it), else the image itself.
+const packPhoto = (img) => {
+  if (!img) return null
+  const webp = img.replace(/.png$/, '.webp')
+  return existsSync(join(DIST, webp.slice(1))) ? webp : img
 }
 
 // Packs as [name, path, one-line description] for the page texts.
@@ -255,6 +264,7 @@ for (const [id, p] of Object.entries(PRODUCT_SEO)) {
   written.push(render({
     // Link previews use the square white-background photo (public/assets/shop/feed, also in the merchant feed).
     path, title: p.title, description: p.description, image: IMAGE[id] && `/assets/shop/feed/${id}.jpg`,
+    preload: packPhoto(IMAGE[id]),
     // Product data for crawlers; the page itself adds the same @id with live prices, so they merge.
     schema: [
       productSchema({ id, seo: p, path, image: IMAGE[id], live: CATALOG.get(id), orgId: ORG_ID }),

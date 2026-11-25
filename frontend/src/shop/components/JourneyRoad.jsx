@@ -18,7 +18,7 @@ export default function JourneyRoad({ steps }) {
           {lane.map((step) => (
             <li key={step.num} className="jr-step">
               <span className="jr-photo">
-                <Img src={step.image} alt="" aria-hidden="true" />
+                <Img src={step.image} alt="" aria-hidden="true" loading="lazy" decoding="async" />
                 <span className="jr-num" aria-hidden="true">{Number(step.num)}</span>
               </span>
               <h3 className="jr-title">{step.title}</h3>

@@ -5,7 +5,7 @@ import { COMPANY_WHATSAPP } from '../services/adEvents.js'
 import './footer.css'
 
 /* Thin-line marks on one 24px grid. Only networks with a real profile URL in
-   FOOTER.social are drawn — an icon pointing at "#" reads as a broken site. */
+   FOOTER.social are drawn â€” an icon pointing at "#" reads as a broken site. */
 const Social = {
   instagram: (
     <>
@@ -53,8 +53,8 @@ export default function Footer() {
       {/* Brand | links | Reach Us. */}
       <div className="container foot-main">
         <div className="foot-brand">
-          <Link to="/" className="foot-logo" aria-label="Chennai Rice Industries — home">
-            <img src="/assets/logo-footer-v2.png" alt="Chennai Rice Industries" width="428" height="460" />
+          <Link to="/" className="foot-logo" aria-label="Chennai Rice Industries â€” home">
+            <img src="/assets/logo-footer-v2.webp" alt="Chennai Rice Industries" width="428" height="460" loading="lazy" decoding="async" />
           </Link>
 
           <h2 className="foot-label">Follow Us</h2>
@@ -168,7 +168,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <img className="foot-sprig" src="/assets/footer-sprig.png" alt="Rice sprig" aria-hidden="true" />
+      <img className="foot-sprig" src="/assets/footer-sprig.png" alt="" aria-hidden="true" loading="lazy" decoding="async" />
 
       <div className="foot-bar">
         <div className="container foot-bar-inner">

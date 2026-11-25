@@ -141,7 +141,9 @@ export default function ProductDetailPage() {
   }
 
   if (loading) {
-    return <SiteLayout skipTo="pdp-main" skipLabel="Skip to content"><main id="pdp-main" className="pdp" /></SiteLayout>;
+    // A screen-high empty page while the packs load: an empty one let the footer show at the top and jump away
+    // when the product appeared (most of the Kitchidi page's mobile layout shift, audit 25 Nov 2026).
+    return <SiteLayout skipTo="pdp-main" skipLabel="Skip to content"><main id="pdp-main" className="pdp" style={{ minHeight: "100vh" }} /></SiteLayout>;
   }
 
   if (!product) {
@@ -218,8 +220,8 @@ export default function ProductDetailPage() {
             corners: one artwork, the left copy mirrored in CSS. */}
         {festive && (
           <>
-            <img className="pdp-garland pdp-garland-right" src="/image.webp" alt="" aria-hidden="true" />
-            <img className="pdp-garland pdp-garland-left" src="/image.webp" alt="" aria-hidden="true" />
+            <img className="pdp-garland pdp-garland-right" src="/assets/garland-v2.webp" alt="" aria-hidden="true" />
+            <img className="pdp-garland pdp-garland-left" src="/assets/garland-v2.webp" alt="" aria-hidden="true" />
           </>
         )}
         <div className="pdp-top">

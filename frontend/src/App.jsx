@@ -146,7 +146,8 @@ export default function App() {
       {isStorefront && <MetaPixel />}
       {isStorefront && <GoogleAnalytics />}
       {!isTool && <Navbar />}
-      <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
+      {/* A full screen while a page's code loads, so the footer never shows at the top and then jumps away (mobile layout shift, audit 25 Nov 2026). */}
+      <Suspense fallback={<div style={{ minHeight: '100vh' }} />}>
       <Routes>
         {/* Must be declared before the "*" catch-all below, which would
             otherwise redirect /admin straight back to the home page. */}
