@@ -207,9 +207,10 @@ export function cleanBot(input = {}) {
   for (const it of items) {
     const def = DEFAULT_BOT.items.find((d) => d.id === it.id)
     if (it.action === 'track_order' && (!it.reply || OLD_TRACK.test(it.reply))) it.reply = TRACK_REPLY
-    if (it.action === 'handoff' && it.id === 'human' && !/70666/.test(it.reply)) {
-      if (!it.reply || it.reply === 'Thank you! 🙏 Our team will get back to you here soon.') it.reply = HUMAN_REPLY
-      if (it.description === 'A person will reply') it.description = HUMAN_DESC
+    // Talk to our team always gives the company number, whatever reply was saved in Bot settings.
+    if (it.action === 'handoff' && it.id === 'human') {
+      if (!/70666/.test(it.reply)) it.reply = it.reply ? `${it.reply.trimEnd()}\n\n📞 You can also call us on +91 70666 46667.` : HUMAN_REPLY
+      if (!/70666/.test(it.description) && (!it.description || /person will reply/i.test(it.description))) it.description = HUMAN_DESC
     }
     if (it.action === 'delivery' && def && (OLD_DELIVERY.test(it.description) || OLD_DELIVERY.test(it.reply) || it.label === '🚚 Delivery to my area')) {
       Object.assign(it, { label: def.label, description: def.description, reply: def.reply })
@@ -652,9 +653,13 @@ export async function answer({ to, phone, name, text, replyId, image = null }, {
     // A greeting ("hi", "hello", "vanakkam") while no one from the team has replied yet is a fresh start: the menu,
     // and the hand-over ends (24 Nov 2026: "hi" got the AI's "we couldn't locate that order" again).
     const greeting = handedOver && !image && isGreeting(bot, text)
+    // Tapping English / தமிழ் (even on an older message) is a fresh start too: the menu in that language, not the AI
+    // (owner, 26 Nov 2026: தமிழ் tapped after "Talk to our team" got an AI reply).
+    const langTap = handedOver && /^lang(_en|_ta)?$/.test(String(replyId || ''))
     // The chat's language (English unless they chose Tamil). Read with the Tamil words too, so "விலை" works.
     const lang = st?.lang === 'ta' ? 'ta' : 'en'
     let decision = ref ? { kind: 'track', ref, handedOver: true }
+      : langTap ? decide(botFor(bot, lang), { text, replyId }, {})
       : greeting ? { kind: 'welcome' }
         : handedOver ? { kind: 'ai', text, image, handedOver: true } : decide(botFor(bot, lang), { text, replyId, image }, st || {})
     // English / தமிழ் first, then the menu (owner, 26 Nov 2026): on every greeting ("hi", also while waiting for the
