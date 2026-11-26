@@ -140,3 +140,10 @@ test('Ponni hub page does not promote a pack that is out of stock', async ({ pag
   await page.waitForLoadState('networkidle')
   await expect(page.locator('.lp a[href="/products/rudra-ponni-rice"]')).toHaveCount(0)
 })
+
+// The chat helper and popups load after the page (26 Nov 2026): they must still appear.
+test('chat helper appears after the page has loaded, and is not in the first paint', async ({ page, tracking }) => {
+  void tracking
+  await page.goto('/')
+  await expect(page.locator('.sk-launcher-btn')).toBeAttached({ timeout: 10000 }) // a tab tucked into the edge on phones
+})

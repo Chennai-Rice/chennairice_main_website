@@ -26,8 +26,8 @@ export const ASSETS = {
      always plays muted — and faststart so it begins playing before it has
      fully downloaded. 6.7 MB, same 44.9 s length. */
   heroVideo: '/assets/hero-v2.mp4',
-  wheatLeft: '/assets/decor/wheat-left.webp',
-  wheatRight: '/assets/decor/rice-stalks.webp', // Golden Rice Stalks (Nov 2026)
+  wheatLeft: '/assets/decor/wheat-left-v2.webp', // 90 KB (was 243 KB, 25 Nov 2026)
+  wheatRight: '/assets/decor/rice-stalks-v2.webp', // Golden Rice Stalks (Nov 2026)
   riceBowl: '/assets/decor/rice-bowl.webp',
   grainsGold: '/assets/decor/grains-gold.webp',
   paddySpray: '/assets/decor/paddy-spray.webp',
@@ -51,7 +51,7 @@ export const NAV_LINKS = [
 export const NAV_CONTEST = {
   to: '/contest',
   label: 'Super Slogan Contest',
-  logo: '/assets/contest-nav-logo.webp',
+  logo: '/assets/contest-nav-logo-v2.webp',
   fallback: '/assets/contest-nav-logo.png',
 }
 
@@ -86,7 +86,7 @@ export const PRODUCTS = [
     packSize: '5 / 10 / 26 KG',
     riceType: 'Rajabhogam',
     idealFor: 'Everyday Family Meals',
-    image: '/assets/shop/packs/special-rajabhogam-v2.png',
+    image: '/assets/shop/packs/special-rajabhogam-v2.webp',
     // Soft rose cream, so the ghost lettering sits behind the red bag.
     tint: '#F8ECEA',
   },
@@ -101,7 +101,7 @@ export const PRODUCTS = [
     packSize: '5 / 26 KG',
     riceType: '1 Year Aged Kitchidi Ponni',
     idealFor: 'Delicious Everyday Meals',
-    image: '/assets/shop/packs/kitchidi-ponni-rice-v3.png',
+    image: '/assets/shop/packs/kitchidi-ponni-rice-v3.webp',
     // Warm peach, from the right half of the pack.
     tint: '#FBEDE6',
   },
@@ -117,7 +117,7 @@ export const PRODUCTS = [
     packSize: '5 / 10 / 26 KG',
     riceType: 'SNR RNR Poompuhar Ponni',
     idealFor: 'Daily Family Dining',
-    image: '/assets/shop/packs/viruchagam-v3.png',
+    image: '/assets/shop/packs/viruchagam-v3.webp',
     // Cool blue-grey, matching the pack's royal blue.
     tint: '#EAEFF6',
   },
@@ -130,7 +130,7 @@ export const PRODUCTS = [
     packSize: '5 / 10 / 26 KG',
     riceType: 'Super Aged Gel Cook Rice',
     idealFor: 'Daily Meals • Variety Rice',
-    image: '/assets/shop/packs/nayara-super-aged-v3.png',
+    image: '/assets/shop/packs/nayara-super-aged-v3.webp',
     // Pale teal, from the pack's green and gold.
     tint: '#E8F2EF',
   },
@@ -230,7 +230,7 @@ export const CELEBS = [
     heading: 'Actor Prabhu, Brand Ambassador of Chennai Rice',
     role: 'Actor',
     quote: 'Good food begins with good rice. Chennai Rice has earned its place at our family table.',
-    image: '/assets/celebs/prabhu.webp',
+    image: '/assets/celebs/prabhu-v2.webp',
     tone: 'lilac',
     figure: 82,
     drop: 0,

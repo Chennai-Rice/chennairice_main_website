@@ -374,7 +374,7 @@ export default function ProductDetailPage() {
 
             {/* Food safety licence, where the buying decision is made. */}
             <p className="pdp-fssai">
-              <img src="/assets/fssai-logo.png" alt="FSSAI" width="835" height="458" loading="lazy" />
+              <img src="/assets/fssai-logo-v2.webp" alt="FSSAI" width="835" height="458" loading="lazy" />
               <span>FSSAI Lic. No. <strong>{FOOTER.fssai}</strong></span>
             </p>
           </div>

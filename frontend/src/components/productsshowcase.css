@@ -247,8 +247,9 @@
   position: relative;
   font-size: 12px;
   letter-spacing: 0.2em;
-  color: #b3a488;
-  padding-bottom: 8px;
+  color: #8a7a5c; /* darker for contrast (WCAG AA), 25 Nov 2026 */
+  padding: 12px 10px 8px; /* 44 px tall tap area on phones */
+  min-width: 44px;
   transition: color 0.3s ease;
 }
 .showcase-page:hover,

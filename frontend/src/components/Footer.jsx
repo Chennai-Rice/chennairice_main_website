@@ -82,7 +82,7 @@ export default function Footer() {
           {/* Food safety licence: the FSSAI logo on a white badge (it is not
               legible on the maroon footer) with the licence number. */}
           <div className="foot-fssai">
-            <img src="/assets/fssai-logo.png" alt="FSSAI" width="835" height="458" loading="lazy" />
+            <img src="/assets/fssai-logo-v2.webp" alt="FSSAI" width="835" height="458" loading="lazy" />
             <p>
               <span>Lic. No.</span>
               <strong>{FOOTER.fssai}</strong>
@@ -168,7 +168,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <img className="foot-sprig" src="/assets/footer-sprig.png" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+      <img className="foot-sprig" src="/assets/footer-sprig-v2.webp" width="198" height="150" alt="" aria-hidden="true" loading="lazy" decoding="async" />
 
       <div className="foot-bar">
         <div className="container foot-bar-inner">

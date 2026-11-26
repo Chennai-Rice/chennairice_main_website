@@ -114,9 +114,12 @@
 .foot-col ul {
   list-style: none;
   display: grid;
-  gap: 11px;
+  gap: 3px; /* the links carry 4 px padding each now, so the spacing stays the same */
 }
 .foot-col a {
+  /* 28 px tall tap area (Lighthouse "tap targets", 25 Nov 2026) */
+  display: inline-block;
+  padding-block: 4px;
   font-size: 14.5px;
   line-height: 1.45;
   color: rgba(246, 239, 220, 0.88);

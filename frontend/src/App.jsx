@@ -1,5 +1,5 @@
 import { MOVED_PAGES } from './seo.js'
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { CartProvider } from './shop/hooks/useCart.jsx'
 import { WishlistProvider } from './shop/hooks/useWishlist.jsx'
@@ -14,14 +14,10 @@ import './styles/shop-bridge.css'
 
 import Navbar from './components/Navbar.jsx'
 import Footer from './components/Footer.jsx'
-import SoruKutty from './components/chatbot/SoruKutty.jsx'
 import ActionBar from './components/ActionBar.jsx'
 import CookieBanner from './components/CookieBanner.jsx'
-import SpinWheel from './components/SpinWheel.jsx'
-import ContestPopup from './components/ContestPopup.jsx'
 
 import HomePage from './pages/HomePage.jsx'
-import ExpoPopup from './components/ExpoPopup.jsx'
 import { LANDING_PAGES } from './data/landing.js'
 import { isCheckoutEnabled } from './config.js'
 
@@ -67,6 +63,34 @@ const DevJournalPage = import.meta.env.DEV ? lazy(() => import('./pages/DevJourn
 const BlogListPage = lazy(() => import('./pages/blog/BlogListPage.jsx'))
 const BlogPostPage = lazy(() => import('./pages/blog/BlogPostPage.jsx'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage.jsx'))
+// The floating helpers (chat, Spin & Win, contest and expo popups) are their own files, loaded once the page has
+// finished loading and the browser is idle: they were in the main file of every page and slowed the first taps
+// (Core Web Vitals INP 321 ms on phones, 26 Nov 2026).
+const SoruKutty = lazy(() => import('./components/chatbot/SoruKutty.jsx'))
+const SpinWheel = lazy(() => import('./components/SpinWheel.jsx'))
+const ContestPopup = lazy(() => import('./components/ContestPopup.jsx'))
+const ExpoPopup = lazy(() => import('./components/ExpoPopup.jsx'))
+
+/** True once the page has loaded and the browser had a quiet moment (or 3 s at the latest). */
+function useAfterLoad() {
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    let idle, timer
+    const go = () => {
+      const ric = window.requestIdleCallback
+      if (ric) idle = ric(() => setReady(true), { timeout: 3000 })
+      else timer = window.setTimeout(() => setReady(true), 1200)
+    }
+    if (document.readyState === 'complete') go()
+    else window.addEventListener('load', go, { once: true })
+    return () => {
+      window.removeEventListener('load', go)
+      if (idle && window.cancelIdleCallback) window.cancelIdleCallback(idle)
+      window.clearTimeout(timer)
+    }
+  }, [])
+  return ready
+}
 
 /* Routes that exist in the navigation and footer but whose copy is still
    being written. Listed here so no link in the footer ever 404s. */
@@ -136,6 +160,8 @@ export default function App() {
      inside them. */
   const isTool = pathname.startsWith('/admin') || pathname.startsWith('/warehouse') || pathname.startsWith('/offers') || pathname.startsWith('/cloud') || pathname.startsWith('/whatsapp') || pathname.startsWith('/w/') || pathname.startsWith('/dev/')
   const isStorefront = !isTool && !isEmbedded
+  const afterLoad = useAfterLoad()
+  const helpers = isStorefront && afterLoad
 
   return (
     <CookieConsentProvider>
@@ -300,14 +326,10 @@ export default function App() {
       </Suspense>
       {!isTool && <Footer />}
       {isStorefront && <ActionBar />}
-      {isStorefront && <SoruKutty />}
       {isStorefront && <CookieBanner />}
-      {/* Spin & Win: shows only while switched on in Warehouse → Settings. */}
-      {isStorefront && <SpinWheel />}
-      {/* Appears 8 seconds into the visit; once closed, not again for a day. */}
-      {isStorefront && <ContestPopup />}
-      {/* Only for visitors from the expo QR code: opens 2 seconds into the visit. */}
-      {isStorefront && <ExpoPopup />}
+      {/* After the page has loaded: the chat helper; Spin & Win (only while switched on in Warehouse → Settings);
+          the contest popup (8 seconds into the visit, once a day); the expo popup (visitors from the expo QR code). */}
+      {helpers && <Suspense fallback={null}><SoruKutty /><SpinWheel /><ContestPopup /><ExpoPopup /></Suspense>}
       </WishlistProvider>
     </CartProvider>
     </CookieConsentProvider>
