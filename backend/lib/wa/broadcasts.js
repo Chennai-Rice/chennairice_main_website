@@ -16,7 +16,7 @@ const FROM = {
   first_name: (p) => String(p.name || '').trim().split(/\s+/)[0] || 'there',
   name: (p) => p.name || 'there',
   city: (p) => p.city || 'your city',
-  last_product: (p) => (p.lastProduct ? `${p.lastProduct}${p.lastPackKg ? ' ' + p.lastPackKg + ' kg' : ''}` : 'Kitchadi Ponni rice'),
+  last_product: (p) => (p.lastProduct ? `${p.lastProduct}${p.lastPackKg ? ' ' + p.lastPackKg + ' kg' : ''}` : 'Kitchidi Ponni rice'),
   prize: (p) => p.prize || 'your offer',
 }
 export const FIELDS = { first_name: 'First name', name: 'Full name', city: 'City', last_product: 'Last product bought', prize: 'Spin & Win prize', fixed: 'Fixed text' }

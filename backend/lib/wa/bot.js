@@ -25,6 +25,8 @@ import { queueEmail, staffRecipients } from '../sales/email.js'
 const SITE = 'https://chennairiceindustries.com'
 // No days or hours promised to customers (owner, 15 Nov 2026): saved replies still carrying them are updated.
 const noHours = (text) => String(text || '')
+  // The brand spelling is Kitchidi Ponni (owner, 26 Nov 2026): saved replies with the old spelling are corrected too.
+  .replace(/Kitchadi Ponni/g, 'Kitchidi Ponni')
   .replace(/\s*\(Mon[–-]Sat,?\s*9\s*am\s*[–-]\s*7\s*pm\)/gi, '')
   .replace(/Our team will reply to you here shortly\./g, 'Our team will get back to you here soon.')
 // Links go through the short /w/ links (ShortLink.jsx adds utm_source=whatsapp): tidy in a chat and credited to WhatsApp.
@@ -36,7 +38,7 @@ export const DEFAULT_BOT = {
   enabled: true,
   greetings: ['hi', 'hii', 'hello', 'hey', 'hai', 'vanakkam', 'menu', 'start', 'good morning', 'good evening'],
   welcome: {
-    text: 'Vanakkam {{name}}! 🙏 Welcome to *Chennai Rice Industries*, makers of Kitchadi Ponni rice.\n\nHow can we help you today? Choose from the menu below.',
+    text: 'Vanakkam {{name}}! 🙏 Welcome to *Chennai Rice Industries*, makers of Kitchidi Ponni rice.\n\nHow can we help you today? Choose from the menu below.',
     style: 'list',
     button: 'Menu',
   },
@@ -82,12 +84,12 @@ export function cleanBot(input = {}) {
     enabled: input.enabled !== false,
     greetings: (Array.isArray(input.greetings) ? input.greetings : String(input.greetings || '').split(',')).map((k) => str(k).toLowerCase()).filter(Boolean).slice(0, 30),
     welcome: {
-      text: String(input.welcome?.text || DEFAULT_BOT.welcome.text).slice(0, 1024),
+      text: noHours(input.welcome?.text || DEFAULT_BOT.welcome.text).slice(0, 1024),
       style: input.welcome?.style === 'buttons' ? 'buttons' : 'list',
       button: str(input.welcome?.button || 'Menu').slice(0, 20),
     },
     items,
-    fallback: String(input.fallback || DEFAULT_BOT.fallback).slice(0, 1024),
+    fallback: noHours(input.fallback || DEFAULT_BOT.fallback).slice(0, 1024),
     handoffHours: Math.min(72, Math.max(1, Number(input.handoffHours) || 12)),
     // Email the team each time the AI passes a chat on ("WhatsApp: … needs a reply"). Off unless switched on
     // (owner, Nov 2026: too many after a bulk message); the chat still opens in the Inbox with the AI's note.

@@ -492,3 +492,11 @@ test('greeting while the chat waits for the team: a fresh start with the menu (n
   for (const t of ['hi', 'Hi!', 'hello', 'Vanakkam', 'menu', 'hi there']) assert.equal(isGreeting(bot, t), true, t)
   for (const t of ['hi I want a refund for my order', 'where is my order', '']) assert.equal(isGreeting(bot, t), false, t)
 })
+
+test('brand spelling: the welcome says Kitchidi Ponni, and a saved welcome with "Kitchadi Ponni" is corrected', async () => {
+  const { DEFAULT_BOT, cleanBot } = await import('../lib/wa/bot.js')
+  assert.match(DEFAULT_BOT.welcome.text, /makers of Kitchidi Ponni rice/)
+  const saved = cleanBot({ ...DEFAULT_BOT, welcome: { ...DEFAULT_BOT.welcome, text: 'Welcome, makers of Kitchadi Ponni rice.' }, fallback: 'Try our Kitchadi Ponni.' })
+  assert.equal(saved.welcome.text, 'Welcome, makers of Kitchidi Ponni rice.')
+  assert.equal(saved.fallback, 'Try our Kitchidi Ponni.')
+})
