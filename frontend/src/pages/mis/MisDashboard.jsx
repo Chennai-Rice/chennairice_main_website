@@ -75,7 +75,13 @@ export default function MisDashboard({ standalone = false }) {
   const [filters, setFilters] = useState({ brand: '', platform: '', month: '', from: '', to: '' })
   const [look, setLook] = useState(loadLook)
   const [which, setWhich] = useState('calls')
-  const [menuOpen, setMenuOpen] = useState(false) // phones: the side panel is a menu that opens on tap
+  const [menuOpen, setMenuOpen] = useState(false) // the side panel is a menu bar: three lines open it
+  useEffect(() => {
+    if (!menuOpen) return undefined
+    const esc = (e) => e.key === 'Escape' && setMenuOpen(false)
+    document.addEventListener('keydown', esc)
+    return () => document.removeEventListener('keydown', esc)
+  }, [menuOpen])
 
   const load = useCallback(async (refresh = false) => {
     setLoading(true)
@@ -155,6 +161,7 @@ export default function MisDashboard({ standalone = false }) {
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">{menuOpen ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}</svg>
           </button>
         </div>
+        <div className="mis-dropdown">
         {(data?.leads || data?.sales?.length > 0) && (
           <div className="mis-theme mis-which" role="group" aria-label="Sheet tab">
             {[['calls', 'Calls'], ...(data?.leads ? [['leads', 'Leads']] : []), ...(data?.sales?.length ? [['sales', 'Sales']] : [])].map(([id, label]) => (
@@ -185,9 +192,10 @@ export default function MisDashboard({ standalone = false }) {
             <button type="button" className="mis-btn" onClick={async () => { await signOutStaff(); window.location.reload() }}><Icon name="out" /> Sign out</button>
           )}
         </div>
+        </div>
       </aside>
 
-      <main className="mis-main">
+      <main className="mis-main" onPointerDown={() => menuOpen && setMenuOpen(false)}>
         <header className="mis-head">
           <div>
             <h1>{title}</h1>
