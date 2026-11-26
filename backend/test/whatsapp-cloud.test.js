@@ -124,8 +124,9 @@ test('bot: hi gets the welcome menu as a list with every item', async () => {
   assert.equal(m.interactive.type, 'list')
   assert.match(m.interactive.body.text, /Vanakkam Ravi!/)
   const rows = m.interactive.action.sections[0].rows
-  assert.equal(rows.length, DEFAULT_BOT.items.length + 1) // + the English / தமிழ் row
-  assert.equal(rows.at(-1).id, 'lang')
+  assert.equal(rows.length, DEFAULT_BOT.items.length + 1) // + Change Language
+  // The 8 options of the content PDF, in order: Change Language is 07, Bulk Order 08.
+  assert.deepEqual(rows.map((r) => r.id), ['shop', 'prices', 'track', 'offers', 'delivery', 'human', 'lang', 'bulk'])
   assert.ok(m.interactive.action.sections[0].rows.every((row) => row.title.length <= 24))
 })
 
@@ -172,14 +173,14 @@ test('bot: menu taps, keywords, order numbers, PIN codes and the fallback', asyn
   const offers = await render(bot, decide(bot, { replyId: 'offers' }), { phone: '9876543210' }, deps)
   assert.match(says(offers.messages[0]), /SPIN-A745B4/)
   const prices = await render(bot, decide(bot, { replyId: 'prices' }), {}, deps)
-  // Prices: no list in the chat, a line and an "Our product range" button to the website (26 Nov 2026).
+  // Prices: no list in the chat, the option's text and a View Prices button to the website.
   assert.equal(prices.messages.length, 1)
   assert.ok(!says(prices.messages[0]).includes('₹'))
-  assert.deepEqual(prices.messages[0].interactive.action.parameters, { display_text: 'Our product range', url: 'https://chennairiceindustries.com/w/shop-bot' })
+  assert.deepEqual(prices.messages[0].interactive.action.parameters, { display_text: 'View Prices', url: 'https://chennairiceindustries.com/w/shop-bot' })
   const taPrices = await render(bot, decide(bot, { replyId: 'prices' }), { lang: 'ta' }, deps)
   assert.ok([...taPrices.messages[0].interactive.action.parameters.display_text].length <= 20)
   const aiPrices = await render(bot, { kind: 'ai', text: 'price list' }, {}, { ...deps, ai: async () => ({ reply: 'Here 👇', handoff: false, showPrices: true }) })
-  assert.equal(aiPrices.messages[1].interactive.action.parameters.display_text, 'Our product range')
+  assert.equal(aiPrices.messages[1].interactive.action.parameters.display_text, 'View Prices')
   const hand = await render(bot, decide(bot, { replyId: 'human' }), {}, deps)
   assert.equal(hand.state.pausedHours, 12)
   const fb = await render(bot, decide(bot, { text: 'zzz' }), {}, deps)
@@ -581,17 +582,17 @@ test('links: our shop / track-order link is a button under the message, not a ba
   const i = shop.messages[0].interactive
   assert.equal(i.type, 'cta_url')
   assert.equal(i.action.parameters.url, 'https://chennairiceindustries.com/w/shop-bot')
-  assert.equal(i.action.parameters.display_text, '🛒 Shop now')
+  assert.equal(i.action.parameters.display_text, 'Shop Now')
   assert.ok(!i.body.text.includes('https://'))
-  assert.match(i.body.text, /home delivery here\.\n\nPay by UPI/)
+  assert.match(i.body.text, /^Order your favourite Chennai Rice online/)
   const ta = await render(bot, decide(botFor(bot, 'ta'), { replyId: 'shop' }), { lang: 'ta' }, deps)
-  assert.equal(ta.messages[0].interactive.action.parameters.display_text, '🛒 ஆர்டர் செய்ய')
+  assert.equal(ta.messages[0].interactive.action.parameters.display_text, 'அரிசி வாங்க')
   // Track my order: still asks for the number, with a Track order button to the website.
   const ask = await render(bot, decide(bot, { replyId: 'track' }), {}, deps)
   assert.equal(ask.state.awaiting, 'order_number')
-  assert.deepEqual(ask.messages[0].interactive.action.parameters, { display_text: '📦 Track order', url: 'https://chennairiceindustries.com/track-order' })
+  assert.deepEqual(ask.messages[0].interactive.action.parameters, { display_text: 'Track Order', url: 'https://chennairiceindustries.com/track-order' })
   const spin = await render(bot, decide(bot, { replyId: 'offers' }), { phone: '9000000000' }, deps)
-  assert.equal(spin.messages[0].interactive.action.parameters.display_text, '🎡 Spin & Win')
+  assert.equal(spin.messages[0].interactive.action.parameters.display_text, 'View Offers')
   const track = linkMsg('Full details: https://chennairiceindustries.com/track-order?order=CR-1')
   assert.equal(track.interactive.action.parameters.display_text, '📦 Track order')
   assert.ok([...'📦 ஆர்டர் நிலை'].length <= 20)
@@ -599,35 +600,40 @@ test('links: our shop / track-order link is a button under the message, not a ba
   assert.equal(linkMsg('Hello').type, 'text')
   assert.equal(linkMsg('See https://example.com/x').type, 'text')
   assert.equal(linkMsg('https://chennairiceindustries.com/a and https://chennairiceindustries.com/b').type, 'text')
-  assert.match(logText(shop.messages[0]), /\[🛒 Shop now: https:\/\/chennairiceindustries\.com\/w\/shop-bot\]/)
+  assert.match(logText(shop.messages[0]), /\[Shop Now: https:\/\/chennairiceindustries\.com\/w\/shop-bot\]/)
 })
 
 test('delivery: standard charges for Tamil Nadu and other states (no PIN code); track by order or shipment ID; old saved texts updated', async () => {
   const charges = { deliveryCharges: async () => ({ TN: [{ packKg: 5, from: 54, to: 54 }, { packKg: 26, from: 150, to: 150 }], OTHER: [{ packKg: 5, from: 120, to: 140 }] }) }
-  const r = await render(bot, decide(bot, { replyId: 'delivery' }), {}, charges)
+  const intro = await render(bot, decide(bot, { replyId: 'delivery' }), {}, charges)
+  assert.match(says(intro.messages[0]), /^Want to know your delivery charges?/)
+  assert.equal(intro.messages[0].interactive.action.buttons[0].reply.id, 'delivery_rates')
+  const r = await render(bot, decide(bot, { replyId: 'delivery_rates' }), {}, charges)
   assert.equal(r.state.awaiting, null) // no PIN code asked
   const body = says(r.messages[0])
   assert.match(body, /\*Tamil Nadu:\* 5 kg \*₹54\*  ·  26 kg \*₹150\*/)
   assert.match(body, /\*Other states:\* 5 kg \*₹120–₹140\*/)
   assert.ok(!/\bPIN\b|MRP/i.test(body))
   assert.equal(r.messages[0].interactive.action.parameters.display_text, '🛒 Shop now')
-  const none = await render(bot, decide(bot, { replyId: 'delivery' }), {}, {})
+  const none = await render(bot, decide(bot, { replyId: 'delivery_rates' }), {}, {})
   assert.match(says(none.messages[0]), /standard rate for Tamil Nadu and for other states/)
-  const ta = await render(bot, decide(botFor(bot, 'ta'), { replyId: 'delivery' }), { lang: 'ta' }, charges)
+  const ta = await render(bot, decide(botFor(bot, 'ta'), { replyId: 'delivery_rates' }), { lang: 'ta' }, charges)
   assert.match(says(ta.messages[0]), /\*தமிழ்நாடு:\*/)
   // Nothing in the menu or the bot's own texts mentions a PIN code or an MRP discount.
   for (const lang of ['en', 'ta']) assert.ok(!/\bPIN\b|MRP/i.test(JSON.stringify(menuMsg(botFor(bot, lang), 'x'))), lang)
   // Track: an order number or a shipment ID.
   assert.deepEqual(decide(bot, { text: 'my shipment SHP-K7M4-Q9X2' }).ref, { shipmentId: 'SHP-K7M4-Q9X2' })
   const ask = await render(bot, decide(bot, { replyId: 'track' }), {}, deps)
-  assert.match(says(ask.messages[0]), /order number .* or shipment ID/)
-  // Settings saved before today: the PIN-code delivery item and the old track text are replaced.
+  assert.match(says(ask.messages[0]), /Order ID or Shipment ID/)
+  // Settings saved before the 8-option content (no contentVersion): the PIN-code delivery item and the old track
+  // text are replaced by the new menu.
   const old = JSON.parse(JSON.stringify(DEFAULT_BOT))
+  delete old.contentVersion
   Object.assign(old.items.find((i) => i.id === 'delivery'), { label: '🚚 Delivery to my area', description: 'Check your PIN code', reply: 'Please send your 6-digit PIN code.' })
   old.items.find((i) => i.id === 'track').reply = 'Please send your order number. It looks like *CR-20261111-AB12C* and is in your order email and SMS.'
   const fixed = cleanBot(old)
-  assert.equal(fixed.items.find((i) => i.id === 'delivery').label, '🚚 Delivery charges')
-  assert.match(fixed.items.find((i) => i.id === 'track').reply, /shipment ID/)
+  assert.equal(fixed.items.find((i) => i.id === 'delivery').label, '🚚 Delivery Charges')
+  assert.match(fixed.items.find((i) => i.id === 'track').reply, /Shipment ID/)
 })
 
 test('talk to our team: the reply and the menu row give the company number', async () => {
@@ -669,4 +675,51 @@ test('after "Talk to our team": tapping தமிழ் gives the Tamil menu (no
   const human = cleanBot(saved).items.find((i) => i.id === 'human')
   assert.equal(human.reply, 'Thanks! 🙏 Our team will get back to you here soon.\n\n📞 You can also call us on +91 70666 46667.')
   assert.match(human.description, /70666 46667/)
+})
+
+test('8-option content (owner PDF, 26 Nov 2026): texts, buttons, Change Language, and the bulk enquiry flow to the team', async () => {
+  const { answer, changeLanguageMsg, CONTENT_VERSION } = await import('../lib/wa/bot.js')
+  // Every option's button, in English and Tamil, within WhatsApp's 20 characters.
+  for (const lang of ['en', 'ta']) {
+    for (const it of botFor(bot, lang).items) assert.ok(!it.button || [...it.button].length <= 20, `${lang} ${it.id}`)
+  }
+  assert.equal(botFor(bot, 'ta').items.find((i) => i.id === 'human').label, '👤 உதவி பெற')
+  // Change Language: the question in the chat's language, buttons தமிழ் then English.
+  const ch = changeLanguageMsg('ta').interactive
+  assert.equal(ch.body.text, 'எந்த மொழியில் தொடர விரும்புகிறீர்கள்?')
+  assert.deepEqual(ch.action.buttons.map((b) => b.reply.id), ['lang_ta', 'lang_en'])
+  assert.equal(decide(bot, { replyId: 'lang' }).change, true)
+  // Bulk Order → Bulk Enquiry → details → thanks; the details reach the team as a note.
+  const intro = await render(bot, decide(bot, { replyId: 'bulk' }), {}, deps)
+  assert.match(says(intro.messages[0]), /^Looking to purchase rice in bulk/)
+  assert.equal(intro.messages[0].interactive.action.buttons[0].reply.title, 'Bulk Enquiry')
+  const ask = await render(bot, decide(bot, { replyId: 'bulk_enquiry' }), {}, deps)
+  assert.equal(ask.state.awaiting, 'bulk_details')
+  assert.match(says(ask.messages[0]), /Required Quantity \(kg\)/)
+  // "menu" while waiting leaves the step.
+  assert.equal(decide(bot, { text: 'menu' }, { awaiting: 'bulk_details', awaiting_at: new Date() }).kind, 'welcome')
+  const notes = []
+  const query = async (s, args = []) => {
+    if (s.startsWith('select * from wa_bot_state')) return { rows: [{ phone: '9876543210', lang: 'en', awaiting: 'bulk_details', awaiting_at: new Date() }] }
+    if (s.includes('replies_today from wa_bot_state')) return { rows: [{ n: 0 }] }
+    if (s.startsWith('insert into wa_notes')) notes.push(args[1])
+    return { rows: [], rowCount: 1 }
+  }
+  const sent = []
+  const fetchImpl = async (url, init) => { sent.push(JSON.parse(init.body)); return { ok: true, status: 200, json: async () => ({ messages: [{ id: 'w' + sent.length }] }), text: async () => '{}' } }
+  const prev = process.env.WHATSAPP_TOKEN
+  process.env.WHATSAPP_TOKEN = 'test'
+  try {
+    await answer({ to: '919876543210', phone: '9876543210', name: 'Test Buyer', text: 'Test Stores, retail, 500 kg, Erode 638001' }, { query, fetchImpl })
+  } finally {
+    if (prev === undefined) delete process.env.WHATSAPP_TOKEN
+    else process.env.WHATSAPP_TOKEN = prev
+  }
+  assert.match(sent[0].text.body, /^Thank you for your interest in Chennai Rice! Our sales team will contact you shortly/)
+  assert.match(notes[0], /Bulk order enquiry from Test Buyer: Test Stores, retail, 500 kg/)
+  // Settings saved before this content take the new 8-option menu (and keep an item added in the dashboard).
+  const saved = cleanBot({ ...DEFAULT_BOT, contentVersion: 1, items: [{ id: 'shop', label: '🛒 Order rice', action: 'reply', reply: 'old' }, { id: 'festival', label: '🪔 Festival offer', action: 'reply', reply: 'x' }] })
+  assert.equal(saved.contentVersion, CONTENT_VERSION)
+  assert.deepEqual(saved.items.map((i) => i.id), ['shop', 'prices', 'track', 'offers', 'delivery', 'human', 'bulk', 'festival'])
+  assert.equal(saved.items[0].label, '🛒 Buy Rice')
 })

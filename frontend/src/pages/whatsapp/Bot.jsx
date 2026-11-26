@@ -6,9 +6,10 @@ const ACTIONS = {
   reply: 'Reply with a message',
   track_order: 'Track an order (asks for the order number)',
   offers: "Show this number's offers (spin / referral codes)",
-  prices: "Show today's prices (live)",
-  delivery: 'Check delivery (asks for a PIN code)',
+  prices: 'Prices: a View Prices button to the website',
+  delivery: 'Delivery charges (Tamil Nadu / other states)',
   handoff: 'Hand over to our team (bot goes quiet)',
+  bulk: 'Bulk order enquiry (asks for business details, then the team)',
 }
 const newItem = (n) => ({ id: `item${Date.now().toString(36)}${n}`, label: '', description: '', keywords: [], action: 'reply', reply: '' })
 

@@ -31,7 +31,7 @@ const noHours = (text) => String(text || '')
   .replace(/Our team will reply to you here shortly\./g, 'Our team will get back to you here soon.')
 // Links go through the short /w/ links (ShortLink.jsx adds utm_source=whatsapp): tidy in a chat and credited to WhatsApp.
 const rupees = (n) => '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: Number(n) % 1 ? 2 : 0, maximumFractionDigits: 2 })
-export const ACTIONS = ['reply', 'track_order', 'offers', 'prices', 'delivery', 'handoff']
+export const ACTIONS = ['reply', 'track_order', 'offers', 'prices', 'delivery', 'handoff', 'bulk']
 const MAX_REPLIES_A_DAY = 60 // per chat: a safety net against loops with another bot
 
 // Track: the order number or the shipment ID; Delivery: the standard charges by state, no PIN code (owner, 26 Nov 2026).
@@ -47,8 +47,16 @@ const OLD_DELIVERY = /PIN/i
 const HUMAN_DESC = 'A person will reply, or call 70666 46667'
 const HUMAN_REPLY = 'Thank you! 🙏 Our team will get back to you here soon.\n\n📞 You can also call us on +91 70666 46667.'
 
+// The menu, word for word from "WhatsApp chatbot content – English & Tamil, eight menu options" (owner, 26 Nov 2026).
+// Each option: its text, then a button (a link to the website, or a reply button for the next step).
+// Bump CONTENT_VERSION when the default texts change: settings saved before then take the new menu (cleanBot).
+export const CONTENT_VERSION = 2
+const TALK_REPLY = "Need help? We're here for you! Share your questions with us. Our customer support team will assist you shortly.\n+91 70666 46667"
+const TALK_REPLY_TA = 'உங்களுக்கு ஏதேனும் உதவி வேண்டுமா? உங்கள் கேள்விகளை எங்களுடன் பகிர்ந்துகொள்ளுங்கள். எங்கள் வாடிக்கையாளர் சேவைக் குழு விரைவில் உங்களுக்கு உதவும்.\n+91 70666 46667'
+
 export const DEFAULT_BOT = {
   enabled: true,
+  contentVersion: CONTENT_VERSION,
   greetings: ['hi', 'hii', 'hello', 'hey', 'hai', 'vanakkam', 'menu', 'start', 'good morning', 'good evening'],
   welcome: {
     text: 'Vanakkam {{name}}! 🙏 Welcome to *Chennai Rice Industries*, makers of Kitchidi Ponni rice.\n\nHow can we help you today? Choose from the menu below.',
@@ -56,18 +64,26 @@ export const DEFAULT_BOT = {
     button: 'Menu',
   },
   items: [
-    { id: 'shop', label: '🛒 Order rice', description: 'Buy online, home delivery', keywords: ['buy', 'order rice', 'shop', 'purchase', 'website'], action: 'reply',
-      reply: 'You can order online with home delivery here:\n' + SITE + '/w/shop-bot\n\nPay by UPI, card or net banking. 🍚' },
-    { id: 'prices', label: '💰 Prices', description: 'Today\'s price for every pack', keywords: ['price', 'rate', 'cost', 'how much', 'vilai'], action: 'prices',
-      reply: 'Here are today\'s prices:' },
-    { id: 'track', label: '📦 Track my order', description: 'Where is my order?', keywords: ['track', 'where is my order', 'order status', 'delivery status', 'not received'], action: 'track_order',
-      reply: TRACK_REPLY },
-    { id: 'offers', label: '🎁 My offers', description: 'Spin & Win and referral codes', keywords: ['offer', 'coupon', 'code', 'discount', 'spin', 'reward'], action: 'offers',
-      reply: 'You have no active offers on this number right now. Spin the wheel on our website for a chance to win up to ₹150 OFF: ' + SITE + '/w/spin-bot' },
-    { id: 'delivery', label: '🚚 Delivery charges', description: 'Tamil Nadu and other states', keywords: ['deliver', 'delivery charge', 'pincode', 'pin code', 'shipping', 'courier'], action: 'delivery',
-      reply: DELIVERY_REPLY },
-    { id: 'human', label: '👤 Talk to our team', description: HUMAN_DESC, keywords: ['agent', 'human', 'person', 'call me', 'talk', 'help', 'complaint', 'phone number', 'contact'], action: 'handoff',
-      reply: HUMAN_REPLY },
+    { id: 'shop', label: '🛒 Buy Rice', description: 'Order online, home delivery', keywords: ['buy', 'order rice', 'shop', 'purchase', 'website', 'buy rice'], action: 'reply',
+      reply: 'Order your favourite Chennai Rice online and get it delivered to your doorstep. Choose your rice and pack size to place your order.',
+      button: 'Shop Now', link: SITE + '/w/shop-bot' },
+    { id: 'prices', label: '💰 Check Prices', description: '5, 10 and 26 kg packs', keywords: ['price', 'prices', 'rate', 'cost', 'how much', 'vilai', 'check prices'], action: 'prices',
+      reply: "Looking for today's rice prices? Check the latest prices of our rice varieties in 5 kg, 10 kg and 26 kg packs.",
+      button: 'View Prices', link: SITE + '/w/shop-bot' },
+    { id: 'track', label: '📦 Track My Order', description: 'Order ID or Shipment ID', keywords: ['track', 'where is my order', 'order status', 'delivery status', 'not received', 'track my order'], action: 'track_order',
+      reply: 'Want to know where your order is? Enter your Order ID or Shipment ID to check your order status. You can find these details in your order confirmation SMS or email.',
+      button: 'Track Order', link: SITE + '/track-order' },
+    { id: 'offers', label: '🎁 My Offers', description: 'Spin & Win, referral, coupons', keywords: ['offer', 'offers', 'coupon', 'code', 'discount', 'spin', 'reward', 'my offers'], action: 'offers',
+      reply: 'Enjoy more savings with Chennai Rice! Explore your available Spin & Win rewards, referral offers and discount coupons.',
+      button: 'View Offers', link: SITE + '/w/spin-bot' },
+    { id: 'delivery', label: '🚚 Delivery Charges', description: 'Tamil Nadu and other states', keywords: ['deliver', 'delivery charge', 'delivery charges', 'pincode', 'pin code', 'shipping', 'courier'], action: 'delivery',
+      reply: 'Want to know your delivery charges? Delivery charges vary depending on your location and pack size. Check the applicable delivery charges for Tamil Nadu and other states.',
+      button: 'Check Charges' },
+    { id: 'human', label: '👤 Talk to Us', description: 'Call or chat: 70666 46667', keywords: ['agent', 'human', 'person', 'call me', 'talk', 'help', 'complaint', 'phone number', 'contact', 'talk to us'], action: 'handoff',
+      reply: TALK_REPLY },
+    { id: 'bulk', label: '🏢 Bulk Order', description: 'Hotels, shops, caterers, traders', keywords: ['bulk', 'wholesale', 'bulk order', 'dealer', 'distributor', 'hotel', 'catering'], action: 'bulk',
+      reply: 'Looking to purchase rice in bulk for your business? We supply rice to hotels, restaurants, caterers, retailers and wholesalers. Share your requirements, and our sales team will assist you with pricing and order details.',
+      button: 'Bulk Enquiry' },
   ],
   fallback: 'Sorry, I did not get that. 🙏 Please choose from the menu, or type *menu* any time.',
   handoffHours: 12,
@@ -81,17 +97,26 @@ export const DEFAULT_BOT = {
       button: 'மெனு',
     },
     items: {
-      shop: { label: '🛒 அரிசி ஆர்டர்', description: 'ஆன்லைனில் வாங்கலாம், வீட்டுக்கே டெலிவரி', keywords: ['ஆர்டர்', 'வாங்க'],
-        reply: 'வீட்டுக்கே டெலிவரியுடன் இங்கே ஆன்லைனில் ஆர்டர் செய்யலாம்:\n' + SITE + '/w/shop-bot\n\nUPI, கார்டு அல்லது நெட் பேங்கிங் மூலம் பணம் செலுத்தலாம். 🍚' },
-      prices: { label: '💰 விலை', description: 'ஒவ்வொரு பேக்கின் இன்றைய விலை', keywords: ['விலை', 'ரேட்'], reply: 'இன்றைய விலை' },
-      track: { label: '📦 ஆர்டர் நிலை', description: 'என் ஆர்டர் எங்கே?', keywords: ['ஆர்டர் நிலை', 'டிராக்'],
-        reply: TRACK_REPLY_TA },
-      offers: { label: '🎁 என் சலுகைகள்', description: 'Spin & Win மற்றும் பரிந்துரை குறியீடுகள்', keywords: ['சலுகை', 'தள்ளுபடி', 'கூப்பன்'],
-        reply: 'இந்த எண்ணில் தற்போது சலுகைகள் எதுவும் இல்லை. ₹150 வரை தள்ளுபடி வெல்ல எங்கள் இணையதளத்தில் சக்கரத்தைச் சுற்றுங்கள்: ' + SITE + '/w/spin-bot' },
+      shop: { label: '🛒 அரிசி வாங்க', description: 'ஆன்லைன் ஆர்டர், வீட்டுக்கே டெலிவரி', keywords: ['ஆர்டர்', 'வாங்க', 'அரிசி வாங்க'],
+        reply: 'உங்களுக்குப் பிடித்த சென்னை ரைஸ் அரிசியை ஆன்லைனில் ஆர்டர் செய்து வீட்டுக்கே பெற்றிடுங்கள். உங்களுக்கு விருப்பமான அரிசி வகையையும் அளவையும் தேர்வு செய்யுங்கள்.',
+        button: 'அரிசி வாங்க' },
+      prices: { label: '💰 விலை பார்க்க', description: '5, 10 மற்றும் 26 கிலோ', keywords: ['விலை', 'ரேட்', 'விலை பார்க்க'],
+        reply: 'இன்றைய அரிசி விலையைத் தெரிந்துகொள்ள வேண்டுமா? 5 கிலோ, 10 கிலோ மற்றும் 26 கிலோ அரிசி மூட்டைகளின் விலையைப் பாருங்கள்.',
+        button: 'விலை பார்க்க' },
+      track: { label: '📦 ஆர்டர் நிலை', description: 'ஆர்டர் எண் அல்லது Shipment ID', keywords: ['ஆர்டர் நிலை', 'டிராக்'],
+        reply: 'உங்கள் ஆர்டர் எங்கே இருக்கிறது என்று தெரிந்துகொள்ள வேண்டுமா? உங்கள் ஆர்டர் எண் அல்லது Shipment ID-ஐ அனுப்புங்கள். இந்த விவரங்கள் உங்களுக்கு வந்த SMS அல்லது Email-ல் இருக்கும்.',
+        button: 'ஆர்டர் நிலை' },
+      offers: { label: '🎁 என் சலுகைகள்', description: 'Spin & Win, பரிந்துரை, கூப்பன்கள்', keywords: ['சலுகை', 'தள்ளுபடி', 'கூப்பன்'],
+        reply: 'சென்னை ரைஸ் அரிசியைச் சலுகை விலையில் வாங்கி மகிழுங்கள்! உங்களுக்கான Spin & Win பரிசுகள், பரிந்துரைச் சலுகைகள் மற்றும் தள்ளுபடி கூப்பன்களைப் பாருங்கள்.',
+        button: 'சலுகை பார்க்க' },
       delivery: { label: '🚚 டெலிவரி கட்டணம்', description: 'தமிழ்நாடு மற்றும் பிற மாநிலங்கள்', keywords: ['டெலிவரி', 'கட்டணம்', 'பின்கோடு'],
-        reply: DELIVERY_REPLY_TA },
-      human: { label: '👤 குழுவிடம் பேச', description: 'ஒருவர் பதில் அளிப்பார் அல்லது 70666 46667-ஐ அழைக்கவும்', keywords: ['உதவி', 'புகார்', 'பேச'],
-        reply: 'நன்றி! 🙏 எங்கள் குழு விரைவில் இங்கே உங்களைத் தொடர்புகொள்ளும்.\n\n📞 எங்களை அழைக்கவும்: +91 70666 46667' },
+        reply: 'டெலிவரி கட்டணம் எவ்வளவு என்று தெரிந்துகொள்ள வேண்டுமா? உங்கள் பகுதி மற்றும் அரிசி மூட்டையின் எடையைப் பொறுத்து டெலிவரி கட்டணம் மாறுபடும். தமிழ்நாடு மற்றும் பிற மாநிலங்களுக்கான டெலிவரி கட்டணத்தைப் பாருங்கள்.',
+        button: 'கட்டணம் பார்க்க' },
+      human: { label: '👤 உதவி பெற', description: 'அழைக்க அல்லது சாட்: 70666 46667', keywords: ['உதவி', 'புகார்', 'பேச', 'உதவி பெற'],
+        reply: TALK_REPLY_TA },
+      bulk: { label: '🏢 மொத்த ஆர்டர்', description: 'ஹோட்டல், கடை, கேட்டரிங், வியாபாரிகள்', keywords: ['மொத்த', 'மொத்த ஆர்டர்', 'ஹோல்சேல்'],
+        reply: 'உங்கள் வியாபாரத்திற்கு மொத்தமாக அரிசி தேவையா? ஹோட்டல்கள், உணவகங்கள், கேட்டரிங் நிறுவனங்கள், சில்லறை மற்றும் மொத்த வியாபாரிகளுக்கு அரிசி வழங்குகிறோம். உங்கள் தேவைகளைத் தெரிவியுங்கள். விலை மற்றும் ஆர்டர் விவரங்களை அறிய எங்கள் விற்பனைக் குழு உங்களுக்கு உதவும்.',
+        button: 'மொத்த ஆர்டர்' },
     },
     fallback: 'மன்னிக்கவும், புரியவில்லை. 🙏 மெனுவில் தேர்ந்தெடுக்கவும், அல்லது எப்போது வேண்டுமானாலும் *menu* என்று டைப் செய்யவும்.',
   },
@@ -110,6 +135,17 @@ export function languageMsg() {
     },
   }
 }
+/** Option 07, Change Language: "Which language would you like to continue in?" with தமிழ் / English. */
+export function changeLanguageMsg(lang = 'en') {
+  return {
+    type: 'interactive',
+    interactive: {
+      type: 'button',
+      body: { text: lang === 'ta' ? 'எந்த மொழியில் தொடர விரும்புகிறீர்கள்?' : 'Which language would you like to continue in?' },
+      action: { buttons: [{ type: 'reply', reply: { id: 'lang_ta', title: 'தமிழ்' } }, { type: 'reply', reply: { id: 'lang_en', title: 'English' } }] },
+    },
+  }
+}
 const LANG_WORDS = { english: 'en', eng: 'en', tamil: 'ta', 'தமிழ்': 'ta' }
 const PICK_WORDS = ['language', 'lang', 'மொழி', 'change language']
 
@@ -123,7 +159,7 @@ export function botFor(bot, lang) {
     welcome: { ...bot.welcome, text: ta.welcome?.text || bot.welcome.text, button: ta.welcome?.button || bot.welcome.button },
     items: (bot.items || []).map((it) => {
       const t = ta.items?.[it.id]
-      return t ? { ...it, label: t.label || it.label, description: t.description ?? it.description, reply: t.reply || it.reply, keywords: [...(it.keywords || []), ...(t.keywords || [])] } : it
+      return t ? { ...it, label: t.label || it.label, description: t.description ?? it.description, reply: t.reply || it.reply, button: t.button || it.button, keywords: [...(it.keywords || []), ...(t.keywords || [])] } : it
     }),
     fallback: ta.fallback || bot.fallback,
   }
@@ -151,8 +187,12 @@ const TEXT = {
     handoff: 'Our team will reply to you shortly.',
     askOrder: TRACK_REPLY,
     trackWeb: 'Or track it yourself on our website',
-    products: '🍚 See all our rice and today’s prices on our website: 5, 10 and 26 kg packs, GST included. Delivery is a standard charge for Tamil Nadu and for other states, shown before you pay.',
-    productsButton: 'Our product range',
+    products: "Looking for today's rice prices? Check the latest prices of our rice varieties in 5 kg, 10 kg and 26 kg packs.",
+    productsButton: 'View Prices',
+    deliveryHead: '🚚 *Delivery charges* (per pack)',
+    bulkDetails: 'Please share the following details to help us serve you better:\n• Name\n• Business / Shop Name\n• Business Type\n• Required Quantity (kg)\n• Location / Pincode\n• Contact Number',
+    bulkThanks: 'Thank you for your interest in Chennai Rice! Our sales team will contact you shortly to discuss your bulk order requirements.',
+    offersNone: 'No active offers on this number right now.',
     status: {
       placed: 'received ✅ and waiting to be confirmed', confirmed: 'confirmed ✅ and being packed', packed: 'packed 📦 and ready to leave our mill',
       shipped: 'on the way 🚚', delivered: 'delivered ✅', cancelled: 'cancelled', returned: 'returned',
@@ -178,8 +218,12 @@ const TEXT = {
     handoff: 'எங்கள் குழு விரைவில் பதில் அளிக்கும்.',
     askOrder: TRACK_REPLY_TA,
     trackWeb: 'அல்லது எங்கள் இணையதளத்தில் நீங்களே பார்க்கலாம்',
-    products: '🍚 எங்கள் அனைத்து அரிசி வகைகளும் இன்றைய விலையும் இணையதளத்தில் உள்ளன: 5, 10 மற்றும் 26 கிலோ பேக்குகள், GST உட்பட. டெலிவரி கட்டணம் தமிழ்நாட்டுக்கும் பிற மாநிலங்களுக்கும் நிலையானது; பணம் செலுத்தும் முன் காட்டப்படும்.',
-    productsButton: 'எங்கள் அரிசி வகைகள்',
+    products: 'இன்றைய அரிசி விலையைத் தெரிந்துகொள்ள வேண்டுமா? 5 கிலோ, 10 கிலோ மற்றும் 26 கிலோ அரிசி மூட்டைகளின் விலையைப் பாருங்கள்.',
+    productsButton: 'விலை பார்க்க',
+    deliveryHead: '🚚 *டெலிவரி கட்டணம்* (ஒரு மூட்டைக்கு)',
+    bulkDetails: 'உங்களுக்கு சிறந்த முறையில் உதவ, கீழ்க்கண்ட விவரங்களை அனுப்புங்கள்:\n• உங்கள் பெயர்\n• கடை / நிறுவனத்தின் பெயர்\n• வியாபார வகை\n• தேவையான அரிசி அளவு (கிலோ)\n• ஊர் / பின்கோடு\n• தொடர்பு எண்',
+    bulkThanks: 'சென்னை ரைஸ் மீது நீங்கள் காட்டும் ஆர்வத்திற்கு நன்றி! உங்கள் மொத்த ஆர்டர் தேவைகள் குறித்து எங்கள் விற்பனைக் குழு விரைவில் உங்களைத் தொடர்புகொள்ளும்.',
+    offersNone: 'இந்த எண்ணில் தற்போது சலுகைகள் எதுவும் இல்லை.',
     status: {
       placed: 'பெறப்பட்டது ✅, உறுதிப்படுத்தக் காத்திருக்கிறது', confirmed: 'உறுதி செய்யப்பட்டது ✅, பேக் செய்யப்படுகிறது', packed: 'பேக் செய்யப்பட்டது 📦, எங்கள் ஆலையிலிருந்து புறப்படத் தயார்',
       shipped: 'வழியில் உள்ளது 🚚', delivered: 'டெலிவரி செய்யப்பட்டது ✅', cancelled: 'ரத்து செய்யப்பட்டது', returned: 'திருப்பி அனுப்பப்பட்டது',
@@ -203,6 +247,8 @@ export function cleanBot(input = {}) {
     keywords: (Array.isArray(it.keywords) ? it.keywords : String(it.keywords || '').split(',')).map((k) => str(k).toLowerCase()).filter(Boolean).slice(0, 30),
     action: ACTIONS.includes(it.action) ? it.action : 'reply',
     reply: noHours(it.reply).slice(0, 1024),
+    ...(it.button ? { button: str(it.button).slice(0, 20) } : {}),
+    ...(/^https:\/\/chennairiceindustries\.com\//.test(str(it.link)) ? { link: str(it.link) } : {}),
   })).filter((it) => it.label)
   for (const it of items) {
     const def = DEFAULT_BOT.items.find((d) => d.id === it.id)
@@ -216,10 +262,17 @@ export function cleanBot(input = {}) {
       Object.assign(it, { label: def.label, description: def.description, reply: def.reply })
     }
   }
+  // Settings saved before the 8-option content (owner, 26 Nov 2026): the new menu, plus any item added in the dashboard.
+  const old = (Number(input.contentVersion) || 0) < CONTENT_VERSION
+  if (old && items.length) {
+    const own = items.filter((it) => !['shop', 'prices', 'track', 'offers', 'delivery', 'human', 'bulk'].includes(it.id))
+    items.splice(0, items.length, ...DEFAULT_BOT.items.map((d) => ({ ...d, keywords: [...d.keywords] })), ...own.slice(0, 2))
+  }
   const ids = new Set()
   for (const it of items) { while (ids.has(it.id)) it.id += 'x'; ids.add(it.id) }
   return {
     enabled: input.enabled !== false,
+    contentVersion: CONTENT_VERSION,
     greetings: (Array.isArray(input.greetings) ? input.greetings : String(input.greetings || '').split(',')).map((k) => str(k).toLowerCase()).filter(Boolean).slice(0, 30),
     welcome: {
       text: noHours(input.welcome?.text || DEFAULT_BOT.welcome.text).slice(0, 1024),
@@ -234,9 +287,9 @@ export function cleanBot(input = {}) {
     handoffEmail: input.handoffEmail === true,
     ai: { enabled: input.ai?.enabled !== false },
     // Tamil texts: the defaults unless the settings carry their own (the dashboard edits the English ones).
-    ta: input.ta && typeof input.ta === 'object' ? {
+    ta: input.ta && typeof input.ta === 'object' && !old ? {
       welcome: { text: noHours(input.ta.welcome?.text || DEFAULT_BOT.ta.welcome.text).slice(0, 1024), button: str(input.ta.welcome?.button || DEFAULT_BOT.ta.welcome.button).slice(0, 20) },
-      items: { ...DEFAULT_BOT.ta.items, ...(input.ta.items && typeof input.ta.items === 'object' ? input.ta.items : {}), track: DEFAULT_BOT.ta.items.track, delivery: DEFAULT_BOT.ta.items.delivery, human: DEFAULT_BOT.ta.items.human },
+      items: { ...DEFAULT_BOT.ta.items, ...(input.ta.items && typeof input.ta.items === 'object' ? input.ta.items : {}), },
       fallback: noHours(input.ta.fallback || DEFAULT_BOT.ta.fallback).slice(0, 1024),
     } : DEFAULT_BOT.ta,
   }
@@ -271,16 +324,22 @@ export function decide(bot, { text = '', replyId = '', image = null } = {}, stat
   if (image) return bot.ai?.enabled ? { kind: 'ai', text: text || '', image } : { kind: 'fallback' }
   // Language: the English / தமிழ் buttons, or typing "English", "Tamil", "தமிழ்"; "language" / "மொழி" asks again.
   if (replyId === 'lang_en' || replyId === 'lang_ta') return { kind: 'lang', lang: replyId.slice(5) }
-  if (replyId === 'lang') return { kind: 'chooseLang' }
+  if (replyId === 'lang') return { kind: 'chooseLang', change: true }
+  // Reply buttons under option 05 (delivery charges) and 08 (bulk enquiry).
+  if (replyId === 'delivery_rates') return { kind: 'deliveryRates' }
+  if (replyId === 'bulk_enquiry') return { kind: 'bulkAsk' }
   const said = String(text || '').trim().toLowerCase()
   if (LANG_WORDS[said]) return { kind: 'lang', lang: LANG_WORDS[said] }
-  if (PICK_WORDS.includes(said)) return { kind: 'chooseLang' }
+  if (PICK_WORDS.includes(said)) return { kind: 'chooseLang', change: true }
   if (replyId) {
     const item = items.find((it) => it.id === replyId)
     if (item) return { kind: 'item', item }
     if (replyId === 'menu') return { kind: 'welcome' }
   }
   const t = norm(text)
+  // Bulk enquiry: the next message after the details request is the enquiry (unless it is a greeting, "menu" or "cancel").
+  const bulkFresh = state.awaiting === 'bulk_details' && state.awaiting_at && Date.now() - new Date(state.awaiting_at).getTime() < 60 * 60e3
+  if (bulkFresh && t && !ESCAPE_WORDS.includes(t) && !(bot.greetings || []).some((g) => t === norm(g))) return { kind: 'bulkDetails', text }
   const ref = parseTrackingRef(text)
   if (ref) return { kind: 'track', ref }
   const pin = String(text).match(/\b[1-9]\d{5}\b/)
@@ -333,6 +392,15 @@ export function linkMsg(body, lang = 'en') {
 }
 const textMsg = plainText
 
+// The list rows: the items, with "Change Language" as option 07 (before Bulk Order, as in the content PDF).
+function menuRows(bot, items) {
+  const rows = items.slice(0, 9).map((it) => ({ id: it.id, title: it.label.slice(0, 24), ...(it.description ? { description: it.description.slice(0, 72) } : {}) }))
+  const langRow = { id: 'lang', title: bot.lang === 'ta' ? '🌐 மொழியை மாற்ற' : '🌐 Change Language', description: 'தமிழ் / English' }
+  const at = rows.findIndex((r) => r.id === 'bulk')
+  rows.splice(at < 0 ? rows.length : at, 0, langRow)
+  return rows
+}
+
 export function menuMsg(bot, body) {
   const items = (bot.items || []).filter((it) => it.label)
   if (!items.length) return textMsg(body)
@@ -351,10 +419,7 @@ export function menuMsg(bot, body) {
       action: {
         button: (bot.welcome?.button || 'Menu').slice(0, 20),
         // Plus a row to switch language (WhatsApp allows 10 rows in all).
-        sections: [{ title: 'Chennai Rice', rows: [
-          ...items.slice(0, 9).map((it) => ({ id: it.id, title: it.label.slice(0, 24), ...(it.description ? { description: it.description.slice(0, 72) } : {}) })),
-          { id: 'lang', title: '🌐 English / தமிழ்', description: bot.lang === 'ta' ? 'மொழியை மாற்ற' : 'Change language' },
-        ] }],
+        sections: [{ title: 'Chennai Rice', rows: menuRows(bot, items) }],
       },
     },
   }
@@ -381,9 +446,28 @@ export async function render(baseBot, decision, { phone = '', name = '', lang: c
   const t = T(lang)
   const textMsg = (body) => linkMsg(body, lang) // shadows the plain one: our links become a button
   const first = String(name || '').trim().split(/\s+/)[0] || (lang === 'ta' ? '' : 'there')
+  // Option 05's button: the standard charges per pack, Tamil Nadu and other states.
+  async function deliveryRatesMsg() {
+    const zones = deps.deliveryCharges ? await deps.deliveryCharges().catch(() => null) : null
+    const lines = ['TN', 'OTHER'].filter((z) => zones?.[z]?.length)
+      .map((z) => t.deliveryZone(z, zones[z].map((c) => `${c.packKg} kg *${c.from === c.to ? rupees(c.from) : `${rupees(c.from)}–${rupees(c.to)}`}*`).join('  ·  ')))
+    return textMsg(lines.length ? [t.deliveryHead, ...lines, t.deliveryFoot].join('\n\n') : t.deliveryNone)
+  }
   const welcome = () => menuMsg(bot, bot.welcome.text.replaceAll(' {{name}}', first ? ' ' + first : '').replaceAll('{{name}}', first))
   const out = { messages: [], state: { awaiting: null } }
-  if (decision.kind === 'chooseLang') { out.messages.push(languageMsg()); return out }
+  // A message with one button: a link to our website (cta_url) or a reply button for the next step.
+  const linkButton = (body, label, url) => ({ type: 'interactive', interactive: { type: 'cta_url', body: { text: body.slice(0, 1024) }, action: { name: 'cta_url', parameters: { display_text: String(label).slice(0, 20), url } } } })
+  const replyButton = (body, label, id) => ({ type: 'interactive', interactive: { type: 'button', body: { text: body.slice(0, 1024) }, action: { buttons: [{ type: 'reply', reply: { id, title: String(label).slice(0, 20) } }] } } })
+  const itemById = (id) => (bot.items || []).find((it) => it.id === id) || {}
+  if (decision.kind === 'chooseLang') { out.messages.push(decision.change ? changeLanguageMsg(lang) : languageMsg()); return out }
+  if (decision.kind === 'deliveryRates') return { ...out, messages: [await deliveryRatesMsg()] }
+  if (decision.kind === 'bulkAsk') { out.messages.push(plainText(t.bulkDetails)); out.state = { awaiting: 'bulk_details' }; return out }
+  if (decision.kind === 'bulkDetails') {
+    // Thank them; the chat goes to the team with the enquiry as a note (answer() writes it).
+    out.messages.push(plainText(t.bulkThanks))
+    out.state = { awaiting: null, pausedHours: bot.handoffHours, bulk: String(decision.text || '').slice(0, 1000) }
+    return out
+  }
   if (decision.kind === 'lang') { out.messages.push(welcome()); out.state = { awaiting: null, lang }; return out }
   if (decision.kind === 'welcome') { out.messages.push(welcome()); return out }
   if (decision.kind === 'fallback') { out.messages.push(menuMsg(bot, bot.fallback)); return out }
@@ -447,12 +531,14 @@ export async function render(baseBot, decision, { phone = '', name = '', lang: c
 
   const item = decision.item
   // Track my order: send the number here, or a Track order button to the website (owner, 26 Nov 2026).
-  if (item.action === 'track_order') { out.messages.push(textMsg(`${item.reply || t.askOrder}\n\n${t.trackWeb}: ${SITE}/track-order`)); out.state = { awaiting: 'order_number' }; return out }
+  if (item.action === 'track_order') {
+    out.messages.push(item.button ? linkButton(item.reply || t.askOrder, item.button, item.link || SITE + '/track-order') : textMsg(`${item.reply || t.askOrder}\n\n${t.trackWeb}: ${SITE}/track-order`))
+    out.state = { awaiting: 'order_number' }
+    return out
+  }
+  if (item.action === 'bulk') { out.messages.push(replyButton(item.reply, item.button || (lang === 'ta' ? 'மொத்த ஆர்டர்' : 'Bulk Enquiry'), 'bulk_enquiry')); return out }
   if (item.action === 'delivery') {
-    const zones = deps.deliveryCharges ? await deps.deliveryCharges().catch(() => null) : null
-    const lines = ['TN', 'OTHER'].filter((z) => zones?.[z]?.length)
-      .map((z) => t.deliveryZone(z, zones[z].map((c) => `${c.packKg} kg *${c.from === c.to ? rupees(c.from) : `${rupees(c.from)}–${rupees(c.to)}`}*`).join('  ·  ')))
-    out.messages.push(textMsg(lines.length ? [item.reply || (lang === 'ta' ? DELIVERY_REPLY_TA : DELIVERY_REPLY), ...lines, t.deliveryFoot].join('\n\n') : t.deliveryNone))
+    out.messages.push(item.button ? replyButton(item.reply, item.button, 'delivery_rates') : await deliveryRatesMsg())
     return out
   }
   if (item.action === 'handoff') {
@@ -461,19 +547,21 @@ export async function render(baseBot, decision, { phone = '', name = '', lang: c
     return out
   }
   if (item.action === 'prices') {
-    out.messages.push(productsMsg(lang))
+    out.messages.push(item.button ? linkButton(item.reply || t.products, item.button, item.link || SITE + '/w/shop-bot') : productsMsg(lang))
     return out
   }
   if (item.action === 'offers') {
     const codes = await deps.offers(phone)
-    if (!codes.length) out.messages.push(textMsg(item.reply))
-    else {
-      const lines = codes.map((c) => `• *${c.code}*: ${c.label}${c.until ? t.until(c.until) : ''}`).join('\n')
-      out.messages.push(textMsg(t.offers(lines)))
-    }
+    const lines = codes.map((c) => `• *${c.code}*: ${c.label}${c.until ? t.until(c.until) : ''}`).join('\n')
+    if (item.button) {
+      // The option's text, this number's own codes (or none), and View Offers: the shop (codes apply there) or Spin & Win.
+      const body = [item.reply, codes.length ? lines : t.offersNone].filter(Boolean).join('\n\n')
+      out.messages.push(linkButton(body, item.button, codes.length ? SITE + '/w/shop-bot' : (item.link || SITE + '/w/spin-bot')))
+    } else if (!codes.length) out.messages.push(textMsg(item.reply))
+    else out.messages.push(textMsg(t.offers(lines)))
     return out
   }
-  out.messages.push(textMsg(item.reply || '🙏'))
+  out.messages.push(item.button && item.link ? linkButton(item.reply || '🙏', item.button, item.link) : textMsg(item.reply || '🙏'))
   return out
 }
 
@@ -690,6 +778,11 @@ export async function answer({ to, phone, name, text, replyId, image = null }, {
       [phone, res.state.awaiting || null, res.state.pausedHours || null, today])
     // The language they picked, remembered for this number (migration 061; ignored until it is applied).
     if (res.state.lang) await query('update wa_bot_state set lang = $2 where phone = $1', [phone, res.state.lang]).catch(() => {})
+    // Bulk enquiry details: a note on the chat for the sales team, and the chat opens in the Inbox.
+    if (res.state.bulk) {
+      await query('insert into wa_notes (phone, staff_id, body) values ($1, null, $2)', [phone, `🏢 Bulk order enquiry from ${name || 'the customer'}: ${res.state.bulk}`]).catch(() => {})
+      await query(`update wa_contacts set status = 'open', updated_at = now() where phone = $1`, [phone]).catch(() => {})
+    }
     if (res.state.ai?.handoff) await aiHandoff({ phone, name, text, ai: res.state.ai }, { query })
     // One line per answered message in the server log (no message text), to see what the bot did.
     console.log('[wa-bot]', String(phone).slice(-4), decision.kind, `${res.messages.length} sent`, res.state.ai ? `ai handoff=${res.state.ai.handoff}` : '', handedOver ? 'after handover' : '')
