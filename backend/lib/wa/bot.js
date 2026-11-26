@@ -298,7 +298,27 @@ export function priceListText(list = [], heading = '', lang = 'en') {
 }
 
 // ---- WhatsApp message bodies (without "to") ----
-const textMsg = (body) => ({ type: 'text', text: { body: body.slice(0, 4096), preview_url: true } })
+const plainText = (body) => ({ type: 'text', text: { body: body.slice(0, 4096), preview_url: true } })
+// Our own links become a button under the message (WhatsApp "cta_url") instead of a bare link with a big
+// preview card (owner, 26 Nov 2026). One site link per message; otherwise, or if too long, plain text.
+const SITE_LINK = new RegExp(SITE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[^\\s)]*', 'g')
+const LINK_LABELS = {
+  en: [[/track-order/, '📦 Track order'], [/./, '🛒 Shop now']],
+  ta: [[/track-order/, '📦 ஆர்டர் நிலை'], [/./, '🛒 ஆர்டர் செய்ய']],
+}
+export function linkMsg(body, lang = 'en') {
+  const links = body.match(SITE_LINK) || []
+  if (links.length !== 1) return plainText(body)
+  const url = links[0]
+  const text = body
+    .replace(new RegExp(`:\\s*${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), '.')
+    .replace(url, '')
+    .replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+  if (!text || text.length > 1024) return plainText(body)
+  const label = (LINK_LABELS[lang] || LINK_LABELS.en).find(([re]) => re.test(url))[1]
+  return { type: 'interactive', interactive: { type: 'cta_url', body: { text }, action: { name: 'cta_url', parameters: { display_text: label, url } } } }
+}
+const textMsg = plainText
 
 export function menuMsg(bot, body) {
   const items = (bot.items || []).filter((it) => it.label)
@@ -346,6 +366,7 @@ export async function render(baseBot, decision, { phone = '', name = '', lang: c
   const lang = decision.kind === 'lang' ? decision.lang : chatLang
   const bot = botFor(baseBot, lang)
   const t = T(lang)
+  const textMsg = (body) => linkMsg(body, lang) // shadows the plain one: our links become a button
   const first = String(name || '').trim().split(/\s+/)[0] || (lang === 'ta' ? '' : 'there')
   const welcome = () => menuMsg(bot, bot.welcome.text.replaceAll(' {{name}}', first ? ' ' + first : '').replaceAll('{{name}}', first))
   const out = { messages: [], state: { awaiting: null } }
@@ -561,6 +582,7 @@ export async function simulate({ bot: input, text, replyId, phone, name, state }
 export function logText(m) {
   if (m.type === 'text') return m.text.body
   const i = m.interactive
+  if (i.type === 'cta_url') return `${i.body.text}\n[${i.action.parameters.display_text}: ${i.action.parameters.url}]`
   const opts = i.type === 'button' ? i.action.buttons.map((b) => b.reply.title) : i.action.sections.flatMap((s) => s.rows.map((r) => r.title))
   return `${i.body.text}\n[${opts.join(' · ')}]`
 }

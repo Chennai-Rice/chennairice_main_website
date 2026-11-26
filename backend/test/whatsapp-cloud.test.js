@@ -106,9 +106,10 @@ test('readable lines for each kind of incoming message', () => {
 })
 
 // ---- the bot ----
-import { DEFAULT_BOT, cleanBot, decide, render, menuMsg, priceListText, isGreeting } from '../lib/wa/bot.js'
+import { DEFAULT_BOT, cleanBot, decide, render, menuMsg, priceListText, isGreeting, botFor } from '../lib/wa/bot.js'
 
 const bot = cleanBot(DEFAULT_BOT)
+const says = (m) => m.text?.body ?? m.interactive.body.text // a text message, or one with buttons
 const deps = {
   findOrder: async (ref, phone) => (ref.orderNumber === 'CR-20261111-AB12C' ? { orderNumber: ref.orderNumber, status: 'shipped', samePhone: phone === '9876543210', trackingUrl: 'https://track.example/1', expected: '14 Nov' } : null),
   offers: async (phone) => (phone === '9876543210' ? [{ code: 'SPIN-A745B4', label: '₹75 off on orders above ₹1,000', until: '10 Dec' }] : []),
@@ -147,10 +148,10 @@ test('bot: menu taps, keywords, order numbers, PIN codes and the fallback', asyn
   assert.equal(decide(bot, { text: 'asdf qwerty' }).kind, 'fallback')
 
   const own = await render(bot, decide(bot, { text: 'CR-20261111-AB12C' }), { phone: '9876543210' }, deps)
-  assert.match(own.messages[0].text.body, /on the way/)
-  assert.match(own.messages[0].text.body, /track\.example/)
+  assert.match(says(own.messages[0]), /on the way/)
+  assert.match(says(own.messages[0]), /track\.example/)
   const other = await render(bot, decide(bot, { text: 'CR-20261111-AB12C' }), { phone: '9000000000' }, deps)
-  assert.match(other.messages[0].text.body, /For your privacy/)
+  assert.match(says(other.messages[0]), /For your privacy/)
 
   const ask = await render(bot, decide(bot, { replyId: 'track' }), {}, deps)
   assert.equal(ask.state.awaiting, 'order_number')
@@ -166,12 +167,12 @@ test('bot: menu taps, keywords, order numbers, PIN codes and the fallback', asyn
   assert.equal(wrong.messages[0].type, 'interactive')
   assert.match(JSON.stringify(wrong.messages[0]), /does not look like an order number/)
   const pin = await render(bot, decide(bot, { text: 'my pin is 600001' }, { awaiting: 'pincode', awaiting_at: new Date() }), {}, deps)
-  assert.match(pin.messages[0].text.body, /We deliver to 600001/)
+  assert.match(says(pin.messages[0]), /We deliver to 600001/)
 
   const offers = await render(bot, decide(bot, { replyId: 'offers' }), { phone: '9876543210' }, deps)
-  assert.match(offers.messages[0].text.body, /SPIN-A745B4/)
+  assert.match(says(offers.messages[0]), /SPIN-A745B4/)
   const prices = await render(bot, decide(bot, { replyId: 'prices' }), {}, deps)
-  assert.ok(prices.messages[0].text.body.includes('*Kitchadi Ponni*\n5 kg *₹425*'))
+  assert.ok(says(prices.messages[0]).includes('*Kitchadi Ponni*\n5 kg *₹425*'))
   const hand = await render(bot, decide(bot, { replyId: 'human' }), {}, deps)
   assert.equal(hand.state.pausedHours, 12)
   const fb = await render(bot, decide(bot, { text: 'zzz' }), {}, deps)
@@ -189,7 +190,7 @@ test('bot with AI: sentences go to the AI, short words still get the menu; Groq 
 
   const said = await render(bot, { kind: 'ai', text: 'which rice for biryani?' }, { phone: '9876543210', name: 'Ravi' },
     { ...deps, ai: async () => ({ reply: 'For biryani, Nayara Super Aged stays separate and fluffy 🍚', handoff: false, reason: '', order: '' }) })
-  assert.equal(said.messages[0].text.body, 'For biryani, Nayara Super Aged stays separate and fluffy 🍚')
+  assert.equal(says(said.messages[0]), 'For biryani, Nayara Super Aged stays separate and fluffy 🍚')
   assert.equal(said.state.ai.handoff, false)
   const passed = await render(bot, { kind: 'ai', text: 'still not delivered' }, {},
     { ...deps, ai: async () => ({ reply: 'So sorry, I have flagged it to our team.', handoff: true, reason: 'late', order: '' }) })
@@ -197,7 +198,7 @@ test('bot with AI: sentences go to the AI, short words still get the menu; Groq 
   const down = await render(bot, { kind: 'ai', text: 'hello there friend' }, {}, { ...deps, ai: async () => { throw new Error('Groq 503') } })
   assert.equal(down.messages[0].interactive.type, 'list')
   const quiet = await render(bot, { kind: 'ai', text: 'any update?', handedOver: true }, {}, { ...deps, ai: async () => { throw new Error('Groq 503') } })
-  assert.match(quiet.messages[0].text.body, /Our team will get back to you here soon/) // never silence after a handover
+  assert.match(says(quiet.messages[0]), /Our team will get back to you here soon/) // never silence after a handover
 })
 
 test('AI reply: built from the customer\x27s own orders, a late order is always handed over and flagged', async () => {
@@ -482,11 +483,11 @@ test('order number while the chat is with the team: looked up (not the AI), and 
   const deps = { findOrder: async (ref) => (ref.orderNumber === 'CR-20261122-ZRVFY'
     ? { orderNumber: 'CR-20261122-ZRVFY', status: 'shipped', samePhone: true, trackingUrl: null, expected: null } : null) }
   const found = await render(bot, { kind: 'track', ref: { orderNumber: 'CR-20261122-ZRVFY' }, handedOver: true }, { phone: '9876543210' }, deps)
-  assert.match(found.messages[0].text.body, /CR-20261122-ZRVFY\* is on the way/)
+  assert.match(says(found.messages[0]), /CR-20261122-ZRVFY\* is on the way/)
   assert.equal(found.state.pausedHours, bot.handoffHours)
   const missing = await render(bot, { kind: 'track', ref: { orderNumber: 'CR-20261122-XXXXX' } }, {}, deps)
-  assert.match(missing.messages[0].text.body, /could not find a placed order/)
-  assert.match(missing.messages[0].text.body, /payment did not go through/)
+  assert.match(says(missing.messages[0]), /could not find a placed order/)
+  assert.match(says(missing.messages[0]), /payment did not go through/)
   assert.equal(missing.state.pausedHours, undefined)
 })
 
@@ -523,10 +524,10 @@ test('language: the first message asks English / தமிழ்; the pick is ke
   assert.equal(decide(ta, { text: 'விலை' }).item.id, 'prices')
   assert.equal(decide(ta, { text: 'price' }).item.id, 'prices')
   const other = await render(bot, decide(ta, { text: 'CR-20261111-AB12C' }), { phone: '9000000000', lang: 'ta' }, deps)
-  assert.match(other.messages[0].text.body, /[\u0B80-\u0BFF]/)
+  assert.match(says(other.messages[0]), /[\u0B80-\u0BFF]/)
   const pin = await render(bot, { kind: 'pincode', pin: '600001' }, { lang: 'ta' }, deps)
-  assert.match(pin.messages[0].text.body, /600001/)
-  assert.match(pin.messages[0].text.body, /[\u0B80-\u0BFF]/)
+  assert.match(says(pin.messages[0]), /600001/)
+  assert.match(says(pin.messages[0]), /[\u0B80-\u0BFF]/)
   // English stays as it was.
   const en = await render(bot, { kind: 'lang', lang: 'en' }, { name: 'Ravi' }, deps)
   assert.match(en.messages[0].interactive.body.text, /Vanakkam Ravi!/)
@@ -574,4 +575,25 @@ test('language: the first message asks English / தமிழ்; the pick is ke
   assert.equal(s1.decision, 'chooseLang')
   const s2 = await simulate({ replyId: 'lang_ta', state: s1.state }, { query: async () => ({ rows: [] }) })
   assert.equal(s2.state.lang, 'ta')
+})
+
+test('links: our shop / track-order link is a button under the message, not a bare link with a preview', async () => {
+  const { linkMsg, logText } = await import('../lib/wa/bot.js')
+  const shop = await render(bot, decide(bot, { replyId: 'shop' }), {}, deps)
+  const i = shop.messages[0].interactive
+  assert.equal(i.type, 'cta_url')
+  assert.equal(i.action.parameters.url, 'https://chennairiceindustries.com/w/shop-bot')
+  assert.equal(i.action.parameters.display_text, '🛒 Shop now')
+  assert.ok(!i.body.text.includes('https://'))
+  assert.match(i.body.text, /home delivery here\.\n\nPay by UPI/)
+  const ta = await render(bot, decide(botFor(bot, 'ta'), { replyId: 'shop' }), { lang: 'ta' }, deps)
+  assert.equal(ta.messages[0].interactive.action.parameters.display_text, '🛒 ஆர்டர் செய்ய')
+  const track = linkMsg('Full details: https://chennairiceindustries.com/track-order?order=CR-1')
+  assert.equal(track.interactive.action.parameters.display_text, '📦 Track order')
+  assert.ok([...'📦 ஆர்டர் நிலை'].length <= 20)
+  // No link, another site's link only, or two of ours: plain text as before.
+  assert.equal(linkMsg('Hello').type, 'text')
+  assert.equal(linkMsg('See https://example.com/x').type, 'text')
+  assert.equal(linkMsg('https://chennairiceindustries.com/a and https://chennairiceindustries.com/b').type, 'text')
+  assert.match(logText(shop.messages[0]), /\[🛒 Shop now: https:\/\/chennairiceindustries\.com\/w\/shop-bot\]/)
 })
