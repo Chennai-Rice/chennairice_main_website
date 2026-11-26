@@ -364,21 +364,37 @@ function normalise(a) {
   }
 }
 
+/** A free-form reply: paragraphs split on blank lines, "- " lines become a bullet list. */
+function ChatReply({ text }) {
+  const blocks = String(text || '').trim().split(/\n\s*\n/)
+  return (
+    <div className="ava-chat">
+      {blocks.map((b, i) => {
+        const lines = b.split('\n').map((l) => l.trim()).filter(Boolean)
+        const bullets = lines.filter((l) => /^[-•*]\s+/.test(l))
+        if (bullets.length === lines.length) return <ul key={i}>{lines.map((l, j) => <li key={j}>{l.replace(/^[-•*]\s+/, '')}</li>)}</ul>
+        return <p key={i}>{lines.map((l, j) => <span key={j}>{j > 0 && <br />}{l}</span>)}</p>
+      })}
+    </div>
+  )
+}
+
 export default function AdvisorAnswer({ answer, onAsk }) {
   const simple = answer.type === 'simple'
+  const chat = answer.type === 'chat'
   // A simple question gets a direct answer: no analysis sections, even if the model filled some.
   const a = simple
     ? { ...normalise(answer), findings: [], charts: [], whyItMatters: [], actions: [], risks: [], missingData: [], verdict: null }
     : normalise(answer)
   return (
-    <article className={`ava${simple ? ' is-simple' : ''}`}>
-      {simple ? <p className="ava-headline">{a.summary}</p> : (
+    <article className={`ava${simple ? ' is-simple' : ''}${chat ? ' is-chat' : ''}`}>
+      {chat ? <ChatReply text={a.summary} /> : simple ? <p className="ava-headline">{a.summary}</p> : (
         <Section title="Executive Summary" className="ava-summary"><p className="ava-headline">{a.summary}</p></Section>
       )}
       {a.clarifyingQuestion && <p className="ava-clarify"><b>To answer more precisely:</b> {a.clarifyingQuestion}</p>}
 
       {(a.numbers?.length > 0 || a.findings?.length > 0 || a.charts?.length > 0) && (
-        <Section title={simple ? '' : 'Key Findings'} className="ava-findings">
+        <Section title={simple || chat ? '' : 'Key Findings'} className="ava-findings">
           <Numbers items={a.numbers} />
           {a.findings?.length > 0 && (
             <ul className="ava-findlist">

@@ -146,3 +146,8 @@
   body.av-print-mode .is-printing { position: absolute; left: 0; top: 0; width: 100%; border: 0; box-shadow: none; }
   body.av-print-mode .av-msg-tools { display: none; }
 }
+
+/* chat mode: a plain written reply, no report headings */
+.ava-chat { display: grid; gap: 10px; font-size: 15px; line-height: 1.6; color: var(--ad-ink); }
+.ava-chat p, .ava-chat ul { margin: 0; }
+.ava-chat ul { padding-left: 20px; display: grid; gap: 4px; }
