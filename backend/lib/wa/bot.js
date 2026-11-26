@@ -139,6 +139,8 @@ const TEXT = {
     offMrp: (n) => ` — up to ${n}% off MRP`,
     pricesFoot: `Prices per pack, GST included. Delivery depends on your PIN code.\n🛒 Order: ${SITE}/w/shop-bot`,
     pricesWeb: `Our prices are on the website: ${SITE}/w/shop-bot`,
+    products: '🍚 See all our rice and today’s prices on our website: 5, 10 and 26 kg packs, GST included. Delivery depends on your PIN code.',
+    productsButton: 'Our product range',
     status: {
       placed: 'received ✅ and waiting to be confirmed', confirmed: 'confirmed ✅ and being packed', packed: 'packed 📦 and ready to leave our mill',
       shipped: 'on the way 🚚', delivered: 'delivered ✅', cancelled: 'cancelled', returned: 'returned',
@@ -165,6 +167,8 @@ const TEXT = {
     offMrp: (n) => ` — MRP-இல் ${n}% வரை தள்ளுபடி`,
     pricesFoot: `விலை ஒரு பேக்கிற்கு, GST உட்பட. டெலிவரி கட்டணம் உங்கள் PIN கோடைப் பொறுத்தது.\n🛒 ஆர்டர்: ${SITE}/w/shop-bot`,
     pricesWeb: `எங்கள் விலைகள் இணையதளத்தில் உள்ளன: ${SITE}/w/shop-bot`,
+    products: '🍚 எங்கள் அனைத்து அரிசி வகைகளும் இன்றைய விலையும் இணையதளத்தில் உள்ளன: 5, 10 மற்றும் 26 கிலோ பேக்குகள், GST உட்பட. டெலிவரி கட்டணம் உங்கள் PIN கோடைப் பொறுத்தது.',
+    productsButton: 'எங்கள் அரிசி வகைகள்',
     status: {
       placed: 'பெறப்பட்டது ✅, உறுதிப்படுத்தக் காத்திருக்கிறது', confirmed: 'உறுதி செய்யப்பட்டது ✅, பேக் செய்யப்படுகிறது', packed: 'பேக் செய்யப்பட்டது 📦, எங்கள் ஆலையிலிருந்து புறப்படத் தயார்',
       shipped: 'வழியில் உள்ளது 🚚', delivered: 'டெலிவரி செய்யப்பட்டது ✅', cancelled: 'ரத்து செய்யப்பட்டது', returned: 'திருப்பி அனுப்பப்பட்டது',
@@ -303,6 +307,12 @@ export function priceListText(list = [], heading = '', lang = 'en') {
   ].join('\n\n')
 }
 
+/** Prices: no list in the chat any more, a line and an "Our product range" button to the website (owner, 26 Nov 2026). */
+export function productsMsg(lang = 'en') {
+  const t = T(lang)
+  return { type: 'interactive', interactive: { type: 'cta_url', body: { text: t.products }, action: { name: 'cta_url', parameters: { display_text: t.productsButton, url: `${SITE}/w/shop-bot` } } } }
+}
+
 // ---- WhatsApp message bodies (without "to") ----
 const plainText = (body) => ({ type: 'text', text: { body: body.slice(0, 4096), preview_url: true } })
 // Our own links become a button under the message (WhatsApp "cta_url") instead of a bare link with a big
@@ -398,7 +408,7 @@ export async function render(baseBot, decision, { phone = '', name = '', lang: c
     }
     out.messages.push(textMsg(r.reply))
     // Asked for the prices / price list: the same tidy list as the Prices menu item, not one the AI types out.
-    if (r.showPrices && deps.prices) out.messages.push(textMsg(priceListText(await deps.prices().catch(() => []), '', lang)))
+    if (r.showPrices) out.messages.push(productsMsg(lang))
     out.state = { awaiting: null, ai: r, ...(r.handoff ? { pausedHours: bot.handoffHours } : {}) }
     return out
   }
@@ -447,7 +457,7 @@ export async function render(baseBot, decision, { phone = '', name = '', lang: c
     return out
   }
   if (item.action === 'prices') {
-    out.messages.push(textMsg(priceListText(await deps.prices(), item.reply, lang)))
+    out.messages.push(productsMsg(lang))
     return out
   }
   if (item.action === 'offers') {
