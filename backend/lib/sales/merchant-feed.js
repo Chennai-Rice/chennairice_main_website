@@ -6,6 +6,7 @@
 // with the shop), the square white-background photo (public/assets/shop/feed),
 // the brand and a link to the product page. Served at GET /api/merchant-feed.xml.
 import { listCatalog } from './catalog.js'
+import { regionForPincode } from './regions.js'
 
 const SITE = 'https://chennairiceindustries.com'
 // Shop ID → the product page's address and full name (as in frontend/src/seo.js
@@ -16,7 +17,7 @@ export const FEED_PAGES = {
   'nayara-super-aged': ['nayara-super-aged-rice', 'Nayara Super Aged Rice'],
   'vijaya-nagaram': ['vijaya-nagaram-rice', 'Vijaya Nagaram Rice'],
   vintage: ['vintage-ponni-rice', 'Vintage Special Ponni Rice'],
-  viruchagam: ['viruchagam-ponni-rice', 'Viruchagam Rice'],
+  viruchagam: ['viruchagam-ponni-rice', 'Viruchagam Ponni Rice'],
   'united-5kg': ['united-ponni-rice', 'United Ponni Rice'],
   alibaba: ['alibaba-sappadu-rice', 'Alibaba Sappadu Rice'],
   'chennai-bullets': ['chennai-bullets-rice', 'Chennai Bullets Rice'],
@@ -25,6 +26,23 @@ export const FEED_PAGES = {
   thaaram: ['thaaram-nei-kitchadi', 'Thaaram Nei Kitchadi Rice'],
   'special-idly-rice': ['special-idly-rice', 'Special Idly Rice'],
 }
+// Delivery charge per pack by PIN code, as the checkout charges it (SEO audit error 10: Google Merchant Center
+// needs shipping): PIN prefixes grouped by delivery region, from regions.js itself so the two never differ.
+export const REGION_PIN_PREFIXES = (() => {
+  const out = {}
+  for (let two = 11; two <= 85; two++) {
+    const code = regionForPincode(two + '0000')
+    if (code) (out[code] ||= []).push(String(two))
+  }
+  if (regionForPincode('737000') === 'NE') out.NE.push('737') // Sikkim (the rest of 73 is North)
+  return out
+})()
+export const feedShipping = (delivery) => Object.entries(REGION_PIN_PREFIXES).flatMap(([code, prefixes]) =>
+  typeof delivery?.[code] === 'number'
+    ? prefixes.map((pre) => `      <g:shipping><g:country>IN</g:country><g:postal_code>${pre}*</g:postal_code><g:price>${Number(delivery[code]).toFixed(2)} INR</g:price></g:shipping>
+`)
+    : []).join('')
+
 const CATEGORY = 'Food, Beverages & Tobacco > Food Items > Grains, Rice & Cereal > Rice'
 
 const xml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -58,6 +76,7 @@ export async function merchantFeed({ query }) {
         tag('g:product_type', p.tag ? `Rice > ${p.tag}` : 'Rice') +
         tag('g:size', `${v.packKg} kg`) +
         tag('g:product_weight', `${v.packKg} kg`) +
+        feedShipping(v.delivery) +
         '    </item>')
     }
   }

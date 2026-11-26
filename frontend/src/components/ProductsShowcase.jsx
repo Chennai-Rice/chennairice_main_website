@@ -135,7 +135,15 @@ function ProductSlide({ product, isFirst }) {
 
         <div className="slide-center">
           <div className="product-bag-wrap">
-            <Img className="product-bag-img" src={product.image} alt={product.name} width="600" height="870" />
+            <Img
+              className="product-bag-img"
+              src={product.image}
+              srcSet={`${product.image.replace(/\.webp$/, '-200.webp')} 200w, ${product.image.replace(/\.webp$/, '-300.webp')} 300w, ${product.image.replace(/\.webp$/, '-450.webp')} 450w, ${product.image} 600w`}
+              sizes="(max-width: 600px) 130px, 310px"
+              alt={product.name}
+              width="600"
+              height="870"
+            />
           </div>
         </div>
 
@@ -359,6 +367,8 @@ export default function ProductsShowcase() {
         <Img
           className="showcase-paddy showcase-paddy-a"
           src={ASSETS.wheatRight}
+          srcSet="/assets/decor/rice-stalks-v2-260.webp 260w, /assets/decor/rice-stalks-v2.webp 400w"
+          sizes="255px"
           width="400"
           height="603"
           alt="Golden paddy stalks"
@@ -367,6 +377,8 @@ export default function ProductsShowcase() {
         <Img
           className="showcase-paddy showcase-paddy-b"
           src={ASSETS.wheatLeft}
+          srcSet="/assets/decor/wheat-left-v2-260.webp 260w, /assets/decor/wheat-left-v2.webp 520w"
+          sizes="255px"
           width="520"
           height="780"
           alt="Golden paddy stalks"

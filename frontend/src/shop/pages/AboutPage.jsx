@@ -79,7 +79,7 @@ export default function AboutPage() {
             <div className="ab-intro-body">
               <p>
                 Chennai Rice began as a family rice mill in Tamil Nadu in the 1950s. More than 75 years later,
-                Chennai Rice Industries India Private Limited runs one of the region’s larger modern rice plants at
+                Chennai Rice Industries India Private Limited (formerly Chennai Gate Rice Industries) runs one of the region’s larger modern rice plants at
                 Nasiyanur, Erode, processing around 1,000 tonnes of paddy every day.
               </p>
               <p>

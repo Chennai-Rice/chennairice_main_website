@@ -110,6 +110,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* The floating buttons step aside while the home hero fills the screen (components/Hero.jsx). */
+.hero-in-view .sk-launcher,
+.hero-in-view .spin-fab,
+.hero-in-view .spin-fab-hide {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.sk-launcher, .spin-fab, .spin-fab-hide { transition: opacity 0.3s ease, visibility 0.3s; }
+
 img {
   max-width: 100%;
   /* The width/height attributes only reserve space (no layout shift); the size shown comes from CSS. */

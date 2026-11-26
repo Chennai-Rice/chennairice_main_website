@@ -42,7 +42,7 @@ export default function Navbar() {
     <header className={`nav-bar${solid ? ' nav-solid' : ''}`}>
       <div className="container nav-inner">
         <Link className="nav-logo" to="/" aria-label="Chennai Rice home">
-          <Img src={ASSETS.logo} alt="Chennai Rice Industries" width="240" height="258" />
+          <Img src={ASSETS.logo} srcSet="/assets/logo-nav-v4-128.webp 128w, /assets/logo-nav-v4.webp 240w" sizes="64px" alt="Chennai Rice Industries" width="240" height="258" />
         </Link>
 
         <nav className="nav-links">
@@ -57,7 +57,7 @@ export default function Navbar() {
             </NavLink>
           ))}
           <Link className="nav-contest" to={NAV_CONTEST.to} aria-label={NAV_CONTEST.label}>
-            <Img src={NAV_CONTEST.logo} fallback={NAV_CONTEST.fallback} alt={NAV_CONTEST.label} width="180" height="136" />
+            <Img src={NAV_CONTEST.logo} fallback={NAV_CONTEST.fallback} alt={NAV_CONTEST.label} width="180" height="136" srcSet="/assets/contest-nav-logo-v2-140.webp 140w, /assets/contest-nav-logo-v2.webp 180w" sizes="70px" />
           </Link>
         </nav>
 
@@ -104,7 +104,7 @@ export default function Navbar() {
         </Link>
 
         <Link className="nav-contest nav-contest-mobile" to={NAV_CONTEST.to} aria-label={NAV_CONTEST.label}>
-          <Img src={NAV_CONTEST.logo} fallback={NAV_CONTEST.fallback} alt={NAV_CONTEST.label} width="180" height="136" />
+          <Img src={NAV_CONTEST.logo} fallback={NAV_CONTEST.fallback} alt={NAV_CONTEST.label} width="180" height="136" srcSet="/assets/contest-nav-logo-v2-140.webp 140w, /assets/contest-nav-logo-v2.webp 180w" sizes="70px" />
         </Link>
 
         <button

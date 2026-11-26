@@ -15,8 +15,8 @@ export default function Celebrities() {
   const shown = CELEBS.filter((c) => ACTIVE_AMBASSADORS.includes(c.name))
   return (
     <section className="celeb">
-      <Img className="celeb-decor celeb-decor-left" src={ASSETS.wheatRight} width="400" height="603" alt="Golden paddy stalks" aria-hidden="true" />
-      <Img className="celeb-decor celeb-decor-right" src={ASSETS.wheatRight} width="400" height="603" alt="Golden paddy stalks" aria-hidden="true" />
+      <Img className="celeb-decor celeb-decor-left" src={ASSETS.wheatRight} srcSet="/assets/decor/rice-stalks-v2-260.webp 260w, /assets/decor/rice-stalks-v2.webp 400w" sizes="190px" width="400" height="603" alt="Golden paddy stalks" aria-hidden="true" />
+      <Img className="celeb-decor celeb-decor-right" src={ASSETS.wheatRight} srcSet="/assets/decor/rice-stalks-v2-260.webp 260w, /assets/decor/rice-stalks-v2.webp 400w" sizes="190px" width="400" height="603" alt="Golden paddy stalks" aria-hidden="true" />
 
       <div className="container celeb-head">
         <SectionHead label={CELEB_HEAD.label} title={CELEB_HEAD.title} />
@@ -40,6 +40,8 @@ export default function Celebrities() {
               <Img
                 className="celeb-photo"
                 src={c.image}
+                srcSet={c.imageSrcSet}
+                sizes="(max-width: 600px) 300px, 380px"
                 width="720"
                 height="894"
                 alt={c.name}
@@ -81,7 +83,7 @@ function Spotlight({ c }) {
   return (
     <figure className={`celeb-card celeb-spot is-${c.tone}`}>
       <div className="celeb-spot-photo">
-        <Img src={c.image} alt={c.name} width="720" height="894" loading="lazy" />
+        <Img src={c.image} srcSet={c.imageSrcSet} sizes="(max-width: 600px) 92vw, 400px" alt={c.name} width="720" height="894" loading="lazy" />
       </div>
       <figcaption className="celeb-spot-body">
         <h3 className={`celeb-spot-name${c.heading ? ' is-long' : ''}`}>

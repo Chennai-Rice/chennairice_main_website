@@ -25,7 +25,9 @@ export const ASSETS = {
      y=80), scaled to 1280 wide, H.264 CRF 27, no audio track — the hero
      always plays muted — and faststart so it begins playing before it has
      fully downloaded. 6.7 MB, same 44.9 s length. */
-  heroVideo: '/assets/hero-v2.mp4',
+  // 2.9 MB instead of 6.9 MB, same 1280x612 picture and 44.9 s (re-encoded 26 Nov 2026, SEO audit error 3);
+  // it still starts only after the page has loaded (Hero.jsx).
+  heroVideo: '/assets/hero-v3.mp4',
   // Phones held upright see only the middle of the wide film: this is that middle part at full height (420x612,
   // 1.5 MB instead of 6.9 MB), re-encoded 26 Nov 2026 with Chrome's recorder (H.264 MP4).
   heroVideoPhone: '/assets/hero-phone-v1.mp4',
@@ -234,6 +236,8 @@ export const CELEBS = [
     role: 'Actor',
     quote: 'Good food begins with good rice. Chennai Rice has earned its place at our family table.',
     image: '/assets/celebs/prabhu-v2.webp',
+    // 400 px copy for the size the card shows (26 Nov 2026).
+    imageSrcSet: '/assets/celebs/prabhu-v2-300.webp 300w, /assets/celebs/prabhu-v2-400.webp 400w, /assets/celebs/prabhu-v2.webp 720w',
     tone: 'lilac',
     figure: 82,
     drop: 0,

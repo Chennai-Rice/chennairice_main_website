@@ -69,6 +69,8 @@ const organization = {
   '@id': ORG_ID,
   name: 'Chennai Rice Industries',
   legalName: 'Chennai Rice Industries India Private Limited',
+  // The former name (invoices) that customers still search for, and the brand.
+  alternateName: ['Chennai Rice', 'Chennai Gate Rice Industries', 'Chennai Gate Rice'],
   url: SITE + '/',
   logo: LOGO,
   // The Kitchidi Ponni bag first: the one picture an assistant should show for "Chennai Rice" (owner, Nov 2026).

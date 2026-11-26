@@ -42,6 +42,18 @@ export default function Hero() {
     return () => { window.clearTimeout(timer); window.removeEventListener('load', start) }
   }, [])
 
+  // While most of the hero is on screen, the floating Soru Kutty and Spin & Win buttons step aside, so nothing
+  // covers the headline, the buttons or the "Since 1950s" seal (SEO audit error 9, 26 Nov 2026).
+  const sectionRef = useRef(null)
+  useEffect(() => {
+    const el = sectionRef.current
+    const root = document.documentElement
+    if (!el || !('IntersectionObserver' in window)) return undefined
+    const io = new IntersectionObserver(([e]) => root.classList.toggle('hero-in-view', e.intersectionRatio > 0.6), { threshold: [0, 0.6, 1] })
+    io.observe(el)
+    return () => { io.disconnect(); root.classList.remove('hero-in-view') }
+  }, [])
+
   useEffect(() => {
     const video = videoRef.current
     if (!video) {
@@ -68,7 +80,7 @@ export default function Hero() {
   }, [videoFailed])
 
   return (
-    <section className="home-hero" id="home">
+    <section className="home-hero" id="home" ref={sectionRef}>
       {!videoFailed && (
         <video
           ref={videoRef}
