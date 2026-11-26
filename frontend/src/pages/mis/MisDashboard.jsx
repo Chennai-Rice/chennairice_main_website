@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { signOutStaff, staffJson } from '../../services/staffAuth.js'
 import { STATUSES, STATUS_KEY, applyFilters, countBy, downloadCsv, groupTable, monthLabel, pct, summarise, topN } from './aggregate.js'
+import SalesView from './SalesView.jsx'
 import './mis.css'
 
 /**
@@ -132,8 +133,9 @@ export default function MisDashboard({ standalone = false }) {
   }
   const clearFilters = () => setFilters({ brand: '', platform: '', month: '', from: '', to: '' })
 
-  const title = NAV.find(([id]) => id === view)?.[1] || 'Overview'
-  const subtitle = data
+  const isSales = which === 'sales'
+  const title = isSales ? 'Sales' : NAV.find(([id]) => id === view)?.[1] || 'Overview'
+  const subtitle = isSales ? 'B2B and B2C · ranked by bill value' : data
     ? `${num(filtered.length)} ${N.one}${filtered.length === 1 ? '' : 's'}${filtering ? ` of ${num(rows.length)}` : ''}${ds.sheetTitle ? ` · ${ds.sheetTitle}` : ''}`
     : ''
 
@@ -148,21 +150,21 @@ export default function MisDashboard({ standalone = false }) {
             <span>{N.Many} Dashboard</span>
           </div>
         </div>
-        {data?.leads && (
+        {(data?.leads || data?.sales?.length > 0) && (
           <div className="mis-theme mis-which" role="group" aria-label="Sheet tab">
-            {[['calls', 'Calls'], ['leads', 'Leads']].map(([id, label]) => (
+            {[['calls', 'Calls'], ...(data?.leads ? [['leads', 'Leads']] : []), ...(data?.sales?.length ? [['sales', 'Sales']] : [])].map(([id, label]) => (
               <button key={id} type="button" className={which === id ? 'is-on' : ''} aria-pressed={which === id} onClick={() => chooseData(id)}>{label}</button>
             ))}
           </div>
         )}
-        <nav className="mis-nav" aria-label="Dashboard sections">
+        {!isSales && <nav className="mis-nav" aria-label="Dashboard sections">
           {NAV.filter(([id]) => id !== 'telecallers' || cols.telecaller).map(([id, label]) => (
             <button key={id} type="button" className={id === view ? 'is-active' : ''} aria-current={id === view ? 'page' : undefined}
               onClick={() => setView(id)}>
               <Icon name={id} /> {label}
             </button>
           ))}
-        </nav>
+        </nav>}
         <div className="mis-side-foot">
           <p className="mis-sync">
             <span className={`mis-dot${error ? ' is-bad' : ''}`} aria-hidden="true" />
@@ -190,11 +192,11 @@ export default function MisDashboard({ standalone = false }) {
             <div className="mis-filters">
               <Periods filters={filters} set={set} />
               <DateRange filters={filters} set={set} />
-              <Filters filters={filters} set={set} options={options} />
+              {!isSales && <Filters filters={filters} set={set} options={options} />}
               {filtering && <button type="button" className="mis-link" onClick={clearFilters}>Clear filters</button>}
-              <button type="button" className="mis-btn mis-btn-primary" disabled={!filtered.length} onClick={() => exportCalls(filtered, filters, N.many)}>
+              {!isSales && <button type="button" className="mis-btn mis-btn-primary" disabled={!filtered.length} onClick={() => exportCalls(filtered, filters, N.many)}>
                 <Icon name="download" /> Export {num(filtered.length)}
-              </button>
+              </button>}
             </div>
           )}
         </header>
@@ -207,10 +209,11 @@ export default function MisDashboard({ standalone = false }) {
         )}
         {!data && !error && <Skeleton />}
 
-        {data && ds && <DataNotes data={ds} />}
-        {data && !data.leads && data.leadsError && <p className="mis-warn">The LEADS tab could not be read: {data.leadsError}</p>}
+        {data && isSales && <SalesView sales={data.sales || []} filters={filters} />}
+        {data && !isSales && ds && <DataNotes data={ds} />}
+        {data && !isSales && !data.leads && data.leadsError && <p className="mis-warn">The LEADS tab could not be read: {data.leadsError}</p>}
 
-        {data && view === 'overview' && <Overview rows={filtered} sum={sum} set={set} brands={ds.brands} hasDevice={cols.device} />}
+        {data && !isSales && view === 'overview' &&<Overview rows={filtered} sum={sum} set={set} brands={ds.brands} hasDevice={cols.device} />}
         {data && view === 'brands' && <GroupView rows={filtered} field="brand" label="Brand" always={ds.brands} />}
         {data && view === 'telecallers' && cols.telecaller && <GroupView rows={filtered} field="telecaller" label="Telecaller" />}
         {data && view === 'reports' && <Reports filtered={filtered} kind={ds.kind} hasTelecaller={cols.telecaller} N={N} from={filters.from} to={filters.to} />}

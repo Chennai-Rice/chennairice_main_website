@@ -420,3 +420,9 @@ button.mis-metric:hover { transform: translateY(-2px); border-color: var(--accen
 }
 
 .mis-which { margin: 0 0 12px; }
+
+/* Sales view: leaderboard bars and the B2B / B2C switch row */
+.mis-which-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.mis-which-row .mis-which { margin: 0; }
+.mis-rankbar { height: 8px; min-width: 90px; border-radius: 99px; background: rgba(120, 130, 160, 0.18); overflow: hidden; }
+.mis-rankbar i { display: block; height: 100%; border-radius: 99px; background: var(--accent, #7a1f2b); }

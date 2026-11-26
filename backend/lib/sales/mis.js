@@ -14,6 +14,7 @@ import { GoogleAuth } from 'google-auth-library'
 import { parseCsv } from './advisor-files.js'
 import { BRANDS, brandFromText, classifyCall, callOutcome } from './mis-rules.js'
 import { httpError } from './util.js'
+import { buildSales } from './mis-sales.js'
 
 const SHEET_ID = () => process.env.MIS_SHEET_ID || '1J6J5zmeyEfM_RRHOy4HX6OKi8XFZ3fK4L1YtsyAKirM'
 const SHEET_GID = () => String(process.env.MIS_SHEET_GID || '500982816') // the CALLS tab
@@ -334,6 +335,15 @@ async function readSheet() {
       out.leadsError = err.publicMessage || err.message
     }
   }
+  // The B2B and B2C tabs (bill values) are optional too: the Sales view needs them, nothing else does.
+  out.sales = []
+  for (const tab of tabs.filter((p) => /^b2[bc]$/i.test(p.title.trim()))) {
+    try {
+      out.sales.push({ type: tab.title.trim().toUpperCase(), ...(await read(tab)) })
+    } catch (err) {
+      out.sales.push({ type: tab.title.trim().toUpperCase(), error: err.publicMessage || err.message })
+    }
+  }
   return out
 }
 
@@ -341,7 +351,7 @@ async function readSheet() {
 export async function misData({ refresh = false } = {}) {
   const age = cache ? Date.now() - cache.at : Infinity
   if (cache && (age < CACHE_MS ? !refresh || age < MIN_REFRESH_MS : false)) return cache.value
-  const { title, values, leads, leadsError } = await readSheet()
+  const { title, values, leads, leadsError, sales } = await readSheet()
   const value = { fetchedAt: new Date().toISOString(), ...buildDataset(values, { sheetTitle: title }), leads: null, leadsError: leadsError || '' }
   if (leads) {
     try {
@@ -350,6 +360,7 @@ export async function misData({ refresh = false } = {}) {
       value.leadsError = err.publicMessage || err.message
     }
   }
+  value.sales = (sales || []).map((t) => (t.error ? { type: t.type, rows: [], error: t.error } : buildSales(t.values, { type: t.type, sheetTitle: t.title })))
   cache = { at: Date.now(), value }
   return value
 }
