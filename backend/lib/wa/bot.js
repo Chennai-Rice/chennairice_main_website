@@ -134,6 +134,7 @@ const TEXT = {
     sorryWait: 'Sorry for the wait 🙏 Our team will get back to you here soon.',
     handoff: 'Our team will reply to you shortly.',
     askOrder: 'Please send your order number.',
+    trackWeb: 'Or track it yourself on our website',
     askPin: 'Please send your 6-digit PIN code.',
     pricesHeading: 'Today\'s prices',
     offMrp: (n) => ` — up to ${n}% off MRP`,
@@ -162,6 +163,7 @@ const TEXT = {
     sorryWait: 'காத்திருக்க வைத்ததற்கு மன்னிக்கவும் 🙏 எங்கள் குழு விரைவில் இங்கே பதில் அளிக்கும்.',
     handoff: 'எங்கள் குழு விரைவில் பதில் அளிக்கும்.',
     askOrder: 'உங்கள் ஆர்டர் எண்ணை அனுப்பவும்.',
+    trackWeb: 'அல்லது எங்கள் இணையதளத்தில் நீங்களே பார்க்கலாம்',
     askPin: 'உங்கள் 6 இலக்க PIN கோடை அனுப்பவும்.',
     pricesHeading: 'இன்றைய விலை',
     offMrp: (n) => ` — MRP-இல் ${n}% வரை தள்ளுபடி`,
@@ -319,8 +321,8 @@ const plainText = (body) => ({ type: 'text', text: { body: body.slice(0, 4096), 
 // preview card (owner, 26 Nov 2026). One site link per message; otherwise, or if too long, plain text.
 const SITE_LINK = new RegExp(SITE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[^\\s)]*', 'g')
 const LINK_LABELS = {
-  en: [[/track-order/, '📦 Track order'], [/./, '🛒 Shop now']],
-  ta: [[/track-order/, '📦 ஆர்டர் நிலை'], [/./, '🛒 ஆர்டர் செய்ய']],
+  en: [[/track-order/, '📦 Track order'], [/\/w\/spin/, '🎡 Spin & Win'], [/./, '🛒 Shop now']],
+  ta: [[/track-order/, '📦 ஆர்டர் நிலை'], [/\/w\/spin/, '🎡 Spin & Win'], [/./, '🛒 ஆர்டர் செய்ய']],
 }
 export function linkMsg(body, lang = 'en') {
   const links = body.match(SITE_LINK) || []
@@ -449,7 +451,8 @@ export async function render(baseBot, decision, { phone = '', name = '', lang: c
   }
 
   const item = decision.item
-  if (item.action === 'track_order') { out.messages.push(textMsg(item.reply || t.askOrder)); out.state = { awaiting: 'order_number' }; return out }
+  // Track my order: send the number here, or a Track order button to the website (owner, 26 Nov 2026).
+  if (item.action === 'track_order') { out.messages.push(textMsg(`${item.reply || t.askOrder}\n\n${t.trackWeb}: ${SITE}/track-order`)); out.state = { awaiting: 'order_number' }; return out }
   if (item.action === 'delivery') { out.messages.push(textMsg(item.reply || t.askPin)); out.state = { awaiting: 'pincode' }; return out }
   if (item.action === 'handoff') {
     out.messages.push(textMsg(item.reply || t.handoff))

@@ -601,6 +601,12 @@ test('links: our shop / track-order link is a button under the message, not a ba
   assert.match(i.body.text, /home delivery here\.\n\nPay by UPI/)
   const ta = await render(bot, decide(botFor(bot, 'ta'), { replyId: 'shop' }), { lang: 'ta' }, deps)
   assert.equal(ta.messages[0].interactive.action.parameters.display_text, '🛒 ஆர்டர் செய்ய')
+  // Track my order: still asks for the number, with a Track order button to the website.
+  const ask = await render(bot, decide(bot, { replyId: 'track' }), {}, deps)
+  assert.equal(ask.state.awaiting, 'order_number')
+  assert.deepEqual(ask.messages[0].interactive.action.parameters, { display_text: '📦 Track order', url: 'https://chennairiceindustries.com/track-order' })
+  const spin = await render(bot, decide(bot, { replyId: 'offers' }), { phone: '9000000000' }, deps)
+  assert.equal(spin.messages[0].interactive.action.parameters.display_text, '🎡 Spin & Win')
   const track = linkMsg('Full details: https://chennairiceindustries.com/track-order?order=CR-1')
   assert.equal(track.interactive.action.parameters.display_text, '📦 Track order')
   assert.ok([...'📦 ஆர்டர் நிலை'].length <= 20)
