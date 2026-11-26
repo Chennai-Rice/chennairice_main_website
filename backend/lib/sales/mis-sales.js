@@ -11,6 +11,7 @@ const clean = (v) => String(v ?? '').replace(/\s+/g, ' ').trim()
 const FIELDS = {
   date: { names: ['date'], exact: true },
   telesales: { names: ['leadgeneratedby', 'generatedby', 'telesales', 'telecaller'] },
+  brand: { names: ['brand', 'brandname'], exact: true }, // optional: the sales tabs have no Brand column yet
   type: { names: ['leadtype'], exact: true },
   source: { names: ['leadsource'], exact: true },
   name: { names: ['name', 'customername'], exact: true },
@@ -96,6 +97,7 @@ export function buildSales(matrix, { type, sheetTitle = '' } = {}) {
       type,
       date,
       month: date ? date.slice(0, 7) : '',
+      brand: clean(cell(row, 'brand')),
       telesales: person(cell(row, 'telesales')),
       manager: person(cell(row, 'manager')),
       asm: person(cell(row, 'asm')),

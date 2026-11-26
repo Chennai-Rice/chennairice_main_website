@@ -75,6 +75,7 @@ export default function MisDashboard({ standalone = false }) {
   const [filters, setFilters] = useState({ brand: '', platform: '', month: '', from: '', to: '' })
   const [look, setLook] = useState(loadLook)
   const [which, setWhich] = useState('calls')
+  const [menuOpen, setMenuOpen] = useState(false) // phones: the side panel is a menu that opens on tap
 
   const load = useCallback(async (refresh = false) => {
     setLoading(true)
@@ -128,6 +129,7 @@ export default function MisDashboard({ standalone = false }) {
   const filtering = Boolean(filters.brand || filters.platform || filters.month || filters.from || filters.to)
   const chooseData = (id) => {
     setWhich(id)
+    setMenuOpen(false)
     setFilters((f) => ({ ...f, brand: '', platform: '' }))
     if (view === 'telecallers') setView('overview')
   }
@@ -142,13 +144,16 @@ export default function MisDashboard({ standalone = false }) {
   return (
     <NounContext.Provider value={N}>
     <div className={`mis mis-${look}${standalone ? ' is-standalone' : ''}`}>
-      <aside className="mis-side">
+      <aside className={`mis-side${menuOpen ? ' is-open' : ''}`}>
         <div className="mis-brand">
           <img src="/assets/logo-full-v3.png" alt="" width="40" height="40" />
           <div>
             <strong>Chennai Rice</strong>
-            <span>{N.Many} Dashboard</span>
+            <span>{isSales ? 'Sales Dashboard' : `${N.Many} Dashboard`}</span>
           </div>
+          <button type="button" className="mis-menu-btn" aria-expanded={menuOpen} aria-label={menuOpen ? 'Close menu' : 'Open menu'} onClick={() => setMenuOpen((o) => !o)}>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">{menuOpen ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}</svg>
+          </button>
         </div>
         {(data?.leads || data?.sales?.length > 0) && (
           <div className="mis-theme mis-which" role="group" aria-label="Sheet tab">
@@ -160,7 +165,7 @@ export default function MisDashboard({ standalone = false }) {
         {!isSales && <nav className="mis-nav" aria-label="Dashboard sections">
           {NAV.filter(([id]) => id !== 'telecallers' || cols.telecaller).map(([id, label]) => (
             <button key={id} type="button" className={id === view ? 'is-active' : ''} aria-current={id === view ? 'page' : undefined}
-              onClick={() => setView(id)}>
+              onClick={() => { setView(id); setMenuOpen(false) }}>
               <Icon name={id} /> {label}
             </button>
           ))}
@@ -209,7 +214,7 @@ export default function MisDashboard({ standalone = false }) {
         )}
         {!data && !error && <Skeleton />}
 
-        {data && isSales && <SalesView sales={data.sales || []} filters={filters} />}
+        {data && isSales && <SalesView sales={data.sales || []} calls={data.rows || []} filters={filters} />}
         {data && !isSales && ds && <DataNotes data={ds} />}
         {data && !isSales && !data.leads && data.leadsError && <p className="mis-warn">The LEADS tab could not be read: {data.leadsError}</p>}
 
