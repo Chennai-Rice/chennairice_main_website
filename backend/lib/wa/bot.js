@@ -60,7 +60,118 @@ export const DEFAULT_BOT = {
   handoffHours: 12,
   // AI replies (Groq) for anything the menu does not cover.
   ai: { enabled: true },
+  // Tamil (owner, 26 Nov 2026): the customer picks English or தமிழ் on their first message; a Tamil chat gets these
+  // texts. Menu items are matched by id; an item added in the dashboard without a Tamil text stays in English.
+  ta: {
+    welcome: {
+      text: 'வணக்கம் {{name}}! 🙏 *சென்னை ரைஸ் இண்டஸ்ட்ரீஸ்*-க்கு உங்களை அன்புடன் வரவேற்கிறோம். நாங்கள் கிச்சடி பொன்னி அரிசி தயாரிப்பாளர்கள்.\n\nஇன்று உங்களுக்கு எப்படி உதவலாம்? கீழே உள்ள மெனுவில் தேர்ந்தெடுக்கவும்.',
+      button: 'மெனு',
+    },
+    items: {
+      shop: { label: '🛒 அரிசி ஆர்டர்', description: 'ஆன்லைனில் வாங்கலாம், வீட்டுக்கே டெலிவரி', keywords: ['ஆர்டர்', 'வாங்க'],
+        reply: 'வீட்டுக்கே டெலிவரியுடன் இங்கே ஆன்லைனில் ஆர்டர் செய்யலாம்:\n' + SITE + '/w/shop-bot\n\nUPI, கார்டு அல்லது நெட் பேங்கிங் மூலம் பணம் செலுத்தலாம். 🍚' },
+      prices: { label: '💰 விலை', description: 'ஒவ்வொரு பேக்கின் இன்றைய விலை', keywords: ['விலை', 'ரேட்'], reply: 'இன்றைய விலை' },
+      track: { label: '📦 ஆர்டர் நிலை', description: 'என் ஆர்டர் எங்கே?', keywords: ['ஆர்டர் நிலை', 'டிராக்'],
+        reply: 'உங்கள் ஆர்டர் எண்ணை அனுப்பவும். அது *CR-20261111-AB12C* போல இருக்கும்; உங்கள் ஆர்டர் மின்னஞ்சல் மற்றும் SMS-இல் உள்ளது.' },
+      offers: { label: '🎁 என் சலுகைகள்', description: 'Spin & Win மற்றும் பரிந்துரை குறியீடுகள்', keywords: ['சலுகை', 'தள்ளுபடி', 'கூப்பன்'],
+        reply: 'இந்த எண்ணில் தற்போது சலுகைகள் எதுவும் இல்லை. ₹150 வரை தள்ளுபடி வெல்ல எங்கள் இணையதளத்தில் சக்கரத்தைச் சுற்றுங்கள்: ' + SITE + '/w/spin-bot' },
+      delivery: { label: '🚚 டெலிவரி பகுதி', description: 'உங்கள் PIN கோடைச் சரிபார்க்கவும்', keywords: ['டெலிவரி', 'பின்கோடு'],
+        reply: 'உங்கள் 6 இலக்க PIN கோடை அனுப்பவும். அங்கு டெலிவரி செய்கிறோமா, டெலிவரி கட்டணம் எவ்வளவு என்று சொல்கிறோம்.' },
+      human: { label: '👤 குழுவிடம் பேச', description: 'எங்கள் குழுவில் ஒருவர் பதில் அளிப்பார்', keywords: ['உதவி', 'புகார்', 'பேச'],
+        reply: 'நன்றி! 🙏 எங்கள் குழு விரைவில் இங்கே உங்களைத் தொடர்புகொள்ளும்.' },
+    },
+    fallback: 'மன்னிக்கவும், புரியவில்லை. 🙏 மெனுவில் தேர்ந்தெடுக்கவும், அல்லது எப்போது வேண்டுமானாலும் *menu* என்று டைப் செய்யவும்.',
+  },
 }
+
+// ---- languages -------------------------------------------------------------------------------------------------------
+export const LANGS = ['en', 'ta']
+/** The first message: English or Tamil, as two buttons. */
+export function languageMsg() {
+  return {
+    type: 'interactive',
+    interactive: {
+      type: 'button',
+      body: { text: 'Vanakkam! 🙏 Welcome to *Chennai Rice Industries*.\nவணக்கம்! 🙏 சென்னை ரைஸ் இண்டஸ்ட்ரீஸ்-க்கு வரவேற்கிறோம்.\n\nPlease choose your language.\nஉங்கள் மொழியைத் தேர்ந்தெடுக்கவும்.' },
+      action: { buttons: [{ type: 'reply', reply: { id: 'lang_en', title: 'English' } }, { type: 'reply', reply: { id: 'lang_ta', title: 'தமிழ்' } }] },
+    },
+  }
+}
+const LANG_WORDS = { english: 'en', eng: 'en', tamil: 'ta', 'தமிழ்': 'ta' }
+const PICK_WORDS = ['language', 'lang', 'மொழி', 'change language']
+
+/** The bot's texts in a language: Tamil swaps in the Tamil welcome, menu and fallback (keywords of both work). */
+export function botFor(bot, lang) {
+  if (lang !== 'ta' || !bot.ta) return bot
+  const ta = bot.ta
+  return {
+    ...bot,
+    lang: 'ta',
+    welcome: { ...bot.welcome, text: ta.welcome?.text || bot.welcome.text, button: ta.welcome?.button || bot.welcome.button },
+    items: (bot.items || []).map((it) => {
+      const t = ta.items?.[it.id]
+      return t ? { ...it, label: t.label || it.label, description: t.description ?? it.description, reply: t.reply || it.reply, keywords: [...(it.keywords || []), ...(t.keywords || [])] } : it
+    }),
+    fallback: ta.fallback || bot.fallback,
+  }
+}
+
+// The bot's own sentences (not editable in the dashboard), per language.
+const TEXT = {
+  en: {
+    notOrderNo: 'That does not look like an order number. It looks like *CR-20261111-AB12C* (in your order email and SMS). Send it any time, or choose from the menu below.',
+    notFound: 'We could not find a placed order with that number. 🙏 Please check it on your order email or SMS. If the payment did not go through, the order was not placed — you can order again here: ' + SITE + '/w/shop-bot',
+    privacy: 'For your privacy, we can only share an order\'s status with the WhatsApp number used to place it. Please message us from that number, or check it here: ' + SITE + '/track-order',
+    orderIs: (no, status) => `Order *${no}* is ${status}.`,
+    courier: (url) => `Track the courier: ${url}`,
+    expected: (d) => `Expected by ${d}.`,
+    details: (url) => `Full details: ${url}`,
+    noPin: (pin) => `Sorry, we do not deliver to ${pin} yet. 🙏 For bulk orders, call us on +91 70666 46667.`,
+    yesPin: (pin, area, charges) => `Yes! ✅ We deliver to ${pin} (${area || 'your area'}).${charges ? '\n' + charges : ''}\n\nOrder here: ${SITE}/w/shop-bot`,
+    charge: (kg, amount) => `• ${kg} kg pack: ${amount} delivery`,
+    offers: (lines) => `Your offers on this number 🎁\n${lines}\n\nThey are applied automatically when you order from this mobile number: ${SITE}/w/shop-bot`,
+    until: (d) => ` (till ${d})`,
+    sorryWait: 'Sorry for the wait 🙏 Our team will get back to you here soon.',
+    handoff: 'Our team will reply to you shortly.',
+    askOrder: 'Please send your order number.',
+    askPin: 'Please send your 6-digit PIN code.',
+    pricesHeading: 'Today\'s prices',
+    offMrp: (n) => ` — up to ${n}% off MRP`,
+    pricesFoot: `Prices per pack, GST included. Delivery depends on your PIN code.\n🛒 Order: ${SITE}/w/shop-bot`,
+    pricesWeb: `Our prices are on the website: ${SITE}/w/shop-bot`,
+    status: {
+      placed: 'received ✅ and waiting to be confirmed', confirmed: 'confirmed ✅ and being packed', packed: 'packed 📦 and ready to leave our mill',
+      shipped: 'on the way 🚚', delivered: 'delivered ✅', cancelled: 'cancelled', returned: 'returned',
+    },
+  },
+  ta: {
+    notOrderNo: 'இது ஆர்டர் எண் போல இல்லை. ஆர்டர் எண் *CR-20261111-AB12C* போல இருக்கும் (உங்கள் ஆர்டர் மின்னஞ்சல் மற்றும் SMS-இல்). எப்போது வேண்டுமானாலும் அனுப்பலாம், அல்லது கீழே உள்ள மெனுவில் தேர்ந்தெடுக்கவும்.',
+    notFound: 'இந்த எண்ணில் ஆர்டர் எதுவும் கிடைக்கவில்லை. 🙏 உங்கள் ஆர்டர் மின்னஞ்சல் அல்லது SMS-இல் எண்ணைச் சரிபார்க்கவும். பணம் செலுத்துதல் முடியவில்லை என்றால் ஆர்டர் பதிவாகவில்லை; இங்கே மீண்டும் ஆர்டர் செய்யலாம்: ' + SITE + '/w/shop-bot',
+    privacy: 'உங்கள் தனியுரிமைக்காக, ஆர்டர் செய்த WhatsApp எண்ணுக்கு மட்டுமே ஆர்டர் நிலையைப் பகிர முடியும். அந்த எண்ணிலிருந்து மெசேஜ் செய்யவும், அல்லது இங்கே பார்க்கவும்: ' + SITE + '/track-order',
+    orderIs: (no, status) => `ஆர்டர் *${no}*: ${status}.`,
+    courier: (url) => `கூரியரைப் பின்தொடர: ${url}`,
+    expected: (d) => `${d}-க்குள் வந்து சேரும்.`,
+    details: (url) => `முழு விவரம்: ${url}`,
+    noPin: (pin) => `மன்னிக்கவும், ${pin}-க்கு இப்போது டெலிவரி இல்லை. 🙏 மொத்த ஆர்டர்களுக்கு +91 70666 46667 என்ற எண்ணில் அழைக்கவும்.`,
+    yesPin: (pin, area, charges) => `ஆம்! ✅ ${pin}${area ? ` (${area})` : ''}-க்கு டெலிவரி செய்கிறோம்.${charges ? '\n' + charges : ''}\n\nஇங்கே ஆர்டர் செய்யவும்: ${SITE}/w/shop-bot`,
+    charge: (kg, amount) => `• ${kg} kg பேக்: டெலிவரி ${amount}`,
+    offers: (lines) => `இந்த எண்ணில் உள்ள உங்கள் சலுகைகள் 🎁\n${lines}\n\nஇந்த மொபைல் எண்ணிலிருந்து ஆர்டர் செய்யும்போது தானாகவே பொருந்தும்: ${SITE}/w/shop-bot`,
+    until: (d) => ` (${d} வரை)`,
+    sorryWait: 'காத்திருக்க வைத்ததற்கு மன்னிக்கவும் 🙏 எங்கள் குழு விரைவில் இங்கே பதில் அளிக்கும்.',
+    handoff: 'எங்கள் குழு விரைவில் பதில் அளிக்கும்.',
+    askOrder: 'உங்கள் ஆர்டர் எண்ணை அனுப்பவும்.',
+    askPin: 'உங்கள் 6 இலக்க PIN கோடை அனுப்பவும்.',
+    pricesHeading: 'இன்றைய விலை',
+    offMrp: (n) => ` — MRP-இல் ${n}% வரை தள்ளுபடி`,
+    pricesFoot: `விலை ஒரு பேக்கிற்கு, GST உட்பட. டெலிவரி கட்டணம் உங்கள் PIN கோடைப் பொறுத்தது.\n🛒 ஆர்டர்: ${SITE}/w/shop-bot`,
+    pricesWeb: `எங்கள் விலைகள் இணையதளத்தில் உள்ளன: ${SITE}/w/shop-bot`,
+    status: {
+      placed: 'பெறப்பட்டது ✅, உறுதிப்படுத்தக் காத்திருக்கிறது', confirmed: 'உறுதி செய்யப்பட்டது ✅, பேக் செய்யப்படுகிறது', packed: 'பேக் செய்யப்பட்டது 📦, எங்கள் ஆலையிலிருந்து புறப்படத் தயார்',
+      shipped: 'வழியில் உள்ளது 🚚', delivered: 'டெலிவரி செய்யப்பட்டது ✅', cancelled: 'ரத்து செய்யப்பட்டது', returned: 'திருப்பி அனுப்பப்பட்டது',
+    },
+  },
+}
+const T = (lang) => TEXT[lang === 'ta' ? 'ta' : 'en']
 
 const norm = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim()
 const hasWord = (text, kw) => {
@@ -95,6 +206,12 @@ export function cleanBot(input = {}) {
     // (owner, Nov 2026: too many after a bulk message); the chat still opens in the Inbox with the AI's note.
     handoffEmail: input.handoffEmail === true,
     ai: { enabled: input.ai?.enabled !== false },
+    // Tamil texts: the defaults unless the settings carry their own (the dashboard edits the English ones).
+    ta: input.ta && typeof input.ta === 'object' ? {
+      welcome: { text: noHours(input.ta.welcome?.text || DEFAULT_BOT.ta.welcome.text).slice(0, 1024), button: str(input.ta.welcome?.button || DEFAULT_BOT.ta.welcome.button).slice(0, 20) },
+      items: { ...DEFAULT_BOT.ta.items, ...(input.ta.items && typeof input.ta.items === 'object' ? input.ta.items : {}) },
+      fallback: noHours(input.ta.fallback || DEFAULT_BOT.ta.fallback).slice(0, 1024),
+    } : DEFAULT_BOT.ta,
   }
 }
 
@@ -119,6 +236,12 @@ export function decide(bot, { text = '', replyId = '', image = null } = {}, stat
   }
   // A photo: the AI looks at it (a payment screenshot, a damaged pack…). Without AI, the menu as before.
   if (image) return bot.ai?.enabled ? { kind: 'ai', text: text || '', image } : { kind: 'fallback' }
+  // Language: the English / தமிழ் buttons, or typing "English", "Tamil", "தமிழ்"; "language" / "மொழி" asks again.
+  if (replyId === 'lang_en' || replyId === 'lang_ta') return { kind: 'lang', lang: replyId.slice(5) }
+  if (replyId === 'lang') return { kind: 'chooseLang' }
+  const said = String(text || '').trim().toLowerCase()
+  if (LANG_WORDS[said]) return { kind: 'lang', lang: LANG_WORDS[said] }
+  if (PICK_WORDS.includes(said)) return { kind: 'chooseLang' }
   if (replyId) {
     const item = items.find((it) => it.id === replyId)
     if (item) return { kind: 'item', item }
@@ -154,8 +277,9 @@ export function decide(bot, { text = '', replyId = '', image = null } = {}, stat
  *   5 kg *₹555*  ·  26 kg *₹2,499*
  * Two lines per rice (name, then all packs), a blank line between rices, then delivery and the link.
  */
-export function priceListText(list = [], heading = '') {
-  if (!list.length) return `Our prices are on the website: ${SITE}/w/shop-bot`
+export function priceListText(list = [], heading = '', lang = 'en') {
+  const t = T(lang)
+  if (!list.length) return t.pricesWeb
   const byRice = new Map()
   for (const p of list) {
     if (!byRice.has(p.name)) byRice.set(p.name, [])
@@ -167,9 +291,9 @@ export function priceListText(list = [], heading = '') {
     `*${name}*\n${packs.sort((a, b) => a.packKg - b.packKg).map((p) => `${p.packKg} kg *${rupees(p.price)}*`).join('  ·  ')}`)
   const off = Math.max(0, ...list.filter((p) => p.mrp > p.price).map((p) => Math.floor((1 - p.price / p.mrp) * 100)))
   return [
-    `🍚 *${String(heading || '').trim().replace(/[:.\s]+$/, '') || 'Today\'s prices'}*${off >= 5 ? ` — up to ${off}% off MRP` : ''}`,
+    `🍚 *${String(heading || '').trim().replace(/[:.\s]+$/, '') || t.pricesHeading}*${off >= 5 ? t.offMrp(off) : ''}`,
     ...blocks,
-    `Prices per pack, GST included. Delivery depends on your PIN code.\n🛒 Order: ${SITE}/w/shop-bot`,
+    t.pricesFoot,
   ].join('\n\n')
 }
 
@@ -193,7 +317,11 @@ export function menuMsg(bot, body) {
       body: { text: body.slice(0, 1024) },
       action: {
         button: (bot.welcome?.button || 'Menu').slice(0, 20),
-        sections: [{ title: 'Chennai Rice', rows: items.slice(0, 10).map((it) => ({ id: it.id, title: it.label.slice(0, 24), ...(it.description ? { description: it.description.slice(0, 72) } : {}) })) }],
+        // Plus a row to switch language (WhatsApp allows 10 rows in all).
+        sections: [{ title: 'Chennai Rice', rows: [
+          ...items.slice(0, 9).map((it) => ({ id: it.id, title: it.label.slice(0, 24), ...(it.description ? { description: it.description.slice(0, 72) } : {}) })),
+          { id: 'lang', title: '🌐 English / தமிழ்', description: bot.lang === 'ta' ? 'மொழியை மாற்ற' : 'Change language' },
+        ] }],
       },
     },
   }
@@ -213,16 +341,22 @@ const STATUS_WORDS = {
  * The replies for a decision. `deps` does the lookups (findOrder, offers, prices, delivery), so the
  * simulator and tests can use stand-ins. Returns { messages, state } where state is what to remember.
  */
-export async function render(bot, decision, { phone = '', name = '' } = {}, deps = {}) {
-  const first = String(name || '').trim().split(/\s+/)[0] || 'there'
-  const welcome = () => menuMsg(bot, bot.welcome.text.replaceAll('{{name}}', first))
+export async function render(baseBot, decision, { phone = '', name = '', lang: chatLang = 'en' } = {}, deps = {}) {
+  // The chat's language: the one just picked, else the one remembered for this number.
+  const lang = decision.kind === 'lang' ? decision.lang : chatLang
+  const bot = botFor(baseBot, lang)
+  const t = T(lang)
+  const first = String(name || '').trim().split(/\s+/)[0] || (lang === 'ta' ? '' : 'there')
+  const welcome = () => menuMsg(bot, bot.welcome.text.replaceAll(' {{name}}', first ? ' ' + first : '').replaceAll('{{name}}', first))
   const out = { messages: [], state: { awaiting: null } }
+  if (decision.kind === 'chooseLang') { out.messages.push(languageMsg()); return out }
+  if (decision.kind === 'lang') { out.messages.push(welcome()); out.state = { awaiting: null, lang }; return out }
   if (decision.kind === 'welcome') { out.messages.push(welcome()); return out }
   if (decision.kind === 'fallback') { out.messages.push(menuMsg(bot, bot.fallback)); return out }
   if (decision.kind === 'ai') {
     // The AI's reply; if it cannot answer (Groq down, no key), the menu as before.
     const r = deps.ai
-      ? await deps.ai({ phone, name, text: decision.text, image: decision.image || null, handedOver: Boolean(decision.handedOver) }).catch((err) => {
+      ? await deps.ai({ phone, name, text: decision.text, image: decision.image || null, handedOver: Boolean(decision.handedOver), lang }).catch((err) => {
         console.error('[wa-ai]', err.message)
         return null
       })
@@ -230,14 +364,14 @@ export async function render(bot, decision, { phone = '', name = '' } = {}, deps
     if (!r) {
       // Never silence: with the team on it, a short "we'll get back to you"; otherwise the menu.
       if (decision.handedOver) {
-        out.messages.push(textMsg('Sorry for the wait 🙏 Our team will get back to you here soon.'))
+        out.messages.push(textMsg(t.sorryWait))
         out.state = { awaiting: null, pausedHours: bot.handoffHours }
       } else out.messages.push(menuMsg(bot, bot.fallback))
       return out
     }
     out.messages.push(textMsg(r.reply))
     // Asked for the prices / price list: the same tidy list as the Prices menu item, not one the AI types out.
-    if (r.showPrices && deps.prices) out.messages.push(textMsg(priceListText(await deps.prices().catch(() => []))))
+    if (r.showPrices && deps.prices) out.messages.push(textMsg(priceListText(await deps.prices().catch(() => []), '', lang)))
     out.state = { awaiting: null, ai: r, ...(r.handoff ? { pausedHours: bot.handoffHours } : {}) }
     return out
   }
@@ -247,7 +381,7 @@ export async function render(bot, decision, { phone = '', name = '' } = {}, deps
     if (!ref) {
       // Asked once only: the menu comes with it and the bot stops waiting, so the next message is read as usual.
       // An order number sent later is still found (it is recognised anywhere in a message).
-      out.messages.push(menuMsg(bot, 'That does not look like an order number. It looks like *CR-20261111-AB12C* (in your order email and SMS). Send it any time, or choose from the menu below.'))
+      out.messages.push(menuMsg(bot, t.notOrderNo))
       out.state = { awaiting: null }
       return out
     }
@@ -255,13 +389,13 @@ export async function render(bot, decision, { phone = '', name = '' } = {}, deps
     // A chat with the team stays with the team after the lookup.
     if (decision.handedOver) out.state = { awaiting: null, pausedHours: bot.handoffHours }
     // Unpaid orders are not orders yet (findOrder skips pending_payment): say so, instead of only "not found".
-    if (!order) out.messages.push(textMsg('We could not find a placed order with that number. 🙏 Please check it on your order email or SMS. If the payment did not go through, the order was not placed — you can order again here: ' + SITE + '/w/shop-bot'))
-    else if (!order.samePhone) out.messages.push(textMsg('For your privacy, we can only share an order\'s status with the WhatsApp number used to place it. Please message us from that number, or check it here: ' + SITE + '/track-order'))
+    if (!order) out.messages.push(textMsg(t.notFound))
+    else if (!order.samePhone) out.messages.push(textMsg(t.privacy))
     else {
-      const lines = [`Order *${order.orderNumber}* is ${STATUS_WORDS[order.status] || order.status.replaceAll('_', ' ')}.`]
-      if (order.trackingUrl) lines.push(`Track the courier: ${order.trackingUrl}`)
-      if (order.expected) lines.push(`Expected by ${order.expected}.`)
-      lines.push(`Full details: ${SITE}/track-order?order=${encodeURIComponent(order.orderNumber)}`)
+      const lines = [t.orderIs(order.orderNumber, t.status[order.status] || order.status.replaceAll('_', ' '))]
+      if (order.trackingUrl) lines.push(t.courier(order.trackingUrl))
+      if (order.expected) lines.push(t.expected(order.expected))
+      lines.push(t.details(`${SITE}/track-order?order=${encodeURIComponent(order.orderNumber)}`))
       out.messages.push(textMsg(lines.join('\n')))
     }
     return out
@@ -269,32 +403,32 @@ export async function render(bot, decision, { phone = '', name = '' } = {}, deps
 
   if (decision.kind === 'pincode') {
     const d = await deps.delivery(decision.pin)
-    if (!d?.delivers) out.messages.push(textMsg(`Sorry, we do not deliver to ${decision.pin} yet. 🙏 For bulk orders, call us on +91 70666 46667.`))
+    if (!d?.delivers) out.messages.push(textMsg(t.noPin(decision.pin)))
     else {
-      const charges = (d.charges || []).map((c) => `• ${c.packKg} kg pack: ${c.from === c.to ? rupees(c.from) : `${rupees(c.from)}–${rupees(c.to)}`} delivery`).join('\n')
-      out.messages.push(textMsg(`Yes! ✅ We deliver to ${decision.pin} (${d.region?.name || 'your area'}).${charges ? '\n' + charges : ''}\n\nOrder here: ${SITE}/w/shop-bot`))
+      const charges = (d.charges || []).map((c) => t.charge(c.packKg, c.from === c.to ? rupees(c.from) : `${rupees(c.from)}–${rupees(c.to)}`)).join('\n')
+      out.messages.push(textMsg(t.yesPin(decision.pin, d.region?.name, charges)))
     }
     return out
   }
 
   const item = decision.item
-  if (item.action === 'track_order') { out.messages.push(textMsg(item.reply || 'Please send your order number.')); out.state = { awaiting: 'order_number' }; return out }
-  if (item.action === 'delivery') { out.messages.push(textMsg(item.reply || 'Please send your 6-digit PIN code.')); out.state = { awaiting: 'pincode' }; return out }
+  if (item.action === 'track_order') { out.messages.push(textMsg(item.reply || t.askOrder)); out.state = { awaiting: 'order_number' }; return out }
+  if (item.action === 'delivery') { out.messages.push(textMsg(item.reply || t.askPin)); out.state = { awaiting: 'pincode' }; return out }
   if (item.action === 'handoff') {
-    out.messages.push(textMsg(item.reply || 'Our team will reply to you shortly.'))
+    out.messages.push(textMsg(item.reply || t.handoff))
     out.state = { awaiting: null, pausedHours: bot.handoffHours }
     return out
   }
   if (item.action === 'prices') {
-    out.messages.push(textMsg(priceListText(await deps.prices(), item.reply)))
+    out.messages.push(textMsg(priceListText(await deps.prices(), item.reply, lang)))
     return out
   }
   if (item.action === 'offers') {
     const codes = await deps.offers(phone)
     if (!codes.length) out.messages.push(textMsg(item.reply))
     else {
-      const lines = codes.map((c) => `• *${c.code}*: ${c.label}${c.until ? ` (till ${c.until})` : ''}`).join('\n')
-      out.messages.push(textMsg(`Your offers on this number 🎁\n${lines}\n\nThey are applied automatically when you order from this mobile number: ${SITE}/w/shop-bot`))
+      const lines = codes.map((c) => `• *${c.code}*: ${c.label}${c.until ? t.until(c.until) : ''}`).join('\n')
+      out.messages.push(textMsg(t.offers(lines)))
     }
     return out
   }
@@ -411,10 +545,16 @@ export async function saveBot(input, { query = defaultQuery } = {}) {
 /** The dashboard's simulator: what the bot would answer, with the (unsaved) settings given. Sends nothing. */
 export async function simulate({ bot: input, text, replyId, phone, name, state }, { query = defaultQuery } = {}) {
   const bot = cleanBot(input || DEFAULT_BOT)
-  const decision = decide(bot, { text, replyId }, state || {})
-  const res = await render(bot, decision, { phone, name }, liveDeps(query))
+  // Like a real chat: no language yet → the English / தமிழ் question first; the pick is kept in the returned state.
+  const lang = state?.lang === 'ta' ? 'ta' : state?.lang === 'en' ? 'en' : null
+  let decision = decide(botFor(bot, lang || 'en'), { text, replyId }, state || {})
+  if (!lang && decision.kind !== 'lang' && decision.kind !== 'chooseLang' && decision.item?.id !== 'campaign_order') decision = { kind: 'chooseLang' }
+  const res = await render(bot, decision, { phone, name, lang: lang || 'en' }, liveDeps(query))
   const awaiting = res.state.awaiting
-  return { decision: decision.kind, messages: res.messages, state: { awaiting, awaiting_at: awaiting ? new Date().toISOString() : null }, paused: Boolean(res.state.pausedHours) }
+  return {
+    decision: decision.kind, messages: res.messages, paused: Boolean(res.state.pausedHours),
+    state: { awaiting, awaiting_at: awaiting ? new Date().toISOString() : null, lang: res.state.lang || lang },
+  }
 }
 
 /** A readable copy of a message body for the log. */
@@ -458,10 +598,18 @@ export async function answer({ to, phone, name, text, replyId, image = null }, {
     // A greeting ("hi", "hello", "vanakkam") while no one from the team has replied yet is a fresh start: the menu,
     // and the hand-over ends (24 Nov 2026: "hi" got the AI's "we couldn't locate that order" again).
     const greeting = handedOver && !image && isGreeting(bot, text)
-    const decision = ref ? { kind: 'track', ref, handedOver: true }
+    // The chat's language (English unless they chose Tamil). Read with the Tamil words too, so "விலை" works.
+    const lang = st?.lang === 'ta' ? 'ta' : 'en'
+    let decision = ref ? { kind: 'track', ref, handedOver: true }
       : greeting ? { kind: 'welcome' }
-        : handedOver ? { kind: 'ai', text, image, handedOver: true } : decide(bot, { text, replyId, image }, st || {})
-    const res = await render(bot, decision, { phone, name }, liveDeps(query, { fetchImpl: aiFetch }))
+        : handedOver ? { kind: 'ai', text, image, handedOver: true } : decide(botFor(bot, lang), { text, replyId, image }, st || {})
+    // First message from this number (no language yet): English / தமிழ் first (owner, 26 Nov 2026). Not while the
+    // team has the chat, and not for the Tamil campaign's order button. Before migration 061 (no lang column) the
+    // stored row has no "lang" field: then nobody is asked, so no one is asked again and again.
+    const askLanguage = !handedOver && !st?.lang && (!st || 'lang' in st)
+      && decision.kind !== 'lang' && decision.kind !== 'chooseLang' && decision.item?.id !== 'campaign_order'
+    if (askLanguage) decision = { kind: 'chooseLang' }
+    const res = await render(bot, decision, { phone, name, lang }, liveDeps(query, { fetchImpl: aiFetch }))
     const source = res.state.ai ? 'ai' : 'bot'
     for (const m of res.messages) {
       const message = { messaging_product: 'whatsapp', recipient_type: 'individual', to, ...m }
@@ -480,6 +628,8 @@ export async function answer({ to, phone, name, text, replyId, image = null }, {
          last_reply_at = now(), replies_today = case when wa_bot_state.day = $4::date then wa_bot_state.replies_today + 1 else 1 end,
          day = $4::date, updated_at = now()`,
       [phone, res.state.awaiting || null, res.state.pausedHours || null, today])
+    // The language they picked, remembered for this number (migration 061; ignored until it is applied).
+    if (res.state.lang) await query('update wa_bot_state set lang = $2 where phone = $1', [phone, res.state.lang]).catch(() => {})
     if (res.state.ai?.handoff) await aiHandoff({ phone, name, text, ai: res.state.ai }, { query })
     // One line per answered message in the server log (no message text), to see what the bot did.
     console.log('[wa-bot]', String(phone).slice(-4), decision.kind, `${res.messages.length} sent`, res.state.ai ? `ai handoff=${res.state.ai.handoff}` : '', handedOver ? 'after handover' : '')

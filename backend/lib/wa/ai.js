@@ -113,7 +113,7 @@ function photoFacts(photo) {
   return lines.join('\n') + '\n'
 }
 
-export function systemPrompt({ name, orders, prices, offers, hours, handedOver, photo = null }) {
+export function systemPrompt({ name, orders, prices, offers, hours, handedOver, photo = null, lang = 'en' }) {
   const orderLines = orders.length
     ? orders.map((o) => `- ${o.orderNumber}: placed ${o.placed} (${o.daysAgo} days ago), ${o.items || 'items not listed'}, total ${o.total}, to ${o.city || 'their address'} by ${o.delivery}. Status: ${o.meaning}.`
       + (o.tracking ? ` Courier${o.courier ? ` (${o.courier})` : ''} tracking: ${o.tracking}.` : '') + (o.expected ? ` Expected by ${o.expected}.` : '')
@@ -126,7 +126,7 @@ export function systemPrompt({ name, orders, prices, offers, hours, handedOver, 
 
 HOW TO WRITE
 - Sound like a warm, real person texting — not a bot, not a form letter. Short: usually 1–4 sentences. No headings, no long lists. At most one emoji, only when it fits.
-- Reply in the customer's language AND script. If their message is written in Tamil letters (e.g. "இட்லிக்கு எந்த அரிசி?"), write your whole reply in Tamil letters (product names, prices and links may stay in English). Tamil words in English letters (Tanglish, e.g. "biryani ku entha rice") → reply in Tanglish. English → simple English.
+${lang === 'ta' ? '- This customer chose Tamil (தமிழ்) for this chat: write your whole reply in Tamil letters (product names, prices, order numbers and links may stay in English), unless their latest message is clearly in English.\n' : ''}- Reply in the customer's language AND script. If their message is written in Tamil letters (e.g. "இட்லிக்கு எந்த அரிசி?"), write your whole reply in Tamil letters (product names, prices and links may stay in English). Tamil words in English letters (Tanglish, e.g. "biryani ku entha rice") → reply in Tanglish. English → simple English.
 - Describe a rice only with what its name and pack say (e.g. "aged", "idly rice"); do not invent qualities.
 - Use their name (${name || 'unknown'}) at most once, and only if it feels natural.
 - When they are upset (late order, nobody answered), first say sorry sincerely and own it, then give the facts, then the next step. Never argue, never blame them.
@@ -293,7 +293,7 @@ export function matchPayment(photo, orders) {
   return o ? { orderNumber: o.orderNumber, paid: o.paid } : null
 }
 
-export async function aiReply({ phone, name, text, image = null, handedOver = false }, { query = defaultQuery, deps, fetchImpl } = {}) {
+export async function aiReply({ phone, name, text, image = null, handedOver = false, lang = 'en' }, { query = defaultQuery, deps, fetchImpl } = {}) {
   const [orders, prices, offers, history, photo] = await Promise.all([
     customerOrders(query, phone).catch(() => []),
     deps?.prices ? deps.prices().catch(() => []) : [],
@@ -303,7 +303,7 @@ export async function aiReply({ phone, name, text, image = null, handedOver = fa
   ])
   if (photo && photo.kind === 'payment') photo.match = matchPayment(photo, orders)
   const said = image ? (text ? `📷 Photo: ${text}` : '📷 Photo') : text
-  const system = systemPrompt({ name, orders, prices, offers, hours: teamHours(), handedOver, photo })
+  const system = systemPrompt({ name, orders, prices, offers, hours: teamHours(), handedOver, photo, lang })
   const out = await askModel({ system, history, text: said }, { fetchImpl })
   // A payment we cannot match to a paid order, and a damaged / wrong pack, are always the team's.
   if (photo?.kind === 'payment' && !photo.match?.paid) {

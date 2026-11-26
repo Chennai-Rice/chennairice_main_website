@@ -122,7 +122,9 @@ test('bot: hi gets the welcome menu as a list with every item', async () => {
   const m = r.messages[0]
   assert.equal(m.interactive.type, 'list')
   assert.match(m.interactive.body.text, /Vanakkam Ravi!/)
-  assert.equal(m.interactive.action.sections[0].rows.length, DEFAULT_BOT.items.length)
+  const rows = m.interactive.action.sections[0].rows
+  assert.equal(rows.length, DEFAULT_BOT.items.length + 1) // + the English / தமிழ் row
+  assert.equal(rows.at(-1).id, 'lang')
   assert.ok(m.interactive.action.sections[0].rows.every((row) => row.title.length <= 24))
 })
 
@@ -499,4 +501,77 @@ test('brand spelling: the welcome says Kitchidi Ponni, and a saved welcome with 
   const saved = cleanBot({ ...DEFAULT_BOT, welcome: { ...DEFAULT_BOT.welcome, text: 'Welcome, makers of Kitchadi Ponni rice.' }, fallback: 'Try our Kitchadi Ponni.' })
   assert.equal(saved.welcome.text, 'Welcome, makers of Kitchidi Ponni rice.')
   assert.equal(saved.fallback, 'Try our Kitchidi Ponni.')
+})
+
+test('language: the first message asks English / தமிழ்; the pick is kept and Tamil gets the Tamil menu and texts', async () => {
+  const { answer, simulate, botFor, languageMsg } = await import('../lib/wa/bot.js')
+  const lm = languageMsg()
+  assert.deepEqual(lm.interactive.action.buttons.map((b) => b.reply.id), ['lang_en', 'lang_ta'])
+  assert.ok(lm.interactive.action.buttons.every((b) => b.reply.title.length <= 20))
+  for (const [said, lang] of [['Tamil', 'ta'], ['தமிழ்', 'ta'], ['english', 'en']]) assert.deepEqual(decide(bot, { text: said }), { kind: 'lang', lang }, said)
+  assert.equal(decide(bot, { replyId: 'lang_ta' }).lang, 'ta')
+  assert.equal(decide(bot, { replyId: 'lang' }).kind, 'chooseLang')
+  assert.equal(decide(bot, { text: 'மொழி' }).kind, 'chooseLang')
+
+  // Tamil: welcome, menu labels (WhatsApp's 24-letter limit), keywords in both languages, the bot's own sentences.
+  const picked = await render(bot, { kind: 'lang', lang: 'ta' }, { name: 'Ravi' }, deps)
+  assert.equal(picked.state.lang, 'ta')
+  const menu = picked.messages[0].interactive
+  assert.match(menu.body.text, /[\u0B80-\u0BFF]/)
+  assert.ok(menu.action.sections[0].rows.every((r) => r.title.length <= 24 && (r.description || '').length <= 72))
+  const ta = botFor(bot, 'ta')
+  assert.equal(decide(ta, { text: 'விலை' }).item.id, 'prices')
+  assert.equal(decide(ta, { text: 'price' }).item.id, 'prices')
+  const other = await render(bot, decide(ta, { text: 'CR-20261111-AB12C' }), { phone: '9000000000', lang: 'ta' }, deps)
+  assert.match(other.messages[0].text.body, /[\u0B80-\u0BFF]/)
+  const pin = await render(bot, { kind: 'pincode', pin: '600001' }, { lang: 'ta' }, deps)
+  assert.match(pin.messages[0].text.body, /600001/)
+  assert.match(pin.messages[0].text.body, /[\u0B80-\u0BFF]/)
+  // English stays as it was.
+  const en = await render(bot, { kind: 'lang', lang: 'en' }, { name: 'Ravi' }, deps)
+  assert.match(en.messages[0].interactive.body.text, /Vanakkam Ravi!/)
+
+  // A real chat: a new number's "price" gets the language question; the tap is stored; then the Tamil menu.
+  const sent = []
+  const sql = []
+  let state = null
+  const query = async (s, args = []) => {
+    sql.push({ s, args })
+    if (s.startsWith('select * from wa_bot_state')) return { rows: state ? [state] : [] }
+    if (s.includes('replies_today from wa_bot_state')) return { rows: [{ n: 0 }] }
+    if (s.startsWith('update wa_bot_state set lang')) { state = { ...(state || {}), lang: args[1] }; return { rows: [] } }
+    if (s.startsWith('insert into wa_bot_state')) { state = { lang: null, ...(state || {}) }; return { rows: [] } }
+    return { rows: [], rowCount: 1 }
+  }
+  const fetchImpl = async (url, init) => { sent.push(JSON.parse(init.body)); return { ok: true, status: 200, json: async () => ({ messages: [{ id: 'wamid.' + sent.length }] }), text: async () => '{}' } }
+  const prev = process.env.WHATSAPP_TOKEN
+  process.env.WHATSAPP_TOKEN = 'test'
+  try {
+    await answer({ to: '919876543210', phone: '9876543210', text: 'price' }, { query, fetchImpl })
+    assert.deepEqual(sent[0].interactive.action.buttons.map((b) => b.reply.id), ['lang_en', 'lang_ta'])
+    await answer({ to: '919876543210', phone: '9876543210', replyId: 'lang_ta' }, { query, fetchImpl })
+    assert.equal(state.lang, 'ta')
+    assert.match(sent[1].interactive.body.text, /[\u0B80-\u0BFF]/)
+    await answer({ to: '919876543210', phone: '9876543210', text: 'hi' }, { query, fetchImpl })
+    assert.equal(sent[2].interactive.type, 'list') // not asked again
+    assert.match(sent[2].interactive.body.text, /[\u0B80-\u0BFF]/)
+  } finally {
+    if (prev === undefined) delete process.env.WHATSAPP_TOKEN
+    else process.env.WHATSAPP_TOKEN = prev
+  }
+  // Before migration 061 the stored row has no lang field: nobody is asked again and again.
+  sent.length = 0
+  state = { awaiting: null }
+  process.env.WHATSAPP_TOKEN = 'test'
+  try { await answer({ to: '919876543210', phone: '9876543210', text: 'hi' }, { query, fetchImpl }) } finally {
+    if (prev === undefined) delete process.env.WHATSAPP_TOKEN
+    else process.env.WHATSAPP_TOKEN = prev
+  }
+  assert.equal(sent[0].interactive.type, 'list')
+
+  // The dashboard simulator works the same way and returns the pick in its state.
+  const s1 = await simulate({ text: 'hi' }, { query: async () => ({ rows: [] }) })
+  assert.equal(s1.decision, 'chooseLang')
+  const s2 = await simulate({ replyId: 'lang_ta', state: s1.state }, { query: async () => ({ rows: [] }) })
+  assert.equal(s2.state.lang, 'ta')
 })
