@@ -228,6 +228,12 @@ export function isGreeting(bot, text) {
   return Boolean(t) && t.split(' ').length <= 3 && (bot.greetings || []).some((g) => t === norm(g) || t.startsWith(norm(g) + ' '))
 }
 
+/** A greeting that starts a chat ("hi", "hello", "vanakkam"): English / தமிழ் first, then the menu (owner, 26 Nov 2026).
+ * "menu" itself still opens the menu straight away. */
+export function startsChat(bot, text) {
+  return isGreeting(bot, text) && !['menu', 'மெனு'].includes(norm(text))
+}
+
 /** What to do with one incoming message. Pure: no database, no network. */
 export function decide(bot, { text = '', replyId = '', image = null } = {}, state = {}) {
   const items = bot.items || []
@@ -569,7 +575,7 @@ export async function simulate({ bot: input, text, replyId, phone, name, state }
   // Like a real chat: no language yet → the English / தமிழ் question first; the pick is kept in the returned state.
   const lang = state?.lang === 'ta' ? 'ta' : state?.lang === 'en' ? 'en' : null
   let decision = decide(botFor(bot, lang || 'en'), { text, replyId }, state || {})
-  if (!lang && decision.kind !== 'lang' && decision.kind !== 'chooseLang' && decision.item?.id !== 'campaign_order') decision = { kind: 'chooseLang' }
+  if (startsChat(bot, text) || (!lang && decision.kind !== 'lang' && decision.kind !== 'chooseLang' && decision.item?.id !== 'campaign_order')) decision = { kind: 'chooseLang' }
   const res = await render(bot, decision, { phone, name, lang: lang || 'en' }, liveDeps(query))
   const awaiting = res.state.awaiting
   return {
@@ -625,11 +631,12 @@ export async function answer({ to, phone, name, text, replyId, image = null }, {
     let decision = ref ? { kind: 'track', ref, handedOver: true }
       : greeting ? { kind: 'welcome' }
         : handedOver ? { kind: 'ai', text, image, handedOver: true } : decide(botFor(bot, lang), { text, replyId, image }, st || {})
-    // First message from this number (no language yet): English / தமிழ் first (owner, 26 Nov 2026). Not while the
-    // team has the chat, and not for the Tamil campaign's order button. Before migration 061 (no lang column) the
-    // stored row has no "lang" field: then nobody is asked, so no one is asked again and again.
-    const askLanguage = !handedOver && !st?.lang && (!st || 'lang' in st)
-      && decision.kind !== 'lang' && decision.kind !== 'chooseLang' && decision.item?.id !== 'campaign_order'
+    // English / தமிழ் first, then the menu (owner, 26 Nov 2026): on every greeting ("hi", also while waiting for the
+    // team), and on a number's first message of any kind, except while the team has the chat and for the Tamil
+    // campaign's order button. Before migration 061 (no lang column) the stored row has no "lang" field: then only
+    // greetings ask, so no one is asked again and again.
+    const askLanguage = (!image && startsChat(bot, text)) || (!handedOver && !st?.lang && (!st || 'lang' in st)
+      && decision.kind !== 'lang' && decision.kind !== 'chooseLang' && decision.item?.id !== 'campaign_order')
     if (askLanguage) decision = { kind: 'chooseLang' }
     const res = await render(bot, decision, { phone, name, lang }, liveDeps(query, { fetchImpl: aiFetch }))
     const source = res.state.ai ? 'ai' : 'bot'

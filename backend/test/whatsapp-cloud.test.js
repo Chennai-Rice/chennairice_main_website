@@ -554,8 +554,12 @@ test('language: the first message asks English / தமிழ்; the pick is ke
     assert.equal(state.lang, 'ta')
     assert.match(sent[1].interactive.body.text, /[\u0B80-\u0BFF]/)
     await answer({ to: '919876543210', phone: '9876543210', text: 'hi' }, { query, fetchImpl })
-    assert.equal(sent[2].interactive.type, 'list') // not asked again
-    assert.match(sent[2].interactive.body.text, /[\u0B80-\u0BFF]/)
+    assert.deepEqual(sent[2].interactive.action.buttons.map((b) => b.reply.id), ['lang_en', 'lang_ta']) // every "hi": language first
+    await answer({ to: '919876543210', phone: '9876543210', text: 'menu' }, { query, fetchImpl })
+    assert.equal(sent[3].interactive.type, 'list') // "menu": straight to the menu, in the language kept
+    assert.match(sent[3].interactive.body.text, /[\u0B80-\u0BFF]/)
+    await answer({ to: '919876543210', phone: '9876543210', text: 'price' }, { query, fetchImpl })
+    assert.match(sent[4].text?.body || sent[4].interactive.body.text, /[\u0B80-\u0BFF]/) // not asked: they already chose
   } finally {
     if (prev === undefined) delete process.env.WHATSAPP_TOKEN
     else process.env.WHATSAPP_TOKEN = prev
@@ -564,7 +568,7 @@ test('language: the first message asks English / தமிழ்; the pick is ke
   sent.length = 0
   state = { awaiting: null }
   process.env.WHATSAPP_TOKEN = 'test'
-  try { await answer({ to: '919876543210', phone: '9876543210', text: 'hi' }, { query, fetchImpl }) } finally {
+  try { await answer({ to: '919876543210', phone: '9876543210', text: 'menu' }, { query, fetchImpl }) } finally {
     if (prev === undefined) delete process.env.WHATSAPP_TOKEN
     else process.env.WHATSAPP_TOKEN = prev
   }
@@ -575,6 +579,8 @@ test('language: the first message asks English / தமிழ்; the pick is ke
   assert.equal(s1.decision, 'chooseLang')
   const s2 = await simulate({ replyId: 'lang_ta', state: s1.state }, { query: async () => ({ rows: [] }) })
   assert.equal(s2.state.lang, 'ta')
+  assert.equal((await simulate({ text: 'hello', state: s2.state }, { query: async () => ({ rows: [] }) })).decision, 'chooseLang')
+  assert.equal((await simulate({ text: 'menu', state: s2.state }, { query: async () => ({ rows: [] }) })).decision, 'welcome')
 })
 
 test('links: our shop / track-order link is a button under the message, not a bare link with a preview', async () => {
