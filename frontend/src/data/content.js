@@ -26,6 +26,9 @@ export const ASSETS = {
      always plays muted — and faststart so it begins playing before it has
      fully downloaded. 6.7 MB, same 44.9 s length. */
   heroVideo: '/assets/hero-v2.mp4',
+  // Phones held upright see only the middle of the wide film: this is that middle part at full height (420x612,
+  // 1.5 MB instead of 6.9 MB), re-encoded 26 Nov 2026 with Chrome's recorder (H.264 MP4).
+  heroVideoPhone: '/assets/hero-phone-v1.mp4',
   wheatLeft: '/assets/decor/wheat-left-v2.webp', // 90 KB (was 243 KB, 25 Nov 2026)
   wheatRight: '/assets/decor/rice-stalks-v2.webp', // Golden Rice Stalks (Nov 2026)
   riceBowl: '/assets/decor/rice-bowl.webp',

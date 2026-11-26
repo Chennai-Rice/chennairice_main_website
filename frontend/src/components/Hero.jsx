@@ -34,7 +34,9 @@ export default function Hero() {
     const net = navigator.connection
     if (net?.saveData || /(^|-)2g$/.test(net?.effectiveType || '')) return undefined
     let timer
-    const start = () => { timer = window.setTimeout(() => setVideoSrc(ASSETS.heroVideo), 500) }
+    // Phones held upright get the 1.5 MB centre cut (they only show the middle of the wide film).
+    const phone = window.matchMedia?.('(max-width: 600px) and (orientation: portrait)').matches
+    const start = () => { timer = window.setTimeout(() => setVideoSrc(phone && ASSETS.heroVideoPhone ? ASSETS.heroVideoPhone : ASSETS.heroVideo), 500) }
     if (document.readyState === 'complete') start()
     else window.addEventListener('load', start, { once: true })
     return () => { window.clearTimeout(timer); window.removeEventListener('load', start) }

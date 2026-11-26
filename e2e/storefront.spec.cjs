@@ -147,3 +147,11 @@ test('chat helper appears after the page has loaded, and is not in the first pai
   await page.goto('/')
   await expect(page.locator('.sk-launcher-btn')).toBeAttached({ timeout: 10000 }) // a tab tucked into the edge on phones
 })
+
+// Hero film (26 Nov 2026): phones held upright get the 1.5 MB centre cut, larger screens the full film.
+test('hero video: phone gets the small centre cut, desktop the full film', async ({ page, tracking }, info) => {
+  void tracking
+  await page.goto('/')
+  const video = page.locator('video.hero-video')
+  await expect(video).toHaveAttribute('src', info.project.name === 'phone' ? /hero-phone-v1\.mp4$/ : /hero-v2\.mp4$/, { timeout: 10000 })
+})
