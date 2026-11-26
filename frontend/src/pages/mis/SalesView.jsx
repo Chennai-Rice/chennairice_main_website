@@ -144,12 +144,12 @@ function Board({ title, hint, list, top, showSplit }) {
   )
 }
 
-function Pick({ label, value, onChange, options }) {
+function Pick({ label, value, onChange, options, none = '' }) {
   return (
     <label className="sv-pick">
       <span>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">All</option>
+      <select value={value} onChange={(e) => onChange(e.target.value)} disabled={!options.length && !!none}>
+        <option value="">{!options.length && none ? none : 'All'}</option>
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
     </label>
@@ -158,7 +158,10 @@ function Pick({ label, value, onChange, options }) {
 
 /* -------------------------------------------------------------------- view */
 
-const NO_FILTER = { type: '', brand: '', source: '', manager: '', asm: '', telesales: '' }
+/** The pack sizes in a KG cell ("5", "5 kg, 10kg", "1/2 kg" → ["5 kg","10 kg"]); text with no number gives none. */
+const kgTokens = (v) => [...new Set((String(v || '').match(/\d+(?:\.\d+)?/g) || []).map((n) => `${Number(n)} kg`))]
+
+const NO_FILTER = { type: '', brand: '', kg: '', source: '', manager: '', asm: '', telesales: '' }
 
 export default function SalesView({ sales = [], calls = [], filters }) {
   const [f, setF] = useState(NO_FILTER)
@@ -166,11 +169,12 @@ export default function SalesView({ sales = [], calls = [], filters }) {
   const tabs = sales.filter((t) => !t.error && t.rows)
   const all = useMemo(() => tabs.flatMap((t) => t.rows), [sales])
   const dated = useMemo(() => applyFilters(all, { month: filters.month, from: filters.from, to: filters.to }), [all, filters.month, filters.from, filters.to])
-  const rows = useMemo(() => dated.filter((r) => (!f.type || r.type === f.type) && (!f.brand || r.brand === f.brand) && (!f.source || r.source === f.source)
+  const rows = useMemo(() => dated.filter((r) => (!f.type || r.type === f.type) && (!f.brand || r.brand === f.brand) && (!f.kg || kgTokens(r.kg).includes(f.kg)) && (!f.source || r.source === f.source)
     && (!f.manager || r.manager === f.manager) && (!f.asm || r.asm === f.asm) && (!f.telesales || r.telesales === f.telesales)), [dated, f])
   const opts = useMemo(() => {
     const u = (k) => [...new Set(dated.map((r) => r[k]).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b)))
-    return { brand: u('brand'), source: u('source'), manager: u('manager'), asm: u('asm'), telesales: u('telesales') }
+    const kg = [...new Set(dated.flatMap((r) => kgTokens(r.kg)))].sort((a, b) => parseFloat(a) - parseFloat(b))
+    return { brand: u('brand'), kg, source: u('source'), manager: u('manager'), asm: u('asm'), telesales: u('telesales') }
   }, [dated])
 
   // Calls (CALLS tab): by phone number, last call per number, and the calls inside the chosen dates.
@@ -254,7 +258,8 @@ export default function SalesView({ sales = [], calls = [], filters }) {
 
       <div className="sv-filters">
         <Pick label="Business type" value={f.type} onChange={setOne('type')} options={['B2B', 'B2C']} />
-        {opts.brand.length > 0 && <Pick label="Brand" value={f.brand} onChange={setOne('brand')} options={opts.brand} />}
+        <Pick label="Brand" value={f.brand} onChange={setOne('brand')} options={opts.brand} none="No brand in the sheet yet" />
+        <Pick label="KG" value={f.kg} onChange={setOne('kg')} options={opts.kg} none="No KG in the sheet" />
         <Pick label="Lead source" value={f.source} onChange={setOne('source')} options={opts.source} />
         <Pick label="Manager" value={f.manager} onChange={setOne('manager')} options={opts.manager} />
         <Pick label="ASM" value={f.asm} onChange={setOne('asm')} options={opts.asm} />
