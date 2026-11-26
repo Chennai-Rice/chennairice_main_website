@@ -31,7 +31,7 @@ export const COMPANY = {
   place: 'Nasiyanur, Erode, Tamil Nadu, India',
   slogan: "South India's No. 1 Non-Basmati Rice Manufacturer",
   facts: [
-    'Family rice business since the 1950s (rice trading in Salem, milling since 1956), with the fifth generation now in the business; Chennai Rice Industries India Pvt. Ltd. (2013; formerly Chennai Gate Rice Industries Pvt. Ltd.) runs the rice mill at Nasiyanur, Erode, Tamil Nadu.',
+    'Family rice business since the 1950s (rice trading in Salem, milling since 1956), with the fifth generation now in the business; Chennai Rice Industries India Pvt. Ltd. (2013) runs the rice mill at Nasiyanur, Erode, Tamil Nadu.',
     "South India's No. 1 non-basmati rice manufacturer: Ponni rice, idli rice and everyday South Indian rice, not basmati.",
     'Capacity of 2,44,000 tonnes a year (MTPA), with 61,500 MT of paddy storage in 31 silos.',
     'Paddy is selected, tested, stored, parboiled (for boiled rice), milled on a 10-stage line (cleaning, husking, polishing, grading, colour sorting) and packed at the Erode plant.',
