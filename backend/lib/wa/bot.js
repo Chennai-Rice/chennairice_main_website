@@ -2,14 +2,14 @@
 //
 //   "hi" / "hello" / "vanakkam" / "menu"   → the welcome message with the menu (buttons or a list)
 //   tapping a menu item, or its keywords    → that item's reply or action
-//   an order number (CR-20261111-AB12C)     → its status, if the order was placed from this WhatsApp number
-//   a 6-digit PIN code                      → whether we deliver there and the delivery charge
+//   an order or shipment ID (CR-… / SHP-…)  → its status, if the order was placed from this WhatsApp number
+//   a 6-digit PIN code                      → whether we deliver there and that state's delivery charge
 //   anything else                           → an AI reply (Groq, ai.js): short, warm, in their language, from
 //                                             their own orders, prices and offers; complaints go to the team.
 //                                             Without AI (switched off, or no GROQ_API_KEY): the fallback + menu
 //
 // Actions an item can have: reply (its text), track_order, offers (this number's spin / referral codes),
-// prices (live from the catalog), delivery (asks for a PIN), handoff (a person takes over; the bot is
+// prices (a button to the website), delivery (the standard charges: Tamil Nadu / other states), handoff (a person takes over; the bot is
 // quiet in that chat for some hours). Replies go out inside the customer's 24-hour window, so they are
 // free "service" messages, not templates.
 //
@@ -34,6 +34,15 @@ const rupees = (n) => '₹' + Number(n).toLocaleString('en-IN', { minimumFractio
 export const ACTIONS = ['reply', 'track_order', 'offers', 'prices', 'delivery', 'handoff']
 const MAX_REPLIES_A_DAY = 60 // per chat: a safety net against loops with another bot
 
+// Track: the order number or the shipment ID; Delivery: the standard charges by state, no PIN code (owner, 26 Nov 2026).
+const TRACK_REPLY = 'Please send your order number (like *CR-20261111-AB12C*) or shipment ID (like *SHP-AB12-CD34*). You will find them in your order email and SMS.'
+const TRACK_REPLY_TA = 'உங்கள் ஆர்டர் எண் (*CR-20261111-AB12C* போல) அல்லது ஷிப்மென்ட் ID (*SHP-AB12-CD34* போல) அனுப்பவும். இவை உங்கள் ஆர்டர் மின்னஞ்சல் மற்றும் SMS-இல் உள்ளன.'
+const DELIVERY_REPLY = '🚚 *Delivery charges* (per pack, standard rates)'
+const DELIVERY_REPLY_TA = '🚚 *டெலிவரி கட்டணம்* (ஒரு பேக்கிற்கு, நிலையான கட்டணம்)'
+// Saved settings from before: the old track / delivery texts are replaced by the new defaults.
+const OLD_TRACK = /^Please send your order number\. It looks like/
+const OLD_DELIVERY = /PIN/i
+
 export const DEFAULT_BOT = {
   enabled: true,
   greetings: ['hi', 'hii', 'hello', 'hey', 'hai', 'vanakkam', 'menu', 'start', 'good morning', 'good evening'],
@@ -48,11 +57,11 @@ export const DEFAULT_BOT = {
     { id: 'prices', label: '💰 Prices', description: 'Today\'s price for every pack', keywords: ['price', 'rate', 'cost', 'how much', 'vilai'], action: 'prices',
       reply: 'Here are today\'s prices:' },
     { id: 'track', label: '📦 Track my order', description: 'Where is my order?', keywords: ['track', 'where is my order', 'order status', 'delivery status', 'not received'], action: 'track_order',
-      reply: 'Please send your order number. It looks like *CR-20261111-AB12C* and is in your order email and SMS.' },
+      reply: TRACK_REPLY },
     { id: 'offers', label: '🎁 My offers', description: 'Spin & Win and referral codes', keywords: ['offer', 'coupon', 'code', 'discount', 'spin', 'reward'], action: 'offers',
       reply: 'You have no active offers on this number right now. Spin the wheel on our website for a chance to win up to ₹150 OFF: ' + SITE + '/w/spin-bot' },
-    { id: 'delivery', label: '🚚 Delivery to my area', description: 'Check your PIN code', keywords: ['deliver', 'pincode', 'pin code', 'shipping', 'courier'], action: 'delivery',
-      reply: 'Please send your 6-digit PIN code and we will tell you if we deliver there and the delivery charge.' },
+    { id: 'delivery', label: '🚚 Delivery charges', description: 'Tamil Nadu and other states', keywords: ['deliver', 'delivery charge', 'pincode', 'pin code', 'shipping', 'courier'], action: 'delivery',
+      reply: DELIVERY_REPLY },
     { id: 'human', label: '👤 Talk to our team', description: 'A person will reply', keywords: ['agent', 'human', 'person', 'call me', 'talk', 'help', 'complaint'], action: 'handoff',
       reply: 'Thank you! 🙏 Our team will get back to you here soon.' },
   ],
@@ -72,11 +81,11 @@ export const DEFAULT_BOT = {
         reply: 'வீட்டுக்கே டெலிவரியுடன் இங்கே ஆன்லைனில் ஆர்டர் செய்யலாம்:\n' + SITE + '/w/shop-bot\n\nUPI, கார்டு அல்லது நெட் பேங்கிங் மூலம் பணம் செலுத்தலாம். 🍚' },
       prices: { label: '💰 விலை', description: 'ஒவ்வொரு பேக்கின் இன்றைய விலை', keywords: ['விலை', 'ரேட்'], reply: 'இன்றைய விலை' },
       track: { label: '📦 ஆர்டர் நிலை', description: 'என் ஆர்டர் எங்கே?', keywords: ['ஆர்டர் நிலை', 'டிராக்'],
-        reply: 'உங்கள் ஆர்டர் எண்ணை அனுப்பவும். அது *CR-20261111-AB12C* போல இருக்கும்; உங்கள் ஆர்டர் மின்னஞ்சல் மற்றும் SMS-இல் உள்ளது.' },
+        reply: TRACK_REPLY_TA },
       offers: { label: '🎁 என் சலுகைகள்', description: 'Spin & Win மற்றும் பரிந்துரை குறியீடுகள்', keywords: ['சலுகை', 'தள்ளுபடி', 'கூப்பன்'],
         reply: 'இந்த எண்ணில் தற்போது சலுகைகள் எதுவும் இல்லை. ₹150 வரை தள்ளுபடி வெல்ல எங்கள் இணையதளத்தில் சக்கரத்தைச் சுற்றுங்கள்: ' + SITE + '/w/spin-bot' },
-      delivery: { label: '🚚 டெலிவரி பகுதி', description: 'உங்கள் PIN கோடைச் சரிபார்க்கவும்', keywords: ['டெலிவரி', 'பின்கோடு'],
-        reply: 'உங்கள் 6 இலக்க PIN கோடை அனுப்பவும். அங்கு டெலிவரி செய்கிறோமா, டெலிவரி கட்டணம் எவ்வளவு என்று சொல்கிறோம்.' },
+      delivery: { label: '🚚 டெலிவரி கட்டணம்', description: 'தமிழ்நாடு மற்றும் பிற மாநிலங்கள்', keywords: ['டெலிவரி', 'கட்டணம்', 'பின்கோடு'],
+        reply: DELIVERY_REPLY_TA },
       human: { label: '👤 குழுவிடம் பேச', description: 'எங்கள் குழுவில் ஒருவர் பதில் அளிப்பார்', keywords: ['உதவி', 'புகார்', 'பேச'],
         reply: 'நன்றி! 🙏 எங்கள் குழு விரைவில் இங்கே உங்களைத் தொடர்புகொள்ளும்.' },
     },
@@ -119,8 +128,8 @@ export function botFor(bot, lang) {
 // The bot's own sentences (not editable in the dashboard), per language.
 const TEXT = {
   en: {
-    notOrderNo: 'That does not look like an order number. It looks like *CR-20261111-AB12C* (in your order email and SMS). Send it any time, or choose from the menu below.',
-    notFound: 'We could not find a placed order with that number. 🙏 Please check it on your order email or SMS. If the payment did not go through, the order was not placed — you can order again here: ' + SITE + '/w/shop-bot',
+    notOrderNo: 'That does not look like an order number or shipment ID. They look like *CR-20261111-AB12C* or *SHP-AB12-CD34* (in your order email and SMS). Send it any time, or choose from the menu below.',
+    notFound: 'We could not find a placed order with that number or shipment ID. 🙏 Please check it on your order email or SMS. If the payment did not go through, the order was not placed — you can order again here: ' + SITE + '/w/shop-bot',
     privacy: 'For your privacy, we can only share an order\'s status with the WhatsApp number used to place it. Please message us from that number, or check it here: ' + SITE + '/track-order',
     orderIs: (no, status) => `Order *${no}* is ${status}.`,
     courier: (url) => `Track the courier: ${url}`,
@@ -128,19 +137,17 @@ const TEXT = {
     details: (url) => `Full details: ${url}`,
     noPin: (pin) => `Sorry, we do not deliver to ${pin} yet. 🙏 For bulk orders, call us on +91 70666 46667.`,
     yesPin: (pin, area, charges) => `Yes! ✅ We deliver to ${pin} (${area || 'your area'}).${charges ? '\n' + charges : ''}\n\nOrder here: ${SITE}/w/shop-bot`,
+    deliveryZone: (zone, packs) => `*${zone === 'TN' ? 'Tamil Nadu' : 'Other states'}:* ${packs}`,
+    deliveryFoot: `Shown again before you pay. Order here: ${SITE}/w/shop-bot`,
+    deliveryNone: `The delivery charge is a standard rate for Tamil Nadu and for other states, shown before you pay. Order here: ${SITE}/w/shop-bot`,
     charge: (kg, amount) => `• ${kg} kg pack: ${amount} delivery`,
     offers: (lines) => `Your offers on this number 🎁\n${lines}\n\nThey are applied automatically when you order from this mobile number: ${SITE}/w/shop-bot`,
     until: (d) => ` (till ${d})`,
     sorryWait: 'Sorry for the wait 🙏 Our team will get back to you here soon.',
     handoff: 'Our team will reply to you shortly.',
-    askOrder: 'Please send your order number.',
+    askOrder: TRACK_REPLY,
     trackWeb: 'Or track it yourself on our website',
-    askPin: 'Please send your 6-digit PIN code.',
-    pricesHeading: 'Today\'s prices',
-    offMrp: (n) => ` — up to ${n}% off MRP`,
-    pricesFoot: `Prices per pack, GST included. Delivery depends on your PIN code.\n🛒 Order: ${SITE}/w/shop-bot`,
-    pricesWeb: `Our prices are on the website: ${SITE}/w/shop-bot`,
-    products: '🍚 See all our rice and today’s prices on our website: 5, 10 and 26 kg packs, GST included. Delivery depends on your PIN code.',
+    products: '🍚 See all our rice and today’s prices on our website: 5, 10 and 26 kg packs, GST included. Delivery is a standard charge for Tamil Nadu and for other states, shown before you pay.',
     productsButton: 'Our product range',
     status: {
       placed: 'received ✅ and waiting to be confirmed', confirmed: 'confirmed ✅ and being packed', packed: 'packed 📦 and ready to leave our mill',
@@ -148,8 +155,8 @@ const TEXT = {
     },
   },
   ta: {
-    notOrderNo: 'இது ஆர்டர் எண் போல இல்லை. ஆர்டர் எண் *CR-20261111-AB12C* போல இருக்கும் (உங்கள் ஆர்டர் மின்னஞ்சல் மற்றும் SMS-இல்). எப்போது வேண்டுமானாலும் அனுப்பலாம், அல்லது கீழே உள்ள மெனுவில் தேர்ந்தெடுக்கவும்.',
-    notFound: 'இந்த எண்ணில் ஆர்டர் எதுவும் கிடைக்கவில்லை. 🙏 உங்கள் ஆர்டர் மின்னஞ்சல் அல்லது SMS-இல் எண்ணைச் சரிபார்க்கவும். பணம் செலுத்துதல் முடியவில்லை என்றால் ஆர்டர் பதிவாகவில்லை; இங்கே மீண்டும் ஆர்டர் செய்யலாம்: ' + SITE + '/w/shop-bot',
+    notOrderNo: 'இது ஆர்டர் எண் அல்லது ஷிப்மென்ட் ID போல இல்லை. அவை *CR-20261111-AB12C* அல்லது *SHP-AB12-CD34* போல இருக்கும் (உங்கள் ஆர்டர் மின்னஞ்சல் மற்றும் SMS-இல்). எப்போது வேண்டுமானாலும் அனுப்பலாம், அல்லது கீழே உள்ள மெனுவில் தேர்ந்தெடுக்கவும்.',
+    notFound: 'இந்த எண் அல்லது ஷிப்மென்ட் ID-யில் ஆர்டர் எதுவும் கிடைக்கவில்லை. 🙏 உங்கள் ஆர்டர் மின்னஞ்சல் அல்லது SMS-இல் எண்ணைச் சரிபார்க்கவும். பணம் செலுத்துதல் முடியவில்லை என்றால் ஆர்டர் பதிவாகவில்லை; இங்கே மீண்டும் ஆர்டர் செய்யலாம்: ' + SITE + '/w/shop-bot',
     privacy: 'உங்கள் தனியுரிமைக்காக, ஆர்டர் செய்த WhatsApp எண்ணுக்கு மட்டுமே ஆர்டர் நிலையைப் பகிர முடியும். அந்த எண்ணிலிருந்து மெசேஜ் செய்யவும், அல்லது இங்கே பார்க்கவும்: ' + SITE + '/track-order',
     orderIs: (no, status) => `ஆர்டர் *${no}*: ${status}.`,
     courier: (url) => `கூரியரைப் பின்தொடர: ${url}`,
@@ -158,18 +165,16 @@ const TEXT = {
     noPin: (pin) => `மன்னிக்கவும், ${pin}-க்கு இப்போது டெலிவரி இல்லை. 🙏 மொத்த ஆர்டர்களுக்கு +91 70666 46667 என்ற எண்ணில் அழைக்கவும்.`,
     yesPin: (pin, area, charges) => `ஆம்! ✅ ${pin}${area ? ` (${area})` : ''}-க்கு டெலிவரி செய்கிறோம்.${charges ? '\n' + charges : ''}\n\nஇங்கே ஆர்டர் செய்யவும்: ${SITE}/w/shop-bot`,
     charge: (kg, amount) => `• ${kg} kg பேக்: டெலிவரி ${amount}`,
+    deliveryZone: (zone, packs) => `*${zone === 'TN' ? 'தமிழ்நாடு' : 'பிற மாநிலங்கள்'}:* ${packs}`,
+    deliveryFoot: `பணம் செலுத்தும் முன் மீண்டும் காட்டப்படும். இங்கே ஆர்டர் செய்யவும்: ${SITE}/w/shop-bot`,
+    deliveryNone: `டெலிவரி கட்டணம் தமிழ்நாட்டுக்கும் பிற மாநிலங்களுக்கும் நிலையான கட்டணம்; பணம் செலுத்தும் முன் காட்டப்படும். இங்கே ஆர்டர் செய்யவும்: ${SITE}/w/shop-bot`,
     offers: (lines) => `இந்த எண்ணில் உள்ள உங்கள் சலுகைகள் 🎁\n${lines}\n\nஇந்த மொபைல் எண்ணிலிருந்து ஆர்டர் செய்யும்போது தானாகவே பொருந்தும்: ${SITE}/w/shop-bot`,
     until: (d) => ` (${d} வரை)`,
     sorryWait: 'காத்திருக்க வைத்ததற்கு மன்னிக்கவும் 🙏 எங்கள் குழு விரைவில் இங்கே பதில் அளிக்கும்.',
     handoff: 'எங்கள் குழு விரைவில் பதில் அளிக்கும்.',
-    askOrder: 'உங்கள் ஆர்டர் எண்ணை அனுப்பவும்.',
+    askOrder: TRACK_REPLY_TA,
     trackWeb: 'அல்லது எங்கள் இணையதளத்தில் நீங்களே பார்க்கலாம்',
-    askPin: 'உங்கள் 6 இலக்க PIN கோடை அனுப்பவும்.',
-    pricesHeading: 'இன்றைய விலை',
-    offMrp: (n) => ` — MRP-இல் ${n}% வரை தள்ளுபடி`,
-    pricesFoot: `விலை ஒரு பேக்கிற்கு, GST உட்பட. டெலிவரி கட்டணம் உங்கள் PIN கோடைப் பொறுத்தது.\n🛒 ஆர்டர்: ${SITE}/w/shop-bot`,
-    pricesWeb: `எங்கள் விலைகள் இணையதளத்தில் உள்ளன: ${SITE}/w/shop-bot`,
-    products: '🍚 எங்கள் அனைத்து அரிசி வகைகளும் இன்றைய விலையும் இணையதளத்தில் உள்ளன: 5, 10 மற்றும் 26 கிலோ பேக்குகள், GST உட்பட. டெலிவரி கட்டணம் உங்கள் PIN கோடைப் பொறுத்தது.',
+    products: '🍚 எங்கள் அனைத்து அரிசி வகைகளும் இன்றைய விலையும் இணையதளத்தில் உள்ளன: 5, 10 மற்றும் 26 கிலோ பேக்குகள், GST உட்பட. டெலிவரி கட்டணம் தமிழ்நாட்டுக்கும் பிற மாநிலங்களுக்கும் நிலையானது; பணம் செலுத்தும் முன் காட்டப்படும்.',
     productsButton: 'எங்கள் அரிசி வகைகள்',
     status: {
       placed: 'பெறப்பட்டது ✅, உறுதிப்படுத்தக் காத்திருக்கிறது', confirmed: 'உறுதி செய்யப்பட்டது ✅, பேக் செய்யப்படுகிறது', packed: 'பேக் செய்யப்பட்டது 📦, எங்கள் ஆலையிலிருந்து புறப்படத் தயார்',
@@ -195,6 +200,13 @@ export function cleanBot(input = {}) {
     action: ACTIONS.includes(it.action) ? it.action : 'reply',
     reply: noHours(it.reply).slice(0, 1024),
   })).filter((it) => it.label)
+  for (const it of items) {
+    const def = DEFAULT_BOT.items.find((d) => d.id === it.id)
+    if (it.action === 'track_order' && (!it.reply || OLD_TRACK.test(it.reply))) it.reply = TRACK_REPLY
+    if (it.action === 'delivery' && def && (OLD_DELIVERY.test(it.description) || OLD_DELIVERY.test(it.reply) || it.label === '🚚 Delivery to my area')) {
+      Object.assign(it, { label: def.label, description: def.description, reply: def.reply })
+    }
+  }
   const ids = new Set()
   for (const it of items) { while (ids.has(it.id)) it.id += 'x'; ids.add(it.id) }
   return {
@@ -215,7 +227,7 @@ export function cleanBot(input = {}) {
     // Tamil texts: the defaults unless the settings carry their own (the dashboard edits the English ones).
     ta: input.ta && typeof input.ta === 'object' ? {
       welcome: { text: noHours(input.ta.welcome?.text || DEFAULT_BOT.ta.welcome.text).slice(0, 1024), button: str(input.ta.welcome?.button || DEFAULT_BOT.ta.welcome.button).slice(0, 20) },
-      items: { ...DEFAULT_BOT.ta.items, ...(input.ta.items && typeof input.ta.items === 'object' ? input.ta.items : {}) },
+      items: { ...DEFAULT_BOT.ta.items, ...(input.ta.items && typeof input.ta.items === 'object' ? input.ta.items : {}), track: DEFAULT_BOT.ta.items.track, delivery: DEFAULT_BOT.ta.items.delivery },
       fallback: noHours(input.ta.fallback || DEFAULT_BOT.ta.fallback).slice(0, 1024),
     } : DEFAULT_BOT.ta,
   }
@@ -281,32 +293,6 @@ export function decide(bot, { text = '', replyId = '', image = null } = {}, stat
   const item = short && items.find((it) => (it.keywords || []).some((k) => hasWord(t, k)))
   if (item) return { kind: 'item', item }
   return bot.ai?.enabled ? { kind: 'ai', text } : { kind: 'fallback' }
-}
-
-/**
- * Today's prices, easy to read on a phone (owner, 24 Nov 2026: one long line per rice was hard to read):
- *   *Kitchadi Ponni*
- *   5 kg *₹555*  ·  26 kg *₹2,499*
- * Two lines per rice (name, then all packs), a blank line between rices, then delivery and the link.
- */
-export function priceListText(list = [], heading = '', lang = 'en') {
-  const t = T(lang)
-  if (!list.length) return t.pricesWeb
-  const byRice = new Map()
-  for (const p of list) {
-    if (!byRice.has(p.name)) byRice.set(p.name, [])
-    byRice.get(p.name).push(p)
-  }
-  // Two lines per rice: the name, then every pack on one line. No struck-out MRP on each pack (owner, 24 Nov 2026:
-  // "too clumsy"): the best saving is said once at the top instead.
-  const blocks = [...byRice].map(([name, packs]) =>
-    `*${name}*\n${packs.sort((a, b) => a.packKg - b.packKg).map((p) => `${p.packKg} kg *${rupees(p.price)}*`).join('  ·  ')}`)
-  const off = Math.max(0, ...list.filter((p) => p.mrp > p.price).map((p) => Math.floor((1 - p.price / p.mrp) * 100)))
-  return [
-    `🍚 *${String(heading || '').trim().replace(/[:.\s]+$/, '') || t.pricesHeading}*${off >= 5 ? t.offMrp(off) : ''}`,
-    ...blocks,
-    t.pricesFoot,
-  ].join('\n\n')
 }
 
 /** Prices: no list in the chat any more, a line and an "Our product range" button to the website (owner, 26 Nov 2026). */
@@ -453,7 +439,13 @@ export async function render(baseBot, decision, { phone = '', name = '', lang: c
   const item = decision.item
   // Track my order: send the number here, or a Track order button to the website (owner, 26 Nov 2026).
   if (item.action === 'track_order') { out.messages.push(textMsg(`${item.reply || t.askOrder}\n\n${t.trackWeb}: ${SITE}/track-order`)); out.state = { awaiting: 'order_number' }; return out }
-  if (item.action === 'delivery') { out.messages.push(textMsg(item.reply || t.askPin)); out.state = { awaiting: 'pincode' }; return out }
+  if (item.action === 'delivery') {
+    const zones = deps.deliveryCharges ? await deps.deliveryCharges().catch(() => null) : null
+    const lines = ['TN', 'OTHER'].filter((z) => zones?.[z]?.length)
+      .map((z) => t.deliveryZone(z, zones[z].map((c) => `${c.packKg} kg *${c.from === c.to ? rupees(c.from) : `${rupees(c.from)}–${rupees(c.to)}`}*`).join('  ·  ')))
+    out.messages.push(textMsg(lines.length ? [item.reply || (lang === 'ta' ? DELIVERY_REPLY_TA : DELIVERY_REPLY), ...lines, t.deliveryFoot].join('\n\n') : t.deliveryNone))
+    return out
+  }
   if (item.action === 'handoff') {
     out.messages.push(textMsg(item.reply || t.handoff))
     out.state = { awaiting: null, pausedHours: bot.handoffHours }
@@ -513,6 +505,19 @@ export function liveDeps(query = defaultQuery, { fetchImpl } = {}) {
     async prices() {
       const cat = await listCatalog({ query })
       return cat.flatMap((p) => p.variants.filter((v) => v.price != null).map((v) => ({ name: p.name, packKg: Number(v.packKg), price: v.price, mrp: v.mrp }))).slice(0, 40)
+    },
+    /** The standard delivery charge per pack: Tamil Nadu, and every other state (the other regions together). */
+    async deliveryCharges() {
+      const { rows } = await query(
+        `select (rp.region = 'TN') as tn, v.pack_kg, min(rp.delivery_paise) as lo, max(rp.delivery_paise) as hi
+           from variant_region_prices rp
+           join product_variants v on v.id = rp.variant_id and v.is_active and v.price_paise is not null
+           join products p on p.id = v.product_id and p.is_active
+           join shipping_zones z on z.code = rp.region and z.is_active
+          group by 1, 2 order by 1 desc, 2`)
+      const out = { TN: [], OTHER: [] }
+      for (const r of rows) out[r.tn ? 'TN' : 'OTHER'].push({ packKg: Number(r.pack_kg), from: Number(r.lo) / 100, to: Number(r.hi) / 100 })
+      return out
     },
     async delivery(pin) {
       return checkDelivery({ query }, pin).catch(() => ({ delivers: false }))

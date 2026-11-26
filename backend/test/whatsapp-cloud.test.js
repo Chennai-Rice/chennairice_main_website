@@ -106,7 +106,7 @@ test('readable lines for each kind of incoming message', () => {
 })
 
 // ---- the bot ----
-import { DEFAULT_BOT, cleanBot, decide, render, menuMsg, priceListText, isGreeting, botFor } from '../lib/wa/bot.js'
+import { DEFAULT_BOT, cleanBot, decide, render, menuMsg, isGreeting, botFor } from '../lib/wa/bot.js'
 
 const bot = cleanBot(DEFAULT_BOT)
 const says = (m) => m.text?.body ?? m.interactive.body.text // a text message, or one with buttons
@@ -471,21 +471,6 @@ test('Bot: the "needs a reply" handoff email is off unless switched on in Bot se
   assert.ok(!sql.some((s) => /email_outbox|staff_users/.test(s)), 'no email is queued')
 })
 
-test('price list: two lines per rice (name, then all packs smallest first), saving once at the top, delivery and link at the end', () => {
-  const t = priceListText([
-    { name: 'Kitchadi Ponni', packKg: 26, price: 2499, mrp: 2999 }, { name: 'Kitchadi Ponni', packKg: 5, price: 555, mrp: 699 },
-    { name: 'Special Idly Rice', packKg: 10, price: 599, mrp: 799 },
-  ])
-  assert.ok(t.startsWith("🍚 *Today's prices* — up to 25% off MRP"))
-  assert.ok(priceListText([{ name: 'X', packKg: 5, price: 1 }], "Here are today's prices:").startsWith("🍚 *Here are today's prices*\n"))
-  assert.ok(t.includes('*Kitchadi Ponni*\n5 kg *₹555*  ·  26 kg *₹2,499*'))
-  assert.ok(t.includes('\n\n*Special Idly Rice*\n10 kg *₹599*'))
-  assert.ok(!t.includes('~'))
-  assert.match(t, /Delivery depends on your PIN code/)
-  assert.ok(t.includes('/w/shop-bot'))
-  assert.match(priceListText([]), /prices are on the website/)
-})
-
 test('order number while the chat is with the team: looked up (not the AI), and the chat stays with the team', async () => {
   const deps = { findOrder: async (ref) => (ref.orderNumber === 'CR-20261122-ZRVFY'
     ? { orderNumber: 'CR-20261122-ZRVFY', status: 'shipped', samePhone: true, trackingUrl: null, expected: null } : null) }
@@ -615,4 +600,32 @@ test('links: our shop / track-order link is a button under the message, not a ba
   assert.equal(linkMsg('See https://example.com/x').type, 'text')
   assert.equal(linkMsg('https://chennairiceindustries.com/a and https://chennairiceindustries.com/b').type, 'text')
   assert.match(logText(shop.messages[0]), /\[🛒 Shop now: https:\/\/chennairiceindustries\.com\/w\/shop-bot\]/)
+})
+
+test('delivery: standard charges for Tamil Nadu and other states (no PIN code); track by order or shipment ID; old saved texts updated', async () => {
+  const charges = { deliveryCharges: async () => ({ TN: [{ packKg: 5, from: 54, to: 54 }, { packKg: 26, from: 150, to: 150 }], OTHER: [{ packKg: 5, from: 120, to: 140 }] }) }
+  const r = await render(bot, decide(bot, { replyId: 'delivery' }), {}, charges)
+  assert.equal(r.state.awaiting, null) // no PIN code asked
+  const body = says(r.messages[0])
+  assert.match(body, /\*Tamil Nadu:\* 5 kg \*₹54\*  ·  26 kg \*₹150\*/)
+  assert.match(body, /\*Other states:\* 5 kg \*₹120–₹140\*/)
+  assert.ok(!/\bPIN\b|MRP/i.test(body))
+  assert.equal(r.messages[0].interactive.action.parameters.display_text, '🛒 Shop now')
+  const none = await render(bot, decide(bot, { replyId: 'delivery' }), {}, {})
+  assert.match(says(none.messages[0]), /standard rate for Tamil Nadu and for other states/)
+  const ta = await render(bot, decide(botFor(bot, 'ta'), { replyId: 'delivery' }), { lang: 'ta' }, charges)
+  assert.match(says(ta.messages[0]), /\*தமிழ்நாடு:\*/)
+  // Nothing in the menu or the bot's own texts mentions a PIN code or an MRP discount.
+  for (const lang of ['en', 'ta']) assert.ok(!/\bPIN\b|MRP/i.test(JSON.stringify(menuMsg(botFor(bot, lang), 'x'))), lang)
+  // Track: an order number or a shipment ID.
+  assert.deepEqual(decide(bot, { text: 'my shipment SHP-K7M4-Q9X2' }).ref, { shipmentId: 'SHP-K7M4-Q9X2' })
+  const ask = await render(bot, decide(bot, { replyId: 'track' }), {}, deps)
+  assert.match(says(ask.messages[0]), /order number .* or shipment ID/)
+  // Settings saved before today: the PIN-code delivery item and the old track text are replaced.
+  const old = JSON.parse(JSON.stringify(DEFAULT_BOT))
+  Object.assign(old.items.find((i) => i.id === 'delivery'), { label: '🚚 Delivery to my area', description: 'Check your PIN code', reply: 'Please send your 6-digit PIN code.' })
+  old.items.find((i) => i.id === 'track').reply = 'Please send your order number. It looks like *CR-20261111-AB12C* and is in your order email and SMS.'
+  const fixed = cleanBot(old)
+  assert.equal(fixed.items.find((i) => i.id === 'delivery').label, '🚚 Delivery charges')
+  assert.match(fixed.items.find((i) => i.id === 'track').reply, /shipment ID/)
 })
