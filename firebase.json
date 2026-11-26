@@ -212,7 +212,7 @@
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "no-cache"
+            "value": "public, max-age=0, s-maxage=600, stale-while-revalidate=60"
           }
         ]
       },
@@ -221,7 +221,16 @@
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "no-cache"
+            "value": "public, max-age=0, s-maxage=600, stale-while-revalidate=60"
+          }
+        ]
+      },
+      {
+        "source": "**/*.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=0, s-maxage=600, stale-while-revalidate=60"
           }
         ]
       }

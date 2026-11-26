@@ -1,19 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import useGsapContext from '../hooks/useGsapContext.js'
 import Img from './Img.jsx'
 import Ornament from './Ornament.jsx'
 import SectionHead from './SectionHead.jsx'
 import { ASSETS, PRODUCTS, SHOWCASE } from '../data/content.js'
 import './productsshowcase.css'
 
-gsap.registerPlugin(ScrollTrigger)
 // Phones: the address bar showing / hiding while scrolling resizes the window, and ScrollTrigger used to re-measure
 // the whole page each time (PageSpeed "forced reflow", slow taps / INP 321 ms, 26 Nov 2026). The pinned section
 // still re-measures on a real resize or rotation.
-ScrollTrigger.config({ ignoreMobileResize: true })
 
 // The pinned timeline runs one unit per product plus the last product's hold,
 // so its total duration is PRODUCTS.length - 1 + 0.62.
@@ -183,7 +178,7 @@ export default function ProductsShowcase() {
       track.scrollTo({ left: clamped * track.clientWidth, behavior: 'smooth' })
       return
     }
-    const trigger = ScrollTrigger.getById('productShowcase')
+    const trigger = scrollTriggerRef.current?.getById('productShowcase')
     if (!trigger) {
       const slide = sectionRef.current?.querySelector(`#slide-${PRODUCTS[clamped].num}`)
       if (slide) slide.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -210,9 +205,27 @@ export default function ProductsShowcase() {
   }, [])
   useEffect(() => () => cancelAnimationFrame(frame.current), [])
 
-  useGsapContext(
-    () => {
-      if (carousel) return
+  // GSAP (about 110 KB) is loaded only here, for larger screens, after the page has started: it used to be in the main
+  // file every phone downloaded before the hero headline could show (LCP, 26 Nov 2026). Phones never load it.
+  const scrollTriggerRef = useRef(null)
+  useEffect(() => {
+    if (carousel) return undefined
+    let ctx
+    let cancelled = false
+    Promise.all([import('gsap'), import('gsap/ScrollTrigger')]).then(([{ default: gsap }, { ScrollTrigger }]) => {
+      if (cancelled || !sectionRef.current) return
+      gsap.registerPlugin(ScrollTrigger)
+      // The address bar showing / hiding on touch screens no longer re-measures the whole page (forced reflow).
+      ScrollTrigger.config({ ignoreMobileResize: true })
+      scrollTriggerRef.current = ScrollTrigger
+      ctx = gsap.context(() => setUpShowcase(gsap), sectionRef)
+      ScrollTrigger.refresh()
+    })
+    return () => { cancelled = true; ctx?.revert() }
+  }, [carousel])
+
+  function setUpShowcase(gsap) {
+    {
       const section = sectionRef.current
       const slides = PRODUCTS.map(p => section.querySelector(`#slide-${p.num}`))
 
@@ -329,10 +342,8 @@ export default function ProductsShowcase() {
         )
         timeline.set(slide, { autoAlpha: 0 }, exit + 0.38)
       })
-    },
-    sectionRef,
-    []
-  )
+    }
+  }
 
   return (
     <section

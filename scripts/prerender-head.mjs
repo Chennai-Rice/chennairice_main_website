@@ -173,7 +173,12 @@ const jsonLd = (items) => items.length
   : ''
 
 // ---- HTML -------------------------------------------------------------------
-const shell = readFileSync(join(DIST, 'index.html'), 'utf8')
+// The main stylesheet loads in the background instead of blocking the first paint (LCP, 26 Nov 2026): the page's
+// inline first-paint styles show the headline at once, and src/main.jsx starts the app only once the stylesheet is in.
+const shell = readFileSync(join(DIST, 'index.html'), 'utf8').replace(
+  /<link rel="stylesheet" crossorigin href="(\/assets\/index-[^"]+\.css)">/,
+  (m, href) => `<link rel="preload" as="style" crossorigin href="${href}" data-main-css onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" crossorigin href="${href}"></noscript>`)
 // The app shell for pages that are not pre-rendered (cart, checkout, wishlist, staff tools, a blog post published
 // after this build …): not for search engines, and without the home page's first-paint headline (audit, 25 Nov 2026;
 // it used to be indexable with the home page's title). dist/404.html is the same shell with a "not found" title:
