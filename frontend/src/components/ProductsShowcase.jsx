@@ -10,6 +10,10 @@ import { ASSETS, PRODUCTS, SHOWCASE } from '../data/content.js'
 import './productsshowcase.css'
 
 gsap.registerPlugin(ScrollTrigger)
+// Phones: the address bar showing / hiding while scrolling resizes the window, and ScrollTrigger used to re-measure
+// the whole page each time (PageSpeed "forced reflow", slow taps / INP 321 ms, 26 Nov 2026). The pinned section
+// still re-measures on a real resize or rotation.
+ScrollTrigger.config({ ignoreMobileResize: true })
 
 // The pinned timeline runs one unit per product plus the last product's hold,
 // so its total duration is PRODUCTS.length - 1 + 0.62.
@@ -163,6 +167,8 @@ function ProductSlide({ product, isFirst }) {
 export default function ProductsShowcase() {
   const sectionRef = useRef(null)
   const [activeIndex, setActiveIndex] = useState(0)
+  // The pager dot shown, so a scroll frame only asks React to update when the product actually changes.
+  const shownIndex = useRef(0)
 
   // Jump the scroll so a given product is centred in the pinned frame.
   const goToProduct = useCallback(index => {
@@ -226,7 +232,10 @@ export default function ProductsShowcase() {
                 break
               }
             }
-            setActiveIndex(index)
+            if (index !== shownIndex.current) {
+              shownIndex.current = index
+              setActiveIndex(index)
+            }
           },
         },
       })
