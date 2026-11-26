@@ -420,3 +420,56 @@ button.mis-metric:hover { transform: translateY(-2px); border-color: var(--accen
 }
 
 .mis-which { margin: 0 0 12px; }
+
+/* Sales view: leaderboard bars and the B2B / B2C switch row */
+.mis-which-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.mis-which-row .mis-which { margin: 0; }
+.mis-rankbar { height: 8px; min-width: 90px; border-radius: 99px; background: rgba(120, 130, 160, 0.18); overflow: hidden; }
+.mis-rankbar i { display: block; height: 100%; border-radius: 99px; background: var(--accent, #7a1f2b); }
+
+/* Sales dashboard (SalesView.jsx) */
+.sv-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 20px; border-radius: 16px; background: linear-gradient(135deg, #0b5d3f, #0a7b43); color: #fff; }
+.sv-banner strong { display: block; font-size: 20px; letter-spacing: -0.01em; }
+.sv-banner span { font-size: 13px; opacity: 0.85; }
+.sv-banner .mis-btn { background: #fff; color: #0b5d3f; border-color: transparent; }
+.sv-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; align-items: end; }
+.sv-pick { display: grid; gap: 4px; padding: 8px 12px; border-radius: 12px; background: var(--card, #fff); border: 1px solid var(--line, #e1e5ee); }
+.sv-pick span { font-size: 12px; color: var(--muted, #5b6472); font-weight: 600; }
+.sv-pick select { font: inherit; font-weight: 600; border: 0; background: transparent; color: inherit; width: 100%; padding: 2px 0; }
+.sv-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.sv-donut { position: relative; display: flex; align-items: center; gap: 22px; flex-wrap: wrap; padding: 6px 0; }
+.sv-donut svg { width: 150px; height: 150px; flex: 0 0 auto; }
+.sv-donut-mid { position: absolute; left: 0; top: 6px; width: 150px; height: 150px; display: grid; place-content: center; text-align: center; pointer-events: none; }
+.sv-donut-mid strong { font-size: 26px; line-height: 1.1; }
+.sv-donut-mid small { color: var(--muted, #5b6472); font-size: 12px; }
+.sv-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; font-size: 14px; }
+.sv-legend i, .sv-key i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 7px; }
+.sv-cols-wrap { overflow-x: auto; padding-bottom: 4px; }
+.sv-cols { display: flex; align-items: flex-end; gap: 12px; height: 210px; padding-top: 22px; }
+.sv-col { flex: 1 1 0; min-width: 52px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px; }
+.sv-bars { flex: 1 1 auto; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 4px; }
+.sv-bar { position: relative; flex: 1 1 0; max-width: 34px; min-height: 3px; border-radius: 6px 6px 0 0; }
+.sv-bar span { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 600; padding-bottom: 2px; white-space: nowrap; }
+.sv-col em { font-style: normal; font-size: 12px; color: var(--muted, #5b6472); max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sv-key { margin: 10px 0 0; font-size: 12px; color: var(--muted, #5b6472); }
+.sv-key i { margin-left: 10px; }
+.sv-funnel { display: grid; gap: 8px; justify-items: center; }
+.sv-funnel-row { color: #fff; font-weight: 600; font-size: 14px; text-align: center; padding: 11px 8px; border-radius: 10px; clip-path: polygon(2% 0, 98% 0, 100% 100%, 0 100%); }
+.sv-insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+.sv-insights div { display: grid; gap: 2px; text-align: center; padding: 10px 6px; }
+.sv-insights strong { font-size: 22px; }
+.sv-insights small { color: var(--muted, #5b6472); font-size: 12px; }
+.sv-bad { color: #c0392b; } .sv-ok { color: #1c8a52; }
+@media (max-width: 1000px) { .sv-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Phone / tablet: the side panel is a menu bar (logo + button) that opens on tap */
+.mis-menu-btn { display: none; margin-left: auto; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line, #e1e5ee); background: var(--card, #fff); color: inherit; cursor: pointer; }
+@media (max-width: 1000px) {
+  .mis-menu-btn { display: inline-flex; }
+  .mis-side { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 12px; }
+  .mis-side .mis-brand { width: 100%; }
+  .mis-side:not(.is-open) > :not(.mis-brand) { display: none; }
+  .mis-side.is-open .mis-sync, .mis-side.is-open .mis-theme { display: flex; }
+  .mis-side.is-open .mis-nav { display: grid; }
+  .mis-side.is-open .mis-side-foot { margin-left: 0; grid-auto-flow: row; align-items: stretch; }
+}
