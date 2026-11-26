@@ -46,7 +46,7 @@ export default function Footer() {
       <div className="foot-art" aria-hidden="true">
         <picture>
           <source srcSet="/assets/footer-band.webp" type="image/webp" />
-          <img src="/assets/footer-band.png" alt="Paddy fields and village homes of Tamil Nadu" aria-hidden="true" />
+          <img src="/assets/footer-band.png" alt="Paddy fields and village homes of Tamil Nadu" aria-hidden="true" width="2098" height="290" />
         </picture>
       </div>
 

@@ -538,7 +538,7 @@ export default function InfraLine() {
       <div className="container ip-inner">
         <p className="ip-eyebrow">World Class Infrastructure</p>
         <h2 id="ipl-title" className="ip-title">Technology. Quality. Capacity.</h2>
-        <p className="ip-sub">Twelve stages on one line at our Nasiyanur, Erode mill — every grain cleaned, milled, sorted and checked before it is packed, dispatched and delivered to your home. Cleaning, destoning, husking and separation run on Bühler machines, shown here at work.</p>
+        <p className="ip-sub">Ten processing stages at our Nasiyanur, Erode mill — every grain cleaned, milled, sorted, checked and packed — then dispatch and delivery to your home. Cleaning, destoning, husking and separation run on Bühler machines, shown here at work.</p>
 
         {/* grain colours, shared by the key and the line; outside the drawing so they
             still apply on phones, where the drawing is hidden */}

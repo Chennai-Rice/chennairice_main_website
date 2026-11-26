@@ -23,15 +23,17 @@ const DIST = join(ROOT, 'dist')
 const SITE = 'https://chennairiceindustries.com'
 const src = (p) => pathToFileURL(join(ROOT, 'frontend', 'src', p)).href
 
-const { PAGE_META, PRODUCT_SEO, productPath, productName, keywordsFor } = await import(src('seo.js'))
+const { PAGE_META, PRODUCT_SEO, productPath, productName, keywordsFor, blogMetaTitle, blogMetaDescription } = await import(src('seo.js'))
 const { FOOTER, HOME_FAQS } = await import(src('data/content.js'))
 const { LANDING } = await import(src('data/landing.js'))
 const { GUIDE_LINKS, GUIDE_META } = await import(src('data/guides.js'))
 const {
-  COMPANY, loadCatalog, productSchema, productHtml, landingHtml, basicHtml, HEAD_SNIPPET, wrap, llmsTxt, llmsFullTxt, packsLine,
+  COMPANY, loadCatalog, loadReviews, productSchema, productHtml, landingHtml, basicHtml, HEAD_SNIPPET, wrap, llmsTxt, llmsFullTxt, packsLine,
 } = await import(pathToFileURL(join(ROOT, 'scripts', 'prerender-content.mjs')).href)
 // Packs, prices and stock from the live shop, read once (the build still works without it).
 const CATALOG = await loadCatalog()
+// Published customer reviews, for the product pages' stars and review text (only genuine, published reviews).
+const REVIEWS = await loadReviews()
 
 // Pack images, from the shop's built-in catalogue (the same block the sitemap reads).
 const catalogue = readFileSync(join(ROOT, 'frontend', 'src', 'shop', 'data', 'products.js'), 'utf8')
@@ -250,9 +252,12 @@ const packPhoto = (img) => {
 
 // Packs as [name, path, one-line description] for the page texts.
 const productLinks = Object.keys(PRODUCT_SEO).map((id) => [productName(id), productPath(id), PRODUCT_SEO[id].line])
+// The company and policy pages: their own full text (scripts/prerender-pages.mjs).
+const { PAGE_BODIES } = await import(pathToFileURL(join(ROOT, 'scripts', 'prerender-pages.mjs')).href)
 const WITH_PACKS = new Set(['home', 'products', 'about', 'bulkOrder'])
 const WITH_GUIDES = new Set(['home', 'products', 'about', 'blog'])
 function pageBody(key, page) {
+  if (PAGE_BODIES[key]) return PAGE_BODIES[key](page)
   if (LANDING[key]) {
     const ids = (LANDING[key].productIds || []).filter((id) => PRODUCT_SEO[id])
     return landingHtml({ meta: page, page: LANDING[key], productLinks: ids.map((id) => [productName(id), productPath(id), PRODUCT_SEO[id].line, packsLine(CATALOG.get(id))]) })
@@ -272,11 +277,11 @@ for (const [id, p] of Object.entries(PRODUCT_SEO)) {
     preload: packPhoto(IMAGE[id]),
     // Product data for crawlers; the page itself adds the same @id with live prices, so they merge.
     schema: [
-      productSchema({ id, seo: p, path, image: IMAGE[id], live: CATALOG.get(id), orgId: ORG_ID }),
+      productSchema({ id, seo: p, name: productName(id), path, image: IMAGE[id], live: CATALOG.get(id), orgId: ORG_ID, reviews: REVIEWS }),
       organization,
       breadcrumb([PAGE_META.products.h1, PAGE_META.products.path], [productName(id), path]),
     ],
-    body: productHtml({ seo: p, live: CATALOG.get(id), guides: GUIDE_LINKS, photo: IMAGE[id] && `/assets/shop/feed/${id}.jpg` }),
+    body: productHtml({ seo: p, name: productName(id), live: CATALOG.get(id), guides: GUIDE_LINKS, photo: IMAGE[id] && `/assets/shop/feed/${id}.jpg`, reviews: REVIEWS }),
   }))
 }
 
@@ -309,11 +314,12 @@ for (const post of await blogPosts()) {
   if (!post?.slug || !post.title) continue
   const path = '/blog/' + post.slug
   const paras = plainParagraphs(post.contentMd)
-  const description = String(post.excerpt || paras[0] || '').replace(/\s+/g, ' ').trim().slice(0, 155).replace(/\s+\S*$/, '') + '…'
+  // Up to 60 / 155 characters, whole sentences, no automatic "…" (SEO audit, 26 Nov 2026).
+  const description = blogMetaDescription(post, paras[0])
   const image = post.coverUrl && post.coverUrl.startsWith('/') ? post.coverUrl : null
   written.push(render({
     path,
-    title: `${post.title} | Chennai Rice Blog`,
+    title: blogMetaTitle(post),
     description,
     schema: [
       {

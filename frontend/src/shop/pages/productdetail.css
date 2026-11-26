@@ -1754,3 +1754,13 @@ ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
 .pdp-trust-icon { flex: 0 0 auto; width: 1.3em; text-align: center; }
 .pdp-trust small { display: block; color: #6b5a50; font-size: 0.82rem; }
 .pdp-trust a { color: var(--maroon, #7a1f2b); text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---------- customer reviews (real published reviews of this product) ---------- */
+.pdp-reviews { max-width: 860px; margin: 0 auto; font-family: var(--font-body); color: var(--ink-700); }
+.pdp-reviews-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 18px; font-size: 1rem; }
+.pdp-reviews-summary strong { font-size: 1.15rem; color: #5f141f; }
+.pdp-reviews-stars { color: #b8860b; letter-spacing: 2px; font-size: 1.05rem; }
+.pdp-reviews-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.pdp-review { background: #fffaf0; border: 1px solid #eadfc6; border-radius: 12px; padding: 16px 18px; }
+.pdp-review p { margin: 8px 0 0; line-height: 1.6; }
+.pdp-review .pdp-review-by { color: #5c4b3b; font-size: 0.92rem; }

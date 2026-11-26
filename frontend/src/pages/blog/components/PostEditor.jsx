@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { renderMarkdown, slugify } from '../../../lib/markdown.jsx'
 import PostPreview from './PostPreview.jsx'
 import PostCover from './PostCover.jsx'
+import { blogMetaTitle, SEO_TITLE_MAX, SEO_DESCRIPTION_MAX } from '../../../seo.js'
 import { hasFormatting, htmlToMarkdown } from '../../../lib/pasteToMarkdown.js'
 import {
   BlogError,
@@ -241,6 +242,10 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
           placeholder="What is this post about?"
           onChange={(e) => onTitle(e.target.value)}
         />
+        {/* What Google shows as the title (SEO audit, 26 Nov 2026): up to 60 characters, else a shorter form. */}
+        <p className="st-hint">
+          Google shows: <b>{blogMetaTitle(draft)}</b> ({blogMetaTitle(draft).length}/{SEO_TITLE_MAX} characters)
+        </p>
       </div>
 
       <div className="st-field">
@@ -284,7 +289,13 @@ export default function PostEditor({ post, author, onSaved, onClose, onDeleted }
             placeholder="Leave blank to use the opening lines"
             onChange={(e) => set({ excerpt: e.target.value })}
           />
-          <p className="st-hint">Shown on the journal listing card.</p>
+          <p className="st-hint">
+            Shown on the journal listing card and as the description in Google.{' '}
+            <span style={{ color: draft.excerpt.length > SEO_DESCRIPTION_MAX ? '#b3261e' : undefined }}>
+              {draft.excerpt.length}/{SEO_DESCRIPTION_MAX} characters
+              {draft.excerpt.length > SEO_DESCRIPTION_MAX ? ' — too long, Google will shorten it' : ''}
+            </span>
+          </p>
         </div>
       </div>
 

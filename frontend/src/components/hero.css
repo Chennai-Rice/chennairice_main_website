@@ -171,7 +171,8 @@
 .hero-estd {
   position: absolute;
   right: 7vw;
-  bottom: 26vh;
+  /* At least 190px up, so on short screens it stays above the Soru Kutty button in the corner (audit error 9). */
+  bottom: max(26vh, 190px);
   z-index: 2;
   /* The float animates `transform`, so any `transform: scale()` set elsewhere
      would simply be overwritten by the keyframes. Scale therefore travels as a

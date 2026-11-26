@@ -10,6 +10,8 @@ import JourneyRoad from "../components/JourneyRoad.jsx";
 import "../components/journeyroad.css";
 import RecipeTeaser from "../components/RecipeTeaser.jsx";
 import RelatedProducts from "../components/RelatedProducts.jsx";
+import ProductReviews from "../components/ProductReviews.jsx";
+import { packOffers, productReviews, reviewSchema, averageRating } from "../../productSchema.js";
 import BulkOrderCTA from "../components/BulkOrderCTA.jsx";
 import CheckoutBar from "../components/CheckoutBar.jsx";
 import ShareButton from "../components/ShareButton.jsx";
@@ -67,6 +69,18 @@ export default function ProductDetailPage() {
     seo?.description || (product ? product.description : undefined)
   );
 
+  // Published customer reviews of this product (GET /api/reviews): shown on the page and in its Product data.
+  const [allReviews, setAllReviews] = useState([]);
+  useEffect(() => {
+    let live = true;
+    fetch("/api/reviews", { headers: { Accept: "application/json" } })
+      .then((r) => (r.ok ? r.json() : { reviews: [] }))
+      .then((j) => { if (live) setAllReviews(j.reviews || []); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
+  const ownReviews = product ? productReviews(allReviews, productName(id) || product.name, seo?.h1, product.name) : [];
+
   // Google's Product structured data, with the live pack prices (so it can
   // never disagree with the page). The page's breadcrumb is in its HTML
   // (scripts/prerender-head.mjs).
@@ -74,7 +88,7 @@ export default function ProductDetailPage() {
     if (!product) return undefined;
     const site = "https://chennairiceindustries.com";
     const priced = showCardPrices ? sizes.filter((s) => typeof s.price === "number" && s.price > 0) : [];
-    const prices = priced.map((s) => s.price);
+    const offers = packOffers(priced, site + productPath(product.id));
     const data = {
       "@context": "https://schema.org",
       "@type": "Product",
@@ -87,19 +101,10 @@ export default function ProductDetailPage() {
       sku: product.id,
       brand: { "@type": "Brand", name: "Chennai Rice" },
       url: site + productPath(product.id),
-      ...(prices.length && {
-        offers: {
-          "@type": "AggregateOffer",
-          priceCurrency: "INR",
-          lowPrice: Math.min(...prices),
-          highPrice: Math.max(...prices),
-          offerCount: prices.length,
-          availability: priced.some((s) => s.inStock !== false)
-            ? "https://schema.org/InStock"
-            : "https://schema.org/OutOfStock",
-          seller: { "@id": site + "/#organization" },
-        },
-      }),
+      // One Offer per pack with delivery by region and the return policy; stars only from real reviews
+      // (the same builder as the pre-rendered page, productSchema.js).
+      ...(offers.length && { offers }),
+      ...reviewSchema(ownReviews),
     };
     const tag = document.createElement("script");
     tag.type = "application/ld+json";
@@ -108,7 +113,7 @@ export default function ProductDetailPage() {
     document.getElementById("product-schema")?.remove();
     document.head.appendChild(tag);
     return () => tag.remove();
-  }, [product, sizes, seo]);
+  }, [product, sizes, seo, ownReviews.length]);
 
   // Meta: this product was viewed (once per product, with the pack size shown first).
   // Sent only once that pack's price has loaded: Meta needs a value above zero.
@@ -405,6 +410,15 @@ export default function ProductDetailPage() {
           </div>
           <RecipeTeaser dishes={seo?.dishes} />
         </section>
+
+        {ownReviews.length > 0 && (
+          <section className="pdp-section">
+            <div className="pdp-section-head">
+              <h2>Customer Reviews of {riceName}</h2>
+            </div>
+            <ProductReviews reviews={ownReviews} average={averageRating(ownReviews)} riceName={riceName} />
+          </section>
+        )}
 
         {related.length > 0 && (
           <section className="pdp-section">

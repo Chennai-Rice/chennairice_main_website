@@ -93,7 +93,7 @@ export const LANDING = {
       { to: '/rice-products', label: 'See the full rice range' },
       { to: '/idli-rice', label: 'Idli rice for soft idlis' },
       { to: '/best-ponni-rice-for-daily-meals', label: 'Best Ponni rice for daily meals' },
-      { to: '/what-is-aged-rice', label: 'What is aged rice?' },
+      { to: '/blog/what-is-aged-rice', label: 'What is aged rice?' },
       { to: '/bulk-order', label: 'Bulk & wholesale orders' },
     ],
   },

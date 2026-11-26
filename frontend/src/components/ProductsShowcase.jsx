@@ -135,7 +135,7 @@ function ProductSlide({ product, isFirst }) {
 
         <div className="slide-center">
           <div className="product-bag-wrap">
-            <Img className="product-bag-img" src={product.image} alt={product.name} />
+            <Img className="product-bag-img" src={product.image} alt={product.name} width="600" height="870" />
           </div>
         </div>
 
@@ -359,12 +359,16 @@ export default function ProductsShowcase() {
         <Img
           className="showcase-paddy showcase-paddy-a"
           src={ASSETS.wheatRight}
+          width="400"
+          height="603"
           alt="Golden paddy stalks"
           aria-hidden="true"
         />
         <Img
           className="showcase-paddy showcase-paddy-b"
           src={ASSETS.wheatLeft}
+          width="520"
+          height="780"
           alt="Golden paddy stalks"
           aria-hidden="true"
         />

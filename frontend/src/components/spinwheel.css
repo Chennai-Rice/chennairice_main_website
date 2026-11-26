@@ -15,6 +15,25 @@
   animation: spin-fab-in 0.4s ease-out, spin-fab-bob 3.2s ease-in-out 0.6s infinite;
   -webkit-tap-highlight-color: transparent;
 }
+/* × to hide the emblem for this visit (not shown once a prize is won, so it stays findable). */
+.spin-fab-hide {
+  position: fixed;
+  left: 100px;
+  bottom: 82px;
+  z-index: 61;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #5f141f;
+  color: #fff;
+  font: 700 16px/1 system-ui, sans-serif;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+.spin-fab-hide::before { content: ''; position: absolute; inset: -10px; } /* a 48 px tap area */
+.spin-fab-hide:focus-visible { outline: 3px solid #e8c766; outline-offset: 2px; }
 .spin-fab-img { display: block; width: 100%; height: auto; transition: transform 0.2s; }
 .spin-fab:hover .spin-fab-img, .spin-fab:focus-visible .spin-fab-img { transform: scale(1.06) rotate(-4deg); }
 .spin-fab:focus-visible { outline: 3px solid #e8c766; outline-offset: 2px; border-radius: 50%; }
@@ -243,6 +262,7 @@
 }
 @media (max-width: 480px) {
   .spin-fab { left: 6px; bottom: 10px; width: 86px; height: auto; }
+  .spin-fab-hide { left: 76px; bottom: 68px; }
 }
 
 /* The wheel picture (Nov 2026): it turns; the pointer on the right stays put. */

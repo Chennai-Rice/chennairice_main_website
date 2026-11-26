@@ -33,8 +33,8 @@ export const MOVED_PAGES = {
 export const PAGE_META = {
   home: {
     path: '/',
-    title: 'Chennai Rice | Premium Ponni & Idli Rice from Erode, Buy Online',
-    description: 'South India’s No. 1 non-basmati rice manufacturer. Buy Ponni, Kitchidi Ponni and idli rice in 5, 10 and 26 kg packs from our Erode mill, delivered across India.',
+    title: 'Chennai Rice | Ponni & Idli Rice from Erode, Buy Online',
+    description: 'South India’s No. 1 non-basmati rice manufacturer. Buy Ponni, Kitchidi Ponni and idli rice in 5, 10 and 26 kg packs from Erode, delivered across India.',
     h1: 'Premium Ponni & Idli Rice from Erode',
     keywords: 'Chennai Rice, Ponni rice, rice varieties, Tamil Nadu rice, idli rice, buy rice online',
   },
@@ -62,7 +62,7 @@ export const PAGE_META = {
   contact: {
     path: '/contact-us',
     title: 'Contact Chennai Rice Industries | Sales & Enquiries',
-    description: 'Contact Chennai Rice Industries for product enquiries, bulk orders, distribution opportunities and customer support. Reach our team through the available contact options.',
+    description: 'Contact Chennai Rice Industries, Erode, for product questions, bulk orders, distributorship and order support. Call or WhatsApp +91 70666 46667.',
     h1: 'Contact Chennai Rice Industries',
     keywords: 'contact Chennai Rice Industries, rice enquiries, bulk rice orders',
   },
@@ -133,13 +133,13 @@ export const PAGE_META = {
   shipping: {
     path: '/shipping',
     title: 'Shipping Policy | Chennai Rice',
-    description: 'How Chennai Rice packs, ships and delivers website orders across India: dispatch in 1–2 working days, delivery charges shown before you pay, tracking and delivery attempts.',
+    description: 'How Chennai Rice ships website orders across India: dispatch in 1–2 working days, the delivery charge shown before you pay, tracking and delivery attempts.',
     h1: 'Shipping Policy',
   },
   refund: {
     path: '/refund',
     title: 'Return & Refund Policy | Chennai Rice',
-    description: 'Damaged, wrong, short-weight or quality issues with your Chennai Rice order: report within 48 hours or 7 days for a free replacement or full refund. Cancellations and refund timelines.',
+    description: 'Damaged, wrong, short-weight or quality issue with your Chennai Rice order? Report it within 48 hours or 7 days for a free replacement or full refund.',
     h1: 'Return & Refund Policy',
   },
   terms: {
@@ -209,7 +209,7 @@ export const PRODUCT_SEO = {
     dishes: ['Sambar Rice', 'Vathal Kuzhambu Rice', 'Rasam Rice'],
     slug: 'special-rajabhogam-rice',
     h1: 'Special Rajabhogam Rice for Family Meals',
-    title: 'Special Rajabhogam Rice | Chennai Rice',
+    title: 'Special Rajabhogam (Rajabogam) Rice | Chennai Rice',
     description: 'Discover Special Rajabhogam Rice from Chennai Rice for everyday family meals. Explore the available pack sizes and product details.',
     keywords: 'Special Rajabhogam rice',
     intro: 'Bring Chennai Rice Special Rajabhogam to your everyday dining table. This rice variety is an option for families looking for rice for lunch, dinner and traditional South Indian accompaniments.',
@@ -221,7 +221,7 @@ export const PRODUCT_SEO = {
     dishes: ['Nei Kitchadi', 'Ven Pongal', 'Sakkarai Pongal'],
     slug: 'thaaram-nei-kitchadi',
     h1: 'Thaaram Nei Kitchadi Rice – 25 kg',
-    title: 'Thaaram Nei Kitchadi Rice 25 kg – Buy Online | Chennai Rice',
+    title: 'Thaaram Nei Kitchadi Rice 25 kg Price | Chennai Rice',
     description: 'Buy Thaaram Nei Kitchadi Rice 25 kg from Chennai Rice, Erode. Akshaya Ponni with strong grains for nei kitchadi and pongal. Home & wholesale delivery.',
   },
   'united-5kg': {
@@ -251,17 +251,17 @@ export const PRODUCT_SEO = {
     dishes: ['Festival Lunches', 'Banana Leaf Feasts', 'Family Gatherings'],
     slug: 'vintage-ponni-rice',
     h1: 'Vintage Special Ponni Rice – 26 kg',
-    title: 'Vintage Special Ponni Rice 26 kg – Buy Online | Chennai Rice',
+    title: 'Vintage Special Ponni Rice 26 kg | Chennai Rice',
     description: 'Buy Vintage Special Ponni Rice 26 kg from Chennai Rice, Erode. Premium rice in the black-and-gold pack for festive meals. Home & wholesale delivery.',
   },
   'viruchagam': {
     about: "Look for the blue and gold pack. Viruchagam suits the everyday traditional Tamil menu: steamed rice with kuzhambu, rasam and poriyal at lunch, or a simple plate of rice and curd at dinner. Dependable grains that cook well day after day make it a reliable rice for regular family cooking all through the week.",
-    name: 'Viruchagam',
+    name: 'Viruchagam Ponni',
     line: 'Everyday rice for traditional Tamil lunch and dinner.',
     dishes: ['Kuzhambu Rice', 'Rasam Rice', 'Curd Rice'],
     slug: 'viruchagam-ponni-rice',
     h1: 'Viruchagam Ponni Rice for Traditional Meals',
-    title: 'Viruchagam Ponni Rice | Chennai Rice',
+    title: 'Viruchagam (Viruchigam) Ponni Rice | Chennai Rice',
     description: 'Explore Viruchagam Ponni Rice from Chennai Rice, made for traditional family meals. View product details and available pack sizes.',
     keywords: 'Viruchagam Ponni rice',
     intro: 'Discover Viruchagam from Chennai Rice, a Ponni rice offering for everyday family dining. Explore the product variety, pack options and preparation recommendations before purchasing.',
@@ -283,7 +283,7 @@ export const PRODUCT_SEO = {
     dishes: ['Veettu Saapadu', 'Sambar Rice', 'Curd Rice'],
     slug: 'kitchidi-ponni-rice',
     h1: 'Kitchidi Ponni Rice for Everyday South Indian Meals',
-    title: 'Kitchidi Ponni Rice | Chennai Rice',
+    title: 'Kitchidi (Kichadi) Ponni Rice 26 kg Price | Chennai Rice',
     description: 'Explore Chennai Rice Kitchidi Ponni, an aged rice variety for everyday South Indian meals. View available pack sizes and ordering options.',
     keywords: 'Kitchidi Ponni rice',
     intro: 'Make everyday meals feel like home with Chennai Rice Kitchidi Ponni. This rice variety is intended for familiar home cooking, including everyday meals enjoyed with sambar, rasam, kuzhambu and other traditional accompaniments. Explore product details and available pack sizes.',
@@ -332,4 +332,40 @@ const OLD_SLUGS = {
 /** The shop ID for a URL slug: a new public slug, an old renamed slug, or an old ID still in use. */
 export function productIdFromSlug(slug) {
   return ID_BY_SLUG[slug] || OLD_SLUGS[slug] || slug
+}
+
+// ---- Blog posts: what Google shows (SEO audit, 26 Nov 2026) ----
+// Titles up to 60 characters and descriptions up to 155, so search results are not cut off, and never an
+// automatic "…" at the end. The blog studio shows both counts next to the Title and Summary fields.
+export const SEO_TITLE_MAX = 60
+export const SEO_DESCRIPTION_MAX = 155
+const BRAND_SUFFIX = ' | Chennai Rice'
+
+/** A blog post's search title: "<title> | Chennai Rice" when it fits, else the post title's first part. */
+export function blogMetaTitle(post) {
+  const t = String(post?.title || '').replace(/\s+/g, ' ').trim()
+  if (!t) return 'Chennai Rice Blog'
+  if ((t + BRAND_SUFFIX).length <= SEO_TITLE_MAX) return t + BRAND_SUFFIX
+  // "Write. Win. … | Chennai Rice Super Slogan Contest 2026": the part that already names the brand.
+  const parts = t.split(' | ')
+  const branded = parts.find((x) => /chennai rice/i.test(x) && x.length <= SEO_TITLE_MAX)
+  if (parts.length > 1 && branded) return branded
+  // "What is Aged Rice? 5 Benefits…" / "How to Cook …: Simple Tips…": the question or the part before the colon.
+  const head = t.match(/^(.+?\?)\s/)?.[1] || t.split(/:\s| \| | – /)[0]
+  if (head && head !== t && (head + BRAND_SUFFIX).length <= SEO_TITLE_MAX) return head + BRAND_SUFFIX
+  return t.length <= SEO_TITLE_MAX ? t : t.slice(0, SEO_TITLE_MAX + 1).replace(/\s+\S*$/, '')
+}
+
+/** A blog post's search description: its summary (or opening lines), whole sentences up to 155 characters. */
+export function blogMetaDescription(post, firstParagraph = '') {
+  const text = String(post?.excerpt || firstParagraph || '').replace(/\s+/g, ' ').trim()
+  if (text.length <= SEO_DESCRIPTION_MAX) return text
+  const sentences = text.match(/[^.!?]+[.!?]+(\s|$)/g) || []
+  let out = ''
+  for (const s of sentences) {
+    if ((out + s).trim().length > SEO_DESCRIPTION_MAX) break
+    out += s
+  }
+  out = out.trim()
+  return out || text.slice(0, SEO_DESCRIPTION_MAX + 1).replace(/[\s,;:–-]+\S*$/, '')
 }

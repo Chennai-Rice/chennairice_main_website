@@ -174,3 +174,44 @@ test('bestsellers: swipe carousel on phones, pinned animation on desktop', async
     await expect(page.locator('.pin-spacer')).toHaveCount(1)
   }
 })
+
+test('product page: real reviews of this rice only, shown on the page and as stars in its Product data', async ({ page, tracking }) => {
+  void tracking
+  await page.goto('/products/kitchidi-ponni-rice')
+  const section = page.locator('.pdp-reviews')
+  await expect(section).toBeVisible()
+  await expect(section).toContainText('4.5 out of 5')
+  await expect(section).toContainText('rated by 2 verified customers')
+  await expect(section).toContainText('Test review text one.')
+  await expect(section).not.toContainText('Mixed order review.')
+  const data = JSON.parse(await page.locator('#product-schema').textContent())
+  expect(data.name).toBe('Kitchidi Ponni Rice')
+  expect(data.aggregateRating).toMatchObject({ ratingValue: 4.5, ratingCount: 2, reviewCount: 1 })
+  expect(data.review).toHaveLength(1)
+  expect(data.offers[0]).toMatchObject({ '@type': 'Offer', priceCurrency: 'INR', hasMerchantReturnPolicy: { merchantReturnDays: 7 } })
+})
+
+test('product page with no reviews: no review section and no stars', async ({ page, tracking }) => {
+  void tracking
+  await page.goto('/products/special-rajabhogam-rice')
+  await expect(page.locator('h1').first()).toBeVisible()
+  await expect(page.locator('.pdp-reviews')).toHaveCount(0)
+  const data = JSON.parse(await page.locator('#product-schema').textContent())
+  expect(data.aggregateRating).toBeUndefined()
+})
+
+// The test server (vite preview) does not map /refund to refund/index.html as Firebase does, so the files are asked for directly.
+test('pre-rendered pages: full policy text, one aged-rice guide link, titles within 60 characters', async ({ request }) => {
+  const refund = await (await request.get('/refund/index.html')).text()
+  expect(refund).toContain('Problems we cover')
+  expect(refund).not.toContain('About Chennai Rice Industries</h2>')
+  const infra = await (await request.get('/infrastructure/index.html')).text()
+  expect(infra).toContain('10 processing stages, then dispatch and delivery')
+  const home = await (await request.get('/')).text()
+  expect(home).toContain('/blog/what-is-aged-rice')
+  expect(home).not.toContain('href="/what-is-aged-rice"')
+  for (const path of ['/', '/raw-rice-vs-boiled-rice', '/bulk-rice-suppliers-tamil-nadu', '/products/kitchidi-ponni-rice']) {
+    const title = (await (await request.get(path === '/' ? '/' : path + '/index.html')).text()).match(/<title>([^<]*)<\/title>/)[1].replace(/&amp;/g, '&')
+    expect(title.length, path).toBeLessThanOrEqual(60)
+  }
+})

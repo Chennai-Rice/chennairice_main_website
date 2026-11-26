@@ -150,7 +150,7 @@
   font: inherit;
   font-size: 13px;
   font-weight: 600;
-  color: var(--gold-deep);
+  color: var(--gold-text);
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
@@ -185,7 +185,7 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--gold-deep);
+  color: var(--gold-text);
 }
 .testi-card .testi-quote {
   font-family: var(--serif);
@@ -245,21 +245,35 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 8px;
+  gap: 0; /* the 24 px buttons already space the dots */
   margin-top: 44px;
 }
+/* An 8 px dot to look at, a 24 px button to tap (Lighthouse "target size", 26 Nov 2026). */
 .testi-dot {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.testi-dot::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
   width: 8px;
   height: 8px;
-  padding: 0;
+  transform: translate(-50%, -50%);
   border-radius: 99px;
   background: rgba(160, 130, 80, 0.35);
   transition: width 0.35s ease, background 0.35s ease;
 }
-.testi-dot:hover {
+.testi-dot:hover::before {
   background: rgba(160, 130, 80, 0.6);
 }
-.testi-dot.is-active {
+.testi-dot.is-active::before {
   width: 20px;
   background: var(--gold-deep);
 }

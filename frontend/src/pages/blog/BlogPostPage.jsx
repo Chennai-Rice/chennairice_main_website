@@ -4,6 +4,7 @@ import { renderMarkdown } from '../../lib/markdown.jsx'
 import PostCover from './components/PostCover.jsx'
 import { fetchPostBySlug, formatPostDate } from '../../services/blog.service.js'
 import usePageMeta from '../../shop/hooks/usePageMeta.js'
+import { blogMetaTitle, blogMetaDescription } from '../../seo.js'
 import '../page.css'
 import './blog.css'
 
@@ -54,8 +55,9 @@ export default function BlogPostPage() {
   // The post's own browser title and description (it kept the home page's, audit 25 Nov 2026); a draft
   // preview and a missing post are not for search engines.
   usePageMeta(
-    post ? `${post.title} | Chennai Rice Blog` : state === 'loading' ? 'Chennai Rice Blog' : 'Post not found | Chennai Rice',
-    post ? String(post.excerpt || '').slice(0, 155) : '',
+    // Same as the pre-rendered page (scripts/prerender-head.mjs): fits Google's 60 / 155 characters, no automatic "…".
+    post ? blogMetaTitle(post) : state === 'loading' ? 'Chennai Rice Blog' : 'Post not found | Chennai Rice',
+    post ? blogMetaDescription(post, String(post.contentMd || '').split(/\n\s*\n/)[0].replace(/[#*_>`[\]]/g, '')) : '',
     { noindex: !post || post.status !== 'published' },
   )
 

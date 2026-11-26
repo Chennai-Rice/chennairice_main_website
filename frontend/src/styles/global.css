@@ -34,6 +34,8 @@
   /* Golds (labels, stars, badge, ornaments) */
   --gold: #c69a3f;
   --gold-deep: #a8842e;
+  /* Gold for small text on cream: 5:1 contrast (Lighthouse, 26 Nov 2026). */
+  --gold-text: #7d5f1d;
   --gold-soft: #d9b96a;
   --gold-pale: #ecdfb6;
 
@@ -110,6 +112,8 @@ body {
 
 img {
   max-width: 100%;
+  /* The width/height attributes only reserve space (no layout shift); the size shown comes from CSS. */
+  height: auto;
   display: block;
 }
 
@@ -136,7 +140,7 @@ button {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  color: var(--gold-deep);
+  color: var(--gold-text);
   font-size: 13px;
   font-weight: 600;
   /* Was 0.35em. Letters spaced that far apart read as a template flourish

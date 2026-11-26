@@ -17,6 +17,8 @@ const WON_KEY = 'cr.spin.won' // { code, gives, label, key, expiresAt, minOrder,
 const DEVICE_KEY = 'cr.spin.device'
 const SEEN_KEY = 'cr.spin.autoshown'
 const CODE_KEY = 'cr.checkout.code' // CheckoutPage DISCOUNT_CODE_KEY
+// The × on the floating emblem hides it for the rest of this visit (SEO audit error 9, 26 Nov 2026).
+const FAB_HIDDEN_KEY = 'cr.spin.fabhidden'
 const AFTER_CONSENT_MS = 5000
 
 const store = {
@@ -308,10 +310,15 @@ export default function SpinWheel() {
   }
 
   const close = () => { if (state !== 'spinning') setOpen(false) }
+  const [fabHidden, setFabHidden] = useState(() => Boolean(store.get('sessionStorage', FAB_HIDDEN_KEY)))
+  const hideFab = () => { store.set('sessionStorage', FAB_HIDDEN_KEY, '1'); setFabHidden(true) }
 
   return (
     <>
-      {!quiet && !open && (
+      {!quiet && !open && !fabHidden && !win && (
+        <button type="button" className="spin-fab-hide" onClick={hideFab} aria-label="Hide Spin & Win for this visit">×</button>
+      )}
+      {!quiet && !open && (!fabHidden || win) && (
         <button type="button" className={'spin-fab' + (win ? ' has-prize' : '')} onClick={show} aria-label={win ? 'Your Spin & Win prize' : 'Spin & Win'}>
           {/* The Lucky Spin Wheel Contest emblem (bottom left, like Soru Kutty on the right). */}
           <picture>

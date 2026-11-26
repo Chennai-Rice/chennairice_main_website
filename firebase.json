@@ -237,6 +237,11 @@
     ],
     "redirects": [
       {
+        "source": "/what-is-aged-rice",
+        "destination": "/blog/what-is-aged-rice",
+        "type": 301
+      },
+      {
         "source": "/kitchidi-ponni",
         "destination": "/products/kitchidi-ponni-rice",
         "type": 301

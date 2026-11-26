@@ -13,6 +13,8 @@
 // read the HTML get the real text of the page.
 
 const SITE = 'https://chennairiceindustries.com'
+// Offers, delivery, return policy and reviews: the same builder as the live product page (SEO audit error 7).
+const { packOffers, productReviews, reviewSchema, averageRating } = await import(new URL('../frontend/src/productSchema.js', import.meta.url).href)
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const rupees = (n) => '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 })
 
@@ -65,18 +67,32 @@ function packs(live) {
     price: v.price == null ? null : Number(v.price),
     mrp: v.mrp == null ? null : Number(v.mrp),
     inStock: Boolean(v.inStock),
+    delivery: v.delivery || null,
   }))
+}
+
+/** Published customer reviews (GET /api/reviews), read once for the build; none if the site is not reachable. */
+export async function loadReviews() {
+  try {
+    const res = await fetch(SITE + '/api/reviews', { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+    return (await res.json()).reviews || []
+  } catch (err) {
+    console.warn('prerender-content: reviews not reachable, building without them —', err.message)
+    return []
+  }
 }
 
 // ---- Product structured data ------------------------------------------------
 /** Product for a pack page; the page itself adds the same @id with live prices, so they merge. */
-export function productSchema({ id, seo, path, image, live, orgId }) {
-  const ps = packs(live).filter((p) => p.price != null)
+export function productSchema({ id, seo, name, path, image, live, orgId, reviews = [] }) {
   const url = SITE + path
+  const offers = packOffers(packs(live).map((p) => ({ ...p, price: p.price ?? undefined })), url)
   return {
     '@type': 'Product',
     '@id': url + '#product',
-    name: seo.name ? `${seo.name}${/rice$/i.test(seo.name) ? '' : ' Rice'}` : seo.h1,
+    // The full product name, as the page heading has it ("Vintage Special Ponni Rice", not "Vintage Rice").
+    name: name || seo.h1,
     description: seo.about || seo.description,
     url,
     sku: id,
@@ -87,18 +103,8 @@ export function productSchema({ id, seo, path, image, live, orgId }) {
     category: 'Rice',
     countryOfOrigin: 'IN',
     ...(live?.tag ? { additionalProperty: [{ '@type': 'PropertyValue', name: 'Pack label', value: live.tag }] } : {}),
-    ...(ps.length ? {
-      offers: {
-        '@type': 'AggregateOffer',
-        priceCurrency: 'INR',
-        lowPrice: Math.min(...ps.map((p) => p.price)),
-        highPrice: Math.max(...ps.map((p) => p.price)),
-        offerCount: ps.length,
-        availability: ps.some((p) => p.inStock) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-        seller: { '@id': orgId },
-        url,
-      },
-    } : {}),
+    ...(offers.length ? { offers } : {}),
+    ...reviewSchema(productReviews(reviews, name, seo.h1)),
   }
 }
 
@@ -111,11 +117,14 @@ function packsTable(live) {
   const ps = packs(live)
   if (!ps.length) return ''
   const rows = ps.map((p) => `<tr><td>${p.kg} kg</td><td>${p.price == null ? 'Price on request' : rupees(p.price) + (p.mrp && p.mrp > p.price ? ` (MRP ${rupees(p.mrp)})` : '')}</td><td>${p.price == null ? '—' : p.inStock ? 'In stock' : 'Out of stock'}</td></tr>`).join('')
-  return `<table><thead><tr><th>Pack</th><th>Price (incl. GST)</th><th>Availability</th></tr></thead><tbody>${rows}</tbody></table><p>Delivery is extra and depends on the PIN code (shown before payment). Delivered across India from Erode.</p>`
+  return `<table><thead><tr><th>Pack</th><th>Price (incl. GST)</th><th>Availability</th></tr></thead><tbody>${rows}</tbody></table><p>Delivery is extra: a standard charge per pack for Tamil Nadu and for other regions, shown before payment. Delivered across India from Erode.</p>`
 }
 
 /** A product page's text. */
-export function productHtml({ seo, live, guides, photo }) {
+export function productHtml({ seo, name, live, guides, photo, reviews = [] }) {
+  // The same reviews the Product data carries (and the live page shows), so stars in search match the page.
+  const own = productReviews(reviews, name, seo.h1)
+  const written = own.filter((r) => String(r.text || '').trim())
   // The current pack photo as a real <img>, for crawlers that do not run the app.
   const alt = `Chennai Rice ${seo.name || seo.h1} rice pack`
   return [
@@ -127,6 +136,7 @@ export function productHtml({ seo, live, guides, photo }) {
     live?.tag ? `<p>Pack label: ${esc(live.tag)}.${live.description ? ' ' + esc(live.description) : ''}</p>` : '',
     seo.dishes?.length ? `<h2>Best dishes to cook with ${esc(seo.name || 'this rice')}</h2>${ul(seo.dishes.map(esc))}` : '',
     `<h2>Pack sizes and prices</h2>${packsTable(live) || '<p>See the product page for current pack sizes and prices.</p>'}`,
+    own.length ? `<section><h2>Customer reviews</h2><p>Rated ${averageRating(own)} out of 5 by ${own.length} verified customer${own.length === 1 ? '' : 's'}.</p>${written.slice(0, 10).map((r) => `<blockquote><p>${'★'.repeat(r.rating)} ${esc(r.text)}</p><p>— ${esc(r.name || 'Customer')}${r.city ? ', ' + esc(r.city) : ''}</p></blockquote>`).join('')}</section>` : '',
     `<h2>How to cook it</h2>${ul(COOKING.map(esc))}`,
     `<h2>Rice guides</h2>${ul(guides.map((g) => link(g.to, g.label)))}`,
     companyBlock(),

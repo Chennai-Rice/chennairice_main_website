@@ -391,7 +391,7 @@ export const HOME_FAQS = [
   {
     q: 'What Is the Difference Between Aged Rice and Regular Rice?',
     a: 'Aged rice is stored under controlled conditions before milling or sale, allowing its cooking properties to change over time. Compared with newly harvested rice, aged rice often cooks into firmer, more separate grains, depending on the variety. Chennai Rice offers premium aged rice varieties for customers who prefer this texture in their everyday meals.',
-    links: [{ to: '/what-is-aged-rice', label: 'Read: what is aged rice' }],
+    links: [{ to: '/blog/what-is-aged-rice', label: 'Read: what is aged rice' }],
   },
   {
     q: 'Does Chennai Rice Supply Rice for Wholesale and Bulk Orders?',

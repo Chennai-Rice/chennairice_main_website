@@ -19,6 +19,17 @@ const CATALOG = {
   ],
 }
 
+// Test reviews (made up): two of Kitchidi Ponni alone, one of a mixed order (must not count for one rice).
+const REVIEWS = {
+  average: 4.7,
+  count: 3,
+  reviews: [
+    { name: 'Test Buyer A', city: 'Erode', rating: 5, text: 'Test review text one.', products: 'Kitchidi Ponni Rice', date: '2026-11-20' },
+    { name: 'Test Buyer B', city: '', rating: 4, text: '', products: 'Kitchidi Ponni Rice', date: '2026-11-21' },
+    { name: 'Test Buyer C', city: 'Salem', rating: 5, text: 'Mixed order review.', products: 'Kitchidi Ponni Rice, Special Idly Rice', date: '2026-11-22' },
+  ],
+}
+
 const test = base.extend({
   tracking: async ({ page }, use) => {
     const seen = { meta: [], google: [] }
@@ -27,6 +38,7 @@ const test = base.extend({
       const { hostname, pathname } = new URL(url)
       if (hostname === '127.0.0.1' || hostname === 'localhost') {
         if (pathname === '/api/catalog') return route.fulfill({ json: CATALOG })
+        if (pathname === '/api/reviews') return route.fulfill({ json: REVIEWS })
         if (pathname === '/api/checkout/quote') {
           return route.fulfill({ json: { subtotal: 555, shipping: 80, region: { name: 'Tamil Nadu' }, deliveryOptions: [{ method: 'courier', charge: 80, promise: '3â€“5 days' }] } })
         }

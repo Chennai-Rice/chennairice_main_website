@@ -104,7 +104,7 @@
   font-weight: 400;
   font-size: 58px;
   line-height: 1;
-  color: var(--gold);
+  color: #8f6d26; /* large text, 3.9:1 on cream (was 2.2:1), 26 Nov 2026 */
 }
 .slide-cat {
   display: flex;
@@ -202,7 +202,7 @@
   letter-spacing: 0.28em;
   text-indent: 0.28em;
   text-transform: uppercase;
-  color: #a5906c;
+  color: #6b5a3c; /* 5:1 on cream (was #a5906c, 2.7:1), 26 Nov 2026 */
 }
 
 /* ---------- intro + CTA slides ---------- */
@@ -247,7 +247,7 @@
   position: relative;
   font-size: 12px;
   letter-spacing: 0.2em;
-  color: #8a7a5c; /* darker for contrast (WCAG AA), 25 Nov 2026 */
+  color: #66573b; /* 5:1 on cream (WCAG AA), 26 Nov 2026 */
   padding: 12px 10px 8px; /* 44 px tall tap area on phones */
   min-width: 44px;
   transition: color 0.3s ease;

@@ -28,7 +28,7 @@
     white-space: nowrap;
   }
   .site-actionbar-buy { background: var(--maroon, #7a1f2b); color: #fff; }
-  .site-actionbar-wa { background: #1f9d55; color: #fff; }
+  .site-actionbar-wa { background: #157a41; color: #fff; } /* 5:1 with white (was #1f9d55, 3.5:1) */
   /* Call: a round button before the other two. */
   .site-actionbar a.site-actionbar-call {
     flex: 0 0 46px;
