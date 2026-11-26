@@ -190,6 +190,8 @@ export default function SpinWheel() {
   const accepted = Boolean(consent) && (allowAnalytics || allowMarketing)
   const [config, setConfig] = useState(null)
   const [open, setOpen] = useState(false)
+  // Before any early return: hooks must run in the same order on every render.
+  const [fabHidden, setFabHidden] = useState(() => Boolean(store.get('sessionStorage', FAB_HIDDEN_KEY)))
   const [form, setForm] = useState({ name: '', phone: '' })
   const [waOk, setWaOk] = useState(false) // "Send my prize code and offers on WhatsApp" (unticked until they tick it)
   const [state, setState] = useState('form') // form | spinning | won
@@ -310,7 +312,6 @@ export default function SpinWheel() {
   }
 
   const close = () => { if (state !== 'spinning') setOpen(false) }
-  const [fabHidden, setFabHidden] = useState(() => Boolean(store.get('sessionStorage', FAB_HIDDEN_KEY)))
   const hideFab = () => { store.set('sessionStorage', FAB_HIDDEN_KEY, '1'); setFabHidden(true) }
 
   return (

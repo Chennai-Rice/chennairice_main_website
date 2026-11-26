@@ -215,3 +215,22 @@ test('pre-rendered pages: full policy text, one aged-rice guide link, titles wit
     expect(title.length, path).toBeLessThanOrEqual(60)
   }
 })
+
+// Spin & Win switched on (as on the live site): pages still render (a hook after an early return in SpinWheel crashed
+// every page once the offer loaded, caught 26 Nov 2026), and the emblem's × hides it for the visit.
+test('Spin & Win on: product page renders, and the × hides the emblem', async ({ page, tracking }) => {
+  void tracking
+  const errors = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await page.route('**/api/spin', (route) => route.fulfill({ json: { enabled: true, prizes: [{ key: 't1', label: 'Test prize', kind: 'amount' }], validDays: 30 } }))
+  await page.goto('/products/kitchidi-ponni-rice')
+  await expect(page.locator('h1').first()).toBeVisible()
+  await answerCookies(page, 'Reject')
+  await page.waitForTimeout(800)
+  expect(errors).toEqual([])
+  const close = page.locator('button.spin-fab-hide')
+  if (await close.count()) {
+    await close.click()
+    await expect(page.locator('button.spin-fab')).toHaveCount(0)
+  }
+})
