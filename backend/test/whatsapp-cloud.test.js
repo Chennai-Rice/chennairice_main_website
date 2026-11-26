@@ -629,3 +629,16 @@ test('delivery: standard charges for Tamil Nadu and other states (no PIN code); 
   assert.equal(fixed.items.find((i) => i.id === 'delivery').label, '🚚 Delivery charges')
   assert.match(fixed.items.find((i) => i.id === 'track').reply, /shipment ID/)
 })
+
+test('talk to our team: the reply and the menu row give the company number', async () => {
+  const hand = await render(bot, decide(bot, { replyId: 'human' }), {}, deps)
+  assert.match(says(hand.messages[0]), /\+91 70666 46667/)
+  assert.equal(hand.state.pausedHours, bot.handoffHours)
+  const ta = await render(bot, decide(botFor(bot, 'ta'), { replyId: 'human' }), { lang: 'ta' }, deps)
+  assert.match(says(ta.messages[0]), /\+91 70666 46667/)
+  for (const lang of ['en', 'ta']) {
+    const row = menuMsg(botFor(bot, lang), 'x').interactive.action.sections[0].rows.find((r) => r.id === 'human')
+    assert.match(row.description, /70666 46667/)
+    assert.ok(row.description.length <= 72)
+  }
+})

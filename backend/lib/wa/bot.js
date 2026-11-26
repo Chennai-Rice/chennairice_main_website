@@ -43,6 +43,10 @@ const DELIVERY_REPLY_TA = '🚚 *டெலிவரி கட்டணம்* (�
 const OLD_TRACK = /^Please send your order number\. It looks like/
 const OLD_DELIVERY = /PIN/i
 
+// Talk to our team: with the company number (owner, 26 Nov 2026); the old saved texts are updated.
+const HUMAN_DESC = 'A person will reply, or call 70666 46667'
+const HUMAN_REPLY = 'Thank you! 🙏 Our team will get back to you here soon.\n\n📞 You can also call us on +91 70666 46667.'
+
 export const DEFAULT_BOT = {
   enabled: true,
   greetings: ['hi', 'hii', 'hello', 'hey', 'hai', 'vanakkam', 'menu', 'start', 'good morning', 'good evening'],
@@ -62,8 +66,8 @@ export const DEFAULT_BOT = {
       reply: 'You have no active offers on this number right now. Spin the wheel on our website for a chance to win up to ₹150 OFF: ' + SITE + '/w/spin-bot' },
     { id: 'delivery', label: '🚚 Delivery charges', description: 'Tamil Nadu and other states', keywords: ['deliver', 'delivery charge', 'pincode', 'pin code', 'shipping', 'courier'], action: 'delivery',
       reply: DELIVERY_REPLY },
-    { id: 'human', label: '👤 Talk to our team', description: 'A person will reply', keywords: ['agent', 'human', 'person', 'call me', 'talk', 'help', 'complaint'], action: 'handoff',
-      reply: 'Thank you! 🙏 Our team will get back to you here soon.' },
+    { id: 'human', label: '👤 Talk to our team', description: HUMAN_DESC, keywords: ['agent', 'human', 'person', 'call me', 'talk', 'help', 'complaint', 'phone number', 'contact'], action: 'handoff',
+      reply: HUMAN_REPLY },
   ],
   fallback: 'Sorry, I did not get that. 🙏 Please choose from the menu, or type *menu* any time.',
   handoffHours: 12,
@@ -86,8 +90,8 @@ export const DEFAULT_BOT = {
         reply: 'இந்த எண்ணில் தற்போது சலுகைகள் எதுவும் இல்லை. ₹150 வரை தள்ளுபடி வெல்ல எங்கள் இணையதளத்தில் சக்கரத்தைச் சுற்றுங்கள்: ' + SITE + '/w/spin-bot' },
       delivery: { label: '🚚 டெலிவரி கட்டணம்', description: 'தமிழ்நாடு மற்றும் பிற மாநிலங்கள்', keywords: ['டெலிவரி', 'கட்டணம்', 'பின்கோடு'],
         reply: DELIVERY_REPLY_TA },
-      human: { label: '👤 குழுவிடம் பேச', description: 'எங்கள் குழுவில் ஒருவர் பதில் அளிப்பார்', keywords: ['உதவி', 'புகார்', 'பேச'],
-        reply: 'நன்றி! 🙏 எங்கள் குழு விரைவில் இங்கே உங்களைத் தொடர்புகொள்ளும்.' },
+      human: { label: '👤 குழுவிடம் பேச', description: 'ஒருவர் பதில் அளிப்பார் அல்லது 70666 46667-ஐ அழைக்கவும்', keywords: ['உதவி', 'புகார்', 'பேச'],
+        reply: 'நன்றி! 🙏 எங்கள் குழு விரைவில் இங்கே உங்களைத் தொடர்புகொள்ளும்.\n\n📞 எங்களை அழைக்கவும்: +91 70666 46667' },
     },
     fallback: 'மன்னிக்கவும், புரியவில்லை. 🙏 மெனுவில் தேர்ந்தெடுக்கவும், அல்லது எப்போது வேண்டுமானாலும் *menu* என்று டைப் செய்யவும்.',
   },
@@ -203,6 +207,10 @@ export function cleanBot(input = {}) {
   for (const it of items) {
     const def = DEFAULT_BOT.items.find((d) => d.id === it.id)
     if (it.action === 'track_order' && (!it.reply || OLD_TRACK.test(it.reply))) it.reply = TRACK_REPLY
+    if (it.action === 'handoff' && it.id === 'human' && !/70666/.test(it.reply)) {
+      if (!it.reply || it.reply === 'Thank you! 🙏 Our team will get back to you here soon.') it.reply = HUMAN_REPLY
+      if (it.description === 'A person will reply') it.description = HUMAN_DESC
+    }
     if (it.action === 'delivery' && def && (OLD_DELIVERY.test(it.description) || OLD_DELIVERY.test(it.reply) || it.label === '🚚 Delivery to my area')) {
       Object.assign(it, { label: def.label, description: def.description, reply: def.reply })
     }
@@ -227,7 +235,7 @@ export function cleanBot(input = {}) {
     // Tamil texts: the defaults unless the settings carry their own (the dashboard edits the English ones).
     ta: input.ta && typeof input.ta === 'object' ? {
       welcome: { text: noHours(input.ta.welcome?.text || DEFAULT_BOT.ta.welcome.text).slice(0, 1024), button: str(input.ta.welcome?.button || DEFAULT_BOT.ta.welcome.button).slice(0, 20) },
-      items: { ...DEFAULT_BOT.ta.items, ...(input.ta.items && typeof input.ta.items === 'object' ? input.ta.items : {}), track: DEFAULT_BOT.ta.items.track, delivery: DEFAULT_BOT.ta.items.delivery },
+      items: { ...DEFAULT_BOT.ta.items, ...(input.ta.items && typeof input.ta.items === 'object' ? input.ta.items : {}), track: DEFAULT_BOT.ta.items.track, delivery: DEFAULT_BOT.ta.items.delivery, human: DEFAULT_BOT.ta.items.human },
       fallback: noHours(input.ta.fallback || DEFAULT_BOT.ta.fallback).slice(0, 1024),
     } : DEFAULT_BOT.ta,
   }
