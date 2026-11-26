@@ -22,9 +22,23 @@ function mainCssReady() {
   })
 }
 
-// …and only after the browser has drawn a frame, so the first-paint headline is always on screen before the app
-// replaces it (on a fast load the app used to start before anything was drawn).
-const afterFirstPaint = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))
+// It starts once the browser has actually painted the first-paint headline, and leaves it on screen 0.15 s more:
+// replaced sooner, Chrome does not count it as the largest content and the LCP waits for the app (26 Nov 2026).
+// Only the home page has that headline (index.html #boot); every other page starts at once. A browser that does not
+// report paints goes on after 1.2 s at most.
+const afterFirstPaint = () => new Promise((resolve) => {
+  if (!document.documentElement.classList.contains('is-home')) return resolve()
+  let done = false
+  const go = () => { if (!done) { done = true; setTimeout(resolve, 150) } }
+  try {
+    const seen = performance.getEntriesByName('first-contentful-paint')[0]
+    if (seen) return go()
+    new PerformanceObserver((list, obs) => {
+      if (list.getEntriesByName('first-contentful-paint').length) { obs.disconnect(); go() }
+    }).observe({ type: 'paint', buffered: true })
+  } catch { /* no paint timing */ }
+  setTimeout(() => { if (!done) { done = true; resolve() } }, 1200)
+})
 
 mainCssReady().then(afterFirstPaint).then(() => ReactDOM.createRoot(document.getElementById('root')).render(
   <BrowserRouter>

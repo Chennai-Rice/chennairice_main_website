@@ -36,6 +36,8 @@
          like the Google tags (25 Nov 2026; it used to send PageView before the cookie banner was answered). -->
     <script>if(location.pathname==='/')document.documentElement.className+=' is-home';</script>
     <style>
+      /* The first-paint headline is ~6% larger than the app's (Bodoni covers more area than this Georgia), so it stays
+         the page's largest content and its LCP is the moment it shows, not when the app and font finish (26 Nov 2026). */
       /* Shown on the home page until the app has loaded (it is replaced when React starts), so the
          first paint does not wait for the scripts. Same gradient, position and wording as the hero. */
       #boot{display:none}
@@ -44,10 +46,10 @@
         background:radial-gradient(120% 90% at 60% 20%,#3a2c14 0%,#1c1409 55%,#0e0a05 100%);
         font-family:Georgia,'Times New Roman',serif}
       #boot .boot-tag{margin:0 auto 14px;font-style:italic;font-size:22px;color:#e3c878}
-      #boot .boot-title{margin:0 auto;max-width:980px;font-size:clamp(40px,4.6vw,68px);line-height:1.1;font-weight:500;
+      #boot .boot-title{margin:0 auto;max-width:980px;font-size:clamp(42px,4.9vw,72px);line-height:1.1;font-weight:500;
         letter-spacing:-0.01em;text-shadow:0 2px 30px rgba(0,0,0,.45)}
       #boot .boot-sub{margin:20px auto 0;max-width:720px;font:400 17px/1.65 system-ui,-apple-system,'Segoe UI',sans-serif;color:#efe4cc}
-      @media(max-width:600px){#boot .boot-title{font-size:clamp(30px,8.4vw,38px)}#boot .boot-sub{font-size:15px}#boot .boot-tag{font-size:17px}}
+      @media(max-width:600px){#boot .boot-title{font-size:clamp(32px,8.9vw,40px)}#boot .boot-sub{font-size:15px}#boot .boot-tag{font-size:17px}}
     </style>
     <meta name="facebook-domain-verification" content="2kkg6m6ijcae4l95hm4uktv2hp4pxw" />
     <title>Chennai Rice | Premium Ponni &amp; Idli Rice from Erode, Buy Online</title>
