@@ -629,3 +629,44 @@ test('delivery: standard charges for Tamil Nadu and other states (no PIN code); 
   assert.equal(fixed.items.find((i) => i.id === 'delivery').label, '🚚 Delivery charges')
   assert.match(fixed.items.find((i) => i.id === 'track').reply, /shipment ID/)
 })
+
+test('talk to our team: the reply and the menu row give the company number', async () => {
+  const hand = await render(bot, decide(bot, { replyId: 'human' }), {}, deps)
+  assert.match(says(hand.messages[0]), /\+91 70666 46667/)
+  assert.equal(hand.state.pausedHours, bot.handoffHours)
+  const ta = await render(bot, decide(botFor(bot, 'ta'), { replyId: 'human' }), { lang: 'ta' }, deps)
+  assert.match(says(ta.messages[0]), /\+91 70666 46667/)
+  for (const lang of ['en', 'ta']) {
+    const row = menuMsg(botFor(bot, lang), 'x').interactive.action.sections[0].rows.find((r) => r.id === 'human')
+    assert.match(row.description, /70666 46667/)
+    assert.ok(row.description.length <= 72)
+  }
+})
+
+test('after "Talk to our team": tapping தமிழ் gives the Tamil menu (not the AI); any saved team reply gets the number', async () => {
+  const { answer } = await import('../lib/wa/bot.js')
+  const sent = []
+  const query = async (s) => {
+    if (s.startsWith('select * from wa_bot_state')) return { rows: [{ phone: '9876543210', lang: 'en', paused_until: new Date(Date.now() + 6 * 3600e3) }] }
+    if (s.includes('replies_today from wa_bot_state')) return { rows: [{ n: 0 }] }
+    return { rows: [], rowCount: 1 } // nobody from the team has replied
+  }
+  const fetchImpl = async (url, init) => { sent.push(JSON.parse(init.body)); return { ok: true, status: 200, json: async () => ({ messages: [{ id: 'w' + sent.length }] }), text: async () => '{}' } }
+  const prev = process.env.WHATSAPP_TOKEN
+  process.env.WHATSAPP_TOKEN = 'test'
+  try {
+    await answer({ to: '919876543210', phone: '9876543210', text: 'தமிழ்', replyId: 'lang_ta' }, { query, fetchImpl, aiFetch: async () => { throw new Error('the AI must not be asked') } })
+  } finally {
+    if (prev === undefined) delete process.env.WHATSAPP_TOKEN
+    else process.env.WHATSAPP_TOKEN = prev
+  }
+  assert.equal(sent[0].interactive.type, 'list')
+  assert.match(sent[0].interactive.body.text, /வணக்கம்/)
+
+  // A reply saved in Bot settings without the number (any wording) gets it added; the menu row too.
+  const saved = JSON.parse(JSON.stringify(DEFAULT_BOT))
+  Object.assign(saved.items.find((i) => i.id === 'human'), { description: 'A person will reply', reply: 'Thanks! 🙏 Our team will get back to you here soon. ' })
+  const human = cleanBot(saved).items.find((i) => i.id === 'human')
+  assert.equal(human.reply, 'Thanks! 🙏 Our team will get back to you here soon.\n\n📞 You can also call us on +91 70666 46667.')
+  assert.match(human.description, /70666 46667/)
+})
