@@ -1,0 +1,51 @@
+/* Sticky Buy + WhatsApp bar (phones only). Floating buttons and the cookie bar sit above it while it shows. */
+.site-actionbar { display: none; }
+@media (max-width: 899px) {
+  .site-actionbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 940;
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px max(8px, env(safe-area-inset-bottom));
+    background: var(--cream-soft, #faf5e9);
+    border-top: 1px solid #eadcc6;
+    box-shadow: 0 -8px 24px rgba(74, 16, 26, 0.12);
+  }
+  .site-actionbar a {
+    flex: 1 1 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 46px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 15px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .site-actionbar-buy { background: var(--maroon, #7a1f2b); color: #fff; }
+  .site-actionbar-wa { background: #1f9d55; color: #fff; }
+  /* Call: a round button before the other two. */
+  .site-actionbar a.site-actionbar-call {
+    flex: 0 0 46px;
+    width: 46px;
+    background: #fff;
+    color: var(--maroon, #7a1f2b);
+    border: 1.5px solid var(--maroon, #7a1f2b);
+  }
+  .site-actionbar a:focus-visible { outline: 3px solid var(--maroon-ink, #4a1016); outline-offset: 2px; }
+
+  @media (max-width: 380px) {
+    .site-actionbar { gap: 6px; padding-left: 8px; padding-right: 8px; }
+    .site-actionbar a { font-size: 13.5px; gap: 6px; }
+  }
+  /* Room for it at the end of the page, and the floating buttons lifted above it. */
+  body:has(.site-actionbar) { padding-bottom: 66px; }
+  body:has(.site-actionbar) .spin-fab,
+  body:has(.site-actionbar) .sk-launcher { bottom: 78px; }
+  body:has(.site-actionbar) .cookie-card-wrap { bottom: 66px; }
+}

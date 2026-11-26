@@ -1,10 +1,11 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { FOOTER } from '../data/content.js'
 import { useCookieConsent } from '../hooks/useCookieConsent.jsx'
+import { COMPANY_WHATSAPP } from '../services/adEvents.js'
 import './footer.css'
 
 /* Thin-line marks on one 24px grid. Only networks with a real profile URL in
-   FOOTER.social are drawn — an icon pointing at "#" reads as a broken site. */
+   FOOTER.social are drawn â€” an icon pointing at "#" reads as a broken site. */
 const Social = {
   instagram: (
     <>
@@ -35,6 +36,7 @@ const Social = {
 
 export default function Footer() {
   const { reopen } = useCookieConsent()
+  const showMap = useLocation().pathname.startsWith("/contact-us")
 
   return (
     <footer className="foot" id="contact">
@@ -51,8 +53,8 @@ export default function Footer() {
       {/* Brand | links | Reach Us. */}
       <div className="container foot-main">
         <div className="foot-brand">
-          <Link to="/" className="foot-logo" aria-label="Chennai Rice Industries — home">
-            <img src="/assets/logo-footer-v2.png" alt="Chennai Rice Industries" width="428" height="460" />
+          <Link to="/" className="foot-logo" aria-label="Chennai Rice Industries â€” home">
+            <img src="/assets/logo-footer-v2.webp" alt="Chennai Rice Industries" width="428" height="460" loading="lazy" decoding="async" />
           </Link>
 
           <h2 className="foot-label">Follow Us</h2>
@@ -80,7 +82,7 @@ export default function Footer() {
           {/* Food safety licence: the FSSAI logo on a white badge (it is not
               legible on the maroon footer) with the licence number. */}
           <div className="foot-fssai">
-            <img src="/assets/fssai-logo.png" alt="FSSAI" width="835" height="458" loading="lazy" />
+            <img src="/assets/fssai-logo-v2.webp" alt="FSSAI" width="835" height="458" loading="lazy" />
             <p>
               <span>Lic. No.</span>
               <strong>{FOOTER.fssai}</strong>
@@ -127,6 +129,22 @@ export default function Footer() {
             <span className="foot-gstin">GSTIN {FOOTER.gstin}</span>
           </address>
 
+          {/* WhatsApp chat with our number (owner, 24 Nov 2026). The site-wide click listener counts it as whatsapp_click. */}
+          <a
+            className="foot-wa"
+            href={`https://wa.me/${COMPANY_WHATSAPP}?text=${encodeURIComponent('Hi Chennai Rice, I would like to know more about your rice.')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2.2a9.7 9.7 0 0 0-8.4 14.6L2.3 21.7l5-1.3A9.7 9.7 0 1 0 12 2.2zm0 17.7a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 19.9zm4.4-6c-.2-.1-1.4-.7-1.7-.8-.2-.1-.4-.1-.5.1l-.8.9c-.1.2-.3.2-.5.1a6.6 6.6 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 1.9s.8 2.2.9 2.4c.1.1 1.6 2.5 4 3.5 1.5.6 2.1.7 2.8.6.5-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1l-.4-.2z" />
+            </svg>
+            Chat on WhatsApp
+          </a>
+
+          {/* The Google Map loads only on the Contact page (Google Ads manager, 20 Nov 2026: it slowed product pages on
+              phones); every other page links to it. */}
+          {showMap ? (
           <div className="foot-map">
             <iframe
               title="Chennai Rice Industries on Google Maps"
@@ -141,10 +159,16 @@ export default function Footer() {
               </svg>
             </a>
           </div>
+          ) : (
+            <a className="foot-map-link" href={FOOTER.maps.profile} target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+              Find us on Google Maps
+            </a>
+          )}
         </div>
       </div>
 
-      <img className="foot-sprig" src="/assets/footer-sprig.png" alt="Rice sprig" aria-hidden="true" />
+      <img className="foot-sprig" src="/assets/footer-sprig-v2.webp" width="198" height="150" alt="" aria-hidden="true" loading="lazy" decoding="async" />
 
       <div className="foot-bar">
         <div className="container foot-bar-inner">

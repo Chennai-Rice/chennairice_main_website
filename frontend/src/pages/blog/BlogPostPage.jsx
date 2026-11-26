@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { renderMarkdown } from '../../lib/markdown.jsx'
 import PostCover from './components/PostCover.jsx'
 import { fetchPostBySlug, formatPostDate } from '../../services/blog.service.js'
+import usePageMeta from '../../shop/hooks/usePageMeta.js'
 import '../page.css'
 import './blog.css'
 
@@ -49,6 +50,14 @@ export default function BlogPostPage() {
   // Parsing is the expensive part of this page, so it happens once per post
   // rather than on every render.
   const body = useMemo(() => (post ? renderMarkdown(post.contentMd) : []), [post])
+
+  // The post's own browser title and description (it kept the home page's, audit 25 Nov 2026); a draft
+  // preview and a missing post are not for search engines.
+  usePageMeta(
+    post ? `${post.title} | Chennai Rice Blog` : state === 'loading' ? 'Chennai Rice Blog' : 'Post not found | Chennai Rice',
+    post ? String(post.excerpt || '').slice(0, 155) : '',
+    { noindex: !post || post.status !== 'published' },
+  )
 
   if (state === 'loading') {
     return (

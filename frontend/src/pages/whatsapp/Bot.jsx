@@ -20,6 +20,9 @@ function BotBubble({ m, onTap }) {
   return (
     <>
       <div className="wa-bubble"><p className="wa-bubble-body"><WaText text={i.body.text} /></p></div>
+      {i.type === 'cta_url' && (
+        <a className="wa-bubble-btn" href={i.action.parameters.url} target="_blank" rel="noreferrer">{i.action.parameters.display_text}</a>
+      )}
       {i.type === 'button' && i.action.buttons.map((b) => (
         <button key={b.reply.id} type="button" className="wa-bubble-btn" onClick={() => onTap(b.reply.id, b.reply.title)}>{b.reply.title}</button>
       ))}

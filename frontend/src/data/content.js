@@ -18,16 +18,19 @@ export const ASSETS = {
      visitors kept the old mark indefinitely — the browser never even asked.
      Bump the suffix whenever the artwork changes. */
   // Menu bar (Nov 2026): the round Chennai Rice mark with a cream edge, so it reads on the maroon bar.
-  logo: '/assets/logo-nav-v4.png',
-  logoOnLight: '/assets/logo-full-v3.png',
+  logo: '/assets/logo-nav-v4.webp', // 19 KB instead of the 143 KB PNG (25 Nov 2026)
+  logoOnLight: '/assets/logo-full-v3.webp',
   /* Re-encoded from the original 94.8 MB master (kept in git history as
      assets/hero.mp4): letterbox bars cropped off (1920x918 picture from
      y=80), scaled to 1280 wide, H.264 CRF 27, no audio track — the hero
      always plays muted — and faststart so it begins playing before it has
      fully downloaded. 6.7 MB, same 44.9 s length. */
   heroVideo: '/assets/hero-v2.mp4',
-  wheatLeft: '/assets/decor/wheat-left.webp',
-  wheatRight: '/assets/decor/rice-stalks.webp', // Golden Rice Stalks (Nov 2026)
+  // Phones held upright see only the middle of the wide film: this is that middle part at full height (420x612,
+  // 1.5 MB instead of 6.9 MB), re-encoded 26 Nov 2026 with Chrome's recorder (H.264 MP4).
+  heroVideoPhone: '/assets/hero-phone-v1.mp4',
+  wheatLeft: '/assets/decor/wheat-left-v2.webp', // 90 KB (was 243 KB, 25 Nov 2026)
+  wheatRight: '/assets/decor/rice-stalks-v2.webp', // Golden Rice Stalks (Nov 2026)
   riceBowl: '/assets/decor/rice-bowl.webp',
   grainsGold: '/assets/decor/grains-gold.webp',
   paddySpray: '/assets/decor/paddy-spray.webp',
@@ -51,7 +54,7 @@ export const NAV_LINKS = [
 export const NAV_CONTEST = {
   to: '/contest',
   label: 'Super Slogan Contest',
-  logo: '/assets/contest-nav-logo.webp',
+  logo: '/assets/contest-nav-logo-v2.webp',
   fallback: '/assets/contest-nav-logo.png',
 }
 
@@ -68,7 +71,7 @@ export const HERO = {
     { label: 'Shop Chennai Rice', to: '/rice-products', primary: true },
     { label: 'Bulk & Distributor Enquiry', to: '/bulk-order' },
   ],
-  estd: "1950's",
+  estd: "1950s",
 }
 
 /* Slot numbers are derived from position rather than written in, so removing
@@ -86,7 +89,7 @@ export const PRODUCTS = [
     packSize: '5 / 10 / 26 KG',
     riceType: 'Rajabhogam',
     idealFor: 'Everyday Family Meals',
-    image: '/assets/shop/packs/special-rajabhogam-v2.png',
+    image: '/assets/shop/packs/special-rajabhogam-v2.webp',
     // Soft rose cream, so the ghost lettering sits behind the red bag.
     tint: '#F8ECEA',
   },
@@ -101,7 +104,7 @@ export const PRODUCTS = [
     packSize: '5 / 26 KG',
     riceType: '1 Year Aged Kitchidi Ponni',
     idealFor: 'Delicious Everyday Meals',
-    image: '/assets/shop/packs/kitchidi-ponni-rice-v3.png',
+    image: '/assets/shop/packs/kitchidi-ponni-rice-v3.webp',
     // Warm peach, from the right half of the pack.
     tint: '#FBEDE6',
   },
@@ -117,7 +120,7 @@ export const PRODUCTS = [
     packSize: '5 / 10 / 26 KG',
     riceType: 'SNR RNR Poompuhar Ponni',
     idealFor: 'Daily Family Dining',
-    image: '/assets/shop/packs/viruchagam-v3.png',
+    image: '/assets/shop/packs/viruchagam-v3.webp',
     // Cool blue-grey, matching the pack's royal blue.
     tint: '#EAEFF6',
   },
@@ -130,7 +133,7 @@ export const PRODUCTS = [
     packSize: '5 / 10 / 26 KG',
     riceType: 'Super Aged Gel Cook Rice',
     idealFor: 'Daily Meals • Variety Rice',
-    image: '/assets/shop/packs/nayara-super-aged-v3.png',
+    image: '/assets/shop/packs/nayara-super-aged-v3.webp',
     // Pale teal, from the pack's green and gold.
     tint: '#E8F2EF',
   },
@@ -159,7 +162,7 @@ export const SHOWCASE = {
   ctaButton: 'View All Products',
 }
 
-export const FEATURES_TITLE = 'Why Tamil Homes Trust Chennai Rice ?'
+export const FEATURES_TITLE = 'Why Tamil Homes Trust Chennai Rice?'
 
 export const FEATURES = [
   { icon: 'sourced', label: ['Carefully', 'Sourced'], text: 'Paddy procured from five states and kept separate and traceable from purchase to storage.' },
@@ -170,75 +173,8 @@ export const FEATURES = [
   { icon: 'aroma', label: ['Rich in Taste', '& Aroma'], text: 'Stored with care in monitored silos so every meal keeps its natural taste and aroma.' },
 ]
 
-// Ratings run 3 to 5 rather than a wall of fives. The quote and the score
-// are written as a pair: the lower-rated entries carry a real reservation,
-// because a three-star card that reads like a rave fools nobody.
-export const TESTIMONIALS = [
-  {
-    name: 'Anitha Krishnan',
-    city: 'Chennai',
-    rating: 5,
-    quote:
-      "Chennai Rice has become our family's favourite. The aroma and taste are simply unmatched!",
-    avatar: '/assets/testimonials/avatar-1.jpg',
-  },
-  {
-    name: 'Gopal Reddy',
-    city: 'Coimbatore',
-    rating: 4,
-    quote:
-      "Consistent quality year after year. Delivery can run slow in the monsoon, but the rice itself never disappoints.",
-    avatar: '/assets/testimonials/avatar-2.jpg',
-  },
-  {
-    name: 'Meena Iyer',
-    city: 'Bangalore',
-    rating: 5,
-    quote:
-      "Fluffy, soft and perfect for all our dishes. I highly recommend Chennai Rice.",
-    avatar: '/assets/testimonials/avatar-3.jpg',
-  },
-  {
-    name: 'Ramesh Kumar',
-    city: 'Trichy',
-    rating: 3,
-    quote:
-      "Good rice at a fair price. The large bag is awkward to store in a small kitchen — I wish the smaller pack were easier to find locally.",
-    avatar: '/assets/testimonials/avatar-4.jpg',
-  },
-  {
-    name: 'Lakshmi Sundaram',
-    city: 'Madurai',
-    rating: 5,
-    quote:
-      "Every grain cooks evenly. My family can taste the difference at every meal.",
-    avatar: '/assets/testimonials/avatar-5.jpg',
-  },
-  {
-    name: 'Karthik Raja',
-    city: 'Salem',
-    rating: 4,
-    quote:
-      "Clean, well sorted and never sticky. Took a little getting used to on the water ratio, but we are happy with it.",
-    avatar: '/assets/testimonials/avatar-6.jpg',
-  },
-  {
-    name: 'Saroja Devi',
-    city: 'Thanjavur',
-    rating: 5,
-    quote:
-      "I have cooked rice for forty years. This is the quality I remember from childhood.",
-    avatar: '/assets/testimonials/avatar-7.jpg',
-  },
-  {
-    name: 'Vignesh Balaji',
-    city: 'Erode',
-    rating: 3,
-    quote:
-      "Dependable everyday rice and good value. Not as aromatic as the premium varieties, but it does the job well.",
-    avatar: '/assets/testimonials/avatar-8.jpg',
-  },
-]
+// The home page testimonials are real customer reviews (published in /offers → Reviews), loaded from
+// /api/reviews by components/Testimonials.jsx. The made-up cards that were here were removed (25 Nov 2026).
 
 export const CELEB_HEAD = {
   label: 'Brand Ambassador',
@@ -297,7 +233,7 @@ export const CELEBS = [
     heading: 'Actor Prabhu, Brand Ambassador of Chennai Rice',
     role: 'Actor',
     quote: 'Good food begins with good rice. Chennai Rice has earned its place at our family table.',
-    image: '/assets/celebs/prabhu.webp',
+    image: '/assets/celebs/prabhu-v2.webp',
     tone: 'lilac',
     figure: 82,
     drop: 0,
@@ -345,9 +281,20 @@ export const FOOTER = {
       links: [
         { label: 'About Us', to: '/about-us' },
         { label: 'Infrastructure', to: '/infrastructure' },
-        { label: 'Recipes', to: '/recipes' },
         { label: 'Blogs', to: '/blog' },
         { label: 'Contact Us', to: '/contact-us' },
+      ],
+    },
+    {
+      // Rice guides that no other page linked to (audit, 25 Nov 2026): linked from every page here.
+      head: 'Rice Guides',
+      links: [
+        { label: 'How Much Rice per Month', to: '/how-much-rice-per-month' },
+        { label: 'How to Cook Ponni Rice', to: '/how-to-cook-ponni-rice' },
+        { label: 'Ponni Rice Price', to: '/ponni-rice-price' },
+        { label: 'Ponni vs Basmati Rice', to: '/ponni-rice-vs-basmati-rice' },
+        { label: 'Buy Ponni Rice Online', to: '/buy-ponni-rice-online' },
+        { label: 'Bulk Rice Suppliers in Tamil Nadu', to: '/bulk-rice-suppliers-tamil-nadu' },
       ],
     },
     {

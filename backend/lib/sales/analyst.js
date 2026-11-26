@@ -231,8 +231,19 @@ async function leadList(p) {
      l as (select distinct on (${key10('phone')}) * from all_l order by ${key10('phone')}, ${LEAD_RANK}, created_at)
      select l.*, s.calls, s.status as lead_status, s.last_disposition, s.last_agent, s.last_remark, s.last_called_at,
             (select min(o.placed_at) from orders o where ${key10('o.contact_phone')} = ${key10('l.phone')} and ${WON}
-                and o.placed_at >= l.created_at - interval '1 day') as bought_at
+                and o.placed_at >= l.created_at - interval '1 day') as bought_at,
+            j.stage as j_stage, j.updated_at as j_at, j.value_paise as j_value, j.last_error as j_error,
+            j.payment_attempts as j_attempts, j.items as j_items, j.order_number as j_order, j.n as j_count
        from l left join lead_status s on s.mobile = ${key10('l.phone')}
+       -- Their checkout journey since the lead came in (the furthest one; the checkout form gives the mobile).
+       left join lateral (
+         select cj.stage, cj.updated_at, cj.value_paise, cj.last_error, cj.payment_attempts, cj.items, cj.order_number,
+                count(*) over ()::int as n
+           from checkout_journeys cj
+          where cj.contact_phone is not null and ${key10('cj.contact_phone')} = ${key10('l.phone')}
+            and cj.started_at >= l.created_at - interval '1 day'
+          order by array_position(array['cart','checkout','details','payment','cancelled','failed','purchased'], cj.stage) desc, cj.updated_at desc
+          limit 1) j on true
       order by l.created_at desc limit 10000`, [p.fromTs, p.toTs])
   return rows.map((r) => ({
     kind: r.kind, name: r.name, phone: r.phone, email: r.email || null, source: r.source,
@@ -242,6 +253,12 @@ async function leadList(p) {
     remark: r.last_remark || null, calledAt: r.last_called_at || null,
     status: r.bought_at ? 'bought' : r.lead_status === 'qualified' ? 'qualified' : r.lead_status === 'not_qualified' ? 'not_qualified' : r.calls ? 'called' : 'new',
     boughtAt: r.bought_at,
+    // The checkout journey (Nov 2026): the furthest step, when, the basket, and why payment stopped.
+    journey: r.j_stage ? {
+      stage: r.j_stage, at: r.j_at, value: r.j_value != null ? Number(r.j_value) / 100 : null, error: r.j_error || null,
+      attempts: r.j_attempts || 0, order: r.j_order || null, count: r.j_count || 1,
+      items: Array.isArray(r.j_items) ? r.j_items.map((i) => `${i.qty || 1} × ${i.name || i.id}`).join(', ') : '',
+    } : null,
   }))
 }
 

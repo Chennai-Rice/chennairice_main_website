@@ -104,7 +104,8 @@
 /* Links: three short columns. */
 .foot-cols {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Our Rice · Company · Rice Guides · Support (Rice Guides added 25 Nov 2026). */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 24px clamp(16px, 2vw, 32px);
 }
 .foot-col {
@@ -113,9 +114,12 @@
 .foot-col ul {
   list-style: none;
   display: grid;
-  gap: 11px;
+  gap: 3px; /* the links carry 4 px padding each now, so the spacing stays the same */
 }
 .foot-col a {
+  /* 28 px tall tap area (Lighthouse "tap targets", 25 Nov 2026) */
+  display: inline-block;
+  padding-block: 4px;
   font-size: 14.5px;
   line-height: 1.45;
   color: rgba(246, 239, 220, 0.88);
@@ -173,6 +177,33 @@
   font-size: 12.5px;
   letter-spacing: 0.04em;
   color: rgba(246, 239, 220, 0.62);
+}
+
+/* "Chat on WhatsApp" under the contacts: WhatsApp green so it reads as WhatsApp at a glance. */
+.foot-wa {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: #25d366;
+  color: #0b3d1f;
+  font-weight: 700;
+  font-size: 14.5px;
+  text-decoration: none;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.foot-wa svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+.foot-wa:hover,
+.foot-wa:focus-visible {
+  background: #1ebe5b;
+  transform: translateY(-1px);
 }
 
 .foot-map {
@@ -363,9 +394,11 @@
     padding-top: 26px;
     border-top: 1px solid var(--foot-line);
   }
+  .foot-col:nth-child(3),
   .foot-col:last-child {
     grid-column: 1 / -1;
   }
+  .foot-col:nth-child(3) ul,
   .foot-col:last-child ul {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 18px;
@@ -394,3 +427,20 @@
     transform: none;
   }
 }
+
+/* Every page but Contact: a link to the map instead of the map itself (no Google Maps loaded). */
+.foot-map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 9px 14px;
+  border: 1px solid rgba(246, 239, 220, 0.35);
+  border-radius: 999px;
+  color: #f6efdc;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.foot-map-link:hover { background: rgba(246, 239, 220, 0.08); }
+.foot-map-link svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }

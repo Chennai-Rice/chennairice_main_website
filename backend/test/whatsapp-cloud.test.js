@@ -106,9 +106,10 @@ test('readable lines for each kind of incoming message', () => {
 })
 
 // ---- the bot ----
-import { DEFAULT_BOT, cleanBot, decide, render, menuMsg } from '../lib/wa/bot.js'
+import { DEFAULT_BOT, cleanBot, decide, render, menuMsg, isGreeting, botFor } from '../lib/wa/bot.js'
 
 const bot = cleanBot(DEFAULT_BOT)
+const says = (m) => m.text?.body ?? m.interactive.body.text // a text message, or one with buttons
 const deps = {
   findOrder: async (ref, phone) => (ref.orderNumber === 'CR-20261111-AB12C' ? { orderNumber: ref.orderNumber, status: 'shipped', samePhone: phone === '9876543210', trackingUrl: 'https://track.example/1', expected: '14 Nov' } : null),
   offers: async (phone) => (phone === '9876543210' ? [{ code: 'SPIN-A745B4', label: '₹75 off on orders above ₹1,000', until: '10 Dec' }] : []),
@@ -122,7 +123,9 @@ test('bot: hi gets the welcome menu as a list with every item', async () => {
   const m = r.messages[0]
   assert.equal(m.interactive.type, 'list')
   assert.match(m.interactive.body.text, /Vanakkam Ravi!/)
-  assert.equal(m.interactive.action.sections[0].rows.length, DEFAULT_BOT.items.length)
+  const rows = m.interactive.action.sections[0].rows
+  assert.equal(rows.length, DEFAULT_BOT.items.length + 1) // + the English / தமிழ் row
+  assert.equal(rows.at(-1).id, 'lang')
   assert.ok(m.interactive.action.sections[0].rows.every((row) => row.title.length <= 24))
 })
 
@@ -145,20 +148,38 @@ test('bot: menu taps, keywords, order numbers, PIN codes and the fallback', asyn
   assert.equal(decide(bot, { text: 'asdf qwerty' }).kind, 'fallback')
 
   const own = await render(bot, decide(bot, { text: 'CR-20261111-AB12C' }), { phone: '9876543210' }, deps)
-  assert.match(own.messages[0].text.body, /on the way/)
-  assert.match(own.messages[0].text.body, /track\.example/)
+  assert.match(says(own.messages[0]), /on the way/)
+  assert.match(says(own.messages[0]), /track\.example/)
   const other = await render(bot, decide(bot, { text: 'CR-20261111-AB12C' }), { phone: '9000000000' }, deps)
-  assert.match(other.messages[0].text.body, /For your privacy/)
+  assert.match(says(other.messages[0]), /For your privacy/)
 
   const ask = await render(bot, decide(bot, { replyId: 'track' }), {}, deps)
   assert.equal(ask.state.awaiting, 'order_number')
+  // Waiting for the order number: "menu", "hi", "cancel" or a menu item still work; anything else is asked once,
+  // with the menu, and the bot stops waiting (24 Nov 2026: customers were stuck on "That does not look like…").
+  const waiting = { awaiting: 'order_number', awaiting_at: new Date() }
+  assert.equal(decide(bot, { text: 'menu' }, waiting).kind, 'welcome')
+  assert.equal(decide(bot, { text: 'Hi' }, waiting).kind, 'welcome')
+  assert.equal(decide(bot, { text: 'cancel' }, waiting).kind !== 'track', true)
+  assert.equal(decide(bot, { text: 'CR-20261111-AB12C' }, waiting).kind, 'track')
+  const wrong = await render(bot, decide(bot, { text: 'where is it' }, waiting), {}, deps)
+  assert.equal(wrong.state.awaiting, null)
+  assert.equal(wrong.messages[0].type, 'interactive')
+  assert.match(JSON.stringify(wrong.messages[0]), /does not look like an order number/)
   const pin = await render(bot, decide(bot, { text: 'my pin is 600001' }, { awaiting: 'pincode', awaiting_at: new Date() }), {}, deps)
-  assert.match(pin.messages[0].text.body, /We deliver to 600001/)
+  assert.match(says(pin.messages[0]), /We deliver to 600001/)
 
   const offers = await render(bot, decide(bot, { replyId: 'offers' }), { phone: '9876543210' }, deps)
-  assert.match(offers.messages[0].text.body, /SPIN-A745B4/)
+  assert.match(says(offers.messages[0]), /SPIN-A745B4/)
   const prices = await render(bot, decide(bot, { replyId: 'prices' }), {}, deps)
-  assert.match(prices.messages[0].text.body, /Kitchadi Ponni 5 kg: \*₹425\*/)
+  // Prices: no list in the chat, a line and an "Our product range" button to the website (26 Nov 2026).
+  assert.equal(prices.messages.length, 1)
+  assert.ok(!says(prices.messages[0]).includes('₹'))
+  assert.deepEqual(prices.messages[0].interactive.action.parameters, { display_text: 'Our product range', url: 'https://chennairiceindustries.com/w/shop-bot' })
+  const taPrices = await render(bot, decide(bot, { replyId: 'prices' }), { lang: 'ta' }, deps)
+  assert.ok([...taPrices.messages[0].interactive.action.parameters.display_text].length <= 20)
+  const aiPrices = await render(bot, { kind: 'ai', text: 'price list' }, {}, { ...deps, ai: async () => ({ reply: 'Here 👇', handoff: false, showPrices: true }) })
+  assert.equal(aiPrices.messages[1].interactive.action.parameters.display_text, 'Our product range')
   const hand = await render(bot, decide(bot, { replyId: 'human' }), {}, deps)
   assert.equal(hand.state.pausedHours, 12)
   const fb = await render(bot, decide(bot, { text: 'zzz' }), {}, deps)
@@ -176,7 +197,7 @@ test('bot with AI: sentences go to the AI, short words still get the menu; Groq 
 
   const said = await render(bot, { kind: 'ai', text: 'which rice for biryani?' }, { phone: '9876543210', name: 'Ravi' },
     { ...deps, ai: async () => ({ reply: 'For biryani, Nayara Super Aged stays separate and fluffy 🍚', handoff: false, reason: '', order: '' }) })
-  assert.equal(said.messages[0].text.body, 'For biryani, Nayara Super Aged stays separate and fluffy 🍚')
+  assert.equal(says(said.messages[0]), 'For biryani, Nayara Super Aged stays separate and fluffy 🍚')
   assert.equal(said.state.ai.handoff, false)
   const passed = await render(bot, { kind: 'ai', text: 'still not delivered' }, {},
     { ...deps, ai: async () => ({ reply: 'So sorry, I have flagged it to our team.', handoff: true, reason: 'late', order: '' }) })
@@ -184,7 +205,7 @@ test('bot with AI: sentences go to the AI, short words still get the menu; Groq 
   const down = await render(bot, { kind: 'ai', text: 'hello there friend' }, {}, { ...deps, ai: async () => { throw new Error('Groq 503') } })
   assert.equal(down.messages[0].interactive.type, 'list')
   const quiet = await render(bot, { kind: 'ai', text: 'any update?', handedOver: true }, {}, { ...deps, ai: async () => { throw new Error('Groq 503') } })
-  assert.match(quiet.messages[0].text.body, /Our team will get back to you here soon/) // never silence after a handover
+  assert.match(says(quiet.messages[0]), /Our team will get back to you here soon/) // never silence after a handover
 })
 
 test('AI reply: built from the customer\x27s own orders, a late order is always handed over and flagged', async () => {
@@ -340,6 +361,8 @@ test('queue: no offers without a yes, none after STOP, 1 a day; utility still go
     if (sql.includes('from wa_contacts where phone')) return { rows: people[args[0]] ? [people[args[0]]] : [] }
     if (sql.includes('as day, count(*)')) return { rows: [{ day: args[0] === '9000000004' ? 1 : 0, week: 1 }] }
     if (sql.includes("status in ('placed'")) return { rows: [] }
+    // The day's offer claim (migration 058): free for everyone here.
+    if (sql.includes('set last_offer_at = now()')) return { rows: [{ before: null }] }
     if (sql.startsWith("update wa_queue set status = 'skipped'")) { outcome[args[0]] = args[1]; return { rows: [] } }
     if (sql.startsWith("update wa_queue set status = 'sent'")) { outcome[args[0]] = 'sent'; return { rows: [] } }
     return { rows: [], rowCount: 1 }
@@ -446,4 +469,163 @@ test('Bot: the "needs a reply" handoff email is off unless switched on in Bot se
   await aiHandoff({ phone: '9000000001', name: 'Test', text: 'Hi', ai: { reason: 'Needs a person', reply: 'Sure' } }, { query })
   assert.ok(sql.some((s) => /insert into wa_notes/.test(s)), 'the AI note is still saved')
   assert.ok(!sql.some((s) => /email_outbox|staff_users/.test(s)), 'no email is queued')
+})
+
+test('order number while the chat is with the team: looked up (not the AI), and the chat stays with the team', async () => {
+  const deps = { findOrder: async (ref) => (ref.orderNumber === 'CR-20261122-ZRVFY'
+    ? { orderNumber: 'CR-20261122-ZRVFY', status: 'shipped', samePhone: true, trackingUrl: null, expected: null } : null) }
+  const found = await render(bot, { kind: 'track', ref: { orderNumber: 'CR-20261122-ZRVFY' }, handedOver: true }, { phone: '9876543210' }, deps)
+  assert.match(says(found.messages[0]), /CR-20261122-ZRVFY\* is on the way/)
+  assert.equal(found.state.pausedHours, bot.handoffHours)
+  const missing = await render(bot, { kind: 'track', ref: { orderNumber: 'CR-20261122-XXXXX' } }, {}, deps)
+  assert.match(says(missing.messages[0]), /could not find a placed order/)
+  assert.match(says(missing.messages[0]), /payment did not go through/)
+  assert.equal(missing.state.pausedHours, undefined)
+})
+
+test('greeting while the chat waits for the team: a fresh start with the menu (not the AI)', () => {
+  for (const t of ['hi', 'Hi!', 'hello', 'Vanakkam', 'menu', 'hi there']) assert.equal(isGreeting(bot, t), true, t)
+  for (const t of ['hi I want a refund for my order', 'where is my order', '']) assert.equal(isGreeting(bot, t), false, t)
+})
+
+test('brand spelling: the welcome says Kitchidi Ponni, and a saved welcome with "Kitchadi Ponni" is corrected', async () => {
+  const { DEFAULT_BOT, cleanBot } = await import('../lib/wa/bot.js')
+  assert.match(DEFAULT_BOT.welcome.text, /makers of Kitchidi Ponni rice/)
+  const saved = cleanBot({ ...DEFAULT_BOT, welcome: { ...DEFAULT_BOT.welcome, text: 'Welcome, makers of Kitchadi Ponni rice.' }, fallback: 'Try our Kitchadi Ponni.' })
+  assert.equal(saved.welcome.text, 'Welcome, makers of Kitchidi Ponni rice.')
+  assert.equal(saved.fallback, 'Try our Kitchidi Ponni.')
+})
+
+test('language: the first message asks English / தமிழ்; the pick is kept and Tamil gets the Tamil menu and texts', async () => {
+  const { answer, simulate, botFor, languageMsg } = await import('../lib/wa/bot.js')
+  const lm = languageMsg()
+  assert.deepEqual(lm.interactive.action.buttons.map((b) => b.reply.id), ['lang_en', 'lang_ta'])
+  assert.ok(lm.interactive.action.buttons.every((b) => b.reply.title.length <= 20))
+  for (const [said, lang] of [['Tamil', 'ta'], ['தமிழ்', 'ta'], ['english', 'en']]) assert.deepEqual(decide(bot, { text: said }), { kind: 'lang', lang }, said)
+  assert.equal(decide(bot, { replyId: 'lang_ta' }).lang, 'ta')
+  assert.equal(decide(bot, { replyId: 'lang' }).kind, 'chooseLang')
+  assert.equal(decide(bot, { text: 'மொழி' }).kind, 'chooseLang')
+
+  // Tamil: welcome, menu labels (WhatsApp's 24-letter limit), keywords in both languages, the bot's own sentences.
+  const picked = await render(bot, { kind: 'lang', lang: 'ta' }, { name: 'Ravi' }, deps)
+  assert.equal(picked.state.lang, 'ta')
+  const menu = picked.messages[0].interactive
+  assert.match(menu.body.text, /[\u0B80-\u0BFF]/)
+  assert.ok(menu.action.sections[0].rows.every((r) => r.title.length <= 24 && (r.description || '').length <= 72))
+  const ta = botFor(bot, 'ta')
+  assert.equal(decide(ta, { text: 'விலை' }).item.id, 'prices')
+  assert.equal(decide(ta, { text: 'price' }).item.id, 'prices')
+  const other = await render(bot, decide(ta, { text: 'CR-20261111-AB12C' }), { phone: '9000000000', lang: 'ta' }, deps)
+  assert.match(says(other.messages[0]), /[\u0B80-\u0BFF]/)
+  const pin = await render(bot, { kind: 'pincode', pin: '600001' }, { lang: 'ta' }, deps)
+  assert.match(says(pin.messages[0]), /600001/)
+  assert.match(says(pin.messages[0]), /[\u0B80-\u0BFF]/)
+  // English stays as it was.
+  const en = await render(bot, { kind: 'lang', lang: 'en' }, { name: 'Ravi' }, deps)
+  assert.match(en.messages[0].interactive.body.text, /Vanakkam Ravi!/)
+
+  // A real chat: a new number's "price" gets the language question; the tap is stored; then the Tamil menu.
+  const sent = []
+  const sql = []
+  let state = null
+  const query = async (s, args = []) => {
+    sql.push({ s, args })
+    if (s.startsWith('select * from wa_bot_state')) return { rows: state ? [state] : [] }
+    if (s.includes('replies_today from wa_bot_state')) return { rows: [{ n: 0 }] }
+    if (s.startsWith('update wa_bot_state set lang')) { state = { ...(state || {}), lang: args[1] }; return { rows: [] } }
+    if (s.startsWith('insert into wa_bot_state')) { state = { lang: null, ...(state || {}) }; return { rows: [] } }
+    return { rows: [], rowCount: 1 }
+  }
+  const fetchImpl = async (url, init) => { sent.push(JSON.parse(init.body)); return { ok: true, status: 200, json: async () => ({ messages: [{ id: 'wamid.' + sent.length }] }), text: async () => '{}' } }
+  const prev = process.env.WHATSAPP_TOKEN
+  process.env.WHATSAPP_TOKEN = 'test'
+  try {
+    await answer({ to: '919876543210', phone: '9876543210', text: 'price' }, { query, fetchImpl })
+    assert.deepEqual(sent[0].interactive.action.buttons.map((b) => b.reply.id), ['lang_en', 'lang_ta'])
+    await answer({ to: '919876543210', phone: '9876543210', replyId: 'lang_ta' }, { query, fetchImpl })
+    assert.equal(state.lang, 'ta')
+    assert.match(sent[1].interactive.body.text, /[\u0B80-\u0BFF]/)
+    await answer({ to: '919876543210', phone: '9876543210', text: 'hi' }, { query, fetchImpl })
+    assert.deepEqual(sent[2].interactive.action.buttons.map((b) => b.reply.id), ['lang_en', 'lang_ta']) // every "hi": language first
+    await answer({ to: '919876543210', phone: '9876543210', text: 'menu' }, { query, fetchImpl })
+    assert.equal(sent[3].interactive.type, 'list') // "menu": straight to the menu, in the language kept
+    assert.match(sent[3].interactive.body.text, /[\u0B80-\u0BFF]/)
+    await answer({ to: '919876543210', phone: '9876543210', text: 'price' }, { query, fetchImpl })
+    assert.match(sent[4].text?.body || sent[4].interactive.body.text, /[\u0B80-\u0BFF]/) // not asked: they already chose
+  } finally {
+    if (prev === undefined) delete process.env.WHATSAPP_TOKEN
+    else process.env.WHATSAPP_TOKEN = prev
+  }
+  // Before migration 061 the stored row has no lang field: nobody is asked again and again.
+  sent.length = 0
+  state = { awaiting: null }
+  process.env.WHATSAPP_TOKEN = 'test'
+  try { await answer({ to: '919876543210', phone: '9876543210', text: 'menu' }, { query, fetchImpl }) } finally {
+    if (prev === undefined) delete process.env.WHATSAPP_TOKEN
+    else process.env.WHATSAPP_TOKEN = prev
+  }
+  assert.equal(sent[0].interactive.type, 'list')
+
+  // The dashboard simulator works the same way and returns the pick in its state.
+  const s1 = await simulate({ text: 'hi' }, { query: async () => ({ rows: [] }) })
+  assert.equal(s1.decision, 'chooseLang')
+  const s2 = await simulate({ replyId: 'lang_ta', state: s1.state }, { query: async () => ({ rows: [] }) })
+  assert.equal(s2.state.lang, 'ta')
+  assert.equal((await simulate({ text: 'hello', state: s2.state }, { query: async () => ({ rows: [] }) })).decision, 'chooseLang')
+  assert.equal((await simulate({ text: 'menu', state: s2.state }, { query: async () => ({ rows: [] }) })).decision, 'welcome')
+})
+
+test('links: our shop / track-order link is a button under the message, not a bare link with a preview', async () => {
+  const { linkMsg, logText } = await import('../lib/wa/bot.js')
+  const shop = await render(bot, decide(bot, { replyId: 'shop' }), {}, deps)
+  const i = shop.messages[0].interactive
+  assert.equal(i.type, 'cta_url')
+  assert.equal(i.action.parameters.url, 'https://chennairiceindustries.com/w/shop-bot')
+  assert.equal(i.action.parameters.display_text, '🛒 Shop now')
+  assert.ok(!i.body.text.includes('https://'))
+  assert.match(i.body.text, /home delivery here\.\n\nPay by UPI/)
+  const ta = await render(bot, decide(botFor(bot, 'ta'), { replyId: 'shop' }), { lang: 'ta' }, deps)
+  assert.equal(ta.messages[0].interactive.action.parameters.display_text, '🛒 ஆர்டர் செய்ய')
+  // Track my order: still asks for the number, with a Track order button to the website.
+  const ask = await render(bot, decide(bot, { replyId: 'track' }), {}, deps)
+  assert.equal(ask.state.awaiting, 'order_number')
+  assert.deepEqual(ask.messages[0].interactive.action.parameters, { display_text: '📦 Track order', url: 'https://chennairiceindustries.com/track-order' })
+  const spin = await render(bot, decide(bot, { replyId: 'offers' }), { phone: '9000000000' }, deps)
+  assert.equal(spin.messages[0].interactive.action.parameters.display_text, '🎡 Spin & Win')
+  const track = linkMsg('Full details: https://chennairiceindustries.com/track-order?order=CR-1')
+  assert.equal(track.interactive.action.parameters.display_text, '📦 Track order')
+  assert.ok([...'📦 ஆர்டர் நிலை'].length <= 20)
+  // No link, another site's link only, or two of ours: plain text as before.
+  assert.equal(linkMsg('Hello').type, 'text')
+  assert.equal(linkMsg('See https://example.com/x').type, 'text')
+  assert.equal(linkMsg('https://chennairiceindustries.com/a and https://chennairiceindustries.com/b').type, 'text')
+  assert.match(logText(shop.messages[0]), /\[🛒 Shop now: https:\/\/chennairiceindustries\.com\/w\/shop-bot\]/)
+})
+
+test('delivery: standard charges for Tamil Nadu and other states (no PIN code); track by order or shipment ID; old saved texts updated', async () => {
+  const charges = { deliveryCharges: async () => ({ TN: [{ packKg: 5, from: 54, to: 54 }, { packKg: 26, from: 150, to: 150 }], OTHER: [{ packKg: 5, from: 120, to: 140 }] }) }
+  const r = await render(bot, decide(bot, { replyId: 'delivery' }), {}, charges)
+  assert.equal(r.state.awaiting, null) // no PIN code asked
+  const body = says(r.messages[0])
+  assert.match(body, /\*Tamil Nadu:\* 5 kg \*₹54\*  ·  26 kg \*₹150\*/)
+  assert.match(body, /\*Other states:\* 5 kg \*₹120–₹140\*/)
+  assert.ok(!/\bPIN\b|MRP/i.test(body))
+  assert.equal(r.messages[0].interactive.action.parameters.display_text, '🛒 Shop now')
+  const none = await render(bot, decide(bot, { replyId: 'delivery' }), {}, {})
+  assert.match(says(none.messages[0]), /standard rate for Tamil Nadu and for other states/)
+  const ta = await render(bot, decide(botFor(bot, 'ta'), { replyId: 'delivery' }), { lang: 'ta' }, charges)
+  assert.match(says(ta.messages[0]), /\*தமிழ்நாடு:\*/)
+  // Nothing in the menu or the bot's own texts mentions a PIN code or an MRP discount.
+  for (const lang of ['en', 'ta']) assert.ok(!/\bPIN\b|MRP/i.test(JSON.stringify(menuMsg(botFor(bot, lang), 'x'))), lang)
+  // Track: an order number or a shipment ID.
+  assert.deepEqual(decide(bot, { text: 'my shipment SHP-K7M4-Q9X2' }).ref, { shipmentId: 'SHP-K7M4-Q9X2' })
+  const ask = await render(bot, decide(bot, { replyId: 'track' }), {}, deps)
+  assert.match(says(ask.messages[0]), /order number .* or shipment ID/)
+  // Settings saved before today: the PIN-code delivery item and the old track text are replaced.
+  const old = JSON.parse(JSON.stringify(DEFAULT_BOT))
+  Object.assign(old.items.find((i) => i.id === 'delivery'), { label: '🚚 Delivery to my area', description: 'Check your PIN code', reply: 'Please send your 6-digit PIN code.' })
+  old.items.find((i) => i.id === 'track').reply = 'Please send your order number. It looks like *CR-20261111-AB12C* and is in your order email and SMS.'
+  const fixed = cleanBot(old)
+  assert.equal(fixed.items.find((i) => i.id === 'delivery').label, '🚚 Delivery charges')
+  assert.match(fixed.items.find((i) => i.id === 'track').reply, /shipment ID/)
 })

@@ -2912,3 +2912,5 @@
 /* "By continuing, you agree to our Terms & Conditions and Privacy Policy…" beside the pay button. */
 .shop-scope .checkout-terms a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .shop-scope .checkout-terms a:hover { color: #7a1f2b; }
+/* Product card: the saving against the MRP, from the real prices (Nov 2026). */
+.shop-scope .price-save { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: #e8f3ea; color: #2f7a46; font-size: 0.72rem; font-weight: 700; vertical-align: middle; white-space: nowrap; }

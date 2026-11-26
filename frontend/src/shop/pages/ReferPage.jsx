@@ -13,7 +13,7 @@ const day = (d) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", mon
 const STATE = { available: "Ready to use", used: "Used", expired: "Expired", cancelled: "Cancelled" };
 
 export default function ReferPage() {
-  usePageMeta("Refer a friend — Chennai Rice", "Share your Chennai Rice code: your friend saves on their first order, and you get a reward when it arrives.");
+  usePageMeta("Refer a friend — Chennai Rice", "Share your Chennai Rice code: your friend saves on their first order, and you get a reward when it arrives.", { noindex: true });
   const [running, setRunning] = useState(null);
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);

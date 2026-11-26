@@ -29,7 +29,7 @@ function savedWin() {
     return w && w.code && (!w.expiresAt || new Date(w.expiresAt) > new Date()) ? w : null
   } catch { return null }
 }
-function deviceId() {
+export function deviceId() {
   let id = store.get('localStorage', DEVICE_KEY)
   if (!id) {
     id = (window.crypto?.randomUUID?.() || String(Date.now()) + Math.random().toString(16).slice(2)).slice(0, 64)
@@ -47,7 +47,7 @@ function slicesFor(prizes) {
 
 // The eight slices of the wheel picture, clockwise from the top (/assets/spin-wheel.webp).
 /** Which slice of the picture shows this prize (wheelSlices.js; a gift lands on the bag slice). */
-function pictureSlice(prize) {
+export function pictureSlice(prize) {
   const i = sliceOf(prize)
   return i >= 0 ? i : 0
 }
@@ -57,7 +57,7 @@ function pictureSlice(prize) {
 // over the wheel in the stage picture (centre 379,359 and radius 279 in its 740 × 900 px).
 const STAGE = { w: 740, h: 900, cx: 379, cy: 359, r: 279 }
 
-function Wheel({ slices, rotorRef, angleRef }) {
+export function Wheel({ slices, rotorRef, angleRef }) {
   const stageRef = useRef(null)
   // The stage picture fills its box like object-fit: cover (centred across, from the top), so on a computer,
   // where the box is rarely the picture's own shape, part of it is cut off. The slices are placed on the
@@ -108,7 +108,7 @@ function reducedMotion() {
  * Starts the wheel turning; returns { land(target, done), cancel() }. land() with the prize's angle (0-360)
  * stops on it and then calls done; land(null) slows to a stop wherever it is.
  */
-function startSpin(rotorRef, angleRef) {
+export function startSpin(rotorRef, angleRef) {
   const reduce = reducedMotion()
   const from = angleRef.current
   let raf = 0

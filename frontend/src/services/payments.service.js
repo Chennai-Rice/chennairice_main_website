@@ -159,7 +159,7 @@ function openRazorpay({ client, orderNumber, amount, customer }) {
       description: 'Order ' + orderNumber,
       prefill: {
         name: customer?.name,
-        email: customer?.email,
+        ...(customer?.email ? { email: customer.email } : {}),
         contact: customer?.phone,
       },
       notes: { order_number: orderNumber },
@@ -223,7 +223,7 @@ async function openZoho({ client, orderNumber, customer }) {
       business: BUSINESS_NAME,
       description: 'Order ' + orderNumber,
       reference_number: orderNumber,
-      address: { name: customer?.name, email: customer?.email, phone: customer?.phone },
+      address: { name: customer?.name, ...(customer?.email ? { email: customer.email } : {}), phone: customer?.phone },
     })
     return { paymentId: result?.payment_id, signature: result?.signature }
   } finally {

@@ -22,7 +22,9 @@ import { formatRupees } from "../utils/format.js";
 import { showCardPrices } from "../../config.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import { trackMetaEvent } from "../../services/metaPixel.js";
+import { trackGoogleEcommerce, gaItem } from "../../services/googleAnalytics.js";
 import { PRODUCT_SEO, productIdFromSlug, productName, productPath } from "../../seo.js";
+import { whatsappOrderLink } from "../../components/ActionBar.jsx";
 import { FOOTER } from "../../data/content.js";
 import { flyToCart } from "../utils/flyToCart.js";
 import "./productdetail.css";
@@ -120,6 +122,10 @@ export default function ProductDetailPage() {
       content_ids: [viewedId], content_name: product.name, content_type: "product",
       value: viewedPrice, currency: "INR",
     });
+    // GA4 view_item, once per product, with the pack shown first (Nov 2026).
+    trackGoogleEcommerce("view_item", {
+      items: [gaItem({ slug: viewedId, kg: defaultSize?.kg, name: product.name, price: viewedPrice })],
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewedId, viewedPrice]);
 
@@ -135,7 +141,9 @@ export default function ProductDetailPage() {
   }
 
   if (loading) {
-    return <SiteLayout skipTo="pdp-main" skipLabel="Skip to content"><main id="pdp-main" className="pdp" /></SiteLayout>;
+    // A screen-high empty page while the packs load: an empty one let the footer show at the top and jump away
+    // when the product appeared (most of the Kitchidi page's mobile layout shift, audit 25 Nov 2026).
+    return <SiteLayout skipTo="pdp-main" skipLabel="Skip to content"><main id="pdp-main" className="pdp" style={{ minHeight: "100vh" }} /></SiteLayout>;
   }
 
   if (!product) {
@@ -172,6 +180,14 @@ export default function ProductDetailPage() {
     packKg: selected.kg,
   };
 
+  // A pack size chosen on the page or in the sticky bar: the price follows, and GA4 hears which size (Nov 2026).
+  const choosePack = (kg) => {
+    if (kg === selected.kg) return;
+    setSelectedKg(kg);
+    const s = sizes.find((x) => x.kg === kg);
+    if (s) trackGoogleEcommerce("select_pack_size", { items: [gaItem({ slug: product.id, kg, name: product.name, price: s.price })], pack_size: `${kg} kg` });
+  };
+
   const handleAddToCart = (event) => {
     spawnRipple(event);
     // The bag picture flies down into the cart bar (not when "Buy now" is leaving the page anyway).
@@ -187,7 +203,8 @@ export default function ProductDetailPage() {
     navigate("/cart");
   };
 
-  const related = allProducts.filter((p) => p.id !== product.id);
+  // Other packs, leaving out ones with no size in stock (audit, 25 Nov 2026).
+  const related = allProducts.filter((p) => p.id !== product.id && p.packSizes?.some((s) => s.inStock !== false));
 
   // Headings follow "Chennai Rice SEO - Product Page": the H1 is the product's
   // heading name and the sections say "<name> Rice" ("Special Idly Rice"
@@ -203,8 +220,8 @@ export default function ProductDetailPage() {
             corners: one artwork, the left copy mirrored in CSS. */}
         {festive && (
           <>
-            <img className="pdp-garland pdp-garland-right" src="/image.webp" alt="" aria-hidden="true" />
-            <img className="pdp-garland pdp-garland-left" src="/image.webp" alt="" aria-hidden="true" />
+            <img className="pdp-garland pdp-garland-right" src="/assets/garland-v2.webp" alt="" aria-hidden="true" />
+            <img className="pdp-garland pdp-garland-left" src="/assets/garland-v2.webp" alt="" aria-hidden="true" />
           </>
         )}
         <div className="pdp-top">
@@ -218,7 +235,8 @@ export default function ProductDetailPage() {
             items={[
               { label: "Home", to: "/" },
               { label: "Products", to: "/rice-products" },
-              { label: category, to: "/rice-products" },
+              // The category opens its own hub page (audit, 25 Nov 2026): idli rice → /idli-rice, Ponni → /ponni-rice.
+              { label: category, to: product.id === "special-idly-rice" ? "/idli-rice" : "/ponni-rice" },
               { label: product.name },
             ]}
           />
@@ -282,7 +300,7 @@ export default function ProductDetailPage() {
             <div className="pdp-options">
               <div className="pdp-option-size">
                 <div className="pdp-section-label">Select Pack Size</div>
-                <PackSizeSelector sizes={sizes} selectedKg={selectedKg} onSelect={(kg) => setSelectedKg(kg)} />
+                <PackSizeSelector sizes={sizes} selectedKg={selectedKg} onSelect={choosePack} />
               </div>
 
               <div className="pdp-qty-row">
@@ -347,13 +365,16 @@ export default function ProductDetailPage() {
               <ShareButton title={`${product.name} | Chennai Rice`} text={`${product.name} from Chennai Rice`} />
             </div>
 
-            <Link className="pdp-bulk-link" to="/contact-us">
+            <Link
+              className="pdp-bulk-link"
+              to={`/bulk-order?product=${encodeURIComponent(product.name)}${selected?.kg ? `&size=${selected.kg}` : ""}`}
+            >
               Bulk Order Enquiry &rarr;
             </Link>
 
             {/* Food safety licence, where the buying decision is made. */}
             <p className="pdp-fssai">
-              <img src="/assets/fssai-logo.png" alt="FSSAI" width="835" height="458" loading="lazy" />
+              <img src="/assets/fssai-logo-v2.webp" alt="FSSAI" width="835" height="458" loading="lazy" />
               <span>FSSAI Lic. No. <strong>{FOOTER.fssai}</strong></span>
             </p>
           </div>
@@ -403,7 +424,7 @@ export default function ProductDetailPage() {
         <div className={`pdp-buybar${ctaInView ? "" : " is-shown"}`} aria-hidden={ctaInView}>
           <label className="pdp-buybar-pack">
             <span className="sr-only">Pack size</span>
-            <select value={selected.kg} onChange={(e) => setSelectedKg(Number(e.target.value))} tabIndex={ctaInView ? -1 : 0}>
+            <select value={selected.kg} onChange={(e) => choosePack(Number(e.target.value))} tabIndex={ctaInView ? -1 : 0}>
               {sizes.map((s) => (
                 <option key={s.kg} value={s.kg} disabled={s.inStock === false}>
                   {Number(s.kg)} kg{s.inStock === false ? " (sold out)" : ""}
@@ -424,6 +445,20 @@ export default function ProductDetailPage() {
           <button type="button" className="btn-maroon pdp-buybar-buy pdp-buy-btn" onClick={handleBuyNow} disabled={soldOut} tabIndex={ctaInView ? -1 : 0}>
             Buy now
           </button>
+          {/* Order on WhatsApp, the message naming this pack (Google Ads "WhatsApp lead", button_location sticky_bar). */}
+          <a
+            className="pdp-buybar-wa"
+            href={whatsappOrderLink(`Hi Chennai Rice, I would like to order ${productName(product.id) || product.name} (${Number(selected.kg)} kg).`)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Order on WhatsApp"
+            data-track-location="sticky_bar"
+            tabIndex={ctaInView ? -1 : 0}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+              <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.2 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.5-.3z" />
+            </svg>
+          </a>
         </div>
       )}
     </SiteLayout>

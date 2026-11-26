@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { trackMetaEvent } from '../services/metaPixel.js'
+import { pushAdEvent } from '../services/adEvents.js'
 import Ornament from '../components/Ornament.jsx'
 import { FOOTER } from '../data/content.js'
 import usePageMeta from '../shop/hooks/usePageMeta.js'
@@ -58,10 +59,15 @@ const Icon = ({ kind }) => (
 export default function BulkOrderPage() {
   usePageMeta(PAGE_META.bulkOrder.title, PAGE_META.bulkOrder.description)
   // /bulk-order?type=distributor (from the distributorship page) starts with
-  // that buyer type chosen.
+  // that buyer type chosen; ?product=…&size=… (a product page's "Bulk Order
+  // Enquiry") starts the message with that pack, so the buyer need not type it.
   const [form, setForm] = useState(() => {
-    const type = new URLSearchParams(window.location.search).get('type')
-    return BUYER_TYPES.some((t) => t.key === type) ? { ...EMPTY, type } : EMPTY
+    const q = new URLSearchParams(window.location.search)
+    const type = q.get('type')
+    const product = (q.get('product') || '').replace(/[^\w\s&().,'-]/g, '').trim().slice(0, 80)
+    const size = (q.get('size') || '').replace(/[^\d.]/g, '').slice(0, 4)
+    const message = product ? `Bulk enquiry: ${product}${size ? ` (${size} kg packs)` : ''}. Quantity needed: ` : ''
+    return { ...EMPTY, ...(BUYER_TYPES.some((t) => t.key === type) ? { type } : {}), message }
   })
   const [errors, setErrors] = useState({})
   const [sent, setSent] = useState(false)
@@ -120,6 +126,8 @@ export default function BulkOrderPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not send your enquiry.')
       trackMetaEvent('Lead', { content_name: 'Bulk order enquiry' })
+      // Google Ads "Distributor lead" (GTM listens for it).
+      pushAdEvent('generate_lead', { form_name: 'bulk_order', enquiry_type: form.type || 'other' })
       setSent(true)
       setForm(EMPTY)
     } catch (err) {

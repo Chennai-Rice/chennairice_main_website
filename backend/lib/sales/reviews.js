@@ -33,11 +33,9 @@ async function orderFor(db, o, t) {
   if (!order || !PAID.includes(order.payment_status)) throw httpError('No order', { status: 404, publicMessage: 'We could not find that order.' })
   return order
 }
-const shortName = (n) => {
-  const parts = str(n).split(/\s+/).filter(Boolean)
-  if (!parts.length) return 'Customer'
-  return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.` : parts[0]
-}
+// The name as the customer gave it on the review form, shown in full on /review and the home page (owner,
+// 25 Nov 2026; it was cut to "first name + initial", e.g. "S. G."). Only reviews staff publish are shown.
+const publicName = (n) => str(n).replace(/\s+/g, ' ').trim().slice(0, 60) || 'Customer'
 
 /** What the review form shows for a link: the order, and the review already written (if any). */
 export async function reviewForm(db, { o, t } = {}) {
@@ -78,7 +76,7 @@ export async function publicReviews(db) {
   return {
     average: avg,
     count: rows.length,
-    reviews: rows.map((r) => ({ name: shortName(r.name), city: r.city, rating: r.rating, text: r.body, products: r.products, date: r.published_at })),
+    reviews: rows.map((r) => ({ name: publicName(r.name), city: r.city, rating: r.rating, text: r.body, products: r.products, date: r.published_at })),
   }
 }
 

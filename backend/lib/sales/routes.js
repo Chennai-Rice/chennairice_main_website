@@ -67,7 +67,8 @@ import { listChats, getChat, replyText, replyMedia, replyTemplate, updateChat, a
 import { checkNeodoveKey, recordNeodoveWebhook } from '../neodove.js'
 import { listEnquiries, updateEnquiry } from './enquiries-admin.js'
 import { listDiscountCodes, createDiscountCode, setDiscountCodeActive } from './discounts.js'
-import { spinConfig, spin, spinAdmin, saveSpinSettings } from './spin.js'
+import { spinConfig, spin, spinAdmin, saveSpinSettings, deleteSpin } from './spin.js'
+import { spinReminderReport, recordLinkClick } from '../wa/spin-report.js'
 import { myReferral, referralAdmin, saveReferralSettings, cancelReferralReward } from './referrals.js'
 import { referralsOn } from './discounts.js'
 import { listReports, reportCsv } from './reports.js'
@@ -211,6 +212,10 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   router.post('/api/whatsapp/optin', rateLimit({ windowMs: 10 * 60000, max: 10 }), wrap(async (req, res) => {
     res.json(await waOptIn(req.body?.phone, { name: str(req.body?.name).slice(0, 80) || null, source: ['spin', 'checkout'].includes(req.body?.source) ? req.body.source : 'website' }))
   }))
+  // A tap on a WhatsApp button link (/w/<slug>), for the Spin reminder report (wa/spin-report.js).
+  router.post('/api/w/click', rateLimit({ windowMs: 10 * 60000, max: 30 }), wrap(async (req, res) => {
+    res.json(await recordLinkClick(req.body?.slug, { query }))
+  }))
 
   // Refer a friend: whether it is running, and a customer's code and rewards (mobile number + order email).
   router.get('/api/referral', wrap(async (_req, res) => { res.set('Cache-Control', 'no-store'); res.json({ enabled: referralsOn(await getSettings({ query })) }) }))
@@ -264,7 +269,10 @@ export function createSalesRouter({ verifyIdToken } = {}) {
     res.json(await recordAskevaWebhook(req.body))
   }))
 
-  router.post('/api/checkout/quote', wrap(async (req, res) => res.json(await quoteCart(req.body))))
+  // A quote with a mobile number finds that customer's own offer (Spin & Win prize): those are rate-limited,
+  // so nobody can try numbers in bulk. Pricing a cart without one is not.
+  const quoteLookups = rateLimit({ windowMs: 60000, max: 40 })
+  router.post('/api/checkout/quote', (req, res, next) => (req.body?.phone ? quoteLookups(req, res, next) : next()), wrap(async (req, res) => res.json(await quoteCart(req.body))))
 
   // One step of a shopper's checkout journey (cart, checkout, details, payment, cancelled, failed, purchased).
   router.post('/api/journey', rateLimit({ windowMs: 60000, max: 60 }), wrap(async (req, res) => {
@@ -734,7 +742,15 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/cart-reminders', wrap(async (req, res) => res.json(await cartRemindersAdmin({ query }, req.staff, { days: req.query.days }))))
   admin.put('/cart-reminders', wrap(async (req, res) => res.json(await saveCartReminderSettings({ query }, req.staff, req.body))))
   admin.get('/spin', wrap(async (req, res) => res.json(await spinAdmin({ query }, req.staff))))
+  // Spin reminder results: sent, delivered / read, clicked, purchased with the code, revenue (owners and IT, as /offers).
+  admin.get('/spin/reminders', wrap(async (req, res) => {
+    requirePermission(req.staff, 'settings.manage')
+    res.set('Cache-Control', 'no-store')
+    res.json(await spinReminderReport({ template: str(req.query.template), from: str(req.query.from), to: str(req.query.to) }, { query }))
+  }))
   admin.put('/spin', wrap(async (req, res) => res.json(await saveSpinSettings({ query }, req.staff, req.body))))
+  // Offers → Who spun → Delete: one spin and its unused prize code (spin.js deleteSpin).
+  admin.delete('/spin/:phone', wrap(async (req, res) => res.json(await deleteSpin({ query }, req.staff, req.params.phone))))
   admin.get('/shipping-zones', perm('shipping.manage'), wrap(async (_req, res) => res.json({ zones: await listZones() })))
   admin.put('/shipping-zones', wrap(async (req, res) => res.json({ zone: await upsertZone(req.staff, req.body) })))
   admin.get('/emails', perm('emails.view'), wrap(async (req, res) => res.json({ emails: await listEmails(req.query) })))

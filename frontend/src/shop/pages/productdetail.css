@@ -1642,6 +1642,19 @@ ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
   .pdp-buybar .ripple { position: absolute; border-radius: 50%; background: rgba(255, 255, 255, 0.35); transform: scale(0); animation: pdp-ripple 480ms ease-out forwards; pointer-events: none; }
   /* One bar at a time: the cart pill waits while the buy bar is up, and the page ends with room for it. */
   body:has(.pdp-buybar.is-shown) .checkout-bar { display: none; }
+  /* Order on WhatsApp, a round green button at the end of the bar. */
+  .pdp-buybar-wa {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: #1f9d55;
+    color: #fff;
+  }
+  .pdp-buybar-wa:focus-visible { outline: 3px solid #6e1423; outline-offset: 2px; }
   main.pdp { padding-bottom: 72px; }
 }
 @media (prefers-reduced-motion: reduce) { .pdp-buybar { transition: none; } }
@@ -1725,3 +1738,19 @@ ol.pdp-journey-track { list-style: none; margin: 0; padding: 0; }
 @media (max-width: 420px) {
   .pdp-hero { padding-left: 18px; padding-right: 18px; }
 }
+
+/* Saving against the MRP and price per kg, under the price (Nov 2026). */
+.pdp-price-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 6px; font-size: 0.9rem; }
+.pdp-save { color: #2f7a46; background: #e8f3ea; font-weight: 600; padding: 2px 10px; border-radius: 999px; }
+.pdp-perkg { color: #6b5a50; font-variant-numeric: tabular-nums; }
+@media (max-width: 899px) {
+  .pdp-info > .pdp-price-hero { flex-wrap: wrap; }
+  .pdp-price-hero .pdp-price-facts { order: 99; flex-basis: 100%; margin-top: 0; }
+}
+
+/* Delivery, payment, replacement and help, just under the buy buttons (Nov 2026). */
+.pdp-trust { list-style: none; margin: var(--s-4, 16px) 0; padding: 12px 14px; display: grid; gap: 8px; border: 1px solid var(--cream-300, #e6d9bf); border-radius: 12px; background: rgba(255, 255, 255, 0.55); font-size: 0.9rem; line-height: 1.4; }
+.pdp-trust li { display: flex; gap: 10px; align-items: flex-start; }
+.pdp-trust-icon { flex: 0 0 auto; width: 1.3em; text-align: center; }
+.pdp-trust small { display: block; color: #6b5a50; font-size: 0.82rem; }
+.pdp-trust a { color: var(--maroon, #7a1f2b); text-decoration: underline; text-underline-offset: 2px; }

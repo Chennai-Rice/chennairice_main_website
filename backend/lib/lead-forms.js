@@ -16,8 +16,33 @@ const PAGE = 100
 
 const text = (v, n) => (v == null ? null : String(v).trim().slice(0, n) || null)
 
-/** A lead that came from a Meta lead form (the form and Page fields are only set for those). */
-export const isFormLead = (l) => ['facebook', 'instagram'].includes(String(l?.source || '')) && Boolean(l.form_name || l.facebook_page)
+/** Meta's ID for the form submission (Sales Daddy's meta_lead_id, from 25 Nov 2026), as text, or null. */
+export const metaLeadId = (l) => {
+  const v = String(l?.meta_lead_id ?? '').trim()
+  return /^\d{5,40}$/.test(v) ? v : null
+}
+/**
+ * Saves one form lead. Sales Daddy's id is the person (one per phone): copied once. A lead copied before the
+ * meta_lead_id field existed gets it filled in later, without being set up again. Returns a row only when it inserted
+ * or filled the ID; `inserted` is true only for a new row (xmax = 0). Shared with db/lead-forms-dryrun.js.
+ */
+export const LEAD_FORM_UPSERT =
+  `insert into lead_forms (sd_lead_id, mobile, name, email, city, state, platform, form_name, facebook_page, campaign_name, ad_name, created_at_sd, meta_lead_id)
+   values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+   on conflict (sd_lead_id) do update set meta_lead_id = coalesce(lead_forms.meta_lead_id, excluded.meta_lead_id)
+     where lead_forms.meta_lead_id is null and excluded.meta_lead_id is not null
+   returning id, (xmax = 0) as inserted`
+export const leadFormParams = (l, mobile, created) => [
+  String(l.id), mobile, text(l.name, 200), text(l.email, 200), text(l.city, 120), text(l.state, 120), l.source,
+  text(l.form_name, 200), text(l.facebook_page, 200), text(l.campaign_name, 200), text(l.ad_name, 200), created, metaLeadId(l),
+]
+
+/**
+ * A lead that came from a Meta lead form: it has Meta's lead ID (Sales Daddy's own rule), or, for leads read before
+ * that field existed, a Facebook / Instagram source with the form or Page set (only form leads have those).
+ */
+export const isFormLead = (l) => Boolean(metaLeadId(l)) ||
+  (['facebook', 'instagram'].includes(String(l?.source || '')) && Boolean(l?.form_name || l?.facebook_page))
 
 /**
  * Copies the new Instant Form leads. Returns what happened; never throws.
@@ -60,13 +85,8 @@ export async function syncLeadForms({ query = defaultQuery, since = null, now = 
       if (!isFormLead(l) || !l.id) continue
       const mobile = crmMobile(l.phone)
       if (!/^[6-9]\d{9}$/.test(mobile) || isBlockedMobile(mobile)) { skipped++; continue }
-      const { rows: [row] } = await query(
-        `insert into lead_forms (sd_lead_id, mobile, name, email, city, state, platform, form_name, facebook_page, campaign_name, ad_name, created_at_sd)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-         on conflict (sd_lead_id) do nothing returning id`,
-        [String(l.id), mobile, text(l.name, 200), text(l.email, 200), text(l.city, 120), text(l.state, 120), l.source,
-          text(l.form_name, 200), text(l.facebook_page, 200), text(l.campaign_name, 200), text(l.ad_name, 200), created])
-      if (!row) continue // copied before
+      const { rows: [row] } = await query(LEAD_FORM_UPSERT, leadFormParams(l, mobile, created))
+      if (!row?.inserted) continue // copied before
       saved++
       const outboxId = await recordSignup({ query }, {
         name: text(l.name, 200) || 'Lead form',
@@ -102,11 +122,14 @@ export async function syncLeadForms({ query = defaultQuery, since = null, now = 
 
 /**
  * The Lead event to Meta for form leads not sent yet (Meta's "Conversions API for CRM", first stage: the raw lead), so
- * Meta learns which people filled the form. Also retries the ones Meta refused, for up to 6 days. LEAD_FORMS_TO_META=off
- * stops it. Returns { sent, failed }.
+ * Meta learns which people filled the form. Also retries the ones Meta refused, for up to 6 days. Returns { sent, failed }.
+ *
+ * Off unless LEAD_FORMS_TO_META=on (25 Nov 2026). Sales Daddy gives us no Meta lead ID, so the event cannot carry it;
+ * Meta then cannot match it to the form lead it already has and counts the same person again as a "website lead"
+ * (21–24 Nov: 1,339 leads in Ads Manager for about 660 people). Turn it on only once the event carries Meta's lead ID.
  */
 export async function sendLeadFormEvents(query = defaultQuery) {
-  if (!process.env.META_CAPI_TOKEN || process.env.LEAD_FORMS_TO_META === 'off') return { skipped: 'off' }
+  if (!process.env.META_CAPI_TOKEN || process.env.LEAD_FORMS_TO_META !== 'on') return { skipped: 'off' }
   const { rows } = await query(
     `select * from lead_forms where meta_sent_at is null and saved_at > now() - interval '6 days' order by saved_at limit 50`)
   let sent = 0

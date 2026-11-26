@@ -68,6 +68,23 @@ export function cleanAttribution(raw) {
   return Object.keys(a).length ? a : null
 }
 
+/**
+ * Google's ad click ID (gclid / gbraid / wbraid) the browser kept for up to 90 days, saved with the order so
+ * the sale can be uploaded to Google Ads later (offline conversions). Only on orders, never on visit counts.
+ */
+export function cleanGoogleClick(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const c = {}
+  for (const p of ['gclid', 'gbraid', 'wbraid']) {
+    const v = typeof raw[p] === 'string' ? raw[p].trim() : ''
+    if (/^[\w-]{1,200}$/.test(v)) c[p] = v
+  }
+  if (!Object.keys(c).length) return null
+  const at = clip(raw.at, 40)
+  if (at && !Number.isNaN(new Date(at).getTime())) c.at = at
+  return c
+}
+
 function referrerHost(ref) {
   try {
     return new URL(ref).hostname.toLowerCase().replace(/^www\./, '')

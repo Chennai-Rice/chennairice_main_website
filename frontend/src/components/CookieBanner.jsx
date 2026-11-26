@@ -75,11 +75,11 @@ export default function CookieBanner() {
             {/* Phones: one short line, so the notice stays a slim bar over the page. */}
             <span className="cookie-text-short">
               We use cookies to keep your cart working and improve the site.{' '}
-              <Link to="/privacy" className="cookie-card-link cookie-card-link--inline">Learn more</Link>
+              <Link to="/privacy" className="cookie-card-link cookie-card-link--inline">Privacy policy</Link>
             </span>
           </p>
           <Link to="/privacy" className="cookie-card-link cookie-card-link--block">
-            Learn more
+            Read our privacy policy
             <svg width="13" height="10" viewBox="0 0 13 10" fill="none" aria-hidden="true">
               <path d="M1 5h10.5M7.5 1l4.5 4-4.5 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>

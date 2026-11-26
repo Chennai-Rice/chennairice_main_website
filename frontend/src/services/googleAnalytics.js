@@ -1,18 +1,18 @@
 // Google Analytics 4 (gtag.js).
 //
-// Like the Meta Pixel it is a third-party tracker, so it is only loaded after
-// the visitor accepts the "analytics" cookie category (see
-// src/hooks/useGoogleAnalytics.js), and told to stop collecting the moment
-// that consent is withdrawn. With no Measurement ID set it does nothing.
+// Consent Mode "advanced" (Nov 2026): the tag runs for every visitor but starts with every consent type
+// denied (index.html), so before the visitor taps Accept it sends only cookieless pings and sets no cookies;
+// the cookie banner's choice is passed on as a consent update (useTagManagerConsent.js).
+// The split with Google Tag Manager (agreed with the Google Ads manager): GA4, page views, the ecommerce
+// events and the purchase live here; the Google Ads conversion tags for WhatsApp, call, contest and
+// distributor leads live in GTM and listen for the dataLayer events in services/adEvents.js.
 
 import { keptGoogleClick, GOOGLE_CLICK_PARAMS } from './attribution.js'
 
 export const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-SWQD75DWP6'
 
-// Google Ads: the account id (AW-…) and the label of its "Purchase" conversion, from Google Ads → Goals →
-// Conversions → the purchase conversion → Tag setup. With either missing, nothing is sent to Google Ads.
+// Google Ads: the account's tag (AW-…), configured on the same gtag.js. Purchases reach Google Ads through GA4.
 export const GOOGLE_ADS_ID = import.meta.env.VITE_GOOGLE_ADS_ID || ''
-const GOOGLE_ADS_PURCHASE_LABEL = import.meta.env.VITE_GOOGLE_ADS_PURCHASE_LABEL || ''
 
 let loaded = false
 
@@ -34,13 +34,25 @@ export function enableGoogleAnalytics() {
   gtag('config', GA_MEASUREMENT_ID, { send_page_view: false })
   // The same gtag.js serves Google Ads too: one more destination, not a second script.
   if (GOOGLE_ADS_ID) gtag('config', GOOGLE_ADS_ID)
-  const s = document.createElement('script')
-  s.async = true
-  s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_MEASUREMENT_ID)}`
-  const putBack = showGoogleClick()
-  if (putBack) s.addEventListener('load', () => setTimeout(putBack, 3000), { once: true })
-  document.head.appendChild(s)
   loaded = true
+  // Everything above (and every event after it) waits in dataLayer; the script itself is fetched once the
+  // page has loaded and the browser is idle, or at the first touch, so it never slows the first paint
+  // (the same way index.html starts Google Tag Manager).
+  let started = false
+  const start = () => {
+    if (started) return
+    started = true
+    const s = document.createElement('script')
+    s.async = true
+    s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_MEASUREMENT_ID)}`
+    const putBack = showGoogleClick()
+    if (putBack) s.addEventListener('load', () => setTimeout(putBack, 3000), { once: true })
+    document.head.appendChild(s)
+  }
+  const later = () => setTimeout(() => (window.requestIdleCallback ? window.requestIdleCallback(start, { timeout: 3000 }) : start()), 1500)
+  if (document.readyState === 'complete') later()
+  else window.addEventListener('load', later, { once: true })
+  for (const e of ['pointerdown', 'keydown', 'scroll', 'touchstart']) window.addEventListener(e, start, { once: true, passive: true })
 }
 
 /**
@@ -68,11 +80,6 @@ function showGoogleClick() {
   }
 }
 
-/** Consent withdrawn: Google Analytics stops sending anything from this page. */
-export function disableGoogleAnalytics() {
-  if (GA_MEASUREMENT_ID && typeof window !== 'undefined') window[`ga-disable-${GA_MEASUREMENT_ID}`] = true
-}
-
 /** One page view, for the page now showing. */
 export function trackGooglePageView() {
   if (!loaded || !window.gtag) return
@@ -98,13 +105,39 @@ export function merchantItemId(item) {
  * transaction id, so a repeat (a reload, a second call) is dropped here and de-duplicated by Google too.
  * Sent only when analytics cookies were accepted (gtag.js is not loaded otherwise).
  */
-export function trackGooglePurchase({ transactionId, value, shipping, coupon, items = [] }) {
+export function trackGooglePurchase({ transactionId, value, shipping, coupon, items = [], email, phone }) {
   if (!loaded || !window.gtag || !transactionId) return false
   const key = `cr.gpurchase.${transactionId}`
   try {
     if (sessionStorage.getItem(key)) return false
     sessionStorage.setItem(key, '1')
   } catch { /* private mode: the order number still de-duplicates at Google */ }
+  // Enhanced conversions: the buyer's email and mobile, hashed here (SHA-256), go with the purchase so Google
+  // can match the sale to the ad click without a cookie. The plain values never leave this page.
+  hashedUserData({ email, phone })
+    .then((userData) => { if (userData) window.gtag('set', 'user_data', userData) })
+    .catch(() => {})
+    .finally(() => sendPurchase({ transactionId, value, shipping, coupon, items }))
+  return true
+}
+
+const sha256 = async (text) => {
+  const buf = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/** Google's normalised, hashed user data (email lower-case; mobile as +91XXXXXXXXXX), or null. */
+export async function hashedUserData({ email, phone } = {}) {
+  if (!window.crypto?.subtle) return null
+  const out = {}
+  const e = String(email || '').trim().toLowerCase()
+  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) out.sha256_email_address = await sha256(e)
+  const digits = String(phone || '').replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '')
+  if (/^[6-9]\d{9}$/.test(digits)) out.sha256_phone_number = await sha256('+91' + digits)
+  return Object.keys(out).length ? out : null
+}
+
+function sendPurchase({ transactionId, value, shipping, coupon, items }) {
   const total = Number(value) || 0
   window.gtag('event', 'purchase', {
     transaction_id: transactionId,
@@ -125,13 +158,43 @@ export function trackGooglePurchase({ transactionId, value, shipping, coupon, it
       quantity: Number(i.qty) || 1,
     })),
   })
-  if (GOOGLE_ADS_ID && GOOGLE_ADS_PURCHASE_LABEL) {
-    window.gtag('event', 'conversion', {
-      send_to: `${GOOGLE_ADS_ID}/${GOOGLE_ADS_PURCHASE_LABEL}`,
-      transaction_id: transactionId,
-      value: total,
-      currency: 'INR',
-    })
+  // No direct Google Ads purchase conversion any more (Google Ads manager, 19 Nov 2026): Google Ads counts the
+  // sale through the GA4-imported "Purchase" above; the old website-tag "Purchase" action was removed, and a
+  // second one would count each sale twice.
+  return true
+}
+
+/**
+ * GA4 ecommerce item for a pack (Nov 2026): the same item_id as the purchase and the Merchant Center feed
+ * (CR-<SLUG>-<KG>KG), so GA4 can follow one pack from view to purchase.
+ */
+export function gaItem({ slug, kg, name, price, qty = 1, index }) {
+  const k = Number(kg)
+  return {
+    item_id: k > 0 ? `CR-${String(slug).toUpperCase()}-${k}KG` : String(slug ?? ''),
+    item_name: name,
+    item_brand: 'Chennai Rice',
+    item_category: 'Rice',
+    ...(k > 0 ? { item_variant: `${k} kg` } : {}),
+    ...(index != null ? { index } : {}),
+    price: Number(price) || 0,
+    quantity: Number(qty) || 1,
   }
+}
+
+/** A cart line id ("kitchidi-ponni-rice-5kg") → { slug, kg }. */
+export function splitLineId(id) {
+  const m = /^(.*)-(\d+(?:\.\d+)?)kg$/.exec(String(id || ''))
+  return m ? { slug: m[1], kg: Number(m[2]) } : { slug: String(id || ''), kg: null }
+}
+
+/**
+ * A GA4 ecommerce event (view_item, select_item, add_to_cart, view_cart, begin_checkout) or the shop's own
+ * select_pack_size, with INR value and items. Sent only once analytics cookies were accepted, like every GA4 event.
+ */
+export function trackGoogleEcommerce(event, { items = [], value, ...extra } = {}) {
+  if (!loaded || !window.gtag) return false
+  const total = value != null ? Number(value) || 0 : items.reduce((t, i) => t + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0)
+  window.gtag('event', event, { currency: 'INR', value: Math.round(total * 100) / 100, items, ...extra })
   return true
 }

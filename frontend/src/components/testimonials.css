@@ -134,6 +134,79 @@
   line-height: 1.85;
   color: #6b5b4b;
 }
+/* Long reviews start folded to 5 lines; "Read more" opens them in the card. */
+.testi-quote.is-folded {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.testi-more {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 4px 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gold-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.testi-more:hover,
+.testi-more:focus-visible {
+  color: #7a1f1f;
+}
+/* Real customers have no photo: their initials, in the site's Bodoni, on a maroon disc with a gold ring. */
+.testi-initials {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 30% 25%, var(--maroon), var(--maroon-deep));
+  border-color: rgba(198, 154, 63, 0.7);
+  color: #f3dca0;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: 0.5px;
+}
+
+/* Theme type: names and quotes in Bodoni Moda (the site's heading serif), town in Jost small caps. */
+.testi-card .testi-name {
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--maroon-ink);
+  letter-spacing: 0.01em;
+}
+.testi-card .testi-city {
+  font-family: var(--sans);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--gold-deep);
+}
+.testi-card .testi-quote {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.75;
+  color: #4b3a2c;
+}
+.testi-card .testi-more {
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--maroon);
+}
+
+/* Phones show one card at a time: let it be as tall as its own review, not the longest one. */
+@media (max-width: 900px) {
+  .testi-track { align-items: flex-start; }
+}
+
 .testi-mark {
   font-family: var(--serif);
   font-size: 26px;

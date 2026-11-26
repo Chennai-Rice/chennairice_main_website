@@ -157,31 +157,58 @@ export async function evaluateDiscount(db, typed, { phone, email, address, pinco
 }
 
 /**
- * The customer's referral reward that applies to this cart, when they typed no code: earliest to expire
- * first. Rewards are locked to their mobile number and email. null when there is none.
+ * The customer's own offers, used without a code typed (Nov 2026): their Spin & Win prize (locked to the
+ * mobile number) and their referral rewards (mobile number + email). The one that takes the most off is
+ * used. Slogan contest coupons and every other code are never used by themselves.
+ * `pending`: a Spin & Win prize the cart is below the minimum for (the checkout says how much more to add).
+ * `cart.skipAuto`: the customer removed the offer, so none is used.
  */
-export async function autoReward(db, cart) {
+export async function autoOffer(db, cart) {
+  const none = { best: null, pending: null }
+  if (cart.skipAuto) return none
   const mobile = phoneKey(cart.phone)
+  if (mobile.length !== 10) return none
   const email = str(cart.email).toLowerCase()
-  if (mobile.length !== 10 || !email) return null
   const { rows } = await db.query(
-    `select code from discount_codes where source = 'reward' and is_active and locked_phone = $1 and locked_email = $2
-        and (expires_at is null or expires_at > now()) order by expires_at nulls last, created_at limit 5`, [mobile, email])
-  for (const { code } of rows) {
-    const r = await evaluateDiscount(db, code, cart)
-    if (r && !r.error) return { ...r, auto: true }
+    `select code, source, min_order_paise from discount_codes
+      where is_active and locked_phone = $1
+        and (source = 'spin' or (source = 'reward' and $2 <> '' and locked_email = $2))
+        and (starts_at is null or starts_at <= now()) and (expires_at is null or expires_at > now())
+      order by expires_at nulls last, created_at limit 10`, [mobile, email])
+  let best = null
+  let pending = null
+  for (const row of rows) {
+    const r = await evaluateDiscount(db, row.code, cart)
+    if (r && !r.error) {
+      if (!best || r.discountPaise > best.discountPaise) best = r
+    } else if (row.source === 'spin' && !pending && Number(cart.subtotalPaise) < Number(row.min_order_paise)) {
+      // Only short of the minimum? Then it is waiting for a bigger cart.
+      const atMin = await evaluateDiscount(db, row.code, { ...cart, lock: false, subtotalPaise: Number(row.min_order_paise) })
+      if (atMin && !atMin.error) {
+        pending = {
+          label: atMin.label, source: 'spin', expiresAt: atMin.code.expires_at,
+          minOrderPaise: Number(row.min_order_paise), addMorePaise: Number(row.min_order_paise) - Number(cart.subtotalPaise),
+        }
+      }
+    }
   }
-  return null
+  return { best: best ? { ...best, auto: true } : null, pending: best ? null : pending }
 }
 
-/** For the quote: the typed code checked, or else a reward of the customer's. */
+/** The best of the customer's own offers for this cart (autoOffer), or null. */
+export async function autoReward(db, cart) {
+  return (await autoOffer(db, cart)).best
+}
+
+/** For the quote: the typed code checked, or else the customer's own offer (and one waiting for a bigger cart). */
 export async function quoteDiscount(db, typed, cart) {
   if (cleanCode(typed)) return evaluateDiscount(db, typed, cart)
-  return autoReward(db, cart)
+  const { best, pending } = await autoOffer(db, cart)
+  return best || (pending ? { pending } : null)
 }
 
 /**
- * For the order: the code's row and amount, or a 422 with what is wrong. No code: the customer's reward
+ * For the order: the code's row and amount, or a 422 with what is wrong. No code: the customer's own offer
  * when one applies (the same one the quote showed), else no discount.
  */
 export async function applyDiscount(db, typed, cart) {

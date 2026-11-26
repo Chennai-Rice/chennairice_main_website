@@ -1461,6 +1461,126 @@ test('Spin & Win: off until switched on, one spin per mobile and browser, prize 
   }
 })
 
+test('Spin & Win prize used by itself at checkout: best one, code never shown, minimum, expired, wrong number, contest coupon never, removed', async () => {
+  const { autoOffer, applyDiscount } = await import('../lib/sales/discounts.js')
+  const phone = '9811188801'
+  const cart = (over = {}) => ({ phone, email: '', pincode: '641001', subtotalPaise: 100000, shippingPaise: 9000, ...over })
+  try {
+    // Nothing for a number without a prize, or before the number is complete.
+    assert.deepEqual(await autoOffer(db, cart()), { best: null, pending: null })
+    assert.deepEqual(await autoOffer(db, cart({ phone: '98111' })), { best: null, pending: null })
+
+    await db.query(`insert into discount_codes (code, kind, amount_paise, locked_phone, source) values ('SPIN-AUTO50', 'amount', 5000, $1, 'spin')`, [phone])
+    await db.query(`insert into discount_codes (code, kind, amount_paise, locked_phone, source) values ('SPIN-AUTO80', 'amount', 8000, $1, 'spin')`, [phone])
+    // A slogan contest coupon locked to the same number: never used by itself.
+    await db.query(`insert into discount_codes (code, kind, amount_paise, locked_phone, source) values ('CONTEST-AUTO', 'amount', 50000, $1, 'manual')`, [phone])
+    // Expired, and another number's: never.
+    await db.query(`insert into discount_codes (code, kind, amount_paise, locked_phone, source, expires_at) values ('SPIN-OLD99', 'amount', 9900, $1, 'spin', now() - interval '1 day')`, [phone])
+    await db.query(`insert into discount_codes (code, kind, amount_paise, locked_phone, source) values ('SPIN-THEIR1', 'amount', 9900, '9811188802', 'spin')`)
+
+    // The one that takes the most off.
+    const { best } = await autoOffer(db, cart())
+    assert.equal(best.code.code, 'SPIN-AUTO80')
+    assert.equal(best.discountPaise, 8000)
+    assert.equal(best.auto, true)
+    // At the order: the same one; removed by the customer: none.
+    assert.equal((await applyDiscount(db, '', cart())).code.code, 'SPIN-AUTO80')
+    assert.deepEqual(await applyDiscount(db, '', cart({ skipAuto: true })), { code: null, discountPaise: 0 })
+
+    // Below a prize's minimum: how much more to add, nothing applied.
+    await db.query(`update discount_codes set is_active = false where code = 'SPIN-AUTO50'`)
+    await db.query(`update discount_codes set min_order_paise = 150000 where code = 'SPIN-AUTO80'`)
+    const short = await autoOffer(db, cart())
+    assert.equal(short.best, null)
+    assert.deepEqual([short.pending.minOrderPaise, short.pending.addMorePaise, short.pending.label], [150000, 50000, '₹80 off'])
+
+    // The quote: the prize applied without its code; the shortfall said.
+    const quote = (body) => api('POST', '/api/checkout/quote', { body: { pincode: '641001', items: [{ id: 'alibaba-10kg', qty: 1 }], deliveryMethod: 'courier', ...body } })
+    await db.query(`update discount_codes set min_order_paise = 0 where code = 'SPIN-AUTO80'`)
+    const q = await quote({ phone })
+    assert.equal(q.status, 200, JSON.stringify(q.body))
+    assert.equal(q.body.discount.code, null)
+    assert.deepEqual([q.body.discount.amount, q.body.discount.auto, q.body.discount.source], [80, true, 'spin'])
+    assert.equal(q.body.total, q.body.subtotal + q.body.shipping - 80)
+    assert.ok(!JSON.stringify(q.body).includes('SPIN-AUTO80'), 'the code is never sent back')
+    const skipped = await quote({ phone, skipAutoOffer: true })
+    assert.equal(skipped.body.discount, null)
+    assert.equal(skipped.body.total, skipped.body.subtotal + skipped.body.shipping)
+    await db.query(`update discount_codes set min_order_paise = $1 where code = 'SPIN-AUTO80'`, [Math.round(q.body.subtotal * 100) + 10000])
+    const nudge = await quote({ phone })
+    assert.equal(nudge.body.discount, null)
+    assert.deepEqual([nudge.body.pendingOffer.addMore, nudge.body.pendingOffer.source], [100, 'spin'])
+    // A typed code still wins over the customer's own offer, and the contest coupon only works when typed.
+    assert.equal((await quote({ phone, discountCode: 'CONTEST-AUTO' })).body.discount.code, 'CONTEST-AUTO')
+  } finally {
+    await db.query(`delete from discount_codes where code in ('SPIN-AUTO50', 'SPIN-AUTO80', 'CONTEST-AUTO', 'SPIN-OLD99', 'SPIN-THEIR1')`)
+  }
+})
+
+test('checkout without an email: order placed and paid, no confirmation email, customer saved by mobile', async () => {
+  const { session, verify } = await buy([{ id: 'alibaba-10kg', qty: 1 }], buyer({ phone: '98111 88803', email: '' }))
+  assert.equal(verify.status, 200, JSON.stringify(verify.body))
+  const { rows: [o] } = await db.query('select contact_email, payment_status, customer_id from orders where id = $1', [session.orderId])
+  assert.deepEqual([o.contact_email, o.payment_status], ['', 'paid'])
+  const { rows: [{ n }] } = await db.query('select count(*)::int as n from email_outbox where order_id = $1', [session.orderId])
+  assert.equal(n, 0)
+  const { rows: [c] } = await db.query('select email from customers where id = $1', [o.customer_id])
+  assert.equal(c.email, 'm9811188803@noemail.invalid')
+  // A badly typed email is still refused.
+  const bad = await api('POST', '/api/checkout/session', { body: { ...buyer({ phone: '9811188804', email: 'abc' }), items: [{ id: 'alibaba-10kg', qty: 1 }] } })
+  assert.equal(bad.status, 400)
+})
+
+test('Spin at checkout: offered to a new number only, its own chances, prize applied by itself, never after a paid order', async () => {
+  const quote = (body) => api('POST', '/api/checkout/quote', {
+    body: { pincode: '641001', items: [{ id: 'alibaba-10kg', qty: 1 }], deliveryMethod: 'courier', ...body }, headers: { 'X-Forwarded-For': '10.9.9.9' } })
+  const spinApi = (body, n) => api('POST', '/api/spin', { body: { name: 'Meena', ...body }, headers: { 'X-Forwarded-For': '10.9.8.' + n } })
+  const { DEFAULT_PRIZES } = await import('../lib/sales/spin.js')
+  const fresh = '9811188811'
+  try {
+    // Off: never offered.
+    assert.equal((await quote({ phone: fresh })).body.checkoutSpin, false)
+    // Checkout chances must add up to 100 when used.
+    const bad = await api('PUT', '/api/admin/spin', { token: OWNER, body: { prizes: DEFAULT_PRIZES.map((p) => ({ ...p, checkoutChance: p.key === 'p50' ? 50 : 0 })) } })
+    assert.equal(bad.status, 400)
+    // On, and at checkout only ₹50 OFF can be won.
+    const on = await api('PUT', '/api/admin/spin', { token: OWNER, body: { enabled: true, prizes: DEFAULT_PRIZES.map((p) => ({ ...p, checkoutChance: p.key === 'p50' ? 100 : 0 })) } })
+    assert.equal(on.status, 200, JSON.stringify(on.body))
+    assert.equal(on.body.prizes.find((p) => p.key === 'p50').checkoutChance, 100)
+
+    // A new number with nothing to apply: offered. A number with a paid order (the test buyer): not offered, and refused.
+    assert.equal((await quote({ phone: fresh })).body.checkoutSpin, true)
+    assert.equal((await quote({ phone: '9876543210' })).body.checkoutSpin, false)
+    assert.equal((await spinApi({ phone: '9876543210', from: 'checkout' }, 1)).status, 409)
+    // A typed code: not offered.
+    assert.equal((await quote({ phone: fresh, discountCode: 'NOSUCH' })).body.checkoutSpin, false)
+
+    // The spin at checkout: ₹50 off, then applied by itself and no second offer.
+    const won = await spinApi({ phone: fresh, from: 'checkout' }, 2)
+    assert.equal(won.status, 200, JSON.stringify(won.body))
+    assert.equal(won.body.prize.key, 'p50')
+    const { rows: [c] } = await db.query('select note from discount_codes where code = $1', [won.body.code])
+    assert.match(c.note, /\(checkout\)/)
+    const after = await quote({ phone: fresh, items: [{ id: 'alibaba-10kg', qty: 2 }] })
+    assert.equal(after.body.checkoutSpin, false)
+    assert.deepEqual([after.body.discount?.amount, after.body.discount?.source, after.body.discount?.code], [50, 'spin', null])
+    // Spinning again from checkout: the same prize back, not a second one.
+    const again = await spinApi({ phone: fresh, from: 'checkout' }, 3)
+    assert.deepEqual([again.body.already, again.body.code], [true, won.body.code])
+
+    // Offers → Who spun → Delete: owners only; the spin and its code go, and the number may spin again.
+    assert.equal((await api('DELETE', '/api/admin/spin/' + fresh, { token: tokens.sales })).status, 403)
+    assert.equal((await api('DELETE', '/api/admin/spin/' + fresh, { token: OWNER })).status, 200)
+    assert.equal((await db.query('select 1 from discount_codes where code = $1', [won.body.code])).rowCount, 0)
+    assert.equal((await quote({ phone: fresh })).body.checkoutSpin, true)
+    assert.equal((await api('DELETE', '/api/admin/spin/' + fresh, { token: OWNER })).status, 404)
+  } finally {
+    await db.query('delete from spins')
+    await db.query(`delete from discount_codes where source = 'spin'`)
+    await db.query(`delete from company_settings where key like 'spin_%'`)
+  }
+})
+
 test('Refer a friend: code after paying, friend saves on a first order, never their own, reward on delivery used by itself', async () => {
   const { rows: [v] } = await db.query(
     `select v.id from product_variants v join products p on p.id = v.product_id where p.slug = 'alibaba' and v.pack_kg = 10`)
@@ -2582,6 +2702,9 @@ test('Analyst: owner sees sales, leads, campaigns and delivery KPIs; rice type, 
   assert.equal((await api('POST', '/api/admin/analyst/ad-spend', { token: OWNER, body: { spentOn: today, platform: 'meta', campaign: 'Diwali Reels', ad: 'Reel A', amount: 500 } })).status, 201)
   assert.equal((await api('PUT', '/api/admin/analyst/target', { token: OWNER, body: { kgPerMonth: 1000 } })).status, 200)
 
+  // Her checkout journey: she reached payment and cancelled once (the mobile as the form sent it).
+  await db.query(`insert into checkout_journeys (id, stage, contact_phone, value_paise, last_error, items, payment_attempts)
+                  values (gen_random_uuid(), 'cancelled', '+91 95000 77777', 55500, 'Cancelled by the customer', '[{"name":"Alibaba","qty":1}]', 1)`)
   const r = await api('GET', `/api/admin/analyst?from=${today}&to=${today}`, { token: OWNER })
   assert.equal(r.status, 200, JSON.stringify(r.body))
   const a = r.body
@@ -2596,6 +2719,7 @@ test('Analyst: owner sees sales, leads, campaigns and delivery KPIs; rice type, 
   assert.equal(a.leads.funnel[0].stage, 'New lead')
   const anu = a.leads.list.find((x) => x.name === 'Analyst Anu')
   assert.ok(anu && anu.kind === 'signup' && anu.campaign === 'Diwali Reels' && anu.status === 'bought', JSON.stringify(anu))
+  assert.deepEqual([anu.journey.stage, anu.journey.value, anu.journey.error, anu.journey.items], ['cancelled', 555, 'Cancelled by the customer', '1 × Alibaba'])
   assert.ok(a.leads.perDay.length === 1 && a.leads.perDay[0].leads >= 1 && a.leads.perDay[0].won >= 1)
   assert.ok(a.recentOrders.some((o) => o.customer === 'Analyst Anu' && o.amount > 0 && / kg/.test(o.items)))
   const camp = a.campaigns.byCampaign.find((c) => c.campaign === 'Diwali Reels')
@@ -4175,7 +4299,7 @@ test('order emails: packed, out for delivery, delivered with the review link, re
   const pub = await api('GET', '/api/reviews')
   assert.equal(pub.body.count, 1)
   assert.equal(pub.body.average, 5)
-  assert.deepEqual([pub.body.reviews[0].name, pub.body.reviews[0].text], ['Kavya R.', 'Soft, fragrant rice. Delivered on time!'])
+  assert.deepEqual([pub.body.reviews[0].name, pub.body.reviews[0].text], ['Kavya Ramesh', 'Soft, fragrant rice. Delivered on time!'])
   // Published: it can no longer be changed from the link.
   assert.equal((await api('POST', '/api/reviews', { body: { o, t, rating: 1 } })).status, 409)
 
@@ -4332,10 +4456,10 @@ test('Lead form: Instant Form leads are copied from Sales Daddy once, saved as s
   })
   const sdAsked = []
   const leads = [
-    { id: 'sd-1', name: 'Form Facebook', phone: '+919811100001', email: 'f1@example.in', city: 'Salem', state: 'Tamil Nadu', source: 'facebook', form_name: 'B2C FORM', facebook_page: 'Chennai Rice Industries', campaign_name: 'Lead camp', ad_name: 'Ad 1', createdAt: new Date(Date.now() - 5 * 60000).toISOString() },
-    { id: 'sd-2', name: 'Form Instagram', phone: '+919811100002', source: 'instagram', form_name: 'B2C FORM', facebook_page: 'Chennai Rice Industries', createdAt: new Date(Date.now() - 4 * 60000).toISOString() },
+    { id: 'sd-1', name: 'Form Facebook', phone: '+919811170001', email: 'f1@example.in', city: 'Salem', state: 'Tamil Nadu', source: 'facebook', form_name: 'B2C FORM', facebook_page: 'Chennai Rice Industries', campaign_name: 'Lead camp', ad_name: 'Ad 1', createdAt: new Date(Date.now() - 5 * 60000).toISOString() },
+    { id: 'sd-2', name: 'Form Instagram', phone: '+919811170002', source: 'instagram', form_name: 'B2C FORM', facebook_page: 'Chennai Rice Industries', createdAt: new Date(Date.now() - 4 * 60000).toISOString() },
     // Not a form lead: the website's own push (no form or Page).
-    { id: 'sd-3', name: 'Website Person', phone: '+919811100003', source: 'facebook', form_name: null, facebook_page: null, createdAt: new Date(Date.now() - 3 * 60000).toISOString() },
+    { id: 'sd-3', name: 'Website Person', phone: '+919811170003', source: 'facebook', form_name: null, facebook_page: null, createdAt: new Date(Date.now() - 3 * 60000).toISOString() },
     // The company's own number is never a lead.
     { id: 'sd-4', name: 'Own Number', phone: '+919894006032', source: 'facebook', form_name: 'B2C FORM', createdAt: new Date(Date.now() - 2 * 60000).toISOString() },
   ]
@@ -4357,15 +4481,15 @@ test('Lead form: Instant Form leads are copied from Sales Daddy once, saved as s
     assert.deepEqual([first.saved, first.skipped, first.queued], [2, 1, 2], JSON.stringify(first))
     assert.match(sdAsked[0], /^\/v1\/ext\/leads\?since=.*&limit=100/)
     // Both went to the Meta campaign, marked as lead form.
-    const metaCalls = neoGot.filter((g) => g.url === '/meta' && ['9811100001', '9811100002'].includes(String(g.body.mobile)))
+    const metaCalls = neoGot.filter((g) => g.url === '/meta' && ['9811170001', '9811170002'].includes(String(g.body.mobile)))
     assert.equal(metaCalls.length, 2, JSON.stringify(neoGot))
-    const f = metaCalls.find((g) => g.body.mobile === 9811100001).body
+    const f = metaCalls.find((g) => g.body.mobile === 9811170001).body
     assert.deepEqual([f.Source, f['Lead type'], f.Traffic, f.Campaign, f.Page, f.Ad], ['Lead form (Facebook)', 'Lead form', 'Lead form', 'Meta', 'B2C FORM', 'Ad 1'])
-    assert.equal(metaCalls.find((g) => g.body.mobile === 9811100002).body.Source, 'Lead form (Instagram)')
-    const { rows: [ls] } = await db.query(`select source from lead_status where mobile = '9811100001'`)
+    assert.equal(metaCalls.find((g) => g.body.mobile === 9811170002).body.Source, 'Lead form (Instagram)')
+    const { rows: [ls] } = await db.query(`select source from lead_status where mobile = '9811170001'`)
     assert.equal(ls.source, 'lead_form')
-    assert.equal((await db.query(`select count(*)::int as n from lead_forms where mobile in ('9811100001','9811100002')`)).rows[0].n, 2)
-    assert.equal((await db.query(`select count(*)::int as n from lead_forms where mobile in ('9811100003','9894006032')`)).rows[0].n, 0)
+    assert.equal((await db.query(`select count(*)::int as n from lead_forms where mobile in ('9811170001','9811170002')`)).rows[0].n, 2)
+    assert.equal((await db.query(`select count(*)::int as n from lead_forms where mobile in ('9811170003','9894006032')`)).rows[0].n, 0)
 
     // A second read of the same leads copies nothing and sends nothing.
     neoGot.length = 0
@@ -4409,6 +4533,9 @@ test('Lead form: the Lead event for Meta carries the hashed phone and email, sys
     // No token: nothing sent.
     assert.equal((await sendLeadFormEvents(db.query)).skipped, 'off')
     Object.assign(process.env, { META_CAPI_TOKEN: 'tok', META_GRAPH_VERSION: 'v23.0' })
+    // Token but not switched on: still nothing (it double-counted leads in Meta without the lead ID, 25 Nov 2026).
+    assert.equal((await sendLeadFormEvents(db.query)).skipped, 'off')
+    process.env.LEAD_FORMS_TO_META = 'on'
     const realFetch = globalThis.fetch
     globalThis.fetch = (u, o) => realFetch(String(u).replace('https://graph.facebook.com', 'http://127.0.0.1:' + fakeMeta.address().port), o)
     try {
@@ -4423,7 +4550,90 @@ test('Lead form: the Lead event for Meta carries the hashed phone and email, sys
       assert.equal(got.length, 0)
     } finally { globalThis.fetch = realFetch }
   } finally {
-    for (const k of ['META_CAPI_TOKEN', 'META_GRAPH_VERSION']) delete process.env[k]
+    for (const k of ['META_CAPI_TOKEN', 'META_GRAPH_VERSION', 'LEAD_FORMS_TO_META']) delete process.env[k]
     fakeMeta.close()
   }
+})
+
+test('Google Ads: the ad click ID (gclid / gbraid / wbraid) is saved with the order for an offline upload; junk is dropped', async () => {
+  const { cleanGoogleClick } = await import('../lib/sales/attribution.js')
+  assert.equal(cleanGoogleClick(null), null)
+  assert.equal(cleanGoogleClick({ gclid: '<script>' }), null)
+  assert.deepEqual(cleanGoogleClick({ gbraid: 'abc_DEF-1', other: 'x', at: 'not a date' }), { gbraid: 'abc_DEF-1' })
+
+  const s = await api('POST', '/api/checkout/session', { body: { ...buyer({ name: 'Gclid Buyer', email: 'gclid@example.com', phone: '9566077701' }),
+    items: [{ id: 'alibaba', qty: 1 }],
+    attribution: { utm_source: 'google', utm_medium: 'cpc', gclid: true, google_click: { gclid: 'Cj0KCQiA-test_123', wbraid: 'bad value!', at: '2026-11-19T05:00:00.000Z' } } },
+  headers: { 'X-Forwarded-For': '10.81.7.1' } })
+  assert.equal(s.status, 200, JSON.stringify(s.body))
+  const { rows: [o] } = await db.query(`select attribution, traffic_source from orders where id = $1`, [s.body.orderId])
+  assert.deepEqual(o.attribution.google_click, { gclid: 'Cj0KCQiA-test_123', at: '2026-11-19T05:00:00.000Z' })
+  assert.equal(o.attribution.gclid, true)
+  assert.equal(o.traffic_source, 'google_ads')
+})
+
+test('Spin reminders report: sent, read, Claim link tapped, bought with the code and the revenue, per template', async () => {
+  const { spinReminderReport, recordLinkClick } = await import('../lib/wa/spin-report.js')
+  // Two spins of our own, each with its code.
+  const mk = async (phone, code) => {
+    const { rows: [c] } = await db.query(`insert into discount_codes (code, kind, amount_paise, min_order_paise, locked_phone, source) values ($1, 'amount', 5000, 75000, $2, 'spin') returning id`, [code, phone])
+    await db.query(`insert into spins (phone, name, prize_key, prize_label, code_id) values ($1, 'Rem Test', 'amount50', '₹50 OFF', $2)`, [phone, c.id])
+    return { phone, name: 'Rem Test', code_id: c.id, code }
+  }
+  const sp = await mk('9566088801', 'SPIN-REM001')
+  const other = await mk('9566088802', 'SPIN-REM002')
+  const sentAt = new Date(Date.now() - 3600e3)
+  await db.query(`insert into wa_queue (phone, template_name, language, vals, source, status, wamid, sent_at, created_at)
+                  values ($1, 'spin_reminder_ta_1', 'ta', $2, 'broadcast', 'sent', 'wamid.rem1', $3, $3)`,
+    [sp.phone, JSON.stringify({ body: ['A', 'B', 'C', 'D'], buttons: { 0: sp.code.replace(/-/g, ''), 1: 'spin-' + sp.code } }), sentAt])
+  await db.query(`insert into wa_messages (wamid, direction, phone, kind, template_name, status) values ('wamid.rem1', 'out', $1, 'template', 'spin_reminder_ta_1', 'read')`, [sp.phone])
+  if (other) {
+    await db.query(`insert into wa_queue (phone, template_name, vals, source, status, reason, created_at)
+                    values ($1, 'spin_reminder', $2, 'spin_reminder', 'skipped', 'Already got an offer today', now())`,
+      [other.phone, JSON.stringify({ buttons: { 0: other.code, 1: 'spin-' + other.code } })])
+  }
+  // A tap before the send does not count; one after it does (the slug written as WhatsApp sends it).
+  await db.query(`insert into wa_link_clicks (slug, code, clicked_at) values ($1, $2, $3)`, ['spin-' + sp.code, sp.code.replace(/-/g, ''), new Date(sentAt.getTime() - 86400e3)])
+  assert.deepEqual(await recordLinkClick('spin-' + sp.code.toLowerCase(), { query: db.query }), { ok: true })
+  assert.deepEqual(await recordLinkClick('<script>', { query: db.query }), { ok: false })
+  // The order that used the code, after the reminder.
+  const { rows: [o] } = await db.query(`select id, total_paise from orders where payment_status = 'paid' order by placed_at desc limit 1`)
+  await db.query(`update orders set discount_code_id = $1, placed_at = now() where id = $2`, [sp.code_id, o.id])
+
+  const r = await spinReminderReport({}, { query: db.query })
+  const me = r.people.find((p) => p.template === 'spin_reminder_ta_1')
+  assert.equal(me.code, sp.code)
+  assert.equal(me.status, 'read')
+  assert.equal(me.clicks, 1)
+  assert.equal(me.order.total, o.total_paise / 100)
+  assert.equal(r.summary.sent, 1)
+  assert.equal(r.summary.read, 1)
+  assert.equal(r.summary.clicked, 1)
+  assert.equal(r.summary.purchased, 1)
+  assert.equal(r.summary.revenue, o.total_paise / 100)
+  if (other) {
+    assert.equal(r.summary.notSent, 1)
+    assert.equal(r.people.find((p) => p.template === 'spin_reminder').reason, 'Already got an offer today')
+  }
+  assert.ok(r.byTemplate.find((t) => t.template === 'spin_reminder_ta_1' && t.purchased === 1))
+  // One template only.
+  const ta = await spinReminderReport({ template: 'spin_reminder_ta_1' }, { query: db.query })
+  assert.deepEqual(ta.people.map((p) => p.template), ['spin_reminder_ta_1'])
+
+  // The route: owners and IT only.
+  const res = await api('GET', '/api/admin/spin/reminders', { token: OWNER })
+  assert.equal(res.status, 200)
+  assert.equal(res.body.summary.purchased, 1)
+  assert.equal((await api('POST', '/api/w/click', { body: { slug: 'spin-' + sp.code } })).body.ok, true)
+})
+
+test('WhatsApp offers: two senders at the same moment, one offer a day: only one claims the person', async () => {
+  const { claimOffer } = await import('../lib/wa/automations.js')
+  await db.query(`insert into wa_contacts (phone, opted_in_at) values ('9566099901', now()) on conflict (phone) do update set last_offer_at = null`)
+  const both = await Promise.all([claimOffer(db.query, '9566099901'), claimOffer(db.query, '9566099901')])
+  assert.equal(both.filter(Boolean).length, 1, JSON.stringify(both))
+  assert.equal(both.filter((x) => x === false).length, 1)
+  // A day later the next offer is free again.
+  await db.query(`update wa_contacts set last_offer_at = now() - interval '21 hours' where phone = '9566099901'`)
+  assert.ok(await claimOffer(db.query, '9566099901'))
 })

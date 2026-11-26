@@ -77,8 +77,8 @@ export default function ContestPage() {
   return (
     <SiteLayout skipTo="contest-main" skipLabel="Skip to the contest">
       <main id="contest-main" className="contest-page">
-        <img className="contest-garland contest-garland-right" src="/image.webp" alt="" aria-hidden="true" />
-        <img className="contest-garland contest-garland-left" src="/image.webp" alt="" aria-hidden="true" />
+        <img className="contest-garland contest-garland-right" src="/assets/garland-v2.webp" alt="" aria-hidden="true" />
+        <img className="contest-garland contest-garland-left" src="/assets/garland-v2.webp" alt="" aria-hidden="true" />
         <ContestHero />
 
         {/* How to Participate: on wide screens the designed artwork, which

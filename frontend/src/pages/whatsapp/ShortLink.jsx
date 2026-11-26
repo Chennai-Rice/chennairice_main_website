@@ -30,7 +30,23 @@ export function shortLinkTarget(slug) {
   return `${path}?${q}`
 }
 
+let recorded = ''
+
+/** spin-<CODE>: the prize code goes into checkout, so it is applied without typing it (Nov 2026). */
+export function spinCodeFromSlug(slug) {
+  const m = /^spin-(?!bot$)([A-Za-z0-9-]{4,40})$/i.exec(String(slug || ''))
+  return m ? m[1].toUpperCase() : ''
+}
+
 export default function ShortLink() {
   const { slug } = useParams()
+  const code = spinCodeFromSlug(slug)
+  // The same key CheckoutPage reads (DISCOUNT_CODE_KEY); storage may be blocked, then they use Copy code.
+  if (code) { try { window.sessionStorage.setItem('cr.checkout.code', code) } catch { /* ignore */ } }
+  // The tap, for the Spin reminder report (once per page load; React may render this twice).
+  if (slug && recorded !== slug) {
+    recorded = slug
+    fetch('/api/w/click', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug }), keepalive: true }).catch(() => {})
+  }
   return <Navigate to={shortLinkTarget(slug)} replace />
 }

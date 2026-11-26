@@ -133,7 +133,7 @@ export default function JourneyTimeline({ steps }) {
               onKeyDown={(e) => onKeyDown(e, i)}
             >
               <span className="pdp-journey-figure" ref={(el) => { figRefs.current[i] = el; }}>
-                <Img src={step.image} alt="" aria-hidden="true" />
+                <Img src={step.image} alt="" aria-hidden="true" loading="lazy" decoding="async" />
                 <span className="pdp-journey-num">{i < active ? "✓" : step.num}</span>
               </span>
               <span className="pdp-journey-title">{step.title}</span>

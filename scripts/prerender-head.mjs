@@ -14,7 +14,7 @@
 //                               serves it at /<page>, without a slash)
 //   dist/app.html               the plain app shell, for every other URL (blog
 //                               posts, cart, …); the app sets their tags itself
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -173,10 +173,24 @@ const jsonLd = (items) => items.length
   : ''
 
 // ---- HTML -------------------------------------------------------------------
-const shell = readFileSync(join(DIST, 'index.html'), 'utf8')
-writeFileSync(join(DIST, 'app.html'), shell)
+// The main stylesheet loads in the background instead of blocking the first paint (LCP, 26 Nov 2026): the page's
+// inline first-paint styles show the headline at once, and src/main.jsx starts the app only once the stylesheet is in.
+const shell = readFileSync(join(DIST, 'index.html'), 'utf8').replace(
+  /<link rel="stylesheet" crossorigin href="(\/assets\/index-[^"]+\.css)">/,
+  (m, href) => `<link rel="preload" as="style" crossorigin href="${href}" data-main-css onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" crossorigin href="${href}"></noscript>`)
+// The app shell for pages that are not pre-rendered (cart, checkout, wishlist, staff tools, a blog post published
+// after this build …): not for search engines, and without the home page's first-paint headline (audit, 25 Nov 2026;
+// it used to be indexable with the home page's title). dist/404.html is the same shell with a "not found" title:
+// hosting serves it with HTTP 404 for any address it does not have, and the app shows "Page not found".
+const appShell = (title) => shell
+  .replace(/<div id="boot"[\s\S]*?<\/p>\s*<\/div>/, '')
+  .replace(/<meta name="robots" content="[^"]*" \/>/, '<meta name="robots" content="noindex, follow" />')
+  .replace(/<title>[\s\S]*?<\/title>/, `<title>${title}</title>`)
+writeFileSync(join(DIST, 'app.html'), appShell('Chennai Rice'))
+writeFileSync(join(DIST, '404.html'), appShell('Page not found | Chennai Rice'))
 
-function render({ path, title: rawTitle, description: rawDescription, noindex, image, lang, schema = [], body = '' }) {
+function render({ path, title: rawTitle, description: rawDescription, noindex, image, preload, lang, schema = [], body = '' }) {
   // Plain apostrophes and quotes in titles and descriptions: some crawlers (Bing's checker) misread the curly
   // ’ “ ” as "â€™" (Nov 2026). The text on the page keeps its curly ones.
   const plain = (s) => String(s ?? '').replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
@@ -214,6 +228,8 @@ function render({ path, title: rawTitle, description: rawDescription, noindex, i
       `<link rel="alternate" hreflang="x-default" href="${esc(abs(ALTERNATE[path].en))}" />`,
     ] : []),
     lang === 'ta' ? `<link rel="stylesheet" href="${TAMIL_FONT}" />` : '',
+    // The product page's bag photo starts downloading with the page, not after the app and the catalogue (LCP).
+    preload ? `<link rel="preload" as="image" href="${esc(preload)}" fetchpriority="high" />` : '',
     jsonLd(schema),
   ].filter(Boolean).join('\n    ')
   html = html.replace('</head>', `    ${extra}\n    ${HEAD_SNIPPET}\n  </head>`)
@@ -223,6 +239,13 @@ function render({ path, title: rawTitle, description: rawDescription, noindex, i
   mkdirSync(dirname(file), { recursive: true })
   writeFileSync(file, html)
   return path
+}
+
+// The pack photo the product page shows: its .webp when there is one (as the shop picks it), else the image itself.
+const packPhoto = (img) => {
+  if (!img) return null
+  const webp = img.replace(/.png$/, '.webp')
+  return existsSync(join(DIST, webp.slice(1))) ? webp : img
 }
 
 // Packs as [name, path, one-line description] for the page texts.
@@ -246,6 +269,7 @@ for (const [id, p] of Object.entries(PRODUCT_SEO)) {
   written.push(render({
     // Link previews use the square white-background photo (public/assets/shop/feed, also in the merchant feed).
     path, title: p.title, description: p.description, image: IMAGE[id] && `/assets/shop/feed/${id}.jpg`,
+    preload: packPhoto(IMAGE[id]),
     // Product data for crawlers; the page itself adds the same @id with live prices, so they merge.
     schema: [
       productSchema({ id, seo: p, path, image: IMAGE[id], live: CATALOG.get(id), orgId: ORG_ID }),
@@ -253,6 +277,60 @@ for (const [id, p] of Object.entries(PRODUCT_SEO)) {
       breadcrumb([PAGE_META.products.h1, PAGE_META.products.path], [productName(id), path]),
     ],
     body: productHtml({ seo: p, live: CATALOG.get(id), guides: GUIDE_LINKS, photo: IMAGE[id] && `/assets/shop/feed/${id}.jpg` }),
+  }))
+}
+
+// Blog posts (audit P0, 25 Nov 2026): each published post gets its own title, description, canonical, picture,
+// BlogPosting data and readable text, like the guides. They were served the app shell (home page title, no text),
+// so search engines could not read them. Read from the live blog API; the build still works without it.
+function plainParagraphs(md) {
+  return String(md || '')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/^\s{0,3}(#{1,6}|[-*+]|\d+\.)\s+/gm, '').replace(/[*_`>]/g, '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+}
+async function blogPosts() {
+  try {
+    const list = await (await fetch(SITE + '/api/blog/posts', { signal: AbortSignal.timeout(8000) })).json()
+    const out = []
+    for (const p of list.posts || []) {
+      const res = await fetch(SITE + '/api/blog/posts/' + encodeURIComponent(p.slug), { signal: AbortSignal.timeout(8000) })
+      if (res.ok) { const j = await res.json(); out.push(j.post || j) }
+    }
+    return out
+  } catch (err) {
+    console.warn('prerender-head: blog posts not reachable, building without them —', err.message)
+    return []
+  }
+}
+for (const post of await blogPosts()) {
+  if (!post?.slug || !post.title) continue
+  const path = '/blog/' + post.slug
+  const paras = plainParagraphs(post.contentMd)
+  const description = String(post.excerpt || paras[0] || '').replace(/\s+/g, ' ').trim().slice(0, 155).replace(/\s+\S*$/, '') + '…'
+  const image = post.coverUrl && post.coverUrl.startsWith('/') ? post.coverUrl : null
+  written.push(render({
+    path,
+    title: `${post.title} | Chennai Rice Blog`,
+    description,
+    schema: [
+      {
+        '@type': 'BlogPosting',
+        headline: post.title,
+        description,
+        url: abs(path),
+        mainEntityOfPage: abs(path),
+        ...(image ? { image: SITE + image } : {}),
+        datePublished: post.publishedAt,
+        dateModified: post.updatedAt || post.publishedAt,
+        author: { '@type': 'Organization', name: post.author || 'Chennai Rice Industries' },
+        publisher: { '@id': ORG_ID },
+      },
+      breadcrumb([PAGE_META.blog.h1, PAGE_META.blog.path], [post.title, path]),
+    ],
+    body: `<article>\n<h1>${esc(post.title)}</h1>\n${paras.slice(0, 60).map((p) => `<p>${esc(p)}</p>`).join('\n')}\n<p><a href="/rice-products">Shop Chennai Rice</a> · <a href="/blog">More from the blog</a></p>\n</article>`,
   }))
 }
 

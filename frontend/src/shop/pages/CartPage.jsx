@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import SiteLayout from "../layouts/SiteLayout.jsx";
 import CartRow from "../components/CartRow.jsx";
@@ -6,6 +6,7 @@ import { useCart } from "../hooks/useCart.jsx";
 import { formatRupees } from "../utils/format.js";
 import usePageMeta from "../hooks/usePageMeta.js";
 import useCartQuote from "../hooks/useCartQuote.js";
+import { trackGoogleEcommerce, gaItem, splitLineId } from "../../services/googleAnalytics.js";
 import { isCheckoutEnabled } from "../../config.js";
 
 // Which note appears under the button depends on whether payments are live —
@@ -21,6 +22,17 @@ export default function CartPage() {
   usePageMeta("Shopping Cart | Chennai Rice", "Review your selected Chennai Rice products and continue to checkout when you are ready.", { noindex: true });
 
   const isEmpty = items.length === 0;
+
+  // GA4 view_cart, once per visit to the cart page, with what is in it (Nov 2026).
+  const cartSent = useRef(false);
+  useEffect(() => {
+    if (cartSent.current || isEmpty) return;
+    cartSent.current = true;
+    trackGoogleEcommerce("view_cart", {
+      items: items.map((i, index) => { const l = splitLineId(i.id); return gaItem({ slug: l.slug, kg: i.packKg ?? l.kg, name: i.name, price: i.price, qty: i.qty, index }); }),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEmpty]);
 
   return (
     <SiteLayout skipTo="cart-heading" skipLabel="Skip to cart" cartIsCurrent>

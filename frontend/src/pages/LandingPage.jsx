@@ -50,7 +50,8 @@ export default function LandingPage({ id }) {
   const { products, loading } = useProducts()
   const packs = (page.productIds || [])
     .map((pid) => products.find((p) => p.id === pid))
-    .filter(Boolean)
+    // A pack with no size in stock is not promoted here (audit, 25 Nov 2026: Rudra and Thaaram led nowhere).
+    .filter((p) => p && p.packSizes?.some((s) => s.inStock !== false))
 
   return (
     <SiteLayout skipTo="lp-main" skipLabel={page.lang === 'ta' ? 'உள்ளடக்கத்துக்குச் செல்ல' : 'Skip to content'}>

@@ -62,6 +62,7 @@ export default function Navbar() {
         </nav>
 
         <div className="nav-actions">
+          {/* Click to call lives in the phones' bottom bar (ActionBar.jsx) and the footer, not here (owner, Nov 2026). */}
           <Link
             className="nav-icon"
             to="/wishlist"
