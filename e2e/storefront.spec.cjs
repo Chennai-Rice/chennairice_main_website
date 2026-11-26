@@ -155,3 +155,22 @@ test('hero video: phone gets the small centre cut, desktop the full film', async
   const video = page.locator('video.hero-video')
   await expect(video).toHaveAttribute('src', info.project.name === 'phone' ? /hero-phone-v1\.mp4$/ : /hero-v2\.mp4$/, { timeout: 10000 })
 })
+
+// Bestsellers (26 Nov 2026): phones get a swipe carousel (no pinned scroll animation), larger screens keep the pin.
+test('bestsellers: swipe carousel on phones, pinned animation on desktop', async ({ page, tracking }, info) => {
+  void tracking
+  await page.goto('/')
+  const section = page.locator('#products')
+  await section.scrollIntoViewIfNeeded()
+  if (info.project.name === 'phone') {
+    await expect(section).toHaveClass(/is-carousel/)
+    await expect(page.locator('.pin-spacer')).toHaveCount(0)
+    await page.locator('.showcase-page', { hasText: '02' }).click()
+    await expect(page.locator('.showcase-page.is-active')).toHaveText('02')
+    await page.locator('.showcase-track').evaluate((t) => t.scrollTo({ left: t.clientWidth * 3 }))
+    await expect(page.locator('.showcase-page.is-active')).toHaveText('04')
+  } else {
+    await expect(section).not.toHaveClass(/is-carousel/)
+    await expect(page.locator('.pin-spacer')).toHaveCount(1)
+  }
+})

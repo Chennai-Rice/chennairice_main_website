@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -166,13 +166,23 @@ function ProductSlide({ product, isFirst }) {
 
 export default function ProductsShowcase() {
   const sectionRef = useRef(null)
+  const trackRef = useRef(null)
   const [activeIndex, setActiveIndex] = useState(0)
+  // Phones: a swipe carousel instead of the pinned, scroll-driven animation (26 Nov 2026). The pinned version kept
+  // the phone busy on every scroll frame (Core Web Vitals INP 321 ms on phones); a native scroll-snap row costs
+  // almost nothing. Larger screens keep the pinned animation.
+  const [carousel] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.('(max-width: 768px)').matches)
   // The pager dot shown, so a scroll frame only asks React to update when the product actually changes.
   const shownIndex = useRef(0)
 
   // Jump the scroll so a given product is centred in the pinned frame.
   const goToProduct = useCallback(index => {
     const clamped = Math.max(0, Math.min(PRODUCTS.length - 1, index))
+    const track = trackRef.current
+    if (carousel && track) {
+      track.scrollTo({ left: clamped * track.clientWidth, behavior: 'smooth' })
+      return
+    }
     const trigger = ScrollTrigger.getById('productShowcase')
     if (!trigger) {
       const slide = sectionRef.current?.querySelector(`#slide-${PRODUCTS[clamped].num}`)
@@ -181,10 +191,28 @@ export default function ProductsShowcase() {
     }
     const top = trigger.start + centreProgress(clamped) * (trigger.end - trigger.start)
     window.scrollTo({ top, behavior: 'smooth' })
+  }, [carousel])
+
+  // Carousel: the dot follows the swipe (read once per frame at most).
+  const frame = useRef(0)
+  const onTrackScroll = useCallback(() => {
+    if (frame.current) return
+    frame.current = requestAnimationFrame(() => {
+      frame.current = 0
+      const track = trackRef.current
+      if (!track || !track.clientWidth) return
+      const index = Math.max(0, Math.min(PRODUCTS.length - 1, Math.round(track.scrollLeft / track.clientWidth)))
+      if (index !== shownIndex.current) {
+        shownIndex.current = index
+        setActiveIndex(index)
+      }
+    })
   }, [])
+  useEffect(() => () => cancelAnimationFrame(frame.current), [])
 
   useGsapContext(
     () => {
+      if (carousel) return
       const section = sectionRef.current
       const slides = PRODUCTS.map(p => section.querySelector(`#slide-${p.num}`))
 
@@ -309,12 +337,12 @@ export default function ProductsShowcase() {
   return (
     <section
       id="products"
-      className="products-showcase-section"
+      className={`products-showcase-section${carousel ? ' is-carousel' : ''}`}
       ref={sectionRef}
       /* The same tint GSAP applies once it initialises, set here too so the
          first paint already matches the hero wave above — otherwise the
          section shows its CSS cream for a frame and the seam flickers in. */
-      style={{ backgroundColor: PRODUCTS[0]?.tint }}
+      style={{ backgroundColor: (carousel ? PRODUCTS[activeIndex] : PRODUCTS[0])?.tint }}
     >
       <div className="showcase-pin-container">
         <Img
@@ -350,9 +378,12 @@ export default function ProductsShowcase() {
           </div>
         )}
 
-        {PRODUCTS.map((product, index) => (
-          <ProductSlide key={product.num} product={product} isFirst={index === 0} />
-        ))}
+        {/* The slides' row: on phones a swipe carousel; on larger screens it adds no box (display: contents). */}
+        <div className="showcase-track" ref={trackRef} onScroll={carousel ? onTrackScroll : undefined}>
+          {PRODUCTS.map((product, index) => (
+            <ProductSlide key={product.num} product={product} isFirst={index === 0} />
+          ))}
+        </div>
 
         {SHOW_INTRO_AND_CTA_SLIDES && (
           <div className="showcase-slide showcase-cta">

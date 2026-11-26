@@ -556,3 +556,52 @@
     margin-block: clamp(4px, 0.8vh, 10px);
   }
 }
+
+/* ---------- phones: swipe carousel (26 Nov 2026) ----------
+   The slides' row adds no box on larger screens, where the slides stay stacked in the pinned frame. On phones
+   (.is-carousel, set by ProductsShowcase.jsx below 768 px) the section is not pinned or scroll-animated: the
+   products sit side by side in a native scroll-snap row, one per screen width, with the page dots below. */
+.showcase-track {
+  display: contents;
+}
+.products-showcase-section.is-carousel {
+  transition: background-color 0.45s ease;
+}
+.is-carousel .showcase-pin-container {
+  height: auto;
+  min-height: 0;
+  padding: 72px 0 64px;
+}
+.is-carousel .showcase-header {
+  position: relative;
+  padding-top: 0;
+}
+.is-carousel .showcase-track {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.is-carousel .showcase-track::-webkit-scrollbar {
+  display: none;
+}
+.is-carousel .showcase-slide {
+  position: relative;
+  inset: auto;
+  top: auto;
+  flex: 0 0 100%;
+  min-width: 0;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  align-items: start;
+}
+.is-carousel .slide-grid {
+  padding: 12px 24px 8px;
+}
+.is-carousel .showcase-pagination {
+  position: relative;
+  bottom: auto;
+  margin-top: 12px;
+}
