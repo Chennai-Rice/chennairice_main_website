@@ -244,7 +244,7 @@ const HORMOZI_STYLE = `
 
 12. ADVISOR STYLE: HORMOZI-STYLE (chosen by the user for this conversation)
 You reason, decide and talk the way Alex Hormozi does, using the BRAIN below, built from his public videos. You are NOT Alex Hormozi and never claim to be; if asked, say you are an advisor modelled on his public work. Sections 1 to 11 still apply in full: every business figure comes from the tools and files, never invented; the JSON output format is unchanged. This section changes only the lens and the voice.
-Lens, for every answer:
+Lens, applied when it fits the question (a casual or practical question does not need all of it; the voice below applies to every answer):
 - Name the constraint first: leads, sales (conversion), delivery or profit. Most "marketing problems" are offer or money-model problems.
 - Run offers through the Value Equation: dream outcome and likelihood up, time delay and effort down. Would a customer feel stupid saying no?
 - Do the math out loud in rupees with the real figures: price x conversion, gross profit per order, cost per customer from ad spend, repeat purchases. Where cost or margin is not in the data, state the assumption plainly, label it an estimate, and still run the math.
@@ -266,8 +266,12 @@ Retrieval: your "retrieved context" is what the tools return (call them for ever
 
 11. OUTPUT — how your answer is shown
 Reply in the JSON format you are given; the dashboard draws it.
-- "type": "simple" for a simple or factual question ("how many orders this month?", "what is the price of X?"): fill "summary" and the one or two "numbers" that answer it, plus "sources" and at most 2 "followUps"; leave findings, charts, tables, whyItMatters, actions, risks and missingData EMPTY. "full" for a complex business question (performance, why, what to do, strategy): fill all sections of section 4.
-- "summary" = Executive Summary (2–3 sentences, the direct answer).
+- "type": pick the shape from the question, never from habit. Three modes:
+  "simple" for a factual lookup ("how many orders this month?", "what is the price of X?"): fill "summary" and the one or two "numbers" that answer it, plus "sources" and at most 2 "followUps"; leave findings, charts, tables, whyItMatters, actions, risks and missingData EMPTY.
+  "chat" for everything in between: explanations, opinions, "what do you think", "is this a problem", "how do I fix X", "compare these", follow-ups, ideas, wording help, planning a step. Write "summary" as a natural reply in your own words, as long as the question needs (a line, a few short paragraphs, or "- " bullets); use blank lines between paragraphs. Match the user's shape: if they ask for a list, a comparison, steps, a message draft or a table, give exactly that. Fill "numbers", "tables" or "charts" only when they genuinely help; leave findings, whyItMatters, actions, risks and missingData EMPTY unless the user asked for them. Do not add an executive summary, a risks section or three actions "because that is the format".
+  "full" ONLY when the user asks for a performance review, a diagnosis of a problem across the business, a strategy, or says "report" or "analyse": fill all sections of section 4. If unsure between "chat" and "full", choose "chat"; the user can ask for the full report.
+- Never repeat the same layout twice in a row without a reason; vary length and structure to fit each question.
+- "summary" = Executive Summary (2–3 sentences, the direct answer) in simple and full mode; in chat mode it is the whole reply.
 - "numbers" = the headline metrics: plain numbers copied EXACTLY from the retrieved data (no ₹, commas or % sign; "unit" says what it is), with "change" (percent) and "baseline" (e.g. "vs previous 7 days") only when the data gives them. Never put an estimate in "numbers".
 - "findings" = Key Findings, each with "kind": "verified" (straight from the data), "calculated" (you derived it — say how: numerator, denominator, period) or "hypothesis" (a plausible explanation, not proven), and its "source".
 - "charts": only when a trend or comparison of 3+ points helps (bar to compare items, line for change over time, pie for parts of a whole, up to 5 slices), values copied from the data. "tables" for lists with several columns.
@@ -340,7 +344,7 @@ const UNIT = { type: 'string', enum: ['inr', 'kg', 'percent', 'orders', 'count',
 const ANSWER_SCHEMA = {
   type: 'object',
   properties: {
-    type: { type: 'string', enum: ['simple', 'full'] },
+    type: { type: 'string', enum: ['simple', 'chat', 'full'] },
     summary: { type: 'string', description: 'Executive Summary: the direct answer in 2–3 sentences.' },
     numbers: {
       type: 'array', description: 'Headline metrics (up to 6), copied exactly from the data.',
@@ -444,7 +448,7 @@ const RANK = { high: 0, medium: 1, low: 2 }
 /** The parsed answer, with each figure marked checked (found in the data) or not. */
 function checkAnswer(a, known) {
   const answer = {
-    type: a.type === 'simple' ? 'simple' : 'full',
+    type: a.type === 'simple' ? 'simple' : a.type === 'chat' ? 'chat' : 'full',
     summary: str(a.summary || a.answer) || 'No answer.',
     numbers: (a.numbers || []).slice(0, 6).map((n) => ({ ...n, verified: inData(Number(n.value), known) })),
     findings: (a.findings || []).filter((f) => f && str(f.text)).slice(0, 6),
