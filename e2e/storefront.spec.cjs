@@ -260,3 +260,17 @@ test('no bottom call / Buy now / WhatsApp bar on the home page', async ({ page, 
   await expect(page.locator('.site-actionbar')).toHaveCount(0)
   await expect(page.getByText('Order on WhatsApp', { exact: true })).toHaveCount(0)
 })
+
+// Bulk order form (owner, 27 Nov 2026): mobile number digits only, 10 at most; no GSTIN for "Others".
+test('bulk order form: mobile number takes 10 digits only; GSTIN hidden for Others', async ({ page, tracking }) => {
+  void tracking
+  await page.goto('/bulk-order')
+  const phone = page.getByLabel('Mobile number')
+  await phone.fill('98a76-54 3210999')
+  await expect(phone).toHaveValue('9876543210')
+  await phone.fill('+91 98765 43210') // pasted with the country code
+  await expect(phone).toHaveValue('9876543210')
+  await expect(page.getByLabel('GSTIN')).toBeVisible()
+  await page.getByRole('button', { name: 'Others', exact: true }).click()
+  await expect(page.getByLabel('GSTIN')).toHaveCount(0)
+})

@@ -7,6 +7,8 @@ import { hasDatabase, query } from './db.js'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_PATTERN = /^[+()\-\s\d]{8,16}$/
+// Bulk order form: a 10-digit Indian mobile number (starts 6–9), digits only (owner, 27 Nov 2026).
+const MOBILE_PATTERN = /^[6-9]\d{9}$/
 const GSTIN_PATTERN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/
 const BUYER_TYPES = ['distributor', 'wholesaler', 'retailer', 'other']
 
@@ -71,7 +73,8 @@ export function buildBulkOrderRow(body) {
   const company = str(body?.company)
   const name = str(body?.name)
   const email = str(body?.email)
-  const phone = str(body?.phone)
+  // Digits only; a leading +91 / 91 / 0 typed by an older page is dropped.
+  const phone = str(body?.phone).replace(/\D/g, '').replace(/^(91|0)(?=[6-9]\d{9}$)/, '')
   /* The form no longer asks for a quantity, but the column stays and is still
      read off the body: rows written before the field was dropped keep their
      value, and an older cached build of the page can still post one. */
@@ -82,10 +85,12 @@ export function buildBulkOrderRow(body) {
   if (!BUYER_TYPES.includes(buyerType)) return { error: 'Please choose who you are ordering as.' }
   if (buyerType === 'other' && !otherType) return { error: 'Please tell us your business type.' }
   if (!company) return { error: 'Please add your company or business name.' }
-  if (!gstin || !GSTIN_PATTERN.test(gstin)) return { error: 'A valid GSTIN is required.' }
+  // "Others" (hotels, caterers, individuals…) may have no GSTIN: not asked; one sent anyway must still be valid.
+  if (buyerType !== 'other' && (!gstin || !GSTIN_PATTERN.test(gstin))) return { error: 'A valid GSTIN is required.' }
+  if (buyerType === 'other' && gstin && !GSTIN_PATTERN.test(gstin)) return { error: 'That GSTIN does not look right.' }
   if (!name) return { error: "Please add the representative's name." }
   if (!email || !EMAIL_PATTERN.test(email)) return { error: 'A valid email address is required.' }
-  if (!phone || !PHONE_PATTERN.test(phone)) return { error: 'A valid phone number is required.' }
+  if (!MOBILE_PATTERN.test(phone)) return { error: 'Please enter a valid 10-digit mobile number.' }
 
   return {
     row: {

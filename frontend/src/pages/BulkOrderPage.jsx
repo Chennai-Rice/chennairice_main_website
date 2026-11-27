@@ -56,6 +56,14 @@ const Icon = ({ kind }) => (
   </svg>
 )
 
+// Digits only, at most 10; a pasted +91 or 0 in front of a 10-digit number is dropped (no maxLength on the box:
+// it would count spaces and symbols and cut a pasted "+91 98765 43210" short).
+const mobileDigits = (v) => {
+  let d = String(v).replace(/\D/g, '')
+  if (d.length > 10) d = d.replace(/^(91|0)/, '')
+  return d.slice(0, 10)
+}
+
 export default function BulkOrderPage() {
   usePageMeta(PAGE_META.bulkOrder.title, PAGE_META.bulkOrder.description)
   // /bulk-order?type=distributor (from the distributorship page) starts with
@@ -75,13 +83,16 @@ export default function BulkOrderPage() {
   const [submitError, setSubmitError] = useState('')
 
   const set = key => e => {
-    setForm(f => ({ ...f, [key]: e.target.value }))
+    // Phone: digits only, at most 10 (a 10-digit mobile number).
+    const value = key === 'phone' ? mobileDigits(e.target.value) : e.target.value
+    setForm(f => ({ ...f, [key]: value }))
     setErrors(x => ({ ...x, [key]: undefined }))
   }
 
   const chooseType = key => {
-    setForm(f => ({ ...f, type: key }))
-    setErrors(x => ({ ...x, type: undefined, otherType: undefined }))
+    // "Others" has no GSTIN field: clear anything typed before switching.
+    setForm(f => ({ ...f, type: key, ...(key === 'other' ? { gstin: '' } : {}) }))
+    setErrors(x => ({ ...x, type: undefined, otherType: undefined, gstin: undefined }))
   }
 
   const GSTIN_PATTERN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/
@@ -94,14 +105,16 @@ export default function BulkOrderPage() {
 
     if (!form.company.trim()) next.company = 'Please add your company or business name.'
 
-    if (!form.gstin.trim()) next.gstin = 'Please add your GSTIN.'
-    else if (!GSTIN_PATTERN.test(form.gstin.trim().toUpperCase()))
-      next.gstin = 'That GSTIN does not look right.'
+    if (form.type !== 'other') {
+      if (!form.gstin.trim()) next.gstin = 'Please add your GSTIN.'
+      else if (!GSTIN_PATTERN.test(form.gstin.trim().toUpperCase()))
+        next.gstin = 'That GSTIN does not look right.'
+    }
 
     if (!form.name.trim()) next.name = "Please add the representative's name."
-    if (!form.phone.trim()) next.phone = 'Please add a phone number.'
-    else if (!/^[+()\-\s\d]{8,16}$/.test(form.phone.trim()))
-      next.phone = 'That phone number does not look right.'
+    if (!form.phone) next.phone = 'Please add your mobile number.'
+    else if (!/^[6-9]\d{9}$/.test(form.phone))
+      next.phone = 'Please enter a valid 10-digit mobile number.'
     if (!form.email.trim()) next.email = 'Please add an email address.'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
       next.email = 'That email address does not look right.'
@@ -199,6 +212,7 @@ export default function BulkOrderPage() {
               {errors.company && <span className="field-error">{errors.company}</span>}
             </label>
 
+            {form.type !== 'other' && (
             <label className="field">
               <span className="field-label">GSTIN</span>
               <input
@@ -210,6 +224,7 @@ export default function BulkOrderPage() {
               />
               {errors.gstin && <span className="field-error">{errors.gstin}</span>}
             </label>
+            )}
 
             <label className="field">
               <span className="field-label">Representative Name</span>
@@ -224,12 +239,15 @@ export default function BulkOrderPage() {
             </label>
 
             <label className="field">
-              <span className="field-label">Phone</span>
+              <span className="field-label">Mobile number</span>
               <input
                 type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="tel-national"
                 value={form.phone}
                 onChange={set('phone')}
-                placeholder="+91 12345 67890"
+                placeholder="10-digit mobile number"
                 aria-invalid={!!errors.phone}
               />
               {errors.phone && <span className="field-error">{errors.phone}</span>}
