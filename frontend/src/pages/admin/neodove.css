@@ -1,0 +1,59 @@
+/* /admin → NeoDove (NeodovePanel.jsx), in the admin palette. */
+.nd { display: grid; gap: 18px; min-width: 0; grid-template-columns: minmax(0, 1fr); }
+/* Phones: wide tables scroll inside their card; the page itself never scrolls sideways. */
+.nd > *, .nd-two > * { min-width: 0; }
+.nd .ad-table-block { overflow-x: auto; max-width: 100%; }
+.nd .ad-card-head { flex-wrap: wrap; gap: 10px; }
+.nd .ad-card-head > * { min-width: 0; max-width: 100%; }
+.nd-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.nd-dates { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.nd-dates .ad-input { width: auto; }
+
+.nd-two { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+@media (max-width: 720px) { .nd-two { grid-template-columns: minmax(0, 1fr); } }
+.nd-origin { border-top: 4px solid var(--ad-accent); }
+.nd-origin.is-web { border-top-color: #1F5F7A; }
+
+.nd-stats { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+@media (max-width: 600px) {
+  .nd-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .nd-stat { padding: 10px 11px; }
+  .nd-stat-value { font-size: 1.2rem; }
+}
+.nd-stat {
+  display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: var(--ad-radius-sm);
+  background: var(--ad-bg); border: 1px solid var(--ad-line); min-width: 0;
+}
+.nd-stat-value { font-size: 1.45rem; font-weight: 700; color: var(--ad-ink); line-height: 1.15; font-variant-numeric: tabular-nums; }
+.nd-stat-label { font-size: 0.82rem; color: var(--ad-muted); }
+.nd-stat-note { font-size: 0.74rem; color: var(--ad-muted); }
+.nd-stat.is-lead { background: var(--ad-accent-wash); border-color: var(--ad-accent-faint); }
+.nd-stat.is-lead .nd-stat-value { color: var(--ad-accent); }
+.nd-stat.is-good .nd-stat-value { color: var(--ad-up); }
+.nd-stat.is-warn { background: var(--ad-warn-bg, #FBF2E2); }
+.nd-stat.is-warn .nd-stat-value { color: var(--ad-warn, #8A5A12); }
+.nd-stat.is-bad { background: var(--ad-down-bg); border-color: #EBC3BB; }
+.nd-stat.is-bad .nd-stat-value { color: var(--ad-down); }
+
+.nd-problems { margin: 12px 0 0; padding-left: 18px; font-size: 0.86rem; color: var(--ad-muted); }
+.nd-problems li { margin: 2px 0; overflow-wrap: anywhere; }
+
+.nd-funnel { margin-top: 16px; display: grid; gap: 7px; }
+.nd-funnel-row { display: grid; grid-template-columns: 78px 1fr 56px; align-items: center; gap: 10px; font-size: 0.86rem; }
+.nd-funnel-label { color: var(--ad-muted); }
+.nd-funnel-track { height: 12px; border-radius: 99px; background: var(--ad-bg); border: 1px solid var(--ad-line); overflow: hidden; }
+.nd-funnel-fill { display: block; height: 100%; background: var(--ad-accent); border-radius: 99px; }
+.nd-origin.is-web .nd-funnel-fill { background: #1F5F7A; }
+.nd-funnel-value { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.nd-scroll { overflow-x: auto; }
+.nd-mini, .nd-compare { width: 100%; border-collapse: collapse; font-size: 0.86rem; font-variant-numeric: tabular-nums; }
+.nd-mini { margin-top: 14px; }
+.nd-mini th, .nd-mini td, .nd-compare th, .nd-compare td { padding: 7px 10px; border-bottom: 1px solid var(--ad-line); text-align: right; white-space: nowrap; }
+.nd-mini th:first-child, .nd-mini td:first-child, .nd-compare th:first-child { text-align: left; white-space: normal; }
+.nd-mini thead th, .nd-compare thead th { color: var(--ad-muted); font-weight: 600; font-size: 0.78rem; }
+.nd-compare tbody th { font-weight: 500; color: var(--ad-ink); }
+
+.nd-break + .nd-break { margin-top: 22px; }
+.nd-break-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.nd-break-head h3 { margin: 0; font-size: 1rem; }

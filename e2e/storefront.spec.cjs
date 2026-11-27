@@ -293,3 +293,48 @@ test('bulk order form: mobile number takes 10 digits only; GSTIN hidden for Othe
   await page.getByRole('button', { name: 'Others', exact: true }).click()
   await expect(page.getByLabel('GSTIN')).toHaveCount(0)
 })
+
+// NeoDove dashboard (owner, 27 Nov 2026): the Performance login sees it, with Sales Daddy and our database apart.
+test('NeoDove dashboard: Performance login sees Sales Daddy and our database input side by side', async ({ page, tracking }, info) => {
+  void tracking
+  const perf = (pushed, called, qualified, converted) => ({ pushed, called, notCalled: pushed - called, qualified, notQualified: 1, converted, revenue: converted * 1250, callRate: 50, qualifiedRate: 40, conversionRate: 10, medianHoursToCall: 1.5 })
+  const split = (a, b) => ({ all: perf(a + b, a, 1, 1), salesdaddy: perf(a, a, 1, 1), website: perf(b, 0, 0, 0) })
+  const data = {
+    period: { from: '2026-11-21', to: '2026-11-27', days: 7 },
+    input: {
+      salesdaddy: { received: 42, queued: 30, pushed: 28, already: 9, waiting: 1, failed: 1, notQueued: 3, buyers: 2 },
+      website: { queued: 57, pushed: 50, already: 4, waiting: 2, failed: 1, byType: [{ type: 'Meta Ads', queued: 40, pushed: 37, already: 2, waiting: 1, failed: 0 }] },
+    },
+    performance: { salesdaddy: perf(28, 20, 8, 3), website: perf(50, 31, 12, 5), all: perf(78, 51, 20, 8) },
+    byCampaign: [{ name: 'Meta', ...split(28, 37) }],
+    byCaller: [{ name: 'Test Caller', ...split(20, 31) }],
+    byType: [{ name: 'Meta lead form (Sales Daddy)', ...split(28, 0) }],
+    trend: [{ day: '2026-11-27', sdReceived: 5, sdPushed: 4, webQueued: 8, webPushed: 7, called: 9 }],
+    health: { queued: 3, failed: 2, oldestQueuedMinutes: 12, lastPush: new Date().toISOString(), lastSalesDaddyCopy: new Date().toISOString(), lastCall: new Date().toISOString(), problems: [{ reason: 'NeoDove HTTP 500', leads: 2 }] },
+  }
+  await page.addInitScript(() => sessionStorage.setItem('cr.writer.token', JSON.stringify({ token: 'test', expiresAt: new Date(Date.now() + 3600e3).toISOString() })))
+  await page.route('**/api/admin/me', (r) => r.fulfill({ json: { email: 'performance@test', role: 'performance', permissions: ['analyst.view'] } }))
+  await page.route('**/api/admin/neodove-dashboard**', (r) => r.fulfill({ json: data }))
+  // Firebase serves /admin from app.html (firebase.json); vite preview would fall back to the storefront page.
+  const appHtml = require('fs').readFileSync(require('path').join(__dirname, '..', 'dist', 'app.html'), 'utf8')
+  await page.route('**/admin', (r) => r.fulfill({ contentType: 'text/html', body: appHtml }))
+  // The admin styles @import a Google font; a blocked import fails the whole stylesheet (and the admin app), so
+  // fonts get an empty answer here.
+  await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.fulfill({ contentType: 'text/css', body: '' }))
+  // The login opens on Analyst first; its data is not part of this test (answered with an error, shown as such).
+  await page.route(/\/api\/admin\/analyst(\/|\?|$)/, (r) => r.fulfill({ status: 503, json: { error: 'Not in this test.' } }))
+  await page.goto('/admin')
+  // Phones: the menu sits behind the ☰ button.
+  if (info.project.name === 'phone') await page.getByRole('button', { name: 'Toggle navigation' }).click()
+  await page.getByRole('button', { name: 'NeoDove', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Input from Sales Daddy' })).toBeVisible({ timeout: 15000 })
+  await expect(page.getByRole('heading', { name: 'Input from our database' })).toBeVisible()
+  await expect(page.getByText('Received from Sales Daddy')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Sales Daddy vs our database' })).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Test Caller' })).toBeVisible()
+  await page.getByRole('button', { name: 'From Sales Daddy', exact: true }).click()
+  await expect(page.getByRole('cell', { name: 'Test Caller' })).toBeVisible()
+  // Nothing wider than the screen on a phone.
+  const wide = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+  expect(wide, info.project.name).toBeLessThanOrEqual(1)
+})

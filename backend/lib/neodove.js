@@ -96,7 +96,7 @@ export const SOURCE_CAMPAIGNS = {
   meta: 'NEODOVE_ENDPOINT_META', google_ads: 'NEODOVE_ENDPOINT_GOOGLE_ADS', whatsapp: 'NEODOVE_ENDPOINT_WHATSAPP',
   cart: 'NEODOVE_ENDPOINT_CART', enquiry: 'NEODOVE_ENDPOINT_ENQUIRY',
 }
-const ROUTE_NAMES = { meta: 'Meta', google_ads: 'Google Ads', whatsapp: 'WhatsApp', cart: 'Add to cart', enquiry: 'Enquiries' }
+export const ROUTE_NAMES = { meta: 'Meta', google_ads: 'Google Ads', whatsapp: 'WhatsApp', cart: 'Add to cart', enquiry: 'Enquiries' }
 const routeEndpoint = (route) => String(process.env[SOURCE_CAMPAIGNS[route]] || '').trim()
 const ORGANIC = new Set(['facebook', 'instagram'])
 /** Source mode is on once any of the five campaign secrets exists (a placeholder value counts: it holds the leads). */

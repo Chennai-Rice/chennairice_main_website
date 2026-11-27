@@ -27,6 +27,7 @@ import EnquiriesPanel from './EnquiriesPanel.jsx'
 import AnalystPanel from './AnalystPanel.jsx'
 import AdvisorPanel from './AdvisorPanel.jsx'
 import CheckoutJourneysPanel from './CheckoutJourneysPanel.jsx'
+import NeodovePanel from './NeodovePanel.jsx'
 import ReportsPanel from './ReportsPanel.jsx'
 import CloudCentrePanel from './CloudCentrePanel.jsx'
 import { LoadingRegion } from './components/ui.jsx'
@@ -69,6 +70,7 @@ const ANALYTICS_NAV = [
   { id: 'scroll', label: 'Scroll depth', subtitle: 'How far down pages are read', icon: 'depth' },
   { id: 'realtime', label: 'Realtime', subtitle: 'Who is on the site now', icon: 'pulse' },
   { id: 'analyst', label: 'Analyst', subtitle: 'Sales, leads, campaigns and delivery — the KPI dashboard', icon: 'grid' },
+  { id: 'neodove', label: 'NeoDove', subtitle: 'Leads into NeoDove from Sales Daddy and from our database, and how they perform', icon: 'pulse' },
   { id: 'advisor', label: 'Business Advisor', subtitle: 'Ask about the business — analysis, suggestions and strategy checks', icon: 'spark' },
   { id: 'customers', label: 'Customers', subtitle: 'Everyone who ordered or signed up: converted or not, source, dates, CSV', icon: 'user' },
   { id: 'campaigns', label: 'Ad campaigns', subtitle: 'Orders from Meta ads, Google Ads and direct visits', icon: 'target' },
@@ -326,7 +328,7 @@ function LoginScreen({ onSignedIn, onWriter }) {
 
 // The Performance login (email and password, checked by our own server on Google Cloud; no Supabase): the sales,
 // advisor and ad sections only. Each panel loads its own data from the server.
-const PERFORMANCE_NAV = ['analyst', 'customers', 'advisor', 'campaigns', 'checkout', 'reports'].map((id) => ANALYTICS_NAV.find((n) => n.id === id))
+const PERFORMANCE_NAV = ['analyst', 'neodove', 'customers', 'advisor', 'campaigns', 'checkout', 'reports'].map((id) => ANALYTICS_NAV.find((n) => n.id === id))
 
 function PerformanceDashboard() {
   const [view, setView] = useState('analyst')
@@ -375,6 +377,7 @@ function PerformanceDashboard() {
         </header>
         <main className="ad-main" id="ad-main">
           {view === 'analyst' ? <AnalystPanel />
+            : view === 'neodove' ? <NeodovePanel />
             : view === 'advisor' ? <AdvisorPanel />
             : view === 'campaigns' ? <CampaignsPanel perChannel />
             : view === 'customers' ? <CustomersPanel />
@@ -602,7 +605,7 @@ function Dashboard({ session, access, onSignOut }) {
           </div>
 
           <div className="ad-topbar-actions">
-            {view !== 'realtime' && view !== 'journal' && view !== 'mis' && view !== 'mis' && view !== 'campaigns' && view !== 'customers' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
+            {view !== 'realtime' && view !== 'journal' && view !== 'mis' && view !== 'neodove' && view !== 'campaigns' && view !== 'customers' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
               <label className="ad-select-wrap">
                 <span className="ad-sr">Date range</span>
                 <select className="ad-select" value={rangeId} onChange={(e) => setRangeId(e.target.value)}>
@@ -612,7 +615,7 @@ function Dashboard({ session, access, onSignOut }) {
                 </select>
               </label>
             )}
-            {view !== 'journal' && view !== 'mis' && view !== 'campaigns' && view !== 'customers' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
+            {view !== 'journal' && view !== 'mis' && view !== 'neodove' && view !== 'campaigns' && view !== 'customers' && view !== 'enquiries' && view !== 'analyst' && view !== 'checkout' && view !== 'reports' && view !== 'cloud' && (
               <button type="button" className="ad-btn ad-btn-quiet" onClick={refresh} disabled={loading}>
                 {loading ? 'Refreshing…' : 'Refresh'}
               </button>
@@ -634,6 +637,8 @@ function Dashboard({ session, access, onSignOut }) {
             <CampaignsPanel />
           ) : view === 'customers' ? (
             <CustomersPanel />
+          ) : view === 'neodove' ? (
+            <NeodovePanel />
           ) : view === 'enquiries' ? (
             <EnquiriesPanel />
           ) : view === 'checkout' ? (
