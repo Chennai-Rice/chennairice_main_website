@@ -19,7 +19,7 @@ import { sendNeodoveLeads } from '../neodove.js'
 import { syncLeadForms } from '../lead-forms.js'
 import { syncSettlements } from './settlements.js'
 import { followUpJourneys } from './journey-followup.js'
-import { sendCartReminders, sendPaymentFailedEmails } from './cart-recovery.js'
+import { sendCartReminders, sendPaymentFailedEmails, sendGoogleReviewEmails } from './cart-recovery.js'
 import { sendPendingPurchases } from './meta-capi.js'
 import { runWhatsAppAutomations } from '../wa/automations.js'
 
@@ -33,6 +33,8 @@ export async function runJobs() {
   const cartReminders = await sendCartReminders({ query })
   // "Payment didn't go through" with a Retry Payment link (cart-recovery.js).
   const paymentFailed = await sendPaymentFailedEmails({ query })
+  // "How was your Chennai Rice?" with the Google review link, 2 days after delivery (cart-recovery.js).
+  const googleReview = await sendGoogleReviewEmails({ query })
   const email = await sendQueued({ query })
   // Checkout journeys that stopped before paying: queued for NeoDove and Sales Daddy, sent just below.
   const journeys = await followUpJourneys({ query })
@@ -70,5 +72,5 @@ export async function runJobs() {
   }
   // Cloud Centre: uptime of every site, alert emails, and at night one PageSpeed check (cloud-checks.js).
   const cloud = await runCloudChecks({ query })
-  return { expired, invoices, digest, cartReminders, paymentFailed, email, journeys, crm, whatsapp, waAutomations, metaCapi, leadForms, neodove, settlements, cloud }
+  return { expired, invoices, digest, cartReminders, paymentFailed, googleReview, email, journeys, crm, whatsapp, waAutomations, metaCapi, leadForms, neodove, settlements, cloud }
 }

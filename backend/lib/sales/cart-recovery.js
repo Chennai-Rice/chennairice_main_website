@@ -419,3 +419,37 @@ export async function saveCartReminderSettings(db, staff, body = {}) {
   }
   return cartRemindersAdmin(db, staff)
 }
+
+// ---------------------------------------------------------------- Google review email
+
+/**
+ * "How was your Chennai Rice?" with the Google review link (owner, 27 Nov 2026), 2 days after delivery, once per
+ * order. Every delivered order with an email is asked, whatever it bought or how it went (Google does not allow
+ * asking only happy customers); a problem goes to WhatsApp from the email itself. Only orders delivered in the last
+ * 7 days, so switching this on does not email older customers. Not to an unsubscribed address, a returned or
+ * cancelled order, or the company's own numbers. Never throws.
+ */
+export async function sendGoogleReviewEmails(db = { query: defaultQuery }, { now = Date.now() } = {}) {
+  try {
+    const at = new Date(now)
+    const { rows } = await db.query(
+      `select o.* from orders o
+        where o.status = 'delivered' and o.payment_status = any($1) and o.contact_email ~* '${EMAIL_RE}'
+          and o.delivered_at <= $2::timestamptz - interval '2 days' and o.delivered_at > $2::timestamptz - interval '7 days'
+          and not exists (select 1 from email_outbox e where e.dedupe_key = 'google-review:' || o.id)
+          and not exists (select 1 from email_optouts x where x.email = lower(o.contact_email))
+        order by o.delivered_at limit 25`, [PAID, at])
+    let sent = 0
+    for (const o of rows) {
+      if (isBlockedMobile(o.contact_phone)) continue
+      const items = await orderItemsForEmail(db, o.id)
+      if (!items.length) continue
+      await queueEmail(db, { to: o.contact_email, ...templates.reviewRequest(o, items, o.delivered_at), orderId: o.id, dedupeKey: 'google-review:' + o.id })
+      sent += 1
+    }
+    return { sent }
+  } catch (err) {
+    console.error('[google-review]', err.message)
+    return { error: err.message }
+  }
+}
