@@ -21,30 +21,21 @@ import './hero.css'
 const OUTRO_SECONDS = 2.7
 const FADE_SECONDS = 0.7
 
-/* Which film (owner, 27 Nov 2026: original quality, without buffering). Each screen has an original-quality film
-   (streamed, shown once it can play through, swapped for the light one if it stalls) and a light film (downloaded
-   whole, played from memory):
-   - phones held upright: the 608x918 centre cut. Original quality (3 Mbit/s) on 4G at 4+ Mbit/s, and where the
-     browser does not report the speed (iPhones); light on slower connections.
-   - larger screens: 1920x918 original quality (7.6 Mbit/s) when Chrome reports 10 Mbit/s (its top reading), or,
-     where the speed is not reported, on a large screen; the 1280 light film otherwise. */
-const FALLBACK = { [ASSETS.heroVideoHD]: ASSETS.heroVideo, [ASSETS.heroVideoPhoneHD]: ASSETS.heroVideoPhone }
+/* Which film (owner, 27 Nov 2026: the HD film was buffering on slower connections):
+   phones held upright → the centre cut; a fast connection (Chrome reports the speed, up to 10 Mbit/s) or, where the
+   browser does not say, a large screen → full HD; anything else → the lighter 1280 film. */
 function pickFilm() {
-  const net = navigator.connection
-  const known = typeof net?.downlink === 'number'
   const phone = window.matchMedia?.('(max-width: 600px) and (orientation: portrait)').matches
-  if (phone && ASSETS.heroVideoPhone) {
-    const fast = known ? net.downlink >= 4 && net.effectiveType === '4g' : true
-    return fast && ASSETS.heroVideoPhoneHD ? ASSETS.heroVideoPhoneHD : ASSETS.heroVideoPhone
-  }
-  const fast = known ? net.downlink >= 10 && net.effectiveType === '4g' : window.innerWidth >= 1440
+  if (phone && ASSETS.heroVideoPhone) return ASSETS.heroVideoPhone
+  const net = navigator.connection
+  const fast = typeof net?.downlink === 'number' ? net.downlink >= 8 && net.effectiveType === '4g' : window.innerWidth >= 1440
   return fast && ASSETS.heroVideoHD ? ASSETS.heroVideoHD : ASSETS.heroVideo
 }
 
 export default function Hero() {
   const [videoFailed, setVideoFailed] = useState(false)
   const [outro, setOutro] = useState(false)
-  // The film starts only after the page has loaded (so the text, images and scripts
+  // The film is about 7 MB. It starts only after the page has loaded (so the text, images and scripts
   // arrive first and the page is usable sooner), and never on a data-saver or very slow connection,
   // where the warm gradient behind the headline stays.
   const [videoSrc, setVideoSrc] = useState(null)
@@ -54,20 +45,18 @@ export default function Hero() {
   // Shown only once the browser says it can play to the end without stopping ('canplaythrough'); until then the
   // warm gradient stays, so nobody sees a frozen frame.
   const [ready, setReady] = useState(false)
-  // It stalls anyway (the connection slowed): twice within 20 s on an original-quality film → its light film,
-  // same moment.
+  // It stalls anyway (the connection slowed): twice within 20 s on the HD film → the lighter film, same moment.
   const stalls = useRef([])
   const onWaiting = () => {
     const v = videoRef.current
-    const light = FALLBACK[film]
-    if (!v || !ready || !light) return
+    if (!v || !ready || film !== ASSETS.heroVideoHD) return
     const now = Date.now()
     stalls.current = [...stalls.current.filter((t) => now - t < 20000), now]
     if (stalls.current.length >= 2) {
       const at = v.currentTime
       stalls.current = []
-      setFilm(light)
-      setVideoSrc(light)
+      setFilm(ASSETS.heroVideo)
+      setVideoSrc(ASSETS.heroVideo)
       v.addEventListener('loadedmetadata', () => { try { v.currentTime = at } catch { /* starts from the top */ } }, { once: true })
     }
   }
@@ -78,13 +67,13 @@ export default function Hero() {
     let timer
     let blobUrl
     const ctl = new AbortController()
-    /* Buffering on slow phones (owner, 27 Nov 2026): a light film (6.8 / 13.5 MB) is downloaded whole first and
-       played from memory, so it never stops mid-way and every loop is instant; the warm gradient shows meanwhile.
-       Given up after 30 s (the gradient stays). The original-quality films (fast connections) stream, shown once
-       they can play through, with the switch to the light film if they stall. */
+    /* Still buffering on phones (owner, 27 Nov 2026): the phone film (3.4 MB) and the lighter film (7.6 MB) are
+       downloaded whole first and played from memory, so they never stop mid-way and every loop is instant; the
+       warm gradient shows meanwhile. Given up after 30 s (the gradient stays). The full-HD film (14.6 MB, fast
+       connections only) streams, with the switch to the lighter film if it stalls. */
     const load = (f) => {
       setFilm(f)
-      if (FALLBACK[f] || typeof URL.createObjectURL !== 'function') return setVideoSrc(f)
+      if (f === ASSETS.heroVideoHD || typeof URL.createObjectURL !== 'function') return setVideoSrc(f)
       const giveUp = window.setTimeout(() => ctl.abort(), 30000)
       fetch(f, { signal: ctl.signal })
         .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('film ' + r.status))))

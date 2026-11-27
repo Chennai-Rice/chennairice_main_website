@@ -20,16 +20,17 @@ export const ASSETS = {
   // Menu bar (Nov 2026): the round Chennai Rice mark with a cream edge, so it reads on the maroon bar.
   logo: '/assets/logo-nav-v4.webp', // 19 KB instead of the 143 KB PNG (25 Nov 2026)
   logoOnLight: '/assets/logo-full-v3.webp',
-  /* Original quality (owner, 27 Nov 2026: "don't compromise in quality"): every frame of the 1920x1080 master
-     (in git history as assets/hero.mp4) at its 30 fps, re-encoded frame by frame (no dropped frames), black bars
-     cropped at native pixels (nothing scaled), H.264 High, normal fast-start MP4, 44.9 s, no sound; 35–47 dB PSNR
-     against the master (visually the same). Chosen by connection speed in Hero.jsx; starts only after the page
-     has loaded and never on data-saver or 2G. */
-  heroVideoHD: '/assets/hero-hd-v6.mp4', // 1920x918, 7.6 Mbit/s, 40.5 MB: fast connections
-  heroVideo: '/assets/hero-light-v6.mp4', // 1280x612, 2.5 Mbit/s, 13.5 MB: slower connections, or if HD stalls
-  // Phones held upright: the centre 608x918 of the same picture at native pixels.
-  heroVideoPhoneHD: '/assets/hero-phone-hd-v6.mp4', // 3.0 Mbit/s, 15.9 MB: 4G and better, and iPhones
-  heroVideoPhone: '/assets/hero-phone-light-v6.mp4', // 1.3 Mbit/s, 6.8 MB: slow connections, or if HD stalls
+  /* High quality (owner, 27 Nov 2026): re-encoded from the original 1920x1080 master (in git history as
+     assets/hero.mp4), its black bars cropped off (79 px top, 81 px bottom): the full 1920x918 picture, H.264 High
+     profile at 3.5 Mbit/s, 14.6 MB, 44.9 s, no sound. It still starts only after the page has loaded and never on
+     data-saver or 2G (Hero.jsx). */
+  heroVideoHD: '/assets/hero-v5.mp4',
+  // The lighter film for ordinary connections (1280x612, H.264 High at 1.4 Mbit/s, 7.6 MB): picked unless the
+  // connection is fast, and switched to if the HD film stalls (Hero.jsx; owner, 27 Nov 2026: it was buffering).
+  heroVideo: '/assets/hero-md-v2.mp4',
+  // Phones held upright: the middle of the same picture at its full 918 px height (600x918, 3.4 MB, High profile),
+  // sharper than the earlier 420x612 cut.
+  heroVideoPhone: '/assets/hero-phone-v3.mp4',
   wheatLeft: '/assets/decor/wheat-left-v2.webp', // 90 KB (was 243 KB, 25 Nov 2026)
   wheatRight: '/assets/decor/rice-stalks-v2.webp', // Golden Rice Stalks (Nov 2026)
   riceBowl: '/assets/decor/rice-bowl.webp',

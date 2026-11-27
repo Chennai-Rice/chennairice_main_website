@@ -154,23 +154,12 @@ test('hero video: phone gets the small centre cut, desktop the full film', async
   await page.goto('/')
   const video = page.locator('video.hero-video')
   // Desktop: full HD on a fast connection, the lighter 1280 film otherwise (27 Nov 2026).
-  // Original-quality films on a fast connection (owner, 27 Nov 2026), streamed and shown once they can play through.
-  await page.addInitScript(() => Object.defineProperty(navigator, 'connection', { value: { downlink: 10, effectiveType: '4g', saveData: false } }))
-  await page.reload()
-  await expect(video).toHaveAttribute('data-film', info.project.name === 'phone' ? /hero-phone-hd-v6\.mp4$/ : /hero-(hd|light)-v6\.mp4$/, { timeout: 10000 })
-  await expect(video).toHaveClass(/is-ready/, { timeout: 30000 })
-})
-
-// A slow phone connection gets the light phone film, downloaded whole and played from memory (no buffering).
-test('hero video: slow phone connection gets the light film from memory', async ({ page, tracking }, info) => {
-  void tracking
-  test.skip(info.project.name !== 'phone', 'phone choice')
-  await page.addInitScript(() => Object.defineProperty(navigator, 'connection', { value: { downlink: 1.5, effectiveType: '3g', saveData: false } }))
-  await page.goto('/')
-  const video = page.locator('video.hero-video')
-  await expect(video).toHaveAttribute('data-film', /hero-phone-light-v6\.mp4$/, { timeout: 10000 })
-  await expect(video).toHaveAttribute('src', /^blob:/, { timeout: 20000 })
-  await expect(video).toHaveClass(/is-ready/, { timeout: 20000 })
+  await expect(video).toHaveAttribute('data-film', info.project.name === 'phone' ? /hero-phone-v3\.mp4$/ : /hero-(v5|md-v2)\.mp4$/, { timeout: 10000 })
+  // Phone and lighter films play from memory (downloaded whole first; owner, 27 Nov 2026: still buffering).
+  if (info.project.name === 'phone') {
+    await expect(video).toHaveAttribute('src', /^blob:/, { timeout: 20000 })
+    await expect(video).toHaveClass(/is-ready/, { timeout: 20000 })
+  }
 })
 
 // The film fades in only once it can play to the end without stopping; a slow connection on desktop gets the
@@ -181,7 +170,7 @@ test('hero video: hidden until it can play through; slow connection gets the lig
   await page.addInitScript(() => Object.defineProperty(navigator, 'connection', { value: { downlink: 1.5, effectiveType: '4g', saveData: false } }))
   await page.goto('/')
   const video = page.locator('video.hero-video')
-  await expect(video).toHaveAttribute('data-film', /hero-light-v6\.mp4$/, { timeout: 10000 })
+  await expect(video).toHaveAttribute('data-film', /hero-md-v2\.mp4$/, { timeout: 10000 })
   await expect(video).toHaveAttribute('src', /^blob:/, { timeout: 20000 })
   await expect(video).toHaveClass(/is-ready/, { timeout: 20000 })
 })
