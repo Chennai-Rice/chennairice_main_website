@@ -251,3 +251,12 @@ test('WhatsApp Join Contest link opens the contest page, credited to WhatsApp', 
   await expect(page).toHaveURL(/\/contest\?utm_source=whatsapp&utm_medium=message&utm_campaign=wa_contest/)
   await expect(page.locator('h1').first()).toBeVisible()
 })
+
+// The phones' bottom bar (call · Buy now · Order on WhatsApp) was removed (owner, 27 Nov 2026).
+test('no bottom call / Buy now / WhatsApp bar on the home page', async ({ page, tracking }) => {
+  void tracking
+  await page.goto('/')
+  await expect(page.locator('h1').first()).toBeVisible()
+  await expect(page.locator('.site-actionbar')).toHaveCount(0)
+  await expect(page.getByText('Order on WhatsApp', { exact: true })).toHaveCount(0)
+})

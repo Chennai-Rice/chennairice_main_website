@@ -14,7 +14,6 @@ import './styles/shop-bridge.css'
 
 import Navbar from './components/Navbar.jsx'
 import Footer from './components/Footer.jsx'
-import ActionBar from './components/ActionBar.jsx'
 import CookieBanner from './components/CookieBanner.jsx'
 
 import HomePage from './pages/HomePage.jsx'
@@ -325,7 +324,6 @@ export default function App() {
       </Routes>
       </Suspense>
       {!isTool && <Footer />}
-      {isStorefront && <ActionBar />}
       {isStorefront && <CookieBanner />}
       {/* After the page has loaded: the chat helper; Spin & Win (only while switched on in Warehouse → Settings);
           the contest popup (8 seconds into the visit, once a day); the expo popup (visitors from the expo QR code). */}

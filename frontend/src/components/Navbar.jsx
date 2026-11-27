@@ -62,7 +62,8 @@ export default function Navbar() {
         </nav>
 
         <div className="nav-actions">
-          {/* Click to call lives in the phones' bottom bar (ActionBar.jsx) and the footer, not here (owner, Nov 2026). */}
+          {/* Click to call is in the footer, not here (owner, Nov 2026). The phones' bottom bar (call · Buy now · Order on
+              WhatsApp) was removed on 27 Nov 2026 (owner). */}
           <Link
             className="nav-icon"
             to="/wishlist"
