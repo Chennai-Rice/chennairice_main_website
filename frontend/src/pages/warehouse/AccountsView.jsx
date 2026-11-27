@@ -186,7 +186,7 @@ export default function AccountsView({ say, onAuthError }) {
               </table>
             ) : <p className="wh-empty">No payments in this period.</p>}
             {s.paidWithoutInvoice > 0 && (
-              <p className="wh-small wh-acc-note">{s.paidWithoutInvoice} paid {s.paidWithoutInvoice === 1 ? 'order has' : 'orders have'} no invoice number yet — it is issued when the order is confirmed.</p>
+              <p className="wh-small wh-acc-note">{s.paidWithoutInvoice} paid {s.paidWithoutInvoice === 1 ? 'order has' : 'orders have'} no invoice number yet — it is issued within 10 minutes of payment.</p>
             )}
           </section>
           <section className="wh-panel">

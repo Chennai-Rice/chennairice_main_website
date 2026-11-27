@@ -10,6 +10,7 @@
 import { query } from '../db.js'
 import { runCloudChecks } from './cloud-checks.js'
 import { expireUnpaidOrders } from './checkout.js'
+import { issueMissingInvoices } from './operations.js'
 import { sendQueued } from './email.js'
 import { sendDailyDigest } from './digest.js'
 import { sendCrmLeads } from '../crm.js'
@@ -24,6 +25,8 @@ import { runWhatsAppAutomations } from '../wa/automations.js'
 
 export async function runJobs() {
   const expired = await expireUnpaidOrders()
+  // A GST invoice for any paid order still without one (normally issued at payment).
+  const invoices = await issueMissingInvoices({ query }).catch((err) => ({ error: err.message }))
   // The team's alerts go out as one summary a day, at 9:00 India time.
   const digest = await sendDailyDigest({ query })
   // Abandoned cart reminder emails (cart-recovery.js), queued just before the mail goes out.
@@ -67,5 +70,5 @@ export async function runJobs() {
   }
   // Cloud Centre: uptime of every site, alert emails, and at night one PageSpeed check (cloud-checks.js).
   const cloud = await runCloudChecks({ query })
-  return { expired, digest, cartReminders, paymentFailed, email, journeys, crm, whatsapp, waAutomations, metaCapi, leadForms, neodove, settlements, cloud }
+  return { expired, invoices, digest, cartReminders, paymentFailed, email, journeys, crm, whatsapp, waAutomations, metaCapi, leadForms, neodove, settlements, cloud }
 }

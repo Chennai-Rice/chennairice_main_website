@@ -23,6 +23,7 @@ import { ensureReferrer } from './referrals.js'
 import { pushCrmLead } from '../crm.js'
 import { cleanAttribution, cleanGoogleClick, classify } from './attribution.js'
 import { moveStock, releaseForOrder } from './stock.js'
+import { issueInvoice } from './operations.js'
 import { queueEmail, templates, trackUrl } from './email.js'
 import { queueOrderPlaced, sendWhatsAppMessages } from '../whatsapp.js'
 import { cleanMetaSignal, sendPurchaseToMeta } from './meta-capi.js'
@@ -462,6 +463,9 @@ async function markOrderPaidTx({ paymentRowId, outcome, actor }) {
         order.shipment_id || (await reserveId(db, 'shipment', newShipmentId, order.id))]
     )
     await recordOrderStatus(db, { orderId: order.id, from: order.status, to: 'placed', actor, reason: 'Paid via ' + payment.gateway })
+    // The GST invoice number is issued the moment the payment is confirmed (owner, 27 Nov 2026: a paid order
+    // waiting for dispatch had none, because it was only made at dispatch or when the order email went out).
+    await issueInvoice(db, updated)
 
     const { rows: items } = await db.query(
       `select i.*, p.image_url from order_items i

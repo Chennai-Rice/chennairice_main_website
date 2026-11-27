@@ -72,7 +72,7 @@ export async function accountsSummary(db, params) {
          from refunds where ${IN_PERIOD('created_at')}`,
       [from, to]
     ),
-    // Paid but no invoice number yet (it is issued when the order is confirmed).
+    // Paid but no invoice number yet (issued at payment; the 10-minute job catches up any that were missed).
     db.query(
       `select count(*)::int as n from orders o
         where o.payment_status in ('paid', 'partially_refunded') and o.status <> 'cancelled'

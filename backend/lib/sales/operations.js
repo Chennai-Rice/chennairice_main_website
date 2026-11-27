@@ -331,6 +331,26 @@ function shipmentInput(body) {
   return input
 }
 
+/**
+ * Catch-up (sales/jobs.js, every 10 minutes): a GST invoice for every paid order that still has none, e.g. one
+ * paid before invoices were issued at payment (27 Nov 2026). Cancelled orders are left out, as for the customer link.
+ */
+export async function issueMissingInvoices({ query: q = query } = {}) {
+  const { rows } = await q(
+    `select o.id from orders o
+      where o.payment_status in ('paid', 'partially_refunded') and o.status <> 'cancelled'
+        and not exists (select 1 from invoices i where i.order_id = o.id)
+      order by o.placed_at nulls last, o.created_at limit 50`)
+  let issued = 0
+  for (const { id } of rows) {
+    await tx(async (db) => {
+      const { rows: [order] } = await db.query('select * from orders where id = $1 for update', [id])
+      if (order) { await issueInvoice(db, order); issued++ }
+    })
+  }
+  return { issued }
+}
+
 /** Issue the GST invoice for an order (once; returns the existing one after). */
 export async function issueInvoice(db, order) {
   const { rows: [existing] } = await db.query('select * from invoices where order_id = $1', [order.id])

@@ -397,7 +397,9 @@ test('dispatch flow: confirm → pack → ship → deliver, with roles, stock, i
 
   const slip = await api('GET', `/api/admin/orders/${id}/packing-slip`, { token: tokens.dispatch })
   assert.match(slip.body, /Packing slip/)
-  assert.equal((await api('GET', `/api/admin/orders/${id}/invoice`, { token: tokens.sales })).status, 404)
+  // The GST invoice exists from payment (27 Nov 2026), before dispatch.
+  assert.equal((await api('GET', `/api/admin/orders/${id}/invoice`, { token: tokens.sales })).status, 200)
+  const { rows: [paidInvoice] } = await db.query('select invoice_number from invoices where order_id = $1', [id])
 
   const incomplete = await api('POST', `/api/admin/orders/${id}/ship`, { token: tokens.dispatch, body: { method: 'courier', carrierName: 'DTDC' } })
   assert.equal(incomplete.status, 400)
@@ -409,7 +411,9 @@ test('dispatch flow: confirm → pack → ship → deliver, with roles, stock, i
     body: { method: 'courier', carrierName: 'DTDC', trackingNumber: 'D123456789', expectedDelivery: '2026-10-09', batches: { [item.id]: batch.id } },
   })
   assert.equal(shipped.status, 200, JSON.stringify(shipped.body))
-  assert.match(shipped.body.invoice.invoice_number, /^CRI\/\d{4}-\d{2}\/000001$/)
+  // Dispatch keeps the invoice issued at payment: same number.
+  assert.match(shipped.body.invoice.invoice_number, /^CRI\/\d{4}-\d{2}\/\d{6}$/)
+  assert.equal(shipped.body.invoice.invoice_number, paidInvoice.invoice_number)
   assert.equal(shipped.body.order.status, 'shipped')
 
   const after = await stockOf('rudra')
