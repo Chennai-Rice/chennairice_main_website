@@ -69,7 +69,8 @@ function ymd(y, m, d) {
 function person(v) {
   const t = clean(v)
   if (!t || /^#|^(n\/?a|na|nil|-|none)$/i.test(t)) return 'Not assigned'
-  return t === t.toUpperCase() || t === t.toLowerCase() ? t.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()) : t
+  // One spelling per person: "Sailesh", "SAILESH" and "SAilesh" are the same person, so every name is Title Case.
+  return t.replace(/\s+/g, ' ').toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase())
 }
 
 /**
