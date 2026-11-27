@@ -153,7 +153,7 @@ test('hero video: phone gets the small centre cut, desktop the full film', async
   void tracking
   await page.goto('/')
   const video = page.locator('video.hero-video')
-  await expect(video).toHaveAttribute('src', info.project.name === 'phone' ? /hero-phone-v1\.mp4$/ : /hero-v3\.mp4$/, { timeout: 10000 })
+  await expect(video).toHaveAttribute('src', info.project.name === 'phone' ? /hero-phone-v2\.mp4$/ : /hero-v4\.mp4$/, { timeout: 10000 })
 })
 
 // Bestsellers (26 Nov 2026): phones get a swipe carousel (no pinned scroll animation), larger screens keep the pin.

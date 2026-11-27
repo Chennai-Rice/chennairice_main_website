@@ -20,17 +20,14 @@ export const ASSETS = {
   // Menu bar (Nov 2026): the round Chennai Rice mark with a cream edge, so it reads on the maroon bar.
   logo: '/assets/logo-nav-v4.webp', // 19 KB instead of the 143 KB PNG (25 Nov 2026)
   logoOnLight: '/assets/logo-full-v3.webp',
-  /* Re-encoded from the original 94.8 MB master (kept in git history as
-     assets/hero.mp4): letterbox bars cropped off (1920x918 picture from
-     y=80), scaled to 1280 wide, H.264 CRF 27, no audio track — the hero
-     always plays muted — and faststart so it begins playing before it has
-     fully downloaded. 6.7 MB, same 44.9 s length. */
-  // 2.9 MB instead of 6.9 MB, same 1280x612 picture and 44.9 s (re-encoded 26 Nov 2026, SEO audit error 3);
-  // it still starts only after the page has loaded (Hero.jsx).
-  heroVideo: '/assets/hero-v3.mp4',
-  // Phones held upright see only the middle of the wide film: this is that middle part at full height (420x612,
-  // 1.5 MB instead of 6.9 MB), re-encoded 26 Nov 2026 with Chrome's recorder (H.264 MP4).
-  heroVideoPhone: '/assets/hero-phone-v1.mp4',
+  /* High quality (owner, 27 Nov 2026): re-encoded from the original 1920x1080 master (in git history as
+     assets/hero.mp4), its black bars cropped off (79 px top, 81 px bottom): the full 1920x918 picture, H.264 High
+     profile at 3.5 Mbit/s, 14.6 MB, 44.9 s, no sound. It still starts only after the page has loaded and never on
+     data-saver or 2G (Hero.jsx). */
+  heroVideo: '/assets/hero-v4.mp4',
+  // Phones held upright: the middle of the same picture at its full 918 px height (600x918, 3.4 MB, High profile),
+  // sharper than the earlier 420x612 cut.
+  heroVideoPhone: '/assets/hero-phone-v2.mp4',
   wheatLeft: '/assets/decor/wheat-left-v2.webp', // 90 KB (was 243 KB, 25 Nov 2026)
   wheatRight: '/assets/decor/rice-stalks-v2.webp', // Golden Rice Stalks (Nov 2026)
   riceBowl: '/assets/decor/rice-bowl.webp',
