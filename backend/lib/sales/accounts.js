@@ -13,13 +13,19 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/
 /** { from, to } as YYYY-MM-DD (India time). */
 // Accounts → Invoices "Offer" filter: spin, referral (a friend's code or the referrer's reward), cart, manual,
 // any (an offer of any kind) or none.
+// An invoice the customer has not received: no order email sent and no WhatsApp invoice sent (owner, 27 Nov 2026).
+// Issued over 30 minutes ago, so the normal few minutes of sending is not counted.
+const NOT_SENT = `(v.issued_at < now() - interval '30 minutes'
+  and not exists (select 1 from email_outbox e where e.order_id = o.id and e.template = 'order_placed' and e.status = 'sent')
+  and not exists (select 1 from wa_queue w where w.ref = 'invoice:' || o.id::text and w.status = 'sent'))`
 const OFFER_FILTER = `($4 = ''
+  or ($4 = 'notsent' and ${NOT_SENT})
   or ($4 = 'any' and (o.discount_code_id is not null or o.gift_note is not null or o.discount_paise > 0))
   or ($4 = 'none' and o.discount_code_id is null and o.gift_note is null and coalesce(o.discount_paise, 0) = 0)
   or ($4 = 'spin' and (dc.source = 'spin' or (dc.source is null and o.gift_note is not null)))
   or ($4 = 'referral' and dc.source in ('referral', 'reward'))
   or ($4 in ('cart', 'manual') and dc.source = $4))`
-const offerParam = (params) => (['spin', 'referral', 'cart', 'manual', 'any', 'none'].includes(str(params?.offer)) ? str(params.offer) : '')
+const offerParam = (params) => (['spin', 'referral', 'cart', 'manual', 'any', 'none', 'notsent'].includes(str(params?.offer)) ? str(params.offer) : '')
 
 /** Offers used, per kind (Spin & Win, Refer a friend…) and, inside each, per what was given (₹150 OFF, Free delivery…). */
 function offerBreakdown(rows) {
@@ -54,7 +60,7 @@ const rupees = (paise) => Math.round(Number(paise || 0)) / 100
 
 export async function accountsSummary(db, params) {
   const { from, to } = period(params)
-  const [inv, pays, refunds, pending, offers] = await Promise.all([
+  const [inv, pays, refunds, pending, offers, notSent] = await Promise.all([
     db.query(
       `select count(*)::int as invoices, coalesce(sum(total_paise), 0)::bigint as total
          from invoices where ${IN_PERIOD('issued_at')}`,
@@ -87,6 +93,13 @@ export async function accountsSummary(db, params) {
         where ${IN_PERIOD('v.issued_at')} and (o.discount_code_id is not null or o.gift_note is not null or o.discount_paise > 0)`,
       [from, to]
     ),
+    // Invoices of the period the customer has not received (no email sent, no WhatsApp sent).
+    db.query(
+      `select count(*)::int as n, count(*) filter (where coalesce(o.contact_email, '') = '')::int as no_email
+         from invoices v join orders o on o.id = v.order_id
+        where ${IN_PERIOD('v.issued_at')} and ${NOT_SENT}`,
+      [from, to]
+    ),
   ])
   const i = inv.rows[0]
   const received = pays.rows.reduce((t, p) => t + Number(p.amount), 0)
@@ -100,6 +113,8 @@ export async function accountsSummary(db, params) {
     openRefunds: refunds.rows[0].open,
     net: rupees(received - Number(refunds.rows[0].amount)),
     paidWithoutInvoice: pending.rows[0].n,
+    invoicesNotSent: notSent.rows[0].n,
+    invoicesNotSentNoEmail: notSent.rows[0].no_email,
     byOffer: offerBreakdown(offers.rows),
     byMethod: pays.rows.map((p) => ({ method: PAYMENT_METHOD[p.method] || p.method, payments: p.payments, amount: rupees(p.amount) })),
   }

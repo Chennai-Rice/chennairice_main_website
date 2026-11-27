@@ -187,6 +187,13 @@ export default function AccountsView({ say, onAuthError }) {
             <span className="wh-kpi-note">{s ? `${s.refunds} refunds${s.openRefunds ? ` · ${s.openRefunds} pending` : ''} · net ${rupees(s.net)}` : ''}</span></span></div>
       </section>
 
+      {s && s.invoicesNotSent > 0 && (
+        <div className="wh-acc-alert" role="alert" style={{ margin: '0 0 16px', padding: '12px 16px', borderRadius: 12, background: '#fdecea', border: '1px solid #f1b8b3', color: '#8b1a2b', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+          <strong>⚠ {s.invoicesNotSent} {s.invoicesNotSent === 1 ? 'invoice has' : 'invoices have'} not reached the customer</strong>
+          <span className="wh-small">neither emailed nor sent on WhatsApp{s.invoicesNotSentNoEmail ? ` · ${s.invoicesNotSentNoEmail} without an email address` : ''}</span>
+          <button type="button" className="wh-btn wh-btn--outline" onClick={() => { setTab('invoices'); setOffer('notsent') }}>Show them</button>
+        </div>
+      )}
       {s && (
         <div className="wh-acc-split">
           <section className="wh-panel">
@@ -251,6 +258,7 @@ export default function AccountsView({ say, onAuthError }) {
                 <option value="manual">Other discount codes</option>
                 <option value="any">Any offer</option>
                 <option value="none">No offer</option>
+                <option value="notsent">⚠ Invoice not sent to the customer</option>
               </select></span></label>
           )}
           {tab === 'payments' && (
