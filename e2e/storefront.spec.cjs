@@ -338,3 +338,19 @@ test('NeoDove dashboard: Performance login sees Sales Daddy and our database inp
   const wide = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
   expect(wide, info.project.name).toBeLessThanOrEqual(1)
 })
+
+// Google Ads "Contact" goal (27 Nov 2026): a sent contact form pushes contact_form_submit for GTM (nothing personal).
+test('contact form: a sent enquiry pushes contact_form_submit for Google Ads, with no personal data', async ({ page, tracking }) => {
+  void tracking
+  await page.goto('/contact')
+  await page.getByLabel('Name').fill('Test Person')
+  await page.getByLabel('Email').fill('test@example.com')
+  await page.getByLabel('Phone').fill('9876543210')
+  await page.getByLabel('Enquiry').fill('Test enquiry')
+  await page.getByRole('button', { name: 'Send Enquiry' }).click()
+  await expect.poll(() => page.evaluate(() => (window.dataLayer || []).filter((x) => x && x.event === 'contact_form_submit').length)).toBe(1)
+  const pushed = await page.evaluate(() => JSON.stringify((window.dataLayer || []).find((x) => x && x.event === 'contact_form_submit')))
+  expect(pushed).not.toContain('9876543210')
+  expect(pushed).not.toContain('test@example.com')
+  expect(pushed).not.toContain('Test Person')
+})

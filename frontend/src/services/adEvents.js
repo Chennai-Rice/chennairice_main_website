@@ -6,6 +6,7 @@
 //   phone_call_click   a tap on a tel: link                                         → Call click
 //   contest_entry      the Super Slogan Contest sign-up, after the server accepted it → Contest entry
 //   generate_lead      the bulk / distributor enquiry form, after the server accepted it → Distributor lead
+//   contact_form_submit the Contact page form, after the server accepted it (27 Nov 2026) → Contact (needs its GTM tag)
 
 export const COMPANY_WHATSAPP = '917066646667'
 

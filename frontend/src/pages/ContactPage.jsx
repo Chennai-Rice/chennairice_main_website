@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { trackMetaEvent } from '../services/metaPixel.js'
+import { pushAdEvent } from '../services/adEvents.js'
 import Ornament from './../components/Ornament.jsx'
 import { FOOTER } from '../data/content.js'
 import './page.css'
@@ -81,6 +82,9 @@ export default function ContactPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not send your enquiry.')
       trackMetaEvent('Lead', { content_name: 'Contact enquiry' })
+      // Google Ads "Contact" goal (27 Nov 2026): GTM listens for this and fires the Contact conversion tag.
+      // Nothing personal is pushed.
+      pushAdEvent('contact_form_submit', { form_name: 'contact' })
       setSent(true)
       setForm(EMPTY)
     } catch (err) {
