@@ -276,7 +276,7 @@ export default function SalesView({ sales = [], calls = [], filters }) {
       <div className="mis-metrics sv-kpis">
         <Stat tone="green" label="Total leads" value={num(rows.length)} note={`${num(called.length)} called · ${num(neverCalled.length)} never called`} />
         <Stat tone="blue" label="Total orders" value={num(sold.length)} note="Rows with a bill value" />
-        <Stat tone="maroon" label="Total revenue" value={inrShort(bill)} note={`Average bill ${sold.length ? inr(bill / sold.length) : '–'}`} />
+        <Stat tone="maroon" label="Total order value" value={inrShort(bill)} note={`Average bill ${sold.length ? inr(bill / sold.length) : '–'}`} />
         <Stat tone="purple" label="Lead to order" value={`${pc(sold.length, rows.length)}%`} note={`${num(sold.length)} of ${num(rows.length)} leads`} />
         <Stat tone="teal" label="Calls made" value={num(periodCalls.length)} note={`${num(connected)} connected · ${num(rnr)} no response`} />
       </div>
@@ -289,7 +289,7 @@ export default function SalesView({ sales = [], calls = [], filters }) {
         <section className="mis-panel">
           <h2>Orders split</h2>
           <SDonut center={num(sold.length)} sub="Orders" parts={byType.map((t) => ({ label: t.label, value: t.orders, color: t.color }))} />
-          <p className="mis-muted">Revenue: B2C {inr(byType[1].bill)} · B2B {inr(byType[0].bill)}</p>
+          <p className="mis-muted">Order value: B2C {inr(byType[1].bill)} · B2B {inr(byType[0].bill)}</p>
         </section>
       </div>
 
@@ -334,7 +334,7 @@ export default function SalesView({ sales = [], calls = [], filters }) {
       <section className="mis-panel">
         <h2>Key insights</h2>
         <div className="sv-insights">
-          <div><strong>{inrShort(bill)}</strong><small>Revenue in this selection</small></div>
+          <div><strong>{inrShort(bill)}</strong><small>Order value in this selection</small></div>
           <div><strong>{b2bShare}%</strong><small>Orders from B2B</small></div>
           <div><strong>{topSource ? topSource.label : '–'}</strong><small>{topSource ? `Top source (${pc(topSource.leads, rows.length)}% of leads)` : 'Top source'}</small></div>
           <div><strong>{topTele ? topTele.label : '–'}</strong><small>{topTele ? `Top telesales (${inr(topTele.bill)})` : 'Top telesales'}</small></div>
