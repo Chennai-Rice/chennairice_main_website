@@ -11,8 +11,10 @@ import { keptGoogleClick, GOOGLE_CLICK_PARAMS } from './attribution.js'
 
 export const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-SWQD75DWP6'
 
-// Google Ads: the account's tag (AW-…), configured on the same gtag.js. Purchases reach Google Ads through GA4.
+// Google Ads: the account's tag (AW-…), configured on the same gtag.js.
 export const GOOGLE_ADS_ID = import.meta.env.VITE_GOOGLE_ADS_ID || ''
+// The "Purchase" conversion action (tag ID / label), sent with each paid order (sendPurchase).
+export const GOOGLE_ADS_PURCHASE = 'AW-18402321504/zh16COf-q5sdEODI9MZE'
 
 let loaded = false
 
@@ -158,9 +160,20 @@ function sendPurchase({ transactionId, value, shipping, coupon, items }) {
       quantity: Number(i.qty) || 1,
     })),
   })
-  // No direct Google Ads purchase conversion any more (Google Ads manager, 19 Nov 2026): Google Ads counts the
-  // sale through the GA4-imported "Purchase" above; the old website-tag "Purchase" action was removed, and a
-  // second one would count each sale twice.
+  // Google Ads "Purchase" conversion (27 Nov 2026): the account's Primary "Purchase" action (used by 11 of 13
+  // campaigns) is a website-tag action and counts only this event with its label; the GA4 purchase above does not
+  // reach it, so it showed 0. Same value and order number as the purchase (Google de-duplicates on the
+  // transaction id), sent once per order by trackGooglePurchase's guard, after the hashed user_data
+  // (enhanced conversions). Not also in GTM, and the GA4-imported purchase action must stay Secondary in Google
+  // Ads, or each sale would be counted twice.
+  if (GOOGLE_ADS_ID) {
+    window.gtag('event', 'conversion', {
+      send_to: GOOGLE_ADS_PURCHASE,
+      value: total,
+      currency: 'INR',
+      transaction_id: transactionId,
+    })
+  }
   return true
 }
 
