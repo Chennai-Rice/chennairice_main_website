@@ -39,6 +39,8 @@ export default function Hero() {
   // arrive first and the page is usable sooner), and never on a data-saver or very slow connection,
   // where the warm gradient behind the headline stays.
   const [videoSrc, setVideoSrc] = useState(null)
+  // Which film was chosen (videoSrc can be a blob: address, see below).
+  const [film, setFilm] = useState(null)
   const videoRef = useRef(null)
   // Shown only once the browser says it can play to the end without stopping ('canplaythrough'); until then the
   // warm gradient stays, so nobody sees a frozen frame.
@@ -47,12 +49,13 @@ export default function Hero() {
   const stalls = useRef([])
   const onWaiting = () => {
     const v = videoRef.current
-    if (!v || !ready || videoSrc !== ASSETS.heroVideoHD) return
+    if (!v || !ready || film !== ASSETS.heroVideoHD) return
     const now = Date.now()
     stalls.current = [...stalls.current.filter((t) => now - t < 20000), now]
     if (stalls.current.length >= 2) {
       const at = v.currentTime
       stalls.current = []
+      setFilm(ASSETS.heroVideo)
       setVideoSrc(ASSETS.heroVideo)
       v.addEventListener('loadedmetadata', () => { try { v.currentTime = at } catch { /* starts from the top */ } }, { once: true })
     }
@@ -62,10 +65,29 @@ export default function Hero() {
     const net = navigator.connection
     if (net?.saveData || /(^|-)2g$/.test(net?.effectiveType || '')) return undefined
     let timer
-    const start = () => { timer = window.setTimeout(() => setVideoSrc(pickFilm()), 500) }
+    let blobUrl
+    const ctl = new AbortController()
+    /* Still buffering on phones (owner, 27 Nov 2026): the phone film (3.4 MB) and the lighter film (7.6 MB) are
+       downloaded whole first and played from memory, so they never stop mid-way and every loop is instant; the
+       warm gradient shows meanwhile. Given up after 30 s (the gradient stays). The full-HD film (14.6 MB, fast
+       connections only) streams, with the switch to the lighter film if it stalls. */
+    const load = (f) => {
+      setFilm(f)
+      if (f === ASSETS.heroVideoHD || typeof URL.createObjectURL !== 'function') return setVideoSrc(f)
+      const giveUp = window.setTimeout(() => ctl.abort(), 30000)
+      fetch(f, { signal: ctl.signal })
+        .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('film ' + r.status))))
+        .then((blob) => { blobUrl = URL.createObjectURL(blob); setVideoSrc(blobUrl) })
+        .catch(() => { /* no film: the gradient stays */ })
+        .finally(() => window.clearTimeout(giveUp))
+    }
+    const start = () => { timer = window.setTimeout(() => load(pickFilm()), 500) }
     if (document.readyState === 'complete') start()
     else window.addEventListener('load', start, { once: true })
-    return () => { window.clearTimeout(timer); window.removeEventListener('load', start) }
+    return () => {
+      window.clearTimeout(timer); window.removeEventListener('load', start); ctl.abort()
+      if (blobUrl) URL.revokeObjectURL(blobUrl)
+    }
   }, [])
 
   // While most of the hero is on screen, the floating Soru Kutty and Spin & Win buttons step aside, so nothing
@@ -117,6 +139,7 @@ export default function Hero() {
           playsInline
           preload="auto"
           src={videoSrc || undefined}
+          data-film={film || undefined}
           onError={() => { if (videoSrc) setVideoFailed(true) }}
           onCanPlayThrough={() => setReady(true)}
           onWaiting={onWaiting}
