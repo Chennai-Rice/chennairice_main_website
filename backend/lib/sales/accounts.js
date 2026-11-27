@@ -17,7 +17,8 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/
 // Issued over 30 minutes ago, so the normal few minutes of sending is not counted.
 const NOT_SENT = `(v.issued_at < now() - interval '30 minutes'
   and not exists (select 1 from email_outbox e where e.order_id = o.id and e.template = 'order_placed' and e.status = 'sent')
-  and not exists (select 1 from wa_queue w where w.ref = 'invoice:' || o.id::text and w.status = 'sent'))`
+  and not exists (select 1 from wa_queue w where w.ref = 'invoice:' || o.id::text and w.status = 'sent')
+  and not exists (select 1 from whatsapp_outbox x where x.order_id = o.id and x.via = 'cloud:order_thank_you' and x.status = 'sent'))`
 const OFFER_FILTER = `($4 = ''
   or ($4 = 'notsent' and ${NOT_SENT})
   or ($4 = 'any' and (o.discount_code_id is not null or o.gift_note is not null or o.discount_paise > 0))
@@ -133,7 +134,8 @@ export async function invoiceRegister(db, params) {
             p.method, p.gateway, p.gateway_payment_id, p.paid_at, p.settlement_id, p.bank_utr, p.settled_at,
             coalesce(o.contact_email, '') <> '' as has_email,
             (select e.status from email_outbox e where e.order_id = o.id and e.template = 'order_placed' order by e.created_at desc limit 1) as email_status,
-            (select w.status from wa_queue w where w.ref = 'invoice:' || o.id::text) as whatsapp_status,
+            coalesce((select 'sent' from whatsapp_outbox x where x.order_id = o.id and x.via = 'cloud:order_thank_you' and x.status = 'sent' limit 1),
+                     (select w.status from wa_queue w where w.ref = 'invoice:' || o.id::text)) as whatsapp_status,
             (select coalesce(sum(r.amount_paise), 0) from refunds r where r.order_id = o.id and r.status in ('processed', 'manual'))::bigint as refunded_paise,
             (select string_agg(i.product_name || ' ' || trim(to_char(i.pack_kg, 'FM999')) || ' kg × ' || i.quantity, ', ')
                from order_items i where i.order_id = o.id) as items

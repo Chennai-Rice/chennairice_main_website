@@ -148,13 +148,23 @@ const link = (text, sample) => ({ type: 'URL', text, url: LINK_BASE, sample })
 const copy = (sample) => ({ type: 'COPY_CODE', text: 'Copy code', sample })
 const STOP = 'Reply STOP to opt out'
 const SIGN = 'Chennai Rice Industries'
-const draft = (name, category, purpose, text, samples, { footer = category === 'MARKETING' ? STOP : SIGN, buttons = [] } = {}) =>
-  ({ name, category, purpose, kind: buttons.some((b) => b.type === 'COPY_CODE') ? 'coupon' : 'standard', header: { format: 'NONE' }, body: { text, samples }, footer, buttons })
+const draft = (name, category, purpose, text, samples, { footer = category === 'MARKETING' ? STOP : SIGN, buttons = [], language = 'en' } = {}) =>
+  ({ name, language, category, purpose, kind: buttons.some((b) => b.type === 'COPY_CODE') ? 'coupon' : 'standard', header: { format: 'NONE' }, body: { text, samples }, footer, buttons })
 
 export const STARTER_TEMPLATES = [
   draft('order_placed', 'UTILITY', 'Orders: sent when an order is paid',
     'Hi {{1}}, thank you for your order! 🍚\n\nYour order *#{{2}}* has been placed successfully. You can track it here: {{3}}\n\nQuestions? Just reply to this message.',
     ['Ravi', 'CR10482', 'https://chennairiceindustries.com/track-order']),
+  // The thank-you after every paid order (owner, 27 Nov 2026), English and Tamil: replaces order_placed once approved.
+  // Buttons: the order's tracking page and its GST invoice (/w/track-… and /w/invoice-…, ShortLink.jsx).
+  draft('order_thank_you', 'UTILITY', 'Orders: thank you, sent when an order is paid (Track Order + View Invoice)',
+    'Hi {{1}}, thank you for ordering from Chennai Rice! 🙏🍚\n\nYour order *#{{2}}* for *{{3}}* has been received and paid (*{{4}}*).\n\nWe are packing it at our Erode mill and will send you the courier tracking details as soon as it is dispatched.\n\nQuestions? Just reply to this message or call +91 70666 46667.',
+    ['Arunkumar', 'CR-20261127-4MK9C', 'Kitchidi Ponni Rice 5 kg × 1', '₹720.20'],
+    { buttons: [link('Track Order', 'track-CR-20261127-4MK9C'), link('View Invoice', 'invoice-CR-20261127-4MK9C.6f1c2e8a-1b2c-4d3e-8f9a-0b1c2d3e4f5a')] }),
+  draft('order_thank_you', 'UTILITY', 'Orders: thank you in Tamil, for customers who chose தமிழ் in the bot',
+    'வணக்கம் {{1}}, சென்னை ரைஸில் ஆர்டர் செய்ததற்கு நன்றி! 🙏🍚\n\nஉங்கள் ஆர்டர் *#{{2}}* (*{{3}}*) பெறப்பட்டது, பணம் செலுத்தப்பட்டது (*{{4}}*).\n\nஎங்கள் ஈரோடு ஆலையில் பேக் செய்கிறோம்; அனுப்பியதும் கூரியர் டிராக்கிங் விவரங்களை அனுப்புவோம்.\n\nசந்தேகங்களுக்கு இந்த மெசேஜுக்கு பதில் அளிக்கவும் அல்லது +91 70666 46667-ஐ அழைக்கவும்.',
+    ['அருண்குமார்', 'CR-20261127-4MK9C', 'Kitchidi Ponni Rice 5 kg × 1', '₹720.20'],
+    { language: 'ta', footer: 'சென்னை ரைஸ் இண்டஸ்ட்ரீஸ்', buttons: [link('ஆர்டர் நிலை', 'track-CR-20261127-4MK9C'), link('இன்வாய்ஸ் பார்க்க', 'invoice-CR-20261127-4MK9C.6f1c2e8a-1b2c-4d3e-8f9a-0b1c2d3e4f5a')] }),
   // The GST invoice for an order without an email address (27 Nov 2026): a button to the customer's invoice page.
   draft('order_invoice', 'UTILITY', 'Orders: the GST invoice, when the order has no email address',
     'Hi {{1}}, thank you for your order *#{{2}}* with Chennai Rice. 🍚\n\nYour GST invoice is ready. Tap the button below to view or download it.',
@@ -206,24 +216,24 @@ async function seedOnce(query) {
   if (!rowCount) return addLaterStarters(query)
   for (const t of STARTER_TEMPLATES) {
     await query(
-      `insert into wa_templates (name, language, category, kind, components, purpose) values ($1, 'en', $2, $3, $4, $5)
+      `insert into wa_templates (name, language, category, kind, components, purpose) values ($1, $6, $2, $3, $4, $5)
        on conflict (name, language) do nothing`,
-      [t.name, t.category, t.kind, JSON.stringify(toComponents(t)), t.purpose])
+      [t.name, t.category, t.kind, JSON.stringify(toComponents(t)), t.purpose, t.language || 'en'])
   }
 }
 
 // Ready-made templates added after the first seeding (once each, so a deleted draft stays deleted).
-const LATER_STARTERS = ['order_invoice']
+const LATER_STARTERS = [['order_invoice', 'en'], ['order_thank_you', 'en'], ['order_thank_you', 'ta']]
 async function addLaterStarters(query) {
-  for (const name of LATER_STARTERS) {
+  for (const [name, language] of LATER_STARTERS) {
     const { rowCount } = await query(
-      `insert into company_settings (key, value) values ($1, 'true') on conflict (key) do nothing`, ['wa_template_added_' + name])
+      `insert into company_settings (key, value) values ($1, 'true') on conflict (key) do nothing`, ['wa_template_added_' + name + (language === 'en' ? '' : '_' + language)])
     if (!rowCount) continue
-    const t = STARTER_TEMPLATES.find((x) => x.name === name)
+    const t = STARTER_TEMPLATES.find((x) => x.name === name && (x.language || 'en') === language)
     await query(
-      `insert into wa_templates (name, language, category, kind, components, purpose) values ($1, 'en', $2, $3, $4, $5)
+      `insert into wa_templates (name, language, category, kind, components, purpose) values ($1, $6, $2, $3, $4, $5)
        on conflict (name, language) do nothing`,
-      [t.name, t.category, t.kind, JSON.stringify(toComponents(t)), t.purpose])
+      [t.name, t.category, t.kind, JSON.stringify(toComponents(t)), t.purpose, language])
   }
 }
 

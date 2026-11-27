@@ -16,8 +16,8 @@ const good = () => ({
   buttons: [{ type: 'COPY_CODE', sample: 'SPINA1' }, { type: 'URL', text: 'Shop now', url: 'https://chennairiceindustries.com/w/{{1}}', sample: 'spin-A1' }],
 })
 
-test('all 15 ready-made templates pass Meta\'s rules', () => {
-  assert.equal(STARTER_TEMPLATES.length, 15)
+test('all 17 ready-made templates pass Meta\'s rules', () => {
+  assert.equal(STARTER_TEMPLATES.length, 17)
   for (const t of STARTER_TEMPLATES) assert.deepEqual(checkModel(t), [], t.name)
 })
 
@@ -743,4 +743,19 @@ test('Super Slogan Contest option: text and a Join Contest button to the contest
   const ta = await render(bot, decide(botFor(bot, 'ta'), { replyId: 'contest' }), { lang: 'ta' }, deps)
   assert.equal(ta.messages[0].interactive.action.parameters.display_text, 'போட்டியில் சேர')
   assert.equal(decide(bot, { text: 'slogan contest' }).item.id, 'contest')
+})
+
+test('order_thank_you: English and Tamil drafts pass Meta rules; the message has the order, items, amount, Track Order and View Invoice', async () => {
+  const { thankYouMessage } = await import('../lib/whatsapp.js')
+  const ty = STARTER_TEMPLATES.filter((t) => t.name === 'order_thank_you')
+  assert.deepEqual(ty.map((t) => t.language).sort(), ['en', 'ta'])
+  for (const t of ty) { assert.deepEqual(checkModel(t), [], t.language); assert.equal(t.buttons.length, 2) }
+  const order = { id: '6f1c2e8a-1b2c-4d3e-8f9a-0b1c2d3e4f5a', order_number: 'CR-20261127-4MK9C', contact_name: 'Test Buyer', total_paise: 72020 }
+  const m = thankYouMessage('919876543210', order, ['Kitchidi Ponni Rice 5 kg × 1', 'Special Idly Rice 10 kg × 1'], 'ta')
+  assert.equal(m.template.name, 'order_thank_you')
+  assert.equal(m.template.language.code, 'ta')
+  const [body, track, invoice] = m.template.components
+  assert.deepEqual(body.parameters.map((p) => p.text), ['Test', 'CR-20261127-4MK9C', 'Kitchidi Ponni Rice 5 kg × 1 + 1 more', '₹720.20'])
+  assert.equal(track.parameters[0].text, 'track-CR-20261127-4MK9C')
+  assert.equal(invoice.parameters[0].text, 'invoice-CR-20261127-4MK9C.6f1c2e8a-1b2c-4d3e-8f9a-0b1c2d3e4f5a')
 })

@@ -207,7 +207,8 @@ function finders(cfg, settings) {
         `select o.id, o.order_number, o.contact_name, ${last10sql('o.contact_phone')} as phone from orders o
           where o.payment_status in ('paid', 'partially_refunded') and o.status <> 'cancelled'
             and coalesce(o.contact_email, '') = '' and o.placed_at > now() - interval '${LAUNCH_WINDOW_DAYS} days'
-            and exists (select 1 from invoices v where v.order_id = o.id)`)
+            and exists (select 1 from invoices v where v.order_id = o.id)
+            and not exists (select 1 from whatsapp_outbox x where x.order_id = o.id and x.via = 'cloud:order_thank_you' and x.status = 'sent')`)
       return rows.map((r) => ({ phone: r.phone, ref: `invoice:${r.id}`, vals: { body: [first(r.contact_name), r.order_number], buttons: { 0: `invoice-${r.order_number}.${r.id}` } } }))
     },
     async review(q) {
