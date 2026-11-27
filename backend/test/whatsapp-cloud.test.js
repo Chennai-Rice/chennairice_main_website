@@ -125,8 +125,8 @@ test('bot: hi gets the welcome menu as a list with every item', async () => {
   assert.match(m.interactive.body.text, /Vanakkam Ravi!/)
   const rows = m.interactive.action.sections[0].rows
   assert.equal(rows.length, DEFAULT_BOT.items.length + 1) // + Change Language
-  // The 8 options of the content PDF, in order: Change Language is 07, Bulk Order 08.
-  assert.deepEqual(rows.map((r) => r.id), ['shop', 'prices', 'track', 'offers', 'delivery', 'human', 'lang', 'bulk'])
+  // The 8 options of the content PDF, in order (Change Language 07, Bulk Order 08), then the Super Slogan Contest.
+  assert.deepEqual(rows.map((r) => r.id), ['shop', 'prices', 'track', 'offers', 'delivery', 'human', 'lang', 'bulk', 'contest'])
   assert.ok(m.interactive.action.sections[0].rows.every((row) => row.title.length <= 24))
 })
 
@@ -720,7 +720,7 @@ test('8-option content (owner PDF, 26 Nov 2026): texts, buttons, Change Language
   // Settings saved before this content take the new 8-option menu (and keep an item added in the dashboard).
   const saved = cleanBot({ ...DEFAULT_BOT, contentVersion: 1, items: [{ id: 'shop', label: '🛒 Order rice', action: 'reply', reply: 'old' }, { id: 'festival', label: '🪔 Festival offer', action: 'reply', reply: 'x' }] })
   assert.equal(saved.contentVersion, CONTENT_VERSION)
-  assert.deepEqual(saved.items.map((i) => i.id), ['shop', 'prices', 'track', 'offers', 'delivery', 'human', 'bulk', 'festival'])
+  assert.deepEqual(saved.items.map((i) => i.id), ['shop', 'prices', 'track', 'offers', 'delivery', 'human', 'bulk', 'contest', 'festival'])
   assert.equal(saved.items[0].label, '🛒 Buy Rice')
 })
 
@@ -734,4 +734,13 @@ test('invoice on WhatsApp: a paid order without an email gets the order_invoice 
   assert.equal(t.category, 'UTILITY')
   assert.deepEqual(checkModel(t), [])
   assert.match(t.buttons[0].sample, /^invoice-CR-\d{8}-[A-Z0-9]+\.[0-9a-f-]{36}$/)
+})
+
+test('Super Slogan Contest option: text and a Join Contest button to the contest page, English and Tamil', async () => {
+  const en = await render(bot, decide(bot, { replyId: 'contest' }), {}, deps)
+  assert.match(says(en.messages[0]), /^Take part in the Chennai Rice Super Slogan Contest 2026!/)
+  assert.deepEqual(en.messages[0].interactive.action.parameters, { display_text: 'Join Contest', url: 'https://chennairiceindustries.com/w/contest-bot' })
+  const ta = await render(bot, decide(botFor(bot, 'ta'), { replyId: 'contest' }), { lang: 'ta' }, deps)
+  assert.equal(ta.messages[0].interactive.action.parameters.display_text, 'போட்டியில் சேர')
+  assert.equal(decide(bot, { text: 'slogan contest' }).item.id, 'contest')
 })

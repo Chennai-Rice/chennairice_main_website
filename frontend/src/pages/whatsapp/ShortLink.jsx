@@ -16,6 +16,7 @@ const ROUTES = [
   ['cart-', '/cart', 'wa_cart'],
   ['review-', '/review', 'wa_review'],
   ['track-', '/track-order', 'wa_order'],
+  ['contest-', '/contest', 'wa_contest'],
 ]
 
 export function shortLinkTarget(slug) {

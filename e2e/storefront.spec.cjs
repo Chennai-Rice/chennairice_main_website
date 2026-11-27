@@ -244,3 +244,10 @@ test('WhatsApp invoice link opens the customer invoice page', async ({ page, tra
   const req = await asked
   expect(new URL(req.url()).searchParams.get('n')).toBe('CR-20261127-4MK9C')
 })
+
+test('WhatsApp Join Contest link opens the contest page, credited to WhatsApp', async ({ page, tracking }) => {
+  void tracking
+  await page.goto('/w/contest-bot')
+  await expect(page).toHaveURL(/\/contest\?utm_source=whatsapp&utm_medium=message&utm_campaign=wa_contest/)
+  await expect(page.locator('h1').first()).toBeVisible()
+})

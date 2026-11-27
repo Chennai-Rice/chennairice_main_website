@@ -50,7 +50,7 @@ const HUMAN_REPLY = 'Thank you! 🙏 Our team will get back to you here soon.\n\
 // The menu, word for word from "WhatsApp chatbot content – English & Tamil, eight menu options" (owner, 26 Nov 2026).
 // Each option: its text, then a button (a link to the website, or a reply button for the next step).
 // Bump CONTENT_VERSION when the default texts change: settings saved before then take the new menu (cleanBot).
-export const CONTENT_VERSION = 2
+export const CONTENT_VERSION = 3 // 3: Super Slogan Contest added (27 Nov 2026)
 const TALK_REPLY = "Need help? We're here for you! Share your questions with us. Our customer support team will assist you shortly.\n+91 70666 46667"
 const TALK_REPLY_TA = 'உங்களுக்கு ஏதேனும் உதவி வேண்டுமா? உங்கள் கேள்விகளை எங்களுடன் பகிர்ந்துகொள்ளுங்கள். எங்கள் வாடிக்கையாளர் சேவைக் குழு விரைவில் உங்களுக்கு உதவும்.\n+91 70666 46667'
 
@@ -84,6 +84,10 @@ export const DEFAULT_BOT = {
     { id: 'bulk', label: '🏢 Bulk Order', description: 'Hotels, shops, caterers, traders', keywords: ['bulk', 'wholesale', 'bulk order', 'dealer', 'distributor', 'hotel', 'catering'], action: 'bulk',
       reply: 'Looking to purchase rice in bulk for your business? We supply rice to hotels, restaurants, caterers, retailers and wholesalers. Share your requirements, and our sales team will assist you with pricing and order details.',
       button: 'Bulk Enquiry' },
+    // The Super Slogan Contest (owner, 27 Nov 2026): how to take part, as on the contest page, and a button to it.
+    { id: 'contest', label: '🏆 Super Slogan Contest', description: 'Win a car, scooter, gold and more', keywords: ['contest', 'slogan', 'super slogan', 'slogan contest', 'prize', 'prizes'], action: 'reply',
+      reply: 'Take part in the Chennai Rice Super Slogan Contest 2026! 🏆\n\nBuy a Kitchidi Ponni Chennai Rice pack and find the unique code inside. Scan the QR code, submit your details and share your best slogan to win exciting prizes: a car, scooter, gold jewellery, gold coin, LED TV, smartphone and more.',
+      button: 'Join Contest', link: SITE + '/w/contest-bot' },
   ],
   fallback: 'Sorry, I did not get that. 🙏 Please choose from the menu, or type *menu* any time.',
   handoffHours: 12,
@@ -117,6 +121,9 @@ export const DEFAULT_BOT = {
       bulk: { label: '🏢 மொத்த ஆர்டர்', description: 'ஹோட்டல், கடை, கேட்டரிங், வியாபாரிகள்', keywords: ['மொத்த', 'மொத்த ஆர்டர்', 'ஹோல்சேல்'],
         reply: 'உங்கள் வியாபாரத்திற்கு மொத்தமாக அரிசி தேவையா? ஹோட்டல்கள், உணவகங்கள், கேட்டரிங் நிறுவனங்கள், சில்லறை மற்றும் மொத்த வியாபாரிகளுக்கு அரிசி வழங்குகிறோம். உங்கள் தேவைகளைத் தெரிவியுங்கள். விலை மற்றும் ஆர்டர் விவரங்களை அறிய எங்கள் விற்பனைக் குழு உங்களுக்கு உதவும்.',
         button: 'மொத்த ஆர்டர்' },
+      contest: { label: '🏆 ஸ்லோகன் போட்டி', description: 'கார், ஸ்கூட்டர், தங்கம் மற்றும் பல பரிசுகள்', keywords: ['போட்டி', 'ஸ்லோகன்', 'பரிசு'],
+        reply: 'சென்னை ரைஸ் சூப்பர் ஸ்லோகன் போட்டி 2026-இல் பங்கேற்றுங்கள்! 🏆\n\nகிச்சடி பொன்னி சென்னை ரைஸ் பேக்கை வாங்கி, அதில் உள்ள தனித்துவமான குறியீட்டைக் கண்டுபிடியுங்கள். QR குறியீட்டை ஸ்கேன் செய்து, உங்கள் விவரங்களைச் சமர்ப்பித்து, உங்கள் சிறந்த ஸ்லோகனைப் பகிருங்கள். கார், ஸ்கூட்டர், தங்க நகைகள், தங்க நாணயம், LED TV, ஸ்மார்ட்போன் மற்றும் பல அற்புதமான பரிசுகளை வெல்லுங்கள்!',
+        button: 'போட்டியில் சேர' },
     },
     fallback: 'மன்னிக்கவும், புரியவில்லை. 🙏 மெனுவில் தேர்ந்தெடுக்கவும், அல்லது எப்போது வேண்டுமானாலும் *menu* என்று டைப் செய்யவும்.',
   },
@@ -265,7 +272,7 @@ export function cleanBot(input = {}) {
   // Settings saved before the 8-option content (owner, 26 Nov 2026): the new menu, plus any item added in the dashboard.
   const old = (Number(input.contentVersion) || 0) < CONTENT_VERSION
   if (old && items.length) {
-    const own = items.filter((it) => !['shop', 'prices', 'track', 'offers', 'delivery', 'human', 'bulk'].includes(it.id))
+    const own = items.filter((it) => !['shop', 'prices', 'track', 'offers', 'delivery', 'human', 'bulk', 'contest'].includes(it.id))
     items.splice(0, items.length, ...DEFAULT_BOT.items.map((d) => ({ ...d, keywords: [...d.keywords] })), ...own.slice(0, 2))
   }
   const ids = new Set()
