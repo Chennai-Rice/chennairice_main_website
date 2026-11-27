@@ -4501,6 +4501,18 @@ test('Lead form: Instant Form leads are copied from Sales Daddy once, saved as s
     assert.deepEqual([again.saved, again.queued], [0, 0], JSON.stringify(again))
     assert.equal(neoGot.length, 0)
 
+    // Sales Daddy's 27 Nov 2026 fields: ad details filled in later and a repeat submission (meta_lead_ids) complete the
+    // saved row and the sign-up's campaign, without setting the lead up or sending it to NeoDove again.
+    Object.assign(leads[1], { campaign_name: 'Ponni Rice B2C', adset_name: 'Chennai 25-55', ad_name: 'Reel 3', platform: 'instagram',
+      meta_lead_id: '1476874734548308', meta_lead_ids: ['1476874734548308', '1523409876543210'] })
+    const filled = await syncLeadForms({ query: db.query, since: new Date(Date.now() - 3600e3).toISOString() })
+    assert.deepEqual([filled.saved, filled.updated, filled.queued], [0, 1, 0], JSON.stringify(filled))
+    const { rows: [lf] } = await db.query(`select campaign_name, adset_name, ad_name, platform, meta_lead_id, meta_lead_ids from lead_forms where mobile = '9811170002'`)
+    assert.deepEqual([lf.campaign_name, lf.adset_name, lf.ad_name, lf.platform, lf.meta_lead_id], ['Ponni Rice B2C', 'Chennai 25-55', 'Reel 3', 'instagram', '1476874734548308'])
+    assert.deepEqual(lf.meta_lead_ids, ['1476874734548308', '1523409876543210'])
+    assert.equal((await db.query(`select campaign from lead_status where mobile = '9811170002'`)).rows[0].campaign, 'Ponni Rice B2C')
+    assert.equal(neoGot.length, 0)
+
     // Sales Daddy refuses: reported, nothing saved, the stop point does not move.
     fakeSd.removeAllListeners('request')
     fakeSd.on('request', (req, res) => { res.statusCode = 403; res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ ok: false, error: 'scope_denied' })) })
