@@ -38,7 +38,7 @@ async function thankYouFor(query, orderId, to, approved) {
   const { rows: [o] } = await query('select id, order_number, contact_name, total_paise from orders where id = $1', [orderId])
   if (!o) return null
   const { rows: items } = await query(
-    `select product_name || ' ' || trim(to_char(pack_kg, 'FM999')) || ' kg × ' || quantity as line from order_items where order_id = $1 order by product_name`, [orderId])
+    `select product_name || ' – ' || trim(to_char(pack_kg, 'FM999')) || ' kg × ' || quantity as line from order_items where order_id = $1 order by product_name`, [orderId])
   const { rows: [st] } = await query('select lang from wa_bot_state where phone = $1', [to.slice(-10)]).catch(() => ({ rows: [] }))
   const lang = st?.lang === 'ta' && approved.has('ta') ? 'ta' : approved.has('en') ? 'en' : null
   return lang ? thankYouMessage(to, o, items.map((i) => i.line), lang) : null

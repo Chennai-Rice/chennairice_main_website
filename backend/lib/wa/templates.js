@@ -159,12 +159,13 @@ export const STARTER_TEMPLATES = [
   // Buttons: the order's tracking page and its GST invoice (/w/track-… and /w/invoice-…, ShortLink.jsx).
   draft('order_thank_you', 'UTILITY', 'Orders: thank you, sent when an order is paid (Track Order + View Invoice)',
     'Hi {{1}}, thank you for ordering from Chennai Rice! 🙏🍚\n\nYour order *#{{2}}* for *{{3}}* has been received and paid (*{{4}}*).\n\nWe are packing it at our Erode mill and will send you the courier tracking details as soon as it is dispatched.\n\nQuestions? Just reply to this message or call +91 70666 46667.',
-    ['Arunkumar', 'CR-20261127-4MK9C', 'Kitchidi Ponni Rice 5 kg × 1', '₹720.20'],
+    ['Arunkumar', 'CR-20261127-4MK9C', 'Kitchidi Ponni Rice – 5 kg × 1', '₹720.20'],
     { buttons: [link('Track Order', 'track-CR-20261127-4MK9C'), link('View Invoice', 'invoice-CR-20261127-4MK9C.6f1c2e8a-1b2c-4d3e-8f9a-0b1c2d3e4f5a')] }),
+  // Tamil wording from the owner (27 Nov 2026), word for word; the sign-off is in the body, so no footer.
   draft('order_thank_you', 'UTILITY', 'Orders: thank you in Tamil, for customers who chose தமிழ் in the bot',
-    'வணக்கம் {{1}}, சென்னை ரைஸில் ஆர்டர் செய்ததற்கு நன்றி! 🙏🍚\n\nஉங்கள் ஆர்டர் *#{{2}}* (*{{3}}*) பெறப்பட்டது, பணம் செலுத்தப்பட்டது (*{{4}}*).\n\nஎங்கள் ஈரோடு ஆலையில் பேக் செய்கிறோம்; அனுப்பியதும் கூரியர் டிராக்கிங் விவரங்களை அனுப்புவோம்.\n\nசந்தேகங்களுக்கு இந்த மெசேஜுக்கு பதில் அளிக்கவும் அல்லது +91 70666 46667-ஐ அழைக்கவும்.',
-    ['அருண்குமார்', 'CR-20261127-4MK9C', 'Kitchidi Ponni Rice 5 kg × 1', '₹720.20'],
-    { language: 'ta', footer: 'சென்னை ரைஸ் இண்டஸ்ட்ரீஸ்', buttons: [link('ஆர்டர் நிலை', 'track-CR-20261127-4MK9C'), link('இன்வாய்ஸ் பார்க்க', 'invoice-CR-20261127-4MK9C.6f1c2e8a-1b2c-4d3e-8f9a-0b1c2d3e4f5a')] }),
+    'வணக்கம் {{1}} 🙏\n\nசென்னை ரைஸில் ஆர்டர் செய்ததற்கு மிக்க நன்றி! ❤️\n\nஉங்கள் ஆர்டர் *#{{2}}* வெற்றிகரமாக உறுதிசெய்யப்பட்டுள்ளது.\n\n🛒 *நீங்கள் ஆர்டர் செய்தது:*\n{{3}}\n\n💰 *மொத்தத் தொகை: {{4}}*\n\nஉங்கள் ஆர்டர் தற்போது எங்களிடம் தயாராக உள்ளது. விரைவில் உங்கள் வீட்டிற்கு அனுப்பி வைக்கப்படும்.\n\nஎங்கள் அரிசியைத் தேர்ந்தெடுத்ததற்கு நன்றி! உங்கள் குடும்பத்தின் ஒவ்வொரு உணவிலும் சென்னை ரைஸ் மணமும் சுவையும் நிறைந்திருக்கட்டும். ❤️\n\n📞 உங்கள் ஆர்டர் தொடர்பான உதவிக்கு:\n+91 70666 46667\n\nஅன்புடன்,\n*சென்னை ரைஸ் இண்டஸ்ட்ரீஸ்*',
+    ['அருண்குமார்', 'CR-20261127-4MK9C', 'Kitchidi Ponni Rice – 5 kg × 1', '₹720.20'],
+    { language: 'ta', footer: '', buttons: [link('ஆர்டர் நிலை', 'track-CR-20261127-4MK9C'), link('இன்வாய்ஸ் பார்க்க', 'invoice-CR-20261127-4MK9C.6f1c2e8a-1b2c-4d3e-8f9a-0b1c2d3e4f5a')] }),
   // The GST invoice for an order without an email address (27 Nov 2026): a button to the customer's invoice page.
   draft('order_invoice', 'UTILITY', 'Orders: the GST invoice, when the order has no email address',
     'Hi {{1}}, thank you for your order *#{{2}}* with Chennai Rice. 🍚\n\nYour GST invoice is ready. Tap the button below to view or download it.',
@@ -223,16 +224,20 @@ async function seedOnce(query) {
 }
 
 // Ready-made templates added after the first seeding (once each, so a deleted draft stays deleted).
-const LATER_STARTERS = [['order_invoice', 'en'], ['order_thank_you', 'en'], ['order_thank_you', 'ta']]
+// [name, language, version]: a new version updates a draft that has not been submitted yet (once).
+const LATER_STARTERS = [['order_invoice', 'en', 1], ['order_thank_you', 'en', 1], ['order_thank_you', 'ta', 2]]
 async function addLaterStarters(query) {
-  for (const [name, language] of LATER_STARTERS) {
+  for (const [name, language, version] of LATER_STARTERS) {
+    const key = 'wa_template_added_' + name + (language === 'en' ? '' : '_' + language) + (version > 1 ? '_v' + version : '')
     const { rowCount } = await query(
-      `insert into company_settings (key, value) values ($1, 'true') on conflict (key) do nothing`, ['wa_template_added_' + name + (language === 'en' ? '' : '_' + language)])
+      `insert into company_settings (key, value) values ($1, 'true') on conflict (key) do nothing`, [key])
     if (!rowCount) continue
     const t = STARTER_TEMPLATES.find((x) => x.name === name && (x.language || 'en') === language)
+    // Added if missing; a still-unsubmitted draft takes the new wording (a submitted one is left to the dashboard).
     await query(
       `insert into wa_templates (name, language, category, kind, components, purpose) values ($1, $6, $2, $3, $4, $5)
-       on conflict (name, language) do nothing`,
+       on conflict (name, language) do update set components = excluded.components, purpose = excluded.purpose, updated_at = now()
+         where wa_templates.status = 'DRAFT'`,
       [t.name, t.category, t.kind, JSON.stringify(toComponents(t)), t.purpose, language])
   }
 }
