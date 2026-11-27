@@ -16,7 +16,6 @@ import { shippingTax } from './tax.js'
 // Printed when an invoice was issued before these details were stored with it.
 export const COMPANY = {
   name: 'CHENNAI RICE INDUSTRIES INDIA (P) LTD.,',
-  formerName: 'Chennai Gate Rice Industries (P) Ltd.',
   address: '116/1/2,4B, N.Thayirpalayam Village, Chittode Via, Gangapuram Post, Erode-638102.',
   fssai: '12415007000253',
   gstin: '33AAFCC1691K1ZM',

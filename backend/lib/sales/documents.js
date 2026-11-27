@@ -117,7 +117,7 @@ export function invoiceHtml(detail, { forCustomer = false } = {}) {
     <div class="head">
       <div class="left"><div>
         <span class="b">${esc(s.name)}</span><br>
-        ${s.formerName ? `Formerly : ${esc(s.formerName)}<br>` : ''}${esc(s.address)}<br>
+        ${esc(s.address)}<br>
         ${s.fssai ? `FSSAI No. ${esc(s.fssai)}<br>` : ''}GSTIN/UIN: ${esc(s.gstin || '')}<br>
         State Name : ${esc(s.state)}, Code : ${esc(s.stateCode)}<br>
         Contact : ${esc(s.phone)}<br>E-Mail : ${esc(s.email)}

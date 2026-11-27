@@ -55,7 +55,8 @@ export function invoicePdf(detail) {
   ]
   let y = block(top, [
     [s.name, true, 9],
-    ...(s.formerName ? [[`Formerly : ${s.formerName}`]] : []),
+    // No "Formerly : …" line (owner, 27 Nov 2026: the former company name is not shown anywhere), also on
+    // invoices issued before, whose saved seller details still carry it.
     [s.address],
     ...(s.fssai ? [[`FSSAI No. ${s.fssai}`]] : []),
     [`GSTIN/UIN: ${s.gstin || ''}`],

@@ -43,7 +43,6 @@ export function skuFor(slug, packKg) {
 
 const SETTINGS = {
   seller_legal_name: 'CHENNAI RICE INDUSTRIES INDIA (P) LTD.,',
-  seller_former_name: 'Chennai Gate Rice Industries (P) Ltd.',
   seller_address: '116/1/2,4B, N.Thayirpalayam Village, Chittode Via, Gangapuram Post, Erode-638102.',
   seller_fssai: '12415007000253',
   seller_state: 'Tamil Nadu',
