@@ -116,6 +116,9 @@ export async function invoiceRegister(db, params) {
             dc.kind as dc_kind, dc.amount_paise as dc_amount_paise, dc.percent_bp as dc_percent_bp,
             (select sp.prize_label from spins sp where sp.code_id = dc.id limit 1) as prize_label,
             p.method, p.gateway, p.gateway_payment_id, p.paid_at, p.settlement_id, p.bank_utr, p.settled_at,
+            coalesce(o.contact_email, '') <> '' as has_email,
+            (select e.status from email_outbox e where e.order_id = o.id and e.template = 'order_placed' order by e.created_at desc limit 1) as email_status,
+            (select w.status from wa_queue w where w.ref = 'invoice:' || o.id::text) as whatsapp_status,
             (select coalesce(sum(r.amount_paise), 0) from refunds r where r.order_id = o.id and r.status in ('processed', 'manual'))::bigint as refunded_paise,
             (select string_agg(i.product_name || ' ' || trim(to_char(i.pack_kg, 'FM999')) || ' kg × ' || i.quantity, ', ')
                from order_items i where i.order_id = o.id) as items
@@ -151,6 +154,8 @@ export async function invoiceRegister(db, params) {
     // The offer behind the discount (Spin & Win, Refer a friend…), its code, the amount off and any free gift.
     offer: orderOffer(r),
     discount: rupees(r.discount_paise || 0),
+    // How the invoice reached the customer: by email (with the order email), on WhatsApp (no email address), or not yet.
+    sentVia: { hasEmail: r.has_email, email: r.email_status || null, whatsapp: r.whatsapp_status || null },
   }))
 }
 

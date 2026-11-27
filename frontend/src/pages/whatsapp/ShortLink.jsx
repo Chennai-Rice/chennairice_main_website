@@ -38,8 +38,17 @@ export function spinCodeFromSlug(slug) {
   return m ? m[1].toUpperCase() : ''
 }
 
+/** invoice-<order number>.<order id> (the order_invoice template's button): the customer's GST invoice page. */
+export function invoiceLink(slug) {
+  const m = /^invoice-([A-Z0-9-]{6,40})\.([0-9a-f-]{36})$/i.exec(String(slug || ''))
+  return m ? `/api/orders/${m[2]}/invoice?n=${encodeURIComponent(m[1].toUpperCase())}` : ''
+}
+
 export default function ShortLink() {
   const { slug } = useParams()
+  // The invoice page is served by the server, not the app: a full page load.
+  const invoice = invoiceLink(slug)
+  if (invoice) { window.location.replace(invoice); return null }
   const code = spinCodeFromSlug(slug)
   // The same key CheckoutPage reads (DISCOUNT_CODE_KEY); storage may be blocked, then they use Copy code.
   if (code) { try { window.sessionStorage.setItem('cr.checkout.code', code) } catch { /* ignore */ } }

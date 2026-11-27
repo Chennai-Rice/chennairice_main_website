@@ -155,6 +155,10 @@ export const STARTER_TEMPLATES = [
   draft('order_placed', 'UTILITY', 'Orders: sent when an order is paid',
     'Hi {{1}}, thank you for your order! 🍚\n\nYour order *#{{2}}* has been placed successfully. You can track it here: {{3}}\n\nQuestions? Just reply to this message.',
     ['Ravi', 'CR10482', 'https://chennairiceindustries.com/track-order']),
+  // The GST invoice for an order without an email address (27 Nov 2026): a button to the customer's invoice page.
+  draft('order_invoice', 'UTILITY', 'Orders: the GST invoice, when the order has no email address',
+    'Hi {{1}}, thank you for your order *#{{2}}* with Chennai Rice. 🍚\n\nYour GST invoice is ready. Tap the button below to view or download it.',
+    ['Ravi', 'CR-20261127-4MK9C'], { buttons: [link('View invoice', 'invoice-CR-20261127-4MK9C.6f1c2e8a-1b2c-4d3e-8f9a-0b1c2d3e4f5a')] }),
   draft('spin_code', 'MARKETING', 'Spin & Win: the prize code right after the spin',
     'Congratulations {{1}}! 🎉 You won *{{2}}* on Chennai Rice Spin & Win.\n\nUse it on orders above {{3}}, valid till *{{4}}*. Order from this mobile number and the code is filled in for you at checkout.',
     ['Ravi', '₹75 OFF', '₹1,000', '10 Dec'], { buttons: [copy('SPINA745B4'), link('Shop now', 'spin-A745B4')] }),
@@ -199,8 +203,23 @@ export const STARTER_TEMPLATES = [
 async function seedOnce(query) {
   const { rowCount } = await query(
     `insert into company_settings (key, value) values ('wa_templates_seeded', 'true') on conflict (key) do nothing`)
-  if (!rowCount) return
+  if (!rowCount) return addLaterStarters(query)
   for (const t of STARTER_TEMPLATES) {
+    await query(
+      `insert into wa_templates (name, language, category, kind, components, purpose) values ($1, 'en', $2, $3, $4, $5)
+       on conflict (name, language) do nothing`,
+      [t.name, t.category, t.kind, JSON.stringify(toComponents(t)), t.purpose])
+  }
+}
+
+// Ready-made templates added after the first seeding (once each, so a deleted draft stays deleted).
+const LATER_STARTERS = ['order_invoice']
+async function addLaterStarters(query) {
+  for (const name of LATER_STARTERS) {
+    const { rowCount } = await query(
+      `insert into company_settings (key, value) values ($1, 'true') on conflict (key) do nothing`, ['wa_template_added_' + name])
+    if (!rowCount) continue
+    const t = STARTER_TEMPLATES.find((x) => x.name === name)
     await query(
       `insert into wa_templates (name, language, category, kind, components, purpose) values ($1, 'en', $2, $3, $4, $5)
        on conflict (name, language) do nothing`,

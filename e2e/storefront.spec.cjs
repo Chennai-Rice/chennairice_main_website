@@ -234,3 +234,13 @@ test('Spin & Win on: product page renders, and the × hides the emblem', async (
     await expect(page.locator('button.spin-fab')).toHaveCount(0)
   }
 })
+
+// The order_invoice WhatsApp button: /w/invoice-<order>.<id> opens that order's GST invoice page (served by the server).
+test('WhatsApp invoice link opens the customer invoice page', async ({ page, tracking }) => {
+  void tracking
+  const id = '6f1c2e8a-1b2c-4d3e-8f9a-0b1c2d3e4f5a'
+  const asked = page.waitForRequest((r) => r.url().includes(`/api/orders/${id}/invoice`))
+  await page.goto(`/w/invoice-CR-20261127-4MK9C.${id}`)
+  const req = await asked
+  expect(new URL(req.url()).searchParams.get('n')).toBe('CR-20261127-4MK9C')
+})

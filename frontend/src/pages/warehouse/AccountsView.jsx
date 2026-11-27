@@ -100,6 +100,19 @@ function BankCodes({ say, fail, onDone }) {
   )
 }
 
+/** How the invoice reached the customer: Email, WhatsApp, or not yet (with why). */
+function InvoiceSent({ v }) {
+  if (!v) return null
+  const ok = (t) => <span className="wh-small" style={{ color: '#17633a', fontWeight: 600 }}>✓ {t}</span>
+  const no = (t) => <span className="wh-small wh-acc-bad">✗ {t}</span>
+  if (v.email === 'sent') return ok('Invoice emailed')
+  if (v.whatsapp === 'sent') return ok('Invoice sent on WhatsApp')
+  if (v.hasEmail) return v.email === 'failed' ? no('Invoice email failed') : no('Invoice email waiting')
+  if (v.whatsapp === 'failed' || v.whatsapp === 'skipped') return no('No email · WhatsApp not delivered')
+  if (v.whatsapp === 'queued') return no('No email · WhatsApp waiting')
+  return no('No email · WhatsApp not sent yet')
+}
+
 export default function AccountsView({ say, onAuthError }) {
   const options = useMemo(presets, [])
   const [preset, setPreset] = useState('month')
@@ -265,7 +278,7 @@ export default function AccountsView({ say, onAuthError }) {
                     {r.offer.code && <><br /><span className="wh-mono wh-small wh-muted">{r.offer.code}</span></>}
                     {r.offer.gift && <><br /><span className="wh-small">🎁 {r.offer.gift}</span></>}</>
                 )}{r.refunded > 0 && <><br /><span className="wh-small wh-acc-bad">Refunded {rupees(r.refunded)}</span></>}</span>
-                <span role="cell"><span className="wh-k">Payment</span>{r.method || '—'}<br /><span className="wh-mono wh-small">{r.paymentId || '—'}</span>{r.bankUtr ? <><br /><span className="wh-mono wh-small" title="The bank's reference of the Razorpay payout — what the bank statement shows">UTIB {r.bankUtr}</span></> : null}</span>
+                <span role="cell"><span className="wh-k">Payment</span><InvoiceSent v={r.sentVia} /><br />{r.method || '—'}<br /><span className="wh-mono wh-small">{r.paymentId || '—'}</span>{r.bankUtr ? <><br /><span className="wh-mono wh-small" title="The bank's reference of the Razorpay payout — what the bank statement shows">UTIB {r.bankUtr}</span></> : null}</span>
                 <span role="cell" className="wh-acc-actions">
                   <button type="button" className="wh-btn wh-btn--outline" onClick={() => viewInvoice(r.orderId, say, onAuthError)}><Icon name="eye" size={16} /> View</button>
                   <button type="button" className="wh-btn wh-btn--outline" onClick={() => download(`/api/admin/orders/${r.orderId}/invoice.pdf`, 'invoice.pdf', say, onAuthError)}><Icon name="download" size={16} /> PDF</button>

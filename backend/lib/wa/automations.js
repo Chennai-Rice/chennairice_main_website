@@ -32,6 +32,8 @@ export const AUTOMATIONS = {
   winback: { group: 'Bring customers back', title: 'We miss you (with a code)', template: 'winback_offer', category: 'marketing', fields: { days: 60, amount: 50, validDays: 7 } },
   cart: { group: 'Bring customers back', title: 'Items left in the cart', template: 'cart_reminder', category: 'marketing', fields: { hours: 2 } },
   review: { group: 'Orders', title: 'Ask for a review after delivery', template: 'review_request', category: 'utility', fields: { days: 2 } },
+  // The GST invoice for an order placed without an email address (owner, 27 Nov 2026). On unless switched off.
+  invoice: { group: 'Orders', title: 'GST invoice when the order has no email', template: 'order_invoice', category: 'utility', fields: {}, defaultOn: true },
 }
 const LAUNCH_WINDOW_DAYS = 10 // look back at most this far, so switching one on does not message old customers
 
@@ -49,7 +51,7 @@ export function cleanAutomations(input = {}) {
       const n = Number(v[f])
       fields[f] = Number.isFinite(n) && n > 0 && n <= 1000 ? Math.round(n) : d
     }
-    out[key] = { on: v.on === true, template: str(v.template) || def.template, ...fields }
+    out[key] = { on: def.defaultOn ? v.on !== false : v.on === true, template: str(v.template) || def.template, ...fields }
   }
   return out
 }
@@ -199,6 +201,14 @@ function finders(cfg, settings) {
         const what = names.length ? names[0] + (names.length > 1 ? ` and ${names.length - 1} more` : '') : 'your rice'
         return { phone: r.phone, ref: `cart:${r.id}`, vals: { body: [first(r.contact_name), what], buttons: { 0: `cart-${r.token}` } } }
       })
+    },
+    async invoice(q) {
+      const { rows } = await q(
+        `select o.id, o.order_number, o.contact_name, ${last10sql('o.contact_phone')} as phone from orders o
+          where o.payment_status in ('paid', 'partially_refunded') and o.status <> 'cancelled'
+            and coalesce(o.contact_email, '') = '' and o.placed_at > now() - interval '${LAUNCH_WINDOW_DAYS} days'
+            and exists (select 1 from invoices v where v.order_id = o.id)`)
+      return rows.map((r) => ({ phone: r.phone, ref: `invoice:${r.id}`, vals: { body: [first(r.contact_name), r.order_number], buttons: { 0: `invoice-${r.order_number}.${r.id}` } } }))
     },
     async review(q) {
       const { rows } = await q(

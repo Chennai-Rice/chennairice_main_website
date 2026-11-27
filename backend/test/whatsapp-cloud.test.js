@@ -16,8 +16,8 @@ const good = () => ({
   buttons: [{ type: 'COPY_CODE', sample: 'SPINA1' }, { type: 'URL', text: 'Shop now', url: 'https://chennairiceindustries.com/w/{{1}}', sample: 'spin-A1' }],
 })
 
-test('all 14 ready-made templates pass Meta\'s rules', () => {
-  assert.equal(STARTER_TEMPLATES.length, 14)
+test('all 15 ready-made templates pass Meta\'s rules', () => {
+  assert.equal(STARTER_TEMPLATES.length, 15)
   for (const t of STARTER_TEMPLATES) assert.deepEqual(checkModel(t), [], t.name)
 })
 
@@ -722,4 +722,16 @@ test('8-option content (owner PDF, 26 Nov 2026): texts, buttons, Change Language
   assert.equal(saved.contentVersion, CONTENT_VERSION)
   assert.deepEqual(saved.items.map((i) => i.id), ['shop', 'prices', 'track', 'offers', 'delivery', 'human', 'bulk', 'festival'])
   assert.equal(saved.items[0].label, '🛒 Buy Rice')
+})
+
+test('invoice on WhatsApp: a paid order without an email gets the order_invoice template (automation on by default)', async () => {
+  const { cleanAutomations, AUTOMATIONS } = await import('../lib/wa/automations.js')
+  assert.equal(AUTOMATIONS.invoice.template, 'order_invoice')
+  assert.equal(cleanAutomations({}).invoice.on, true) // on unless switched off
+  assert.equal(cleanAutomations({ invoice: { on: false } }).invoice.on, false)
+  assert.equal(cleanAutomations({}).review.on, false) // the others stay off until switched on
+  const t = STARTER_TEMPLATES.find((x) => x.name === 'order_invoice')
+  assert.equal(t.category, 'UTILITY')
+  assert.deepEqual(checkModel(t), [])
+  assert.match(t.buttons[0].sample, /^invoice-CR-\d{8}-[A-Z0-9]+\.[0-9a-f-]{36}$/)
 })
