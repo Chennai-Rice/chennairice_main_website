@@ -34,8 +34,10 @@ export function enableGoogleAnalytics() {
   gtag('js', new Date())
   // Page views are sent by hand on every route change (single-page app).
   gtag('config', GA_MEASUREMENT_ID, { send_page_view: false })
-  // The same gtag.js serves Google Ads too: one more destination, not a second script.
-  if (GOOGLE_ADS_ID) gtag('config', GOOGLE_ADS_ID)
+  // The same gtag.js serves Google Ads too: one more destination, not a second script. Page views are sent by
+  // hand (trackGooglePageView) for Google Ads as for GA4. The landing page still reaches Google Ads twice while
+  // GTM's own Google Ads tag also sends a page view: that is fixed in GTM, not here (27 Nov 2026).
+  if (GOOGLE_ADS_ID) gtag('config', GOOGLE_ADS_ID, { send_page_view: false })
   loaded = true
   // Everything above (and every event after it) waits in dataLayer; the script itself is fetched once the
   // page has loaded and the browser is idle, or at the first touch, so it never slows the first paint
@@ -85,6 +87,8 @@ function showGoogleClick() {
 /** One page view, for the page now showing. */
 export function trackGooglePageView() {
   if (!loaded || !window.gtag) return
+  // To every destination on the page: GA4 and Google Ads here, and the Google tags GTM loads, which fire only
+  // on the first page load and get the pages opened inside the site from this event (measured 27 Nov 2026).
   window.gtag('event', 'page_view', {
     page_location: window.location.href,
     page_path: window.location.pathname + window.location.search,
