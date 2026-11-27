@@ -217,7 +217,7 @@
         ]
       },
       {
-        "source": "**/!(*.*)",
+        "regex": "^/(|[^aw.][^.]*|a|a[^p.][^.]*|ap|ap[^i.][^.]*|api|api[^/.][^.]*|w|w[^/.][^.]*)$",
         "headers": [
           {
             "key": "Cache-Control",

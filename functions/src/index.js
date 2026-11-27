@@ -24,7 +24,9 @@ export const api = onRequest(
     timeoutSeconds: 60,
     // Keeps the checkout and chat paths from paying a cold start on the first
     // request of a quiet period. Raise it if cold starts still show up.
-    minInstances: 0,
+    // One instance kept warm (campaign days, 27 Nov 2026): the first visitors after a quiet spell, or the first
+    // seconds of a TV ad, do not wait for a cold start. Set back to 0 to save the small idle cost.
+    minInstances: 1,
     maxInstances: 10,
     // Plain settings come from functions/.env, which the Firebase CLI uploads
     // as environment variables on deploy (the file itself is git-ignored).

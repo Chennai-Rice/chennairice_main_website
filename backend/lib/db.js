@@ -34,7 +34,9 @@ export function hasDatabase() {
 }
 
 async function createPool() {
-  const max = Number(process.env.DB_POOL_MAX) || 5
+  // 4 per instance: 10 API instances (functions/src/index.js) + the job stay within the ~50 connections of the
+  // db-g1-small database (busy campaign days, 27 Nov 2026).
+  const max = Number(process.env.DB_POOL_MAX) || 4
 
   if (process.env.DATABASE_URL) {
     return new pg.Pool({ connectionString: process.env.DATABASE_URL, max })

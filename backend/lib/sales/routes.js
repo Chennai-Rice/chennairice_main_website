@@ -128,7 +128,7 @@ export function createSalesRouter({ verifyIdToken } = {}) {
 
   // ---- public -------------------------------------------------------------
   // Checkout address suggestions (India Post directory, cached): a PIN's city, state and areas; areas by name.
-  router.get('/api/places/pin/:pin', rateLimit({ windowMs: 60000, max: 40 }), wrap(async (req, res) => {
+  router.get('/api/places/pin/:pin', rateLimit({ windowMs: 60000, max: 120 }), wrap(async (req, res) => {
     res.set('Cache-Control', 'public, max-age=86400')
     res.json((await pinInfo(req.params.pin)) || { pin: null, city: '', state: '', areas: [] })
   }))
@@ -201,8 +201,10 @@ export function createSalesRouter({ verifyIdToken } = {}) {
 
   // The lead form at /expo, opened from the QR code at an expo.
   // Spin & Win: what the wheel shows, and the spin itself (one per mobile number; the prize is a code locked to it).
-  router.get('/api/spin', wrap(async (_req, res) => { res.set('Cache-Control', 'no-store'); res.json(await spinConfig({ query })) }))
-  router.post('/api/spin', rateLimit({ windowMs: 10 * 60000, max: 8 }), wrap(async (req, res) => {
+  // Public settings, the same for everyone: the CDN keeps them a minute (busy days: one database read a minute, not one per visit).
+  router.get('/api/spin', wrap(async (_req, res) => { res.set('Cache-Control', 'public, max-age=60'); res.json(await spinConfig({ query })) }))
+  // Per-IP limits sized for many phones behind one mobile-network IP (campaign days, 27 Nov 2026).
+  router.post('/api/spin', rateLimit({ windowMs: 10 * 60000, max: 40 }), wrap(async (req, res) => {
     const result = await spin({ query }, req.body, { ip: clientKey(req) })
     // The prize code on WhatsApp straight away (if that automation is on and the player said yes to WhatsApp).
     if (!result.already) await runWhatsAppAutomations({ query, only: ['spin_code'] }).catch(() => {})
@@ -218,7 +220,7 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   }))
 
   // Refer a friend: whether it is running, and a customer's code and rewards (mobile number + order email).
-  router.get('/api/referral', wrap(async (_req, res) => { res.set('Cache-Control', 'no-store'); res.json({ enabled: referralsOn(await getSettings({ query })) }) }))
+  router.get('/api/referral', wrap(async (_req, res) => { res.set('Cache-Control', 'public, max-age=60'); res.json({ enabled: referralsOn(await getSettings({ query })) }) }))
   router.post('/api/referral/me', rateLimit({ windowMs: 10 * 60000, max: 10 }), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json(await myReferral({ query }, req.body))
@@ -280,12 +282,12 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   }))
 
   // Soru Kutty's delivery check: region and delivery charge per pack size for a PIN code.
-  router.get('/api/delivery', rateLimit({ windowMs: 60000, max: 30 }), wrap(async (req, res) => {
+  router.get('/api/delivery', rateLimit({ windowMs: 60000, max: 120 }), wrap(async (req, res) => {
     res.set('Cache-Control', 'public, max-age=300')
     res.json(await checkDelivery({ query }, req.query.pincode))
   }))
 
-  router.post('/api/checkout/session', rateLimit({ windowMs: 60000, max: 20 }), wrap(async (req, res) => {
+  router.post('/api/checkout/session', rateLimit({ windowMs: 60000, max: 60 }), wrap(async (req, res) => {
     res.json({ ok: true, ...(await createCheckoutSession(req.body, { ip: clientKey(req), userAgent: req.get('user-agent') })) })
   }))
 
