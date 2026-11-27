@@ -87,7 +87,7 @@ export const DEFAULT_BOT = {
     // The Super Slogan Contest (owner, 27 Nov 2026): how to take part, as on the contest page, and a button to it.
     { id: 'contest', label: '🏆 Super Slogan Contest', description: 'Win a car, scooter, gold and more', keywords: ['contest', 'slogan', 'super slogan', 'slogan contest', 'prize', 'prizes'], action: 'reply',
       reply: 'Take part in the Chennai Rice Super Slogan Contest 2026! 🏆\n\nBuy a Kitchidi Ponni Chennai Rice pack and find the unique code inside. Scan the QR code, submit your details and share your best slogan to win exciting prizes: a car, scooter, gold jewellery, gold coin, LED TV, smartphone and more.',
-      button: 'Join Contest', link: SITE + '/w/contest-bot' },
+      button: 'Join Contest', link: 'https://coupon.chennairiceindustries.com/' }, // the contest entry site (owner, 27 Nov 2026)
   ],
   fallback: 'Sorry, I did not get that. 🙏 Please choose from the menu, or type *menu* any time.',
   handoffHours: 12,
@@ -255,7 +255,8 @@ export function cleanBot(input = {}) {
     action: ACTIONS.includes(it.action) ? it.action : 'reply',
     reply: noHours(it.reply).slice(0, 1024),
     ...(it.button ? { button: str(it.button).slice(0, 20) } : {}),
-    ...(/^https:\/\/chennairiceindustries\.com\//.test(str(it.link)) ? { link: str(it.link) } : {}),
+    // Our own sites only: chennairiceindustries.com and its subdomains (coupon.chennairiceindustries.com).
+    ...(/^https:\/\/([a-z0-9-]+\.)?chennairiceindustries\.com\//.test(str(it.link)) ? { link: str(it.link) } : {}),
   })).filter((it) => it.label)
   for (const it of items) {
     const def = DEFAULT_BOT.items.find((d) => d.id === it.id)

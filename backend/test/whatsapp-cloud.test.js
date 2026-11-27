@@ -739,7 +739,7 @@ test('invoice on WhatsApp: a paid order without an email gets the order_invoice 
 test('Super Slogan Contest option: text and a Join Contest button to the contest page, English and Tamil', async () => {
   const en = await render(bot, decide(bot, { replyId: 'contest' }), {}, deps)
   assert.match(says(en.messages[0]), /^Take part in the Chennai Rice Super Slogan Contest 2026!/)
-  assert.deepEqual(en.messages[0].interactive.action.parameters, { display_text: 'Join Contest', url: 'https://chennairiceindustries.com/w/contest-bot' })
+  assert.deepEqual(en.messages[0].interactive.action.parameters, { display_text: 'Join Contest', url: 'https://coupon.chennairiceindustries.com/' })
   const ta = await render(bot, decide(botFor(bot, 'ta'), { replyId: 'contest' }), { lang: 'ta' }, deps)
   assert.equal(ta.messages[0].interactive.action.parameters.display_text, 'போட்டியில் சேர')
   assert.equal(decide(bot, { text: 'slogan contest' }).item.id, 'contest')
