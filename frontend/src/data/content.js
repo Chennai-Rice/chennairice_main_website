@@ -24,7 +24,10 @@ export const ASSETS = {
      assets/hero.mp4), its black bars cropped off (79 px top, 81 px bottom): the full 1920x918 picture, H.264 High
      profile at 3.5 Mbit/s, 14.6 MB, 44.9 s, no sound. It still starts only after the page has loaded and never on
      data-saver or 2G (Hero.jsx). */
-  heroVideo: '/assets/hero-v4.mp4',
+  heroVideoHD: '/assets/hero-v4.mp4',
+  // The lighter film for ordinary connections (1280x612, H.264 High at 1.4 Mbit/s, 7.6 MB): picked unless the
+  // connection is fast, and switched to if the HD film stalls (Hero.jsx; owner, 27 Nov 2026: it was buffering).
+  heroVideo: '/assets/hero-md-v1.mp4',
   // Phones held upright: the middle of the same picture at its full 918 px height (600x918, 3.4 MB, High profile),
   // sharper than the earlier 420x612 cut.
   heroVideoPhone: '/assets/hero-phone-v2.mp4',

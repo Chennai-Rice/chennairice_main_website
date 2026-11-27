@@ -153,7 +153,20 @@ test('hero video: phone gets the small centre cut, desktop the full film', async
   void tracking
   await page.goto('/')
   const video = page.locator('video.hero-video')
-  await expect(video).toHaveAttribute('src', info.project.name === 'phone' ? /hero-phone-v2\.mp4$/ : /hero-v4\.mp4$/, { timeout: 10000 })
+  // Desktop: full HD on a fast connection, the lighter 1280 film otherwise (27 Nov 2026).
+  await expect(video).toHaveAttribute('src', info.project.name === 'phone' ? /hero-phone-v2\.mp4$/ : /hero-(v4|md-v1)\.mp4$/, { timeout: 10000 })
+})
+
+// The film fades in only once it can play to the end without stopping; a slow connection on desktop gets the
+// lighter film (Chrome's reported speed, emulated here).
+test('hero video: hidden until it can play through; slow connection gets the lighter film', async ({ page, tracking }, info) => {
+  void tracking
+  test.skip(info.project.name === 'phone', 'desktop choice')
+  await page.addInitScript(() => Object.defineProperty(navigator, 'connection', { value: { downlink: 1.5, effectiveType: '4g', saveData: false } }))
+  await page.goto('/')
+  const video = page.locator('video.hero-video')
+  await expect(video).toHaveAttribute('src', /hero-md-v1\.mp4$/, { timeout: 10000 })
+  await expect(video).toHaveClass(/is-ready/, { timeout: 20000 })
 })
 
 // Bestsellers (26 Nov 2026): phones get a swipe carousel (no pinned scroll animation), larger screens keep the pin.

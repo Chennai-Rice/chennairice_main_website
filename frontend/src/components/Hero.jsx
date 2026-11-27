@@ -21,6 +21,17 @@ import './hero.css'
 const OUTRO_SECONDS = 2.7
 const FADE_SECONDS = 0.7
 
+/* Which film (owner, 27 Nov 2026: the HD film was buffering on slower connections):
+   phones held upright → the centre cut; a fast connection (Chrome reports the speed, up to 10 Mbit/s) or, where the
+   browser does not say, a large screen → full HD; anything else → the lighter 1280 film. */
+function pickFilm() {
+  const phone = window.matchMedia?.('(max-width: 600px) and (orientation: portrait)').matches
+  if (phone && ASSETS.heroVideoPhone) return ASSETS.heroVideoPhone
+  const net = navigator.connection
+  const fast = typeof net?.downlink === 'number' ? net.downlink >= 8 && net.effectiveType === '4g' : window.innerWidth >= 1440
+  return fast && ASSETS.heroVideoHD ? ASSETS.heroVideoHD : ASSETS.heroVideo
+}
+
 export default function Hero() {
   const [videoFailed, setVideoFailed] = useState(false)
   const [outro, setOutro] = useState(false)
@@ -29,14 +40,29 @@ export default function Hero() {
   // where the warm gradient behind the headline stays.
   const [videoSrc, setVideoSrc] = useState(null)
   const videoRef = useRef(null)
+  // Shown only once the browser says it can play to the end without stopping ('canplaythrough'); until then the
+  // warm gradient stays, so nobody sees a frozen frame.
+  const [ready, setReady] = useState(false)
+  // It stalls anyway (the connection slowed): twice within 20 s on the HD film → the lighter film, same moment.
+  const stalls = useRef([])
+  const onWaiting = () => {
+    const v = videoRef.current
+    if (!v || !ready || videoSrc !== ASSETS.heroVideoHD) return
+    const now = Date.now()
+    stalls.current = [...stalls.current.filter((t) => now - t < 20000), now]
+    if (stalls.current.length >= 2) {
+      const at = v.currentTime
+      stalls.current = []
+      setVideoSrc(ASSETS.heroVideo)
+      v.addEventListener('loadedmetadata', () => { try { v.currentTime = at } catch { /* starts from the top */ } }, { once: true })
+    }
+  }
 
   useEffect(() => {
     const net = navigator.connection
     if (net?.saveData || /(^|-)2g$/.test(net?.effectiveType || '')) return undefined
     let timer
-    // Phones held upright get the 1.5 MB centre cut (they only show the middle of the wide film).
-    const phone = window.matchMedia?.('(max-width: 600px) and (orientation: portrait)').matches
-    const start = () => { timer = window.setTimeout(() => setVideoSrc(phone && ASSETS.heroVideoPhone ? ASSETS.heroVideoPhone : ASSETS.heroVideo), 500) }
+    const start = () => { timer = window.setTimeout(() => setVideoSrc(pickFilm()), 500) }
     if (document.readyState === 'complete') start()
     else window.addEventListener('load', start, { once: true })
     return () => { window.clearTimeout(timer); window.removeEventListener('load', start) }
@@ -84,7 +110,7 @@ export default function Hero() {
       {!videoFailed && (
         <video
           ref={videoRef}
-          className="hero-video"
+          className={`hero-video${ready ? ' is-ready' : ''}`}
           autoPlay
           muted
           loop
@@ -92,6 +118,8 @@ export default function Hero() {
           preload="auto"
           src={videoSrc || undefined}
           onError={() => { if (videoSrc) setVideoFailed(true) }}
+          onCanPlayThrough={() => setReady(true)}
+          onWaiting={onWaiting}
         />
       )}
       {videoFailed && <div className="hero-fallback" />}

@@ -1,6 +1,8 @@
 .home-hero {
   position: relative;
   min-height: 100vh;
+  /* The warm gradient under the film: what shows until the film can play through (Hero.jsx). */
+  background: radial-gradient(120% 90% at 60% 20%, #3a2c14 0%, #1c1409 55%, #0e0a05 100%);
   overflow: hidden;
   isolation: isolate;
   /* Shared by .hero-curve (its own height) and .hero-estd (the clearance it
@@ -30,6 +32,10 @@
   background: radial-gradient(120% 90% at 60% 20%, #3a2c14 0%, #1c1409 55%, #0e0a05 100%);
 }
 
+/* The film fades in once it can play to the end without stopping (no frozen frame while it buffers). */
+.hero-video { opacity: 0; transition: opacity 0.8s ease; }
+.hero-video.is-ready { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .hero-video { transition: none; } }
 
 .hero-overlay {
   position: absolute;
