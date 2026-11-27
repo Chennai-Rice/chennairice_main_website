@@ -112,7 +112,10 @@ async function firebaseVerifier() {
   if (!defaultVerifier) {
     const { initializeApp, getApps } = await import('firebase-admin/app')
     const { getAuth } = await import('firebase-admin/auth')
-    const app = getApps()[0] || initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID || 'chennai-rice-website' })
+    // The default app by name, never getApps()[0]: the slogan contest (contest.js) starts its own app for another
+    // project (couponchennairice), and when that one came first here every staff token was checked against the wrong
+    // project and refused (auth/argument-error, 27 Nov 2026).
+    const app = getApps().find((a) => a.name === '[DEFAULT]') || initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID || 'chennai-rice-website' })
     const auth = getAuth(app)
     // Signature, expiry and project are checked here. Taking access away is
     // handled by staff_users.is_active, read on every request, so the extra
