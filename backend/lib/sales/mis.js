@@ -17,6 +17,8 @@ import { httpError } from './util.js'
 import { buildSales } from './mis-sales.js'
 
 const SHEET_ID = () => process.env.MIS_SHEET_ID || '1J6J5zmeyEfM_RRHOy4HX6OKi8XFZ3fK4L1YtsyAKirM'
+// The Sales view has its own sheet (27 Nov 2026): calls and leads stay on the MIS sheet above.
+const SALES_SHEET_ID = () => process.env.MIS_SALES_SHEET_ID || '1Ko7zIlwzg1nNV9dkNRzFlicoOyxCwE_AOodBkT_GkVY'
 const SHEET_GID = () => String(process.env.MIS_SHEET_GID || '500982816') // the CALLS tab
 const LEADS_GID = () => String(process.env.MIS_LEADS_GID || '0') // the LEADS tab
 const SERVICE_ACCOUNT = 'api-backend@chennai-rice-website.iam.gserviceaccount.com'
@@ -280,7 +282,7 @@ async function sheetsToken() {
   return t.token || t
 }
 
-async function google(url, token) {
+async function google(url, token, what = 'The MIS sheet') {
   let res
   try {
     res = await fetch(url, { headers: { Authorization: 'Bearer ' + token }, signal: AbortSignal.timeout(15000) })
@@ -294,7 +296,7 @@ async function google(url, token) {
     throw httpError('Sheets scope: ' + why, { status: 502, publicMessage: 'The server is not allowed to ask Google for spreadsheet access yet. Set MIS_SHEET_CSV_URL (a "Publish to web" CSV link of the tab) as a simple alternative, or tell the developer.' })
   }
   if (res.status === 403 || res.status === 404) {
-    throw httpError('Sheets denied: ' + why, { status: 502, publicMessage: `The MIS sheet is not shared with the website. Share it as Viewer with ${SERVICE_ACCOUNT} and switch on the Google Sheets API for the project chennai-rice-website.` })
+    throw httpError('Sheets denied: ' + why, { status: 502, publicMessage: `${what} is not shared with the website. Share it as Viewer with ${SERVICE_ACCOUNT} and switch on the Google Sheets API for the project chennai-rice-website.` })
   }
   throw httpError('Sheets error: ' + why, { status: 502, publicMessage: 'Google Sheets answered with an error. Try again in a minute.' })
 }
@@ -317,10 +319,10 @@ async function readSheet() {
   const token = await sheetsToken()
   const meta = await google(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID()}?fields=sheets.properties(sheetId,title)`, token)
   const tabs = (meta.sheets || []).map((x) => x.properties)
-  const read = async (tab) => {
+  const read = async (tab, id = SHEET_ID(), what) => {
     const data = await google(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID()}/values/${encodeURIComponent(`'${tab.title.replace(/'/g, "''")}'`)}?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE`,
-      token)
+      `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(`'${tab.title.replace(/'/g, "''")}'`)}?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE`,
+      token, what)
     return { title: tab.title, values: data.values || [] }
   }
   const calls = tabs.find((p) => String(p.sheetId) === SHEET_GID()) || tabs[0]
@@ -335,14 +337,24 @@ async function readSheet() {
       out.leadsError = err.publicMessage || err.message
     }
   }
-  // The B2B and B2C tabs (bill values) are optional too: the Sales view needs them, nothing else does.
+  // The Sales view reads its own sheet (every tab of it; a tab called B2B or B2C is that business type, any other tab
+  // is named by its title). Optional: if it cannot be read, calls and leads are still shown.
   out.sales = []
-  for (const tab of tabs.filter((p) => /^b2[bc]$/i.test(p.title.trim()))) {
-    try {
-      out.sales.push({ type: tab.title.trim().toUpperCase(), ...(await read(tab)) })
-    } catch (err) {
-      out.sales.push({ type: tab.title.trim().toUpperCase(), error: err.publicMessage || err.message })
+  const salesId = SALES_SHEET_ID()
+  const what = 'The Sales sheet'
+  try {
+    const smeta = await google(`https://sheets.googleapis.com/v4/spreadsheets/${salesId}?fields=sheets.properties(sheetId,title)`, token, what)
+    for (const tab of (smeta.sheets || []).map((x) => x.properties)) {
+      const title = tab.title.trim()
+      const type = /^b2[bc]$/i.test(title) ? title.toUpperCase() : title
+      try {
+        out.sales.push({ type, ...(await read(tab, salesId, what)) })
+      } catch (err) {
+        out.sales.push({ type, error: err.publicMessage || err.message })
+      }
     }
+  } catch (err) {
+    out.sales.push({ type: 'Sales sheet', whole: true, error: err.publicMessage || err.message })
   }
   return out
 }
@@ -360,7 +372,10 @@ export async function misData({ refresh = false } = {}) {
       value.leadsError = err.publicMessage || err.message
     }
   }
-  value.sales = (sales || []).map((t) => (t.error ? { type: t.type, rows: [], error: t.error } : buildSales(t.values, { type: t.type, sheetTitle: t.title })))
+  const built = (sales || []).map((t) => (t.error ? { type: t.type, whole: t.whole, rows: [], error: t.error } : buildSales(t.values, { type: t.type, sheetTitle: t.title })))
+  // Tabs with no sales header (notes, lists) are left out, unless none of them has one: then the reasons are shown.
+  const usable = built.filter((t) => !t.error)
+  value.sales = usable.length ? usable : built
   cache = { at: Date.now(), value }
   return value
 }

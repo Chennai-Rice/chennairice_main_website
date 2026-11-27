@@ -269,7 +269,7 @@ export default function SalesView({ sales = [], calls = [], filters }) {
 
       {problems.map((t) => (
         <p key={t.type} className="mis-warn">
-          {t.error ? `The ${t.type} tab could not be read: ${t.error}` : `The ${t.type} tab has no BILL VALUE column, so its sales show as ₹0.`}
+          {t.error ? (t.whole ? `The Sales sheet could not be read: ${t.error}` : `The ${t.type} tab could not be read: ${t.error}`) : `The ${t.type} tab has no BILL VALUE column, so its sales show as ₹0.`}
         </p>
       ))}
 
