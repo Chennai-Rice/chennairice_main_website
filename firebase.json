@@ -2,7 +2,8 @@
   "hosting": {
     "public": "dist",
     "predeploy": [
-      "npm run build"
+      "npm run build",
+      "node scripts/deploy-guard.mjs"
     ],
     "ignore": [
       "firebase.json",
