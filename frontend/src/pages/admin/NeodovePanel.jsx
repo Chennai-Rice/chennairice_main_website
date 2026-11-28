@@ -96,6 +96,7 @@ function Neodove({ onAuthError }) {
       {data && (
         <>
           <Health h={data.health} />
+          <WhyWaiting w={data.waiting} />
           <div className="nd-two">
             <SalesDaddyInput t={data.input.salesdaddy} perf={data.performance.salesdaddy} />
             <WebsiteInput t={data.input.website} perf={data.performance.website} />
@@ -153,6 +154,52 @@ function Health({ h }) {
   )
 }
 
+/**
+ * Why leads are waiting or failed: one block per reason, in plain words, so the owner can explain it to a customer
+ * or the team. Right now (not the chosen period). Counts only; from data.waiting (neodove-dashboard.js).
+ */
+function WhyWaiting({ w }) {
+  const waiting = w.groups.filter((g) => g.status === 'waiting')
+  const failed = w.groups.filter((g) => g.status === 'failed')
+  const already = waiting.filter((g) => g.inNeoDove === true).reduce((a, g) => a + g.leads, 0)
+  return (
+    <Card
+      title="Why leads are waiting"
+      subtitle="Right now, whatever period is chosen. Nothing here is lost: every lead is saved and goes out as soon as its reason is fixed."
+    >
+      {!w.groups.length && <p className="ad-muted">Nothing is waiting or failed.</p>}
+      {waiting.length > 0 && (
+        <p className="nd-why-sum">
+          <strong>{n(w.total)}</strong> {w.total === 1 ? 'item is' : 'items are'} waiting.
+          {already > 0 && <> <strong>{n(already)}</strong> of them {already === 1 ? 'is' : 'are'} for customers who are <strong>already in NeoDove</strong>: the customer is there and can be called, only the newest activity is not added to their lead yet.</>}
+        </p>
+      )}
+      {waiting.map((g) => <WhyBlock key={g.status + g.kind + (g.route || '') + (g.reason || '')} g={g} />)}
+      {failed.length > 0 && <h3 className="nd-why-head">Gave up or not sent</h3>}
+      {failed.map((g) => <WhyBlock key={g.status + g.kind + (g.route || '') + (g.reason || '')} g={g} />)}
+    </Card>
+  )
+}
+
+function WhyBlock({ g }) {
+  return (
+    <section className={`nd-why is-${g.status}`}>
+      <div className="nd-why-top">
+        <h3>{g.title}</h3>
+        <span className="nd-why-count">{n(g.leads)} {g.leads === 1 ? 'item' : 'items'}{g.customers !== g.leads ? ` · ${n(g.customers)} customers` : ''}</span>
+      </div>
+      <div className="nd-why-tags">
+        {g.inNeoDove === true && <span className="nd-tag is-yes">Customer is already in NeoDove</span>}
+        {g.inNeoDove === false && <span className="nd-tag">Not a NeoDove problem</span>}
+        <span className="nd-tag">Oldest {when(g.oldest)}</span>
+        {g.types.map((t) => <span key={t.type} className="nd-tag">{t.type}: {n(t.leads)}</span>)}
+      </div>
+      <p><strong>Why:</strong> {g.why}</p>
+      <p><strong>What clears it:</strong> {g.fix}</p>
+    </section>
+  )
+}
+
 function SalesDaddyInput({ t, perf }) {
   return (
     <Card className="nd-origin is-sd" title="Input from Sales Daddy" subtitle="Meta lead-form leads Sales Daddy received, copied here and sent on to NeoDove">
@@ -160,7 +207,8 @@ function SalesDaddyInput({ t, perf }) {
         <Stat label="Received from Sales Daddy" value={n(t.received)} tone="lead" />
         <Stat label="Pushed to NeoDove" value={n(t.pushed)} tone="good" note={p(t.received ? Math.round((t.pushed / t.received) * 1000) / 10 : null) + ' of received'} />
         <Stat label="Already in NeoDove" value={n(t.already)} note="Came earlier from another source, not added twice" />
-        <Stat label="Waiting" value={n(t.waiting)} tone={t.waiting ? 'warn' : ''} />
+        <Stat label="Waiting" value={n(t.waiting)} tone={t.waiting ? 'warn' : ''}
+          note={t.waiting ? 'The form lead itself has not gone out yet. Why: see "Why leads are waiting" above' : undefined} />
         <Stat label="Failed" value={n(t.failed)} tone={t.failed ? 'bad' : ''} />
         <Stat label="Not sent" value={n(t.notQueued)} note={t.buyers ? `${n(t.buyers)} already customers` : 'Already customers or invalid numbers'} />
       </div>
