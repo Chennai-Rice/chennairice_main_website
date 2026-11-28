@@ -752,10 +752,15 @@ export async function answer({ to, phone, name, text, replyId, image = null }, {
     // Tapping English / தமிழ் (even on an older message) is a fresh start too: the menu in that language, not the AI
     // (owner, 26 Nov 2026: தமிழ் tapped after "Talk to our team" got an AI reply).
     const langTap = handedOver && /^lang(_en|_ta)?$/.test(String(replyId || ''))
+    // Tapping a menu option (or its buttons) is a fresh start as well: that option's own answer with its button, not
+    // the AI (owner, 28 Nov 2026: "Super Slogan Contest" tapped after "Talk to Us" got an AI text without the
+    // Join Contest button). Tapping "Talk to Us" again keeps the chat with the team.
+    const menuTap = handedOver && Boolean(replyId) &&
+      (['menu', 'delivery_rates', 'bulk_enquiry'].includes(replyId) || (bot.items || []).some((it) => it.id === replyId))
     // The chat's language (English unless they chose Tamil). Read with the Tamil words too, so "விலை" works.
     const lang = st?.lang === 'ta' ? 'ta' : 'en'
     let decision = ref ? { kind: 'track', ref, handedOver: true }
-      : langTap ? decide(botFor(bot, lang), { text, replyId }, {})
+      : langTap || menuTap ? decide(botFor(bot, lang), { text, replyId }, {})
       : greeting ? { kind: 'welcome' }
         : handedOver ? { kind: 'ai', text, image, handedOver: true } : decide(botFor(bot, lang), { text, replyId, image }, st || {})
     // English / தமிழ் first, then the menu (owner, 26 Nov 2026): on every greeting ("hi", also while waiting for the

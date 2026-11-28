@@ -669,6 +669,20 @@ test('after "Talk to our team": tapping தமிழ் gives the Tamil menu (no
   assert.equal(sent[0].interactive.type, 'list')
   assert.match(sent[0].interactive.body.text, /வணக்கம்/)
 
+  // Tapping a menu option there (owner, 28 Nov 2026: Super Slogan Contest) gets that option's answer with its
+  // Join Contest button, not an AI text.
+  sent.length = 0
+  process.env.WHATSAPP_TOKEN = 'test'
+  try {
+    await answer({ to: '919876543210', phone: '9876543210', text: '🏆 Super Slogan Contest', replyId: 'contest' }, { query, fetchImpl, aiFetch: async () => { throw new Error('the AI must not be asked') } })
+  } finally {
+    if (prev === undefined) delete process.env.WHATSAPP_TOKEN
+    else process.env.WHATSAPP_TOKEN = prev
+  }
+  assert.equal(sent[0].interactive.type, 'cta_url')
+  assert.equal(sent[0].interactive.action.parameters.display_text, 'Join Contest')
+  assert.equal(sent[0].interactive.action.parameters.url, 'https://coupon.chennairiceindustries.com/')
+
   // A reply saved in Bot settings without the number (any wording) gets it added; the menu row too.
   const saved = JSON.parse(JSON.stringify(DEFAULT_BOT))
   Object.assign(saved.items.find((i) => i.id === 'human'), { description: 'A person will reply', reply: 'Thanks! 🙏 Our team will get back to you here soon. ' })
