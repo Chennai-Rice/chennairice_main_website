@@ -51,7 +51,8 @@ export async function runJobs() {
   // Meta Instant Form leads that reached Sales Daddy: copied here and queued for NeoDove's Meta campaign (lead-forms.js).
   const leadForms = await syncLeadForms({ query }).catch((err) => ({ error: err.message }))
   // Sign-ups NeoDove could not take at the time; its raw webhook calls kept 90 days.
-  const neodove = await sendNeodoveLeads({ query }).catch(() => ({}))
+  // 60 a run (owner, 28 Nov 2026: 329 waiting would have taken over 2½ hours at 20 a run; a launch day queues more).
+  const neodove = await sendNeodoveLeads({ query, limit: 60 }).catch(() => ({}))
   await query("delete from neodove_events where received_at < now() - interval '90 days'").catch(() => {})
   // Checkout journeys are kept 90 days (Privacy Policy, 'How we collect your information').
   await query("delete from checkout_journeys where updated_at < now() - interval '90 days'").catch(() => {})
