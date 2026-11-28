@@ -72,7 +72,10 @@ export default function FeatureStrip() {
     <section className="feat">
       <div className="feat-band">
         <svg className="feat-cut feat-cut-top" viewBox="0 0 1440 46" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M0,0 L1440,0 L1440,10 C1080,52 420,52 0,10 Z" fill={ABOVE} />
+          {/* The colour the bestsellers above show right now (ProductsShowcase.jsx sets --showcase-bg); the last
+              pack's tint until it does. */}
+          <path d="M0,0 L1440,0 L1440,10 C1080,52 420,52 0,10 Z" fill={ABOVE}
+                style={{ fill: `var(--showcase-bg, ${ABOVE})`, transition: 'fill 0.35s ease' }} />
           <path
             d="M0,10 C420,52 1080,52 1440,10"
             fill="none"
