@@ -35,6 +35,21 @@
 .nd-stat.is-bad { background: var(--ad-down-bg); border-color: #EBC3BB; }
 .nd-stat.is-bad .nd-stat-value { color: var(--ad-down); }
 
+.nd-whytable { width: 100%; min-width: 980px; border-collapse: collapse; font-size: 0.86rem; }
+.nd-whytable th, .nd-whytable td { padding: 10px 12px; border-bottom: 1px solid var(--ad-line); text-align: left; vertical-align: top; }
+.nd-whytable thead th { color: var(--ad-muted); font-weight: 600; font-size: 0.78rem; white-space: nowrap; }
+.nd-whytable .nd-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nd-whytable small { display: block; margin-top: 2px; color: var(--ad-muted); font-size: 0.75rem; font-weight: 400; }
+.nd-whytable .nd-whygroup th { padding: 12px 12px 6px; border-bottom: 2px solid var(--ad-line); color: var(--ad-ink, inherit); font-size: 0.84rem; letter-spacing: 0.02em; }
+.nd-whytable tr.is-waiting > :first-child { box-shadow: inset 4px 0 0 #c9871f; }
+.nd-whytable tr.is-failed > :first-child { box-shadow: inset 4px 0 0 #b3392d; }
+.nd-why-reason { min-width: 170px; max-width: 220px; font-weight: 700; line-height: 1.35; }
+.nd-why-text { min-width: 240px; max-width: 340px; line-height: 1.5; color: var(--ad-muted); }
+.nd-why-type { display: block; white-space: nowrap; }
+.nd-nowrap { white-space: nowrap; }
+.nd-why-sum { margin: 0 0 12px; font-size: 0.95rem; line-height: 1.5; }
+.nd-tag { display: inline-block; padding: 2px 10px; border: 1px solid var(--ad-line); border-radius: 999px; font-size: 0.78rem; color: var(--ad-muted); }
+.nd-tag.is-yes { color: #1c6b43; border-color: #1c6b43; font-weight: 600; }
 .nd-problems { margin: 12px 0 0; padding-left: 18px; font-size: 0.86rem; color: var(--ad-muted); }
 .nd-problems li { margin: 2px 0; overflow-wrap: anywhere; }
 

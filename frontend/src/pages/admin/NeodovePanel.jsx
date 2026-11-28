@@ -96,6 +96,7 @@ function Neodove({ onAuthError }) {
       {data && (
         <>
           <Health h={data.health} />
+          <WhyWaiting w={data.waiting} />
           <div className="nd-two">
             <SalesDaddyInput t={data.input.salesdaddy} perf={data.performance.salesdaddy} />
             <WebsiteInput t={data.input.website} perf={data.performance.website} />
@@ -153,6 +154,73 @@ function Health({ h }) {
   )
 }
 
+/**
+ * Why leads are waiting or failed, as one table (a row per reason) so the owner can explain it to a customer or the
+ * team: what it is, how many, whether the customer is already in NeoDove, why, and what clears it. Right now (not the
+ * chosen period). Counts only; from data.waiting (neodove-dashboard.js).
+ */
+const IN_NEODOVE = {
+  true: { text: 'Yes', note: 'can be called', cls: 'is-yes' },
+  false: { text: 'Not a NeoDove problem', note: '', cls: '' },
+  null: { text: 'Not known', note: '', cls: '' },
+}
+
+function WhyWaiting({ w }) {
+  const waiting = w.groups.filter((g) => g.status === 'waiting')
+  const failed = w.groups.filter((g) => g.status === 'failed')
+  const already = waiting.filter((g) => g.inNeoDove === true).reduce((a, g) => a + g.leads, 0)
+  return (
+    <Card
+      title="Why leads are waiting"
+      subtitle="Right now, whatever period is chosen. Nothing here is lost: every lead is saved and goes out as soon as its reason is fixed."
+    >
+      {!w.groups.length && <p className="ad-muted">Nothing is waiting or failed.</p>}
+      {waiting.length > 0 && (
+        <p className="nd-why-sum">
+          <strong>{n(w.total)}</strong> {w.total === 1 ? 'item is' : 'items are'} waiting.
+          {already > 0 && <> <strong>{n(already)}</strong> of them {already === 1 ? 'is' : 'are'} for customers who are <strong>already in NeoDove</strong>: the customer is there and can be called, only their newest activity is not added to their lead yet.</>}
+        </p>
+      )}
+      {w.groups.length > 0 && (
+        <div className="nd-scroll">
+          <table className="nd-whytable">
+            <thead>
+              <tr>
+                <th>Reason</th>
+                <th className="nd-num">Items</th>
+                <th>Customer already in NeoDove?</th>
+                <th>What they did</th>
+                <th>Waiting since</th>
+                <th>Why it happened</th>
+                <th>What clears it</th>
+              </tr>
+            </thead>
+            {[['Waiting to go to NeoDove', waiting], ['Gave up or not sent', failed]].filter(([, rows]) => rows.length).map(([label, rows]) => (
+              <tbody key={label}>
+                <tr className="nd-whygroup"><th colSpan={7}>{label}</th></tr>
+                {rows.map((g) => {
+                  const who = IN_NEODOVE[String(g.inNeoDove)]
+                  return (
+                    <tr key={g.status + g.kind + (g.route || '') + (g.reason || '')} className={`is-${g.status}`}>
+                      <th scope="row" className="nd-why-reason">{g.title}</th>
+                      <td className="nd-num"><strong>{n(g.leads)}</strong>{g.customers !== g.leads && <small>{n(g.customers)} customers</small>}</td>
+                      <td><span className={`nd-tag ${who.cls}`}>{who.text}</span>{who.note && <small>{who.note}</small>}</td>
+                      <td>{g.types.map((t) => <span key={t.type} className="nd-why-type">{t.type}: <strong>{n(t.leads)}</strong></span>)}</td>
+                      <td className="nd-nowrap">{when(g.oldest)}</td>
+                      <td className="nd-why-text">{g.why}</td>
+                      <td className="nd-why-text">{g.fix}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            ))}
+          </table>
+        </div>
+      )}
+    </Card>
+  )
+}
+
 function SalesDaddyInput({ t, perf }) {
   return (
     <Card className="nd-origin is-sd" title="Input from Sales Daddy" subtitle="Meta lead-form leads Sales Daddy received, copied here and sent on to NeoDove">
@@ -160,7 +228,8 @@ function SalesDaddyInput({ t, perf }) {
         <Stat label="Received from Sales Daddy" value={n(t.received)} tone="lead" />
         <Stat label="Pushed to NeoDove" value={n(t.pushed)} tone="good" note={p(t.received ? Math.round((t.pushed / t.received) * 1000) / 10 : null) + ' of received'} />
         <Stat label="Already in NeoDove" value={n(t.already)} note="Came earlier from another source, not added twice" />
-        <Stat label="Waiting" value={n(t.waiting)} tone={t.waiting ? 'warn' : ''} />
+        <Stat label="Waiting" value={n(t.waiting)} tone={t.waiting ? 'warn' : ''}
+          note={t.waiting ? 'The form lead itself has not gone out yet. Why: see "Why leads are waiting" above' : undefined} />
         <Stat label="Failed" value={n(t.failed)} tone={t.failed ? 'bad' : ''} />
         <Stat label="Not sent" value={n(t.notQueued)} note={t.buyers ? `${n(t.buyers)} already customers` : 'Already customers or invalid numbers'} />
       </div>
