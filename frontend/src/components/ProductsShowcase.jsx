@@ -213,6 +213,15 @@ export default function ProductsShowcase() {
   }, [])
   useEffect(() => () => cancelAnimationFrame(frame.current), [])
 
+  /* The curve at the top of the "Why Tamil Homes Trust Chennai Rice?" strip below (FeatureStrip.jsx) takes the colour
+     this section shows now (--showcase-bg), so the two meet without a seam (owner, 28 Nov 2026: a pale green band
+     showed under packs 01–03, as the curve was always the last pack's colour). Phones: the pack swiped to; larger
+     screens: the scroll animation sets it (below). */
+  useEffect(() => {
+    if (carousel) document.documentElement.style.setProperty('--showcase-bg', PRODUCTS[activeIndex]?.tint || '')
+  }, [carousel, activeIndex])
+  useEffect(() => () => document.documentElement.style.removeProperty('--showcase-bg'), [])
+
   // GSAP (about 110 KB) is loaded only here, for larger screens, after the page has started: it used to be in the main
   // file every phone downloaded before the hero headline could show (LCP, 26 Nov 2026). Phones never load it.
   const scrollTriggerRef = useRef(null)
@@ -261,6 +270,8 @@ export default function ProductsShowcase() {
       gsap.set(bgTexts[0], restFor(firstMotion.textEnter, TEXT_REST))
       gsap.set(copies[0], restFor(firstMotion.copyEnter, COPY_REST))
       gsap.set(section, { backgroundColor: PRODUCTS[0].tint })
+      // The curve at the top of the strip below takes the same colour (FeatureStrip.jsx, --showcase-bg).
+      gsap.set(document.documentElement, { '--showcase-bg': PRODUCTS[0].tint })
 
       const timeline = gsap.timeline({
         scrollTrigger: {
@@ -306,6 +317,7 @@ export default function ProductsShowcase() {
             { backgroundColor: product.tint, duration: 0.35, ease: 'none' },
             start - 0.2
           )
+          timeline.to(document.documentElement, { '--showcase-bg': product.tint, duration: 0.35, ease: 'none' }, start - 0.2)
           timeline.fromTo(
             bags[index],
             motion.bagEnter,
