@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { staffFetch, staffJson } from '../../services/staffAuth.js'
 import { Icon, dayLabel, istDay } from './shared.jsx'
+import RefundRequests from './RefundRequests.jsx'
 
 // Accounts: every invoice issued, payments received, refunds, and the totals
-// for a period — for the accounts team. Read-only; no GST breakdown here.
+// for a period — for the accounts team. No GST breakdown here. Refunds: requests approved or not approved here,
+// with the GST credit note (RefundRequests.jsx).
 
 const rupees = (n) => '₹' + (Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const when = (iso) =>
@@ -133,7 +135,7 @@ export default function AccountsView({ say, onAuthError }) {
   useEffect(() => {
     setSummary(null)
     staffJson(`/api/admin/accounts/summary?${qs}`).then(setSummary).catch(fail)
-  }, [qs, fail])
+  }, [qs, fail, tick])
 
   useEffect(() => {
     let live = true
@@ -194,6 +196,12 @@ export default function AccountsView({ say, onAuthError }) {
           <button type="button" className="wh-btn wh-btn--outline" onClick={() => { setTab('invoices'); setOffer('notsent') }}>Show them</button>
         </div>
       )}
+      {s && s.refundRequestsWaiting > 0 && tab !== 'refunds' && (
+        <div className="wh-acc-alert" role="status" style={{ margin: '0 0 16px', padding: '12px 16px', borderRadius: 12, background: '#fff6e5', border: '1px solid #f0d49a', color: '#7a4b06', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+          <strong>{s.refundRequestsWaiting} refund {s.refundRequestsWaiting === 1 ? 'request is' : 'requests are'} waiting for approval</strong>
+          <button type="button" className="wh-btn wh-btn--outline" onClick={() => setTab('refunds')}>Approve or not approve</button>
+        </div>
+      )}
       {s && (
         <div className="wh-acc-split">
           <section className="wh-panel">
@@ -237,7 +245,7 @@ export default function AccountsView({ say, onAuthError }) {
       <section className="wh-panel">
         <div className="wh-acc-head">
           <nav className="wh-tabs" aria-label="Accounts">
-            {[['invoices', 'Invoices'], ['payments', 'Payments'], ['refunds', 'Refunds']].map(([k, label]) => (
+            {[['invoices', 'Invoices'], ['payments', 'Payments'], ['refunds', `Refunds${s?.refundRequestsWaiting ? ` (${s.refundRequestsWaiting} waiting)` : ''}`]].map(([k, label]) => (
               <button key={k} type="button" className={`wh-tab${tab === k ? ' is-active' : ''}`} aria-pressed={tab === k} onClick={() => setTab(k)}>{label}</button>
             ))}
           </nav>
@@ -269,6 +277,8 @@ export default function AccountsView({ say, onAuthError }) {
           )}
         </div>
 
+        {tab === 'refunds' && <RefundRequests say={say} onAuthError={onAuthError} onChanged={reload} />}
+        {tab === 'refunds' && <h3 className="wh-panel-title wh-rr-sub">Refunds paid in this period</h3>}
         {!rows ? <p className="wh-empty">Loading…</p> : !rows.length ? <p className="wh-empty">Nothing in this period.</p> : tab === 'invoices' ? (
           <div className="wh-acc-table wh-acc-table--inv" role="table" aria-label="Invoices">
             <div className="wh-acc-tr wh-acc-th" role="row">

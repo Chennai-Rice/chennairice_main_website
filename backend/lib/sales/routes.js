@@ -79,7 +79,8 @@ import { misData } from './mis.js'
 import { publishedPosts, publishedPost, allPosts, openPost, savePost as saveBlogPost, deletePost as deleteBlogPost, saveImage, readImage, MAX_IMAGE_BYTES } from './blog.js'
 import { syncSettlements, importSettlementFile } from './settlements.js'
 import { accountsSummary, invoiceRegister, invoiceRegisterCsv, paymentsList, refundsList, period } from './accounts.js'
-import { invoicePdf } from './invoice-pdf.js'
+import { invoicePdf, creditNotePdf } from './invoice-pdf.js'
+import { refundCheck, createRefundRequest, approveRefundRequest, rejectRefundRequest, refundRequestsList, creditNoteDetail } from './refund-requests.js'
 import { query } from '../db.js'
 import { httpError, safeEqual, getSettings, str } from './util.js'
 
@@ -806,6 +807,24 @@ export function createSalesRouter({ verifyIdToken } = {}) {
   admin.get('/accounts/refunds', perm('accounts.view'), wrap(async (req, res) => {
     res.set('Cache-Control', 'no-store')
     res.json({ refunds: await refundsList({ query }, req.query) })
+  }))
+  // Refund requests (owner, 28 Nov 2026): raised with a reason and remark, approved or not approved by accounts;
+  // approval refunds and issues the GST credit note (refund-requests.js).
+  admin.get('/refund-requests', permAny('accounts.view', 'refund.approve'), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await refundRequestsList({ query }, req.query))
+  }))
+  admin.get('/refund-requests/check', rateLimit({ windowMs: 60000, max: 60 }), wrap(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
+    res.json(await refundCheck(req.staff, req.query))
+  }))
+  admin.post('/refund-requests', rateLimit({ windowMs: 60000, max: 20 }), wrap(async (req, res) => res.json(await createRefundRequest(req.staff, req.body))))
+  admin.post('/refund-requests/:id/approve', rateLimit({ windowMs: 60000, max: 20 }), wrap(async (req, res) => res.json(await approveRefundRequest(req.staff, req.params.id, req.body))))
+  admin.post('/refund-requests/:id/reject', rateLimit({ windowMs: 60000, max: 20 }), wrap(async (req, res) => res.json(await rejectRefundRequest(req.staff, req.params.id, req.body))))
+  admin.get('/credit-notes/:id/pdf', permAny('accounts.view', 'refund.approve'), wrap(async (req, res) => {
+    const { detail, creditNote } = await creditNoteDetail({ query }, req.params.id)
+    res.set('Cache-Control', 'private, no-store')
+    res.type('application/pdf').attachment(`Credit Note ${creditNote.credit_note_number.replaceAll('/', '-')}.pdf`).send(await creditNotePdf(detail, creditNote))
   }))
   // The invoice as the same PDF the customer is emailed.
   admin.get('/orders/:id/invoice.pdf', perm('accounts.view'), wrap(async (req, res) => {

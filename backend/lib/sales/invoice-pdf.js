@@ -3,18 +3,26 @@
 // after the company's own Tax Invoice / Bill of Supply. Built with the PDF
 // standard Helvetica, which has no ₹ glyph, so the total reads "Rs.".
 import PDFDocument from 'pdfkit'
-import { invoiceModel } from './invoice-model.js'
+import { invoiceModel, creditNoteModel } from './invoice-model.js'
 
 const money = (paise) =>
   (Number(paise) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 /** Resolves to the invoice PDF as a Buffer. */
 export function invoicePdf(detail) {
-  const m = invoiceModel(detail)
+  return renderPdf(invoiceModel(detail))
+}
+
+/** The GST credit note as a PDF (creditNoteModel(): same layout, against the original invoice). */
+export function creditNotePdf(detail, cn) {
+  return renderPdf(creditNoteModel(detail, cn))
+}
+
+function renderPdf(m) {
   const s = m.seller
   const doc = new PDFDocument({
     size: 'A4', margin: 28,
-    info: { Title: `Invoice ${m.meta.invoiceNo}`, Author: s.name, Subject: `Order ${m.meta.orderNo}` },
+    info: { Title: m.creditNote ? `Credit Note ${m.meta.creditNoteNo}` : `Invoice ${m.meta.invoiceNo}`, Author: s.name, Subject: `Order ${m.meta.orderNo}` },
   })
   const chunks = []
   doc.on('data', (c) => chunks.push(c))
@@ -68,7 +76,7 @@ export function invoicePdf(detail) {
   y = block(y, partyParts('Consignee (Ship to)', m.shipTo))
   const sep2 = y
   y = block(y, partyParts('Buyer (Bill to)', m.billTo))
-  const metaRows = [
+  const metaRows = m.metaRows || [
     ['Invoice No.', m.meta.invoiceNo, 'Dated', m.meta.date],
     ['Delivery Note', '', 'Mode/Terms of Payment', m.meta.terms],
     ['Reference No. & Date.', `${m.meta.invoiceNo} dt. ${m.meta.date}`, 'Razorpay Payment ID', m.meta.paymentId],
@@ -159,6 +167,14 @@ export function invoicePdf(detail) {
   font(false, 6.5).text('Amount Chargeable (in words)', L + pad, y + 3)
   font(false, 7, true).text('E. & O.E', L, y + 3, { width: W - pad, align: 'right' })
   font(true, 8).text(m.totalWords, L + pad, y + 12, { width: W - pad * 2 })
+  if (m.creditNote) {
+    font(false, 7.5).text('Reason for credit :  ', L + pad, doc.y + 4, { continued: true })
+    font(true, 7.5).text(m.meta.reason, { width: W - pad * 2 })
+    if (m.meta.remark) {
+      font(false, 7.5).text('Remark :  ', L + pad, doc.y + 2, { continued: true })
+      font(true, 7.5).text(m.meta.remark, { width: W - pad * 2 })
+    }
+  }
   y = doc.y + 4
   box(L, itemsBottom, W, y - itemsBottom)
 
@@ -198,7 +214,7 @@ export function invoicePdf(detail) {
   font(true, 7.5).text(m.taxWords)
   y = doc.y + 6
   font(false, 7).text('Declaration', L + pad, y + 40, { underline: true })
-  font(false, 7).text('We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.',
+  font(false, 7).text(m.declaration || 'We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.',
     L + pad, doc.y, { width: half - pad * 2 })
   const signY = Math.max(doc.y, y + 52)
   font(false, 7)
@@ -208,7 +224,7 @@ export function invoicePdf(detail) {
   const fBottom = signY + 12
   box(L, fTop, W, fBottom - fTop)
   vline(L + half, y - 2, fBottom)
-  font(false, 7).text('This is a Computer Generated Invoice', L, fBottom + 8, { width: W, align: 'center' })
+  font(false, 7).text(m.footer || 'This is a Computer Generated Invoice', L, fBottom + 8, { width: W, align: 'center' })
 
   doc.end()
   return done

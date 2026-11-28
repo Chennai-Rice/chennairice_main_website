@@ -391,6 +391,34 @@ export async function issueInvoice(db, order) {
 }
 
 /**
+ * The GST credit note for a refund (owner, 28 Nov 2026): against the order's invoice, numbered per financial year
+ * (CRI/CN/2026-27/000001). The tax is credited in the refund's share of the invoice (all of it for a full refund).
+ */
+export async function issueCreditNote(db, { order, refund, reason, remark = null, requestId = null }) {
+  const invoice = (await db.query('select * from invoices where order_id = $1', [order.id])).rows[0] || await issueInvoice(db, order)
+  const settings = await getSettings(db)
+  const fy = financialYear()
+  const { rows: [counter] } = await db.query(
+    `insert into credit_note_counters (financial_year, last_number) values ($1, 1)
+     on conflict (financial_year) do update set last_number = credit_note_counters.last_number + 1
+     returning last_number`,
+    [fy]
+  )
+  const number = `${settings.invoice_prefix || 'CRI'}/CN/${fy}/${String(counter.last_number).padStart(6, '0')}`
+  const total = Number(refund.amount_paise)
+  const ratio = Math.min(1, total / Number(invoice.total_paise))
+  const part = (v) => (ratio === 1 ? Number(v) : Math.round(Number(v) * ratio))
+  const { rows: [cn] } = await db.query(
+    `insert into credit_notes (credit_note_number, financial_year, order_id, invoice_id, refund_request_id, refund_id, reason, remark,
+                               seller, buyer, place_of_supply, taxable_paise, cgst_paise, sgst_paise, igst_paise, total_paise)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) returning *`,
+    [number, fy, order.id, invoice.id, requestId, refund.id, reason, remark, invoice.seller, invoice.buyer, invoice.place_of_supply,
+      part(invoice.taxable_paise), part(invoice.cgst_paise), part(invoice.sgst_paise), part(invoice.igst_paise), total]
+  )
+  return cn
+}
+
+/**
  * Dispatch the whole order: records how it left, takes the packs out of stock
  * (from reserved), issues the invoice and emails the customer.
  * body.batches optionally maps order_item_id → production batch id.
@@ -562,8 +590,9 @@ export async function outForDelivery(staff, shipmentId) {
   })
 }
 
-export async function cancelOrder(staff, id, body = {}) {
-  requirePermission(staff, 'order.cancel')
+// opts.approved: an approved refund request (refund-requests.js) cancelling the order; the request was the check.
+export async function cancelOrder(staff, id, body = {}, opts = {}) {
+  if (!opts.approved) requirePermission(staff, 'order.cancel')
   const reason = str(body.reason)
   if (!reason) throw httpError('Please give a reason for cancelling.')
   const result = await tx(async (db) => {
@@ -646,9 +675,12 @@ export async function resolveAttention(staff, id, body = {}) {
  * API; Zoho Payments refunds are recorded here and done from the Zoho
  * dashboard (status "manual").
  * body.amount is in rupees; omitted means "everything not yet refunded".
+ * opts (refund-requests.js, never from a request body): approved = an approved refund request, which was the check;
+ * creditNote = { reason, remark, requestId }: issue the GST credit note in the same transaction and attach it to
+ * the customer's refund email.
  */
-export async function refundOrder(staff, id, body = {}) {
-  requirePermission(staff, 'refund.create')
+export async function refundOrder(staff, id, body = {}, opts = {}) {
+  if (!opts.approved) requirePermission(staff, 'refund.create')
   const reason = str(body.reason)
   if (!reason) throw httpError('Please give a reason for the refund.')
 
@@ -704,11 +736,18 @@ export async function refundOrder(staff, id, body = {}) {
         where id = $1 returning *`,
       [id, full ? 'refunded' : 'partially_refunded', full]
     )
-    await audit(db, staff, 'refund.create', 'order', id, { amount_paise: refund.amount_paise, gateway: payment.gateway, status })
-    await queueEmail(db, { to: updated.contact_email, ...templates.refundIssued(updated, refund.amount_paise), orderId: id, dedupeKey: 'refund:' + refund.id })
+    await audit(db, staff, 'refund.create', 'order', id, { amount_paise: refund.amount_paise, gateway: payment.gateway, status, ...(opts.approved ? { request: opts.creditNote?.requestId } : {}) })
+    const creditNote = opts.creditNote
+      ? await issueCreditNote(db, { order: updated, refund: saved, ...opts.creditNote })
+      : null
+    await queueEmail(db, {
+      to: updated.contact_email, ...templates.refundIssued(updated, refund.amount_paise, creditNote?.credit_note_number), orderId: id, dedupeKey: 'refund:' + refund.id,
+      ...(creditNote ? { attachments: [{ kind: 'credit_note', creditNoteId: creditNote.id }] } : {}),
+    })
     return {
       refund: saved,
       order: updated,
+      ...(creditNote ? { creditNote } : {}),
       ...(status === 'manual' ? { action: 'Refund this amount from the Zoho Payments dashboard; it is recorded here.' } : {}),
     }
   })

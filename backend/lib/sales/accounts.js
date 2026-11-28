@@ -61,7 +61,7 @@ const rupees = (paise) => Math.round(Number(paise || 0)) / 100
 
 export async function accountsSummary(db, params) {
   const { from, to } = period(params)
-  const [inv, pays, refunds, pending, offers, notSent] = await Promise.all([
+  const [inv, pays, refunds, pending, offers, notSent, waiting] = await Promise.all([
     db.query(
       `select count(*)::int as invoices, coalesce(sum(total_paise), 0)::bigint as total
          from invoices where ${IN_PERIOD('issued_at')}`,
@@ -101,6 +101,8 @@ export async function accountsSummary(db, params) {
         where ${IN_PERIOD('v.issued_at')} and ${NOT_SENT}`,
       [from, to]
     ),
+    // Refund requests waiting for approval (refund-requests.js), whenever raised.
+    db.query(`select count(*)::int as n from refund_requests where status = 'requested'`),
   ])
   const i = inv.rows[0]
   const received = pays.rows.reduce((t, p) => t + Number(p.amount), 0)
@@ -116,6 +118,7 @@ export async function accountsSummary(db, params) {
     paidWithoutInvoice: pending.rows[0].n,
     invoicesNotSent: notSent.rows[0].n,
     invoicesNotSentNoEmail: notSent.rows[0].no_email,
+    refundRequestsWaiting: waiting.rows[0].n,
     byOffer: offerBreakdown(offers.rows),
     byMethod: pays.rows.map((p) => ({ method: PAYMENT_METHOD[p.method] || p.method, payments: p.payments, amount: rupees(p.amount) })),
   }

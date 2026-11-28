@@ -44,6 +44,19 @@ async function buildAttachments(mail) {
       })
       continue
     }
+    // The GST credit note of an approved refund (refund-requests.js).
+    if (a.kind === 'credit_note' && a.creditNoteId) {
+      const { creditNoteDetail } = await import('./refund-requests.js')
+      const { creditNotePdf } = await import('./invoice-pdf.js')
+      const found = await creditNoteDetail({ query }, a.creditNoteId).catch(() => null)
+      if (!found) continue
+      files.push({
+        filename: `Credit Note ${found.creditNote.credit_note_number.replaceAll('/', '-')}.pdf`,
+        content: await creditNotePdf(found.detail, found.creditNote),
+        contentType: 'application/pdf',
+      })
+      continue
+    }
     if (a.kind !== 'invoice') continue
     const { customerInvoice } = await import('./operations.js')
     const { invoicePdf } = await import('./invoice-pdf.js')
@@ -509,11 +522,12 @@ export const templates = {
         (wasPaid ? '\nCheck in the admin panel that the customer has been refunded.' : ''),
     }
   },
-  refundIssued(order, amountPaise) {
+  refundIssued(order, amountPaise, creditNoteNumber = null) {
     return {
       template: 'refund_issued',
       subject: `Refund for order ${order.order_number}`,
-      text: `Dear ${order.contact_name},\n\nWe have issued a refund of ${formatInr(amountPaise)} for order ${order.order_number}. It usually reaches your account in 5–7 working days.`,
+      text: `Dear ${order.contact_name},\n\nWe have issued a refund of ${formatInr(amountPaise)} for order ${order.order_number}. It usually reaches your account in 5–7 working days.`
+        + (creditNoteNumber ? `\n\nOur credit note ${creditNoteNumber} for this refund is attached.` : ''),
     }
   },
 }

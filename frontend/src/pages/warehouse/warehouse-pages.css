@@ -525,3 +525,27 @@
   .src-pages { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
   .src-page { flex: none; padding: 7px 13px; font-size: 13px; }
 }
+
+/* Accounts → Refunds → Refund requests (RefundRequests.jsx). */
+.wh-rr { display: grid; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid rgba(0, 0, 0, 0.08); }
+.wh-rr-sub { margin: 4px 0 8px; }
+.wh-rr-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.wh-rr-form { display: grid; gap: 12px; padding: 14px; border-radius: 12px; background: #fbf7f4; border: 1px solid rgba(110, 20, 32, 0.15); }
+.wh-rr-find, .wh-rr-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.wh-rr-find .wh-input { min-width: 0; width: 240px; max-width: 100%; }
+.wh-rr-remark { flex: 1 1 320px; }
+.wh-rr-remark textarea { width: 100%; resize: vertical; font: inherit; }
+.wh-rr-fields > .wh-filter { flex: 1 1 200px; }
+.wh-rr-fields > .wh-filter .wh-select, .wh-rr-fields > .wh-filter select { width: 100%; }
+.wh-rr-check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.wh-rr-order { font-size: 14px; }
+.wh-acc-table--rr .wh-acc-tr { grid-template-columns: 140px minmax(0, 1.3fr) 110px minmax(0, 1.5fr) minmax(0, 1.1fr) 170px; }
+.wh-rr-decide { grid-column: 1 / -1; display: grid; gap: 8px; padding: 12px; border-radius: 10px; background: #fff8ec; border: 1px solid #f0d49a; }
+.wh-acc-pill.is-rr-requested { background: #fff2d9; color: #8a5a0c; }
+.wh-acc-pill.is-rr-approved { background: #e3f3e8; color: #1f6b3a; }
+.wh-acc-pill.is-rr-not_approved { background: #fbe4e4; color: #a3242f; }
+@media (max-width: 1100px) {
+  .wh-acc-th { display: none; }
+  .wh-acc-table--rr .wh-acc-tr { grid-template-columns: 1fr 1fr; }
+  .wh-rr-find .wh-input { width: 100%; }
+}

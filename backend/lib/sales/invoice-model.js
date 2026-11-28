@@ -184,3 +184,81 @@ export function invoiceModel({ order, items, invoice, shipments = [], payments =
     taxWords: tax ? rupeesInWords(tax) : 'NIL',
   }
 }
+
+/**
+ * The GST credit note (owner, 28 Nov 2026), laid out like the invoice: the same seller, buyer and items, against
+ * the original invoice. A full refund credits every line as invoiced; a part refund credits each line in the same
+ * proportion (value only, no bags), so the tax credited matches the stored credit note.
+ * detail: getOrderDetail() of the order; cn: the credit_notes row (+ refund_id's gateway id as cn.gatewayRefundId).
+ */
+export function creditNoteModel(detail, cn) {
+  const m = invoiceModel(detail)
+  const invTotal = Number(detail.invoice.total_paise)
+  const total = Number(cn.total_paise)
+  const full = total >= invTotal
+  const ratio = full ? 1 : total / invTotal
+  const scale = (v) => Math.round(Number(v || 0) * ratio)
+  const lines = full ? m.lines : m.lines.map((l) => ({
+    ...l, bags: null, kgs: null, rate: null,
+    description: l.description + ' (part credit)',
+    amount: scale(l.amount), cgst: scale(l.cgst), sgst: scale(l.sgst), igst: scale(l.igst),
+  }))
+  // Tax rows and the HSN summary from the credited lines, as invoiceModel() does.
+  const byRate = new Map()
+  for (const l of lines.filter((x) => x.rateBp > 0)) {
+    const r = byRate.get(l.rateBp) || { rateBp: l.rateBp, cgst: 0, sgst: 0, igst: 0 }
+    r.cgst += l.cgst; r.sgst += l.sgst; r.igst += l.igst
+    byRate.set(l.rateBp, r)
+  }
+  const taxRows = [...byRate.values()].flatMap((r) => m.intra
+    ? [{ label: `CGST ${r.rateBp / 200}%`, pct: r.rateBp / 200, amount: r.cgst },
+      { label: `SGST ${r.rateBp / 200}%`, pct: r.rateBp / 200, amount: r.sgst }]
+    : [{ label: `IGST ${r.rateBp / 100}%`, pct: r.rateBp / 100, amount: r.igst }])
+  const hsn = new Map()
+  for (const l of lines) {
+    const code = l.hsn || (l.sku == null && l.description.startsWith('Delivery') ? 'Delivery' : '')
+    const key = `${code}|${l.rateBp}`
+    const h = hsn.get(key) || { hsn: code, rateBp: l.rateBp, taxable: 0, cgst: 0, sgst: 0, igst: 0 }
+    h.taxable += l.amount; h.cgst += l.cgst; h.sgst += l.sgst; h.igst += l.igst
+    hsn.set(key, h)
+  }
+  const taxable = lines.reduce((t, l) => t + l.amount, 0)
+  const tax = lines.reduce((t, l) => t + l.cgst + l.sgst + l.igst, 0)
+  const discount = full ? m.discount : scale(m.discount)
+  return {
+    ...m,
+    title: 'Credit Note',
+    creditNote: true,
+    lines,
+    taxRows,
+    discount,
+    roundOff: total - (taxable + tax - discount),
+    total,
+    bags: lines.reduce((t, l) => t + (l.bags || 0), 0),
+    totalWords: rupeesInWords(total),
+    hsnRows: [...hsn.values()],
+    taxable,
+    tax,
+    taxWords: tax ? rupeesInWords(tax) : 'NIL',
+    meta: {
+      ...m.meta,
+      creditNoteNo: cn.credit_note_number,
+      creditNoteDate: day(cn.issued_at),
+      invoiceDate: day(detail.invoice.issued_at),
+      reason: cn.reason,
+      remark: cn.remark || '',
+      refundId: cn.gatewayRefundId || '',
+      fullCredit: full,
+    },
+    metaRows: [
+      ['Credit Note No.', cn.credit_note_number, 'Dated', day(cn.issued_at)],
+      ['Original Invoice No.', m.meta.invoiceNo, 'Invoice Date', day(detail.invoice.issued_at)],
+      ['Buyer’s Order No.', m.meta.orderNo, 'Order Date', m.meta.orderDate],
+      ['Reason for Credit', cn.reason, 'Type', full ? 'Full refund' : 'Part refund'],
+      ['Razorpay Payment ID', m.meta.paymentId, 'Razorpay Refund ID', cn.gatewayRefundId || ''],
+      ['Remark', cn.remark || '', 'Place of Supply', detail.invoice.place_of_supply || ''],
+    ],
+    declaration: 'We have credited the amount shown above against the original invoice, with the GST on it, and refunded it to the buyer.',
+    footer: 'This is a Computer Generated Credit Note',
+  }
+}

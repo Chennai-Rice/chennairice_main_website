@@ -59,6 +59,10 @@ const PERMISSIONS = {
   // The website's contact and bulk-order enquiries (/admin → Enquiries).
   'enquiries.view': ['owner', 'admin', 'it', 'sales'],
   'refund.create': ['owner', 'admin', 'it'],
+  // Refund requests (owner, 28 Nov 2026): raised with a reason and remark, then approved or not approved by the
+  // accounts team in Accounts → Refunds; approval sends the money back and issues the GST credit note.
+  'refund.request': ['owner', 'admin', 'it', 'sales', 'accounts'],
+  'refund.approve': ['owner', 'admin', 'it', 'accounts'],
   // Returns & Issues: anyone on the panel may log and work an issue.
   'issues.manage': ['owner', 'admin', 'it', 'sales', 'dispatch', 'inventory', 'warehouse'],
   // Money in the panel (order amounts, sales figures): owner and admin only.

@@ -355,3 +355,67 @@ test('contact form: a sent enquiry pushes contact_form_submit for Google Ads, wi
   expect(pushed).not.toContain('test@example.com')
   expect(pushed).not.toContain('Test Person')
 })
+
+// Refund requests (owner, 28 Nov 2026): Accounts → Refunds shows requests waiting for approval with reason and remark;
+// approving refunds and issues the credit note, and a new request is raised by order number. Test data only.
+test('Accounts refunds: approve or not approve a refund request, raise a new one with reason and remark', async ({ page, tracking }, info) => {
+  void tracking
+  const request = {
+    id: '11111111-1111-4111-8111-111111111111', status: 'requested', amount: 1134, reason: 'Stock not available at the warehouse',
+    remark: 'Out of stock this week; customer informed', cancelOrder: true, orderId: '22222222-2222-4222-8222-222222222222',
+    orderNumber: 'CR-20261107-TEST1', customer: 'Test Customer', orderStatus: 'placed', orderTotal: 1134, invoiceNumber: 'CRI/2026-27/000123',
+    requestedAt: new Date().toISOString(), requestedBy: 'Accounts person', decidedAt: null, decidedBy: '', decisionNote: '', lastError: '',
+    refundStatus: '', refundId: '', creditNoteId: '', creditNoteNumber: '',
+  }
+  let approved = false
+  const summary = { from: '2026-11-01', to: '2026-11-28', invoices: 1, invoiced: 1134, received: 1134, refunded: 0, refunds: 0, openRefunds: 0, net: 1134, paidWithoutInvoice: 0, invoicesNotSent: 0, invoicesNotSentNoEmail: 0, refundRequestsWaiting: 1, byOffer: [], byMethod: [] }
+  await page.addInitScript(() => sessionStorage.setItem('cr.writer.token', JSON.stringify({ token: 'test', expiresAt: new Date(Date.now() + 3600e3).toISOString() })))
+  await page.route(/\/api\/admin\//, (r) => {
+    const url = new URL(r.request().url())
+    const p = url.pathname.replace('/api/admin', '')
+    if (p === '/me') return r.fulfill({ json: { email: 'accounts@test', fullName: 'Accounts person', role: 'accounts', permissions: ['accounts.view', 'refund.request', 'refund.approve', 'money.view'] } })
+    if (p === '/accounts/summary') return r.fulfill({ json: { ...summary, refundRequestsWaiting: approved ? 0 : 1 } })
+    if (p === '/accounts/refunds') return r.fulfill({ json: { refunds: [] } })
+    if (p === '/refund-requests/check') return r.fulfill({ json: { orderId: '33333333-3333-4333-8333-333333333333', orderNumber: 'CR-20261128-TEST2', customer: 'Second Customer', status: 'confirmed', paymentStatus: 'paid', total: 540, paid: 540, refundable: 540, invoiceNumber: 'CRI/2026-27/000124', openRequest: false, canCancel: true } })
+    if (p === '/refund-requests' && r.request().method() === 'POST') return r.fulfill({ json: { request: { id: 'x' } } })
+    if (p.endsWith('/approve')) { approved = true; return r.fulfill({ json: { request: { ...request, status: 'approved' }, creditNote: { id: 'c', credit_note_number: 'CRI/CN/2026-27/000001' }, cancelled: true } }) }
+    if (p === '/refund-requests') {
+      const want = url.searchParams.get('status')
+      const row = approved ? { ...request, status: 'approved', decidedBy: 'Accounts person', decidedAt: new Date().toISOString(), refundId: 'rfnd_TEST', creditNoteId: '44444444-4444-4444-8444-444444444444', creditNoteNumber: 'CRI/CN/2026-27/000001' } : request
+      return r.fulfill({ json: { counts: { requested: approved ? 0 : 1, approved: approved ? 1 : 0, not_approved: 0 }, requests: !want || want === row.status ? [row] : [], reasons: ['Stock not available at the warehouse', 'Order cancelled by the customer'] } })
+    }
+    if (p === '/locations') return r.fulfill({ json: { locations: [] } })
+    if (p.startsWith('/warehouse/orders')) return r.fulfill({ json: { orders: [], total: 0, counts: {} } })
+    return r.fulfill({ json: {} })
+  })
+  const appHtml = require('fs').readFileSync(require('path').join(__dirname, '..', 'dist', 'app.html'), 'utf8')
+  await page.route('**/warehouse', (r) => r.fulfill({ contentType: 'text/html', body: appHtml }))
+  await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.fulfill({ contentType: 'text/css', body: '' }))
+  await page.goto('/warehouse')
+  if (info.project.name === 'phone') await page.getByRole('button', { name: 'Open menu' }).click()
+  await page.getByRole('navigation').or(page.locator('.wh-side')).getByRole('button', { name: 'Accounts', exact: true }).first().click()
+  await expect(page.getByText('1 refund request is waiting for approval')).toBeVisible({ timeout: 15000 })
+  await page.getByRole('button', { name: 'Approve or not approve' }).click()
+  await expect(page.getByText('Remark: Out of stock this week; customer informed')).toBeVisible()
+  await expect(page.getByText('Waiting for approval', { exact: true })).toBeVisible()
+
+  // Approve: a confirmation first, then the credit note appears.
+  await page.getByRole('button', { name: 'Approve', exact: true }).click()
+  await expect(page.getByText(/This sends the money back and cannot be undone/)).toBeVisible()
+  await page.getByRole('button', { name: 'Yes, refund and issue credit note' }).click()
+  await expect(page.getByText(/credit note CRI\/CN\/2026-27\/000001 issued and emailed/)).toBeVisible()
+  await page.getByRole('button', { name: /Approved \(1\)/ }).click()
+  await expect(page.getByRole('button', { name: 'Credit note' })).toBeVisible()
+
+  // A new request by order number, with reason and remark.
+  await page.getByRole('button', { name: '+ New refund request' }).click()
+  await page.getByPlaceholder('CR-20261107-AS7TP').fill('CR-20261128-TEST2')
+  await page.getByRole('button', { name: 'Find order' }).click()
+  await expect(page.getByText('Second Customer')).toBeVisible()
+  await page.getByPlaceholder(/Rice not in stock/).fill('Test remark')
+  await expect(page.getByText(/Also cancel the order when approved/)).toBeVisible()
+  await page.getByRole('button', { name: 'Raise refund request' }).click()
+  await expect(page.getByText('Refund request for CR-20261128-TEST2 raised. It now waits for approval.')).toBeVisible()
+  const wide = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+  expect(wide, info.project.name).toBeLessThanOrEqual(1)
+})

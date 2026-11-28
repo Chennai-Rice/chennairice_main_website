@@ -640,6 +640,93 @@ test('cancel a paid order: stock released, flagged for refund; refunds cannot ex
   assert.deepEqual(rzp.state.refunds.map((r) => r.amount), [10000, 44000])
 })
 
+test('refund requests: raised with a reason and remark, approved or not approved by accounts; approval refunds and issues the credit note', async () => {
+  const add = await api('POST', '/api/admin/staff', { token: OWNER, body: { email: 'acc-refund@x.test', fullName: 'Refund accounts', role: 'accounts' } })
+  assert.equal(add.status, 200, JSON.stringify(add.body))
+  const ACC = 'acc-refund@x.test|uid-acc-refund'
+  const { session } = await buy([{ id: 'alibaba', qty: 1 }], buyer({ email: 'stockout@example.com', name: 'Priya G' }))
+  const id = session.orderId
+  const { rows: [o] } = await db.query('select order_number, total_paise, status from orders where id = $1', [id])
+  const held = (await stockOf('alibaba')).reserved
+
+  // Look up by order number (lower case and spaces are fine).
+  const check = await api('GET', `/api/admin/refund-requests/check?orderNumber=${encodeURIComponent(' ' + o.order_number.toLowerCase())}`, { token: ACC })
+  assert.equal(check.status, 200, JSON.stringify(check.body))
+  assert.equal(check.body.refundable, Number(o.total_paise) / 100)
+  assert.equal(check.body.canCancel, true)
+  assert.equal((await api('GET', '/api/admin/refund-requests/check?orderNumber=CR-NOPE', { token: ACC })).status, 404)
+
+  // A reason is needed; the plant team cannot raise one.
+  assert.equal((await api('POST', '/api/admin/refund-requests', { token: ACC, body: { orderNumber: o.order_number } })).status, 400)
+  assert.equal((await api('POST', '/api/admin/refund-requests', { token: tokens.plant, body: { orderNumber: o.order_number, reason: 'x' } })).status, 403)
+  assert.equal((await api('POST', '/api/admin/refund-requests', { token: ACC, body: { orderNumber: o.order_number, reason: 'x', amount: 999999 } })).status, 409)
+
+  // First request: not approved. Nothing is refunded.
+  const r1 = await api('POST', '/api/admin/refund-requests', { token: tokens.sales, body: { orderNumber: o.order_number, reason: 'Order cancelled by the customer' } })
+  assert.equal(r1.status, 200, JSON.stringify(r1.body))
+  assert.equal((await api('POST', '/api/admin/refund-requests', { token: ACC, body: { orderNumber: o.order_number, reason: 'again' } })).status, 409)
+  assert.equal((await api('POST', `/api/admin/refund-requests/${r1.body.request.id}/approve`, { token: tokens.sales, body: {} })).status, 403)
+  assert.equal((await api('POST', `/api/admin/refund-requests/${r1.body.request.id}/reject`, { token: ACC, body: {} })).status, 400)
+  const no = await api('POST', `/api/admin/refund-requests/${r1.body.request.id}/reject`, { token: ACC, body: { note: 'Customer wants the order after all' } })
+  assert.equal(no.status, 200, JSON.stringify(no.body))
+  assert.equal(no.body.request.status, 'not_approved')
+  assert.equal((await api('POST', `/api/admin/refund-requests/${r1.body.request.id}/approve`, { token: ACC, body: {} })).status, 409)
+
+  // Second: stock not available, full amount, cancel the order; approved.
+  const r2 = await api('POST', '/api/admin/refund-requests', {
+    token: ACC, body: { orderNumber: o.order_number, reason: 'Stock not available at the warehouse', remark: 'Rice out of stock this week; customer informed by phone', cancelOrder: true },
+  })
+  assert.equal(r2.status, 200, JSON.stringify(r2.body))
+  const list = await api('GET', '/api/admin/refund-requests?status=requested', { token: ACC })
+  assert.ok(list.body.requests.some((r) => r.id === r2.body.request.id && r.remark.startsWith('Rice out of stock')))
+  assert.ok(list.body.counts.not_approved >= 1)
+  const yes = await api('POST', `/api/admin/refund-requests/${r2.body.request.id}/approve`, { token: ACC, body: { note: 'OK' } })
+  assert.equal(yes.status, 200, JSON.stringify(yes.body))
+  assert.equal(yes.body.request.status, 'approved')
+  assert.equal(yes.body.cancelled, true)
+  assert.match(yes.body.creditNote.credit_note_number, /\/CN\/\d{4}-\d{2}\/\d{6}$/)
+  assert.equal(Number(yes.body.creditNote.total_paise), Number(o.total_paise))
+  const { rows: [after] } = await db.query('select status, payment_status, needs_attention from orders where id = $1', [id])
+  assert.deepEqual(after, { status: 'cancelled', payment_status: 'refunded', needs_attention: null })
+  assert.equal((await stockOf('alibaba')).reserved, held - 1)
+  const { rows: [inv] } = await db.query('select * from invoices where order_id = $1', [id])
+  assert.equal(Number(yes.body.creditNote.cgst_paise), Number(inv.cgst_paise))
+  // The customer's refund email carries the credit note.
+  const { rows: [mail] } = await db.query(`select body_text, attachments from email_outbox where order_id = $1 and template = 'refund_issued'`, [id])
+  assert.match(mail.body_text, /credit note .*CN/)
+  assert.equal(mail.attachments[0].kind, 'credit_note')
+
+  const pdf = await fetch(base + `/api/admin/credit-notes/${yes.body.creditNote.id}/pdf`, { headers: { Authorization: 'Bearer ' + ACC } })
+  assert.equal(pdf.status, 200)
+  assert.equal(pdf.headers.get('content-type'), 'application/pdf')
+  assert.equal(Buffer.from(await pdf.arrayBuffer()).subarray(0, 4).toString(), '%PDF')
+  assert.equal((await fetch(base + `/api/admin/credit-notes/${yes.body.creditNote.id}/pdf`, { headers: { Authorization: 'Bearer ' + tokens.plant } })).status, 403)
+  const done = await api('GET', '/api/admin/refund-requests?status=approved', { token: ACC })
+  const row = done.body.requests.find((r) => r.id === r2.body.request.id)
+  assert.equal(row.creditNoteNumber, yes.body.creditNote.credit_note_number)
+  assert.equal(row.decidedBy, 'Refund accounts')
+  // Nothing left to refund now.
+  assert.equal((await api('POST', '/api/admin/refund-requests', { token: ACC, body: { orderNumber: o.order_number, reason: 'x' } })).status, 409)
+})
+
+test('credit note: a part refund credits the tax in the same share', async () => {
+  const { creditNoteModel } = await import('../lib/sales/invoice-model.js')
+  const { creditNotePdf } = await import('../lib/sales/invoice-pdf.js')
+  const { session } = await buy([{ id: 'alibaba', qty: 2 }], buyer({ email: 'part@example.com' }))
+  const { getOrderDetail } = await import('../lib/sales/operations.js')
+  const detail = await getOrderDetail(session.orderId)
+  const half = Math.round(Number(detail.invoice.total_paise) / 2)
+  const cn = { credit_note_number: 'CRI/CN/2026-27/000099', issued_at: new Date(), total_paise: half, reason: 'Damaged or wrong item delivered', remark: 'One bag torn' }
+  const m = creditNoteModel(detail, cn)
+  assert.equal(m.title, 'Credit Note')
+  assert.equal(m.total, half)
+  assert.equal(m.taxable + m.tax - m.discount + m.roundOff, half)
+  assert.ok(Math.abs(m.tax - Math.round((Number(detail.invoice.cgst_paise) + Number(detail.invoice.sgst_paise) + Number(detail.invoice.igst_paise)) / 2)) <= 2)
+  assert.equal(m.metaRows[1][1], detail.invoice.invoice_number)
+  const buf = await creditNotePdf(detail, cn)
+  assert.equal(buf.subarray(0, 4).toString(), '%PDF')
+})
+
 test('inventory: damage and adjustments go through the ledger and never below zero', async () => {
   const v = await variantId('alibaba')
   const start = await stockOf('alibaba')
