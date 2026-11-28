@@ -166,6 +166,8 @@ const IN_NEODOVE = {
 }
 
 function WhyWaiting({ w }) {
+  // An older server (mid-deploy) sends no `waiting`: nothing to show rather than a blank page.
+  if (!Array.isArray(w?.groups)) return null
   const waiting = w.groups.filter((g) => g.status === 'waiting')
   const failed = w.groups.filter((g) => g.status === 'failed')
   const already = waiting.filter((g) => g.inNeoDove === true).reduce((a, g) => a + g.leads, 0)

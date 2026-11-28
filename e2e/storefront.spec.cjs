@@ -310,6 +310,7 @@ test('NeoDove dashboard: Performance login sees Sales Daddy and our database inp
     byCaller: [{ name: 'Test Caller', ...split(20, 31) }],
     byType: [{ name: 'Meta lead form (Sales Daddy)', ...split(28, 0) }],
     trend: [{ day: '2026-11-27', sdReceived: 5, sdPushed: 4, webQueued: 8, webPushed: 7, called: 9 }],
+    waiting: { groups: [] }, // "Why leads are waiting" (28 Nov 2026): none in this test
     health: { queued: 3, failed: 2, oldestQueuedMinutes: 12, lastPush: new Date().toISOString(), lastSalesDaddyCopy: new Date().toISOString(), lastCall: new Date().toISOString(), problems: [{ reason: 'NeoDove HTTP 500', leads: 2 }] },
   }
   await page.addInitScript(() => sessionStorage.setItem('cr.writer.token', JSON.stringify({ token: 'test', expiresAt: new Date(Date.now() + 3600e3).toISOString() })))
